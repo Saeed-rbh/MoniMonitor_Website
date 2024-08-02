@@ -6,7 +6,13 @@ import Header from "./Header/header";
 const Telegram = lazy(() => import("./Telegram/MoneyMonitor"));
 
 function App() {
-  const [userData, setUserData] = useState(null);
+  const [userData, setUserData] = useState({
+    userId: "",
+    userName: "",
+    userUsername: "",
+    userLanguage: "",
+    queryId: "",
+  });
   useEffect(() => {
     const initTelegramWebApp = () => {
       if (window.Telegram && window.Telegram.WebApp) {

@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import "./header.css";
 import MenuButton from "./MenuButton";
 
-function Header() {
+function Header(userData) {
+  const { userId, userName } = userData;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   return (
     <header className="MoneyMonitor_header">
@@ -14,8 +15,8 @@ function Header() {
           />
         </div>
         <p>
-          <span>Money Monitor</span>
-          <span>965896521</span>
+          <span>{userName}</span>
+          <span>{userId}</span>
         </p>
       </div>
       <MenuButton handleButtonClick={setIsMenuOpen} isMenuOpen={isMenuOpen} />
