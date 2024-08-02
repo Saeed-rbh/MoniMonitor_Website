@@ -59,7 +59,6 @@ const MoneyMonitor = () => {
   const { mainPageMonth, setMainPageMonth } = useMainPageMonth();
   const { selected: mainSelected } = useTransactionData(mainPageMonth);
 
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMoreClicked, setIsMoreClicked] = useState(null);
   const [isAddClicked, setIsAddClicked] = useState(null);
 
@@ -135,8 +134,8 @@ const MoneyMonitor = () => {
   }, [modify]);
 
   return (
-    <div className="MoneyMonitor_Main">
-      <MoreOpen
+    <>
+      {/* <MoreOpen
         isClicked={isAddClicked}
         setIsClicked={setIsAddClicked}
         feed={AddFeed}
@@ -153,35 +152,17 @@ const MoneyMonitor = () => {
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
         blur={isAddClicked}
-      />
+      /> */}
 
       <div className="MoneyMonitor_Parent">
-        <Notif
+        {/* <Notif
           addTransaction={addTransaction}
           setAddTransaction={setAddTransaction}
           modify={modify}
           setModify={setModify}
           open={open}
           setOpen={setOpen}
-        />
-        <header className="MoneyMonitor_header">
-          <div className="MoneyMonitor_User">
-            <div className="MoneyMonitor_Logo">
-              <img
-                src={`${process.env.PUBLIC_URL}/MoneyMonitor.jpg`}
-                alt="MoneyMonitor Logo"
-              />
-            </div>
-            <p>
-              <span>Money Monitor</span>
-              <span>965896521</span>
-            </p>
-          </div>
-          {/* <MenuButton
-            handleButtonClick={setIsMenuOpen}
-            isMenuOpen={isMenuOpen}
-          /> */}
-        </header>
+        /> */}
 
         <animated.div style={scaleStyle}>
           <AddTransaction setIsAddClicked={setIsAddClicked} />
@@ -199,7 +180,7 @@ const MoneyMonitor = () => {
           )}
         </animated.div>
       </div>
-    </div>
+    </>
   );
 };
 

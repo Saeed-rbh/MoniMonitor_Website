@@ -1,6 +1,7 @@
 import "./App.css";
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import Header from "./Header/header";
 
 const Telegram = lazy(() => import("./Telegram/MoneyMonitor"));
 
@@ -29,7 +30,8 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <Suspense fallback={<div>Loading....</div>}>
+        <Suspense>
+          <Header userData={userData} />
           <Routes>
             <Route path="/" element={<Telegram />} />
           </Routes>

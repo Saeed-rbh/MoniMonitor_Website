@@ -8,6 +8,7 @@ body {
   overflow-y: hidden; /* Hide vertical scrollbar */
   overflow-x: hidden; /* Hide horizontal scrollbar */
   margin: 0;
+  background-color: var(--Ec-1);
 }
 #root {
   --safe-area-inset-bottom: env(safe-area-inset-bottom);
@@ -20,6 +21,10 @@ body {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
+  display: flex;
+  justify-content: center;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
 .MainBackground {
