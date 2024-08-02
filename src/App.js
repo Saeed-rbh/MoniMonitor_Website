@@ -37,15 +37,26 @@ function App() {
   }, []);
 
   return (
-    <Router>
-      <div className="App">
-        <Suspense fallback={<div>Loading....</div>}>
-          <Routes>
-            <Route path="/" element={<Telegram />} />
-          </Routes>
-        </Suspense>
-      </div>
-    </Router>
+    // <Router>
+    <div className="App">
+      <h1>Welcome to MoniMonitor</h1>
+      {userData ? (
+        <div>
+          <p>User ID: {userData.userId}</p>
+          <p>User Name: {userData.userName}</p>
+          <p>Username: {userData.userUsername}</p>
+          <p>Language Code: {userData.userLanguage}</p>
+        </div>
+      ) : (
+        <p>Loading user data...</p>
+      )}
+      {/* //     <Suspense fallback={<div>Loading....</div>}>
+    //       <Routes>
+    //         <Route path="/" element={<Telegram />} />
+    //       </Routes>
+    //     </Suspense> */}
+    </div>
+    // </Router>
   );
 }
 
