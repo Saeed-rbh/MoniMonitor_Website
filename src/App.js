@@ -11,7 +11,7 @@ function App() {
     userName: "",
     userUsername: "",
     userLanguage: "",
-    queryId: "A",
+    queryId: "",
   });
   useEffect(() => {
     const initTelegramWebApp = () => {
