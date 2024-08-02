@@ -1,5 +1,36 @@
+body {
+  overflow: hidden;
+  color: #011436;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  overflow-y: hidden; /* Hide vertical scrollbar */
+  overflow-x: hidden; /* Hide horizontal scrollbar */
+  margin: 0;
+}
+#root {
+  --safe-area-inset-bottom: env(safe-area-inset-bottom);
+}
+#root {
+  overflow: hidden;
+}
 .App {
   text-align: center;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.MainBackground {
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  z-index: -100;
 }
 
 .App-logo {
@@ -9,6 +40,7 @@
 
 @media (prefers-reduced-motion: no-preference) {
   .App-logo {
+    -webkit-animation: App-logo-spin infinite 20s linear;
     animation: App-logo-spin infinite 20s linear;
   }
 }
@@ -28,6 +60,15 @@
   color: #61dafb;
 }
 
+@-webkit-keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);
@@ -35,4 +76,9 @@
   to {
     transform: rotate(360deg);
   }
+}
+.App {
+  position: fixed;
+  top: 0;
+  left: 0;
 }
