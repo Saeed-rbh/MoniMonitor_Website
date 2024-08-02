@@ -8,7 +8,7 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div>Loading....</div>}>
           <Routes>
             <Route path="/" element={<Telegram />} />
           </Routes>
