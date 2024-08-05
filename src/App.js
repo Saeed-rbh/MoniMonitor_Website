@@ -39,6 +39,9 @@ function App() {
       <div className="App">
         <Suspense>
           <Header userData={userData} />
+          <Routes>
+            <Route path="/" element={<Telegram />} />
+          </Routes>
         </Suspense>
       </div>
     </Router>
