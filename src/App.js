@@ -41,7 +41,9 @@ function App() {
     <Router>
       <div className="App">
         <Suspense>
-          <h1>{!window.Telegram.WebApp}</h1>
+          <h1 style={{ color: "#fff" }}>
+            {!window.Telegram.WebApp ? "Telegram" : "No Telegram"}
+          </h1>
           <Header userData={userData} />
           <Routes>
             <Route path="/" element={<Telegram />} />
