@@ -116,7 +116,7 @@ const groupTransactionsByMonth = (transactions) => {
     groupedTransactions[key].transactions.push(transaction);
     const label = transaction.Label;
 
-    if (transaction.Category === "Spending") {
+    if (transaction.Category === "Expense") {
       groupedTransactions[key].totalSpending += transaction.Amount;
       groupedTransactions[key].netTotal -= transaction.Amount;
       if (label) {

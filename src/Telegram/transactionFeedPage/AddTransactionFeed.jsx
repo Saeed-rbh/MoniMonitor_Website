@@ -6,7 +6,7 @@ import DateTime from "./DateTime";
 import Category from "./Category";
 import Confirm from "./Confirm";
 import {
-  spending_categories,
+  Expense_categories,
   Income_categories,
   SaveInvest_categories,
 } from "./Categories";
@@ -29,8 +29,8 @@ function AddTransactionFeed({
   const OriginalList =
     isAddClicked === "Income"
       ? Income_categories
-      : isAddClicked === "Spending"
-      ? spending_categories
+      : isAddClicked === "Expense"
+      ? Expense_categories
       : SaveInvest_categories;
 
   const AutoDetect = ["Auto Detect", <MdOutlineAutoAwesome />];
@@ -44,7 +44,7 @@ function AddTransactionFeed({
     color:
       isAddClicked === "Income"
         ? "var(--Fc-2)"
-        : isAddClicked === "Spending"
+        : isAddClicked === "Expense"
         ? "var(--Gc-2)"
         : "var(--Ac-2)",
   };

@@ -12,8 +12,8 @@ const MoneyEntryAmount = ({ type, transaction, setIsMoreClicked }) => {
   const BannerAmount =
     type === "Income"
       ? transaction.totalIncome
-      : type === "Spending"
-      ? transaction.totalSpending
+      : type === "Expense"
+      ? transaction.totalExpense
       : type === "Save&Invest"
       ? transaction.totalSaving
       : transaction.netTotal;
@@ -22,7 +22,7 @@ const MoneyEntryAmount = ({ type, transaction, setIsMoreClicked }) => {
     background:
       type === "Income"
         ? "linear-gradient(165deg, var(--Ec-4) 30%, var(--Fc-4) 100%)"
-        : type === "Spending"
+        : type === "Expense"
         ? "linear-gradient(165deg, var(--Ec-4) 30%, var(--Gc-4) 100%)"
         : type === "Save&Invest"
         ? "linear-gradient(165deg, var(--Ec-4) 30%, var(--Ac-4) 100%)"
@@ -31,7 +31,7 @@ const MoneyEntryAmount = ({ type, transaction, setIsMoreClicked }) => {
     border:
       type === "Income"
         ? `1px solid var(--Fc-3)`
-        : type === "Spending"
+        : type === "Expense"
         ? `1px solid var(--Gc-3)`
         : type === "Save&Invest"
         ? `1px solid var(--Ac-3)`
@@ -42,7 +42,7 @@ const MoneyEntryAmount = ({ type, transaction, setIsMoreClicked }) => {
     background:
       type === "Income"
         ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Fc-2) 100%)"
-        : type === "Spending"
+        : type === "Expense"
         ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Gc-2) 100%)"
         : type === "Save&Invest"
         ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Ac-2) 100%)"
@@ -53,7 +53,7 @@ const MoneyEntryAmount = ({ type, transaction, setIsMoreClicked }) => {
     color:
       type === "Income"
         ? "var(--Fc-2)"
-        : type === "Spending"
+        : type === "Expense"
         ? "var(--Gc-2)"
         : type === "Save&Invest"
         ? "var(--Ac-2)"
@@ -102,7 +102,7 @@ const MoneyEntryAmount = ({ type, transaction, setIsMoreClicked }) => {
       <div style={ColorStyle} className={`MoneyEntry_type_Open`}>
         {type === "Income" ? (
           <GoArrowDownLeft />
-        ) : type === "Spending" ? (
+        ) : type === "Expense" ? (
           <GoArrowUpRight />
         ) : type === "Save&Invest" ? (
           <GoPlus />

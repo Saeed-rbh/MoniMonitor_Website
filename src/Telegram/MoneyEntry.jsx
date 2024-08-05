@@ -27,7 +27,7 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
             transaction={Transactions}
           />
           <MoneyEntryAmount
-            type="Spending"
+            type="Expense"
             setIsMoreClicked={setIsMoreClicked}
             transaction={Transactions}
           />

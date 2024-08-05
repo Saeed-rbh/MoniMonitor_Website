@@ -31,7 +31,7 @@ const Notif = ({
   const Logo =
     addTransaction.Category === "Income" ? (
       <GoArrowDownLeft color="var(--Fc-2)" />
-    ) : addTransaction.Category === "Spending" ? (
+    ) : addTransaction.Category === "Expense" ? (
       <GoArrowUpRight color="var(--Gc-2)" />
     ) : (
       <GoPlus color="var(--Ac-2)" />

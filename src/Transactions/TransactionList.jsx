@@ -47,7 +47,7 @@ const TransactionList = ({
           : isMoreClicked === "Income"
           ? selectedData.labelDistributionIncome
           : isMoreClicked === "Expense"
-          ? selectedData.labelDistributionSpending
+          ? selectedData.labelDistributionExpense
           : selectedData.labelDistributionSaving;
 
       console.log(distribution);

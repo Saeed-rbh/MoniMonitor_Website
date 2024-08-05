@@ -17,14 +17,14 @@ const AddTransaction = ({ setIsAddClicked }) => {
         ></animated.div>
         <span>Income</span>
       </ScalableElement>
-      <ScalableElement as="h1" onClick={() => setIsAddClicked("Spending")}>
+      <ScalableElement as="h1" onClick={() => setIsAddClicked("Expense")}>
         <GoArrowUpRight color="var(--Gc-2)" />
         <animated.div
           style={{ opacity: 0.4 }}
           className="CirleColor"
         ></animated.div>
 
-        <span>Spending</span>
+        <span>Expense</span>
       </ScalableElement>
       <ScalableElement as="h1" onClick={() => setIsAddClicked("Save&Invest")}>
         <GoPlus color="var(--Ac-2)" />

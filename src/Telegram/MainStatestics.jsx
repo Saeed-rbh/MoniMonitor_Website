@@ -37,28 +37,28 @@ const MainStatestics = ({
         maxIncome: Math.max(acc.maxIncome, d.income),
         maxNet: Math.max(acc.maxNet, d.net),
         maxSaving: Math.max(acc.maxSaving, d.saving),
-        maxSpending: Math.max(acc.maxSpending, d.spending),
+        maxExpense: Math.max(acc.maxExpense, d.Expense),
       }),
-      { maxIncome: 0, maxNet: 0, maxSaving: 0, maxSpending: 0 }
+      { maxIncome: 0, maxNet: 0, maxSaving: 0, maxExpense: 0 }
     );
 
     const maxOfAll = Math.max(
       allValues.maxIncome,
       allValues.maxNet,
       allValues.maxSaving,
-      allValues.maxSpending
+      allValues.maxExpense
     );
 
     let highestCategory = "";
     if (maxOfAll === allValues.maxIncome) highestCategory = "Income";
     else if (maxOfAll === allValues.maxNet) highestCategory = "Net";
     else if (maxOfAll === allValues.maxSaving) highestCategory = "Saving";
-    else if (maxOfAll === allValues.maxSpending) highestCategory = "Spending";
+    else if (maxOfAll === allValues.maxExpense) highestCategory = "Expense";
 
     return { maxOfAll, highestCategory };
   }, [last6MonthsData]);
 
-  const marginTop = maxValues.highestCategory === "Spending" ? 20 : 30;
+  const marginTop = maxValues.highestCategory === "Expense" ? 20 : 30;
 
   const processedData = useMemo(
     () =>
@@ -67,7 +67,7 @@ const MainStatestics = ({
         incomePercentage: calculatePercentage(d.income, maxValues.maxOfAll),
         netPercentage: calculatePercentage(d.net, maxValues.maxOfAll),
         savingPercentage: calculatePercentage(d.saving, maxValues.maxOfAll),
-        spendingPercentage: calculatePercentage(d.spending, maxValues.maxOfAll),
+        ExpensePercentage: calculatePercentage(d.Expense, maxValues.maxOfAll),
         year: MonthsData[index],
       })),
     [last6MonthsData, maxValues.maxOfAll, MonthsData]
@@ -76,7 +76,7 @@ const MainStatestics = ({
   useEffect(() => {
     processedData.length > 0 &&
       processedData[mainPageMonth].income +
-        processedData[mainPageMonth].spending +
+        processedData[mainPageMonth].Expense +
         processedData[mainPageMonth].saving +
         processedData[mainPageMonth].net ===
         0 &&
@@ -89,7 +89,7 @@ const MainStatestics = ({
       from: {
         savingHeight: "0%",
         netHeight: "0%",
-        spendingHeight: "0%",
+        ExpenseHeight: "0%",
         incomeHeight: "0%",
       },
       to: {
@@ -100,10 +100,10 @@ const MainStatestics = ({
         netTop: d.netPercentage < 0 ? "calc(50% + 10px)" : "none",
         netHeight:
           d.netPercentage > 0 ? `${d.netPercentage}%` : `${-d.netPercentage}%`,
-        spendingHeight: `${
-          d.spendingPercentage === 0 ? MIN_PERCENTAGE : d.spendingPercentage
+        ExpenseHeight: `${
+          d.ExpensePercentage === 0 ? MIN_PERCENTAGE : d.ExpensePercentage
         }%`,
-        spendingBg: d.spendingPercentage === 0 ? FALLBACK_COLOR : null,
+        ExpenseBg: d.ExpensePercentage === 0 ? FALLBACK_COLOR : null,
         incomeHeight: `${
           d.incomePercentage === 0 ? MIN_PERCENTAGE : d.incomePercentage
         }%`,
@@ -163,7 +163,7 @@ const MainStatestics = ({
       ? heightFactor *
           0.01 *
           1.1 *
-          processedData[mainPageMonth].spendingPercentage +
+          processedData[mainPageMonth].ExpensePercentage +
         15
       : 0,
   });
@@ -173,7 +173,7 @@ const MainStatestics = ({
       heightFactor *
         0.01 *
         1.1 *
-        processedData[mainPageMonth].spendingPercentage +
+        processedData[mainPageMonth].ExpensePercentage +
         15 >
         50
         ? -25
@@ -213,9 +213,9 @@ const MainStatestics = ({
       },
       {
         width: data
-          ? data.spendingPercentage * 0.9 < 10
+          ? data.ExpensePercentage * 0.9 < 10
             ? 10
-            : data.spendingPercentage * 0.9
+            : data.ExpensePercentage * 0.9
           : 10,
         background: "var(--Gc-1)",
         outline: "3px solid var(--Gc-3)",
@@ -298,7 +298,7 @@ const MainStatestics = ({
           <animated.h1 style={valueSpringSpText}>
             - $
             {processedData[mainPageMonth]
-              ? Number(processedData[mainPageMonth].spending.toFixed(0))
+              ? Number(processedData[mainPageMonth].Expense.toFixed(0))
               : 0}
             $
           </animated.h1>
@@ -336,7 +336,7 @@ const MainStatestics = ({
             ></animated.span>
           </p>
           <p>
-            Spending
+            Expense
             <animated.span
               style={{
                 width: springGuid[3].width,
@@ -372,7 +372,7 @@ const MainStatestics = ({
                 transform: x.to((x) => `translate3d(${x}px,0,0)`),
                 cursor:
                   processedData[index].income +
-                    processedData[index].spending +
+                    processedData[index].Expense +
                     processedData[index].saving +
                     processedData[index].net !==
                   0
@@ -381,7 +381,7 @@ const MainStatestics = ({
               }}
               onClick={() => {
                 processedData[index].income +
-                  processedData[index].spending +
+                  processedData[index].Expense +
                   processedData[index].saving +
                   processedData[index].net !==
                   0 && setMainPageMonth(index);
@@ -404,8 +404,8 @@ const MainStatestics = ({
               ></animated.li>
               <animated.li
                 style={{
-                  height: style.spendingHeight,
-                  background: style.spendingBg,
+                  height: style.ExpenseHeight,
+                  background: style.ExpenseBg,
                 }}
               ></animated.li>
               <animated.li

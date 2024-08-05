@@ -46,8 +46,8 @@ const TransactionList = ({
           ? selectedData.labelDistribution
           : isMoreClicked === "Income"
           ? selectedData.labelDistributionIncome
-          : isMoreClicked === "Spending"
-          ? selectedData.labelDistributionSpending
+          : isMoreClicked === "Expense"
+          ? selectedData.labelDistributionExpense
           : selectedData.labelDistributionSaving;
 
       console.log(distribution);
@@ -200,7 +200,7 @@ const TransactionList = ({
     color:
       isMoreClicked === "Income"
         ? "var(--Fc-2)"
-        : isMoreClicked === "Spending"
+        : isMoreClicked === "Expense"
         ? "var(--Gc-2)"
         : isMoreClicked === "Save&Invest"
         ? "var(--Bc-2)"

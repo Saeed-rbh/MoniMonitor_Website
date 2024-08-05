@@ -14,7 +14,7 @@ import { TbMoneybag } from "react-icons/tb";
 import { PiHandCoinsDuotone } from "react-icons/pi";
 import { BiLogoBitcoin } from "react-icons/bi";
 
-export const spending_categories = [
+export const Expense_categories = [
   ["Housing & Utilities", <TbHomeBolt />],
   ["Transportation", <RiSubwayLine />],
   ["Groceries & Dining", <MdOutlineLocalGroceryStore />],

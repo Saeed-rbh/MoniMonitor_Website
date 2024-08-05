@@ -15,7 +15,7 @@ function ModifyCategory({
   halfHeightE,
   setCategoryClick,
 }) {
-  const spending_categories = [
+  const Expense_categories = [
     ["Utilities", <LiaHouseDamageSolid />],
     ["Transportation", <LiaBusSolid />],
     ["Groceries & Dining", <MdOutlineLocalGroceryStore />],
@@ -75,7 +75,7 @@ function ModifyCategory({
         style={ClickModifyStyle}
       >
         <div className="TransactionModification_Category">
-          {spending_categories.map((category, index) => (
+          {Expense_categories.map((category, index) => (
             <p>
               {category[1]}
               <h3>{category[0]}</h3>
