@@ -30,7 +30,6 @@ const Transactions = ({ userId }) => {
   const {
     selected: selectedData,
     Availability: availabilityData,
-    netAmounts: netAmountsData,
     transactions: transactionsData,
   } = useTransactionData(whichMonth, userId);
 

@@ -35,6 +35,8 @@ function App() {
     initTelegramWebApp();
   }, []);
 
+  console.log(!window.Telegram.WebApp);
+
   return (
     <Router>
       <div className="App">
