@@ -59,16 +59,16 @@ const LabelDistribution = (Amount, labels) => {
   });
 
   // Reconstruct label distribution with sorted percentages
-  const sortedLabelDistributionSpending = {};
+  const sortedLabelDistributionExpense = {};
   labelPercentages.forEach((item) => {
-    sortedLabelDistributionSpending[item.label] = Number(
+    sortedLabelDistributionExpense[item.label] = Number(
       item.percentage.toFixed(2)
     );
   });
 
   // Assign sorted label distribution back to groupedTransactions
 
-  return sortedLabelDistributionSpending;
+  return sortedLabelDistributionExpense;
 };
 
 const groupTransactionsByMonth = (transactions) => {
@@ -99,14 +99,14 @@ const groupTransactionsByMonth = (transactions) => {
     if (!groupedTransactions[key]) {
       groupedTransactions[key] = {
         transactions: [],
-        totalSpending: 0,
+        totalExpense: 0,
         totalIncome: 0,
         totalSaving: 0,
         netTotal: 0,
         month: months[date.getMonth()],
         year: year,
         percentageChange: null,
-        labelDistributionSpending: {},
+        labelDistributionExpense: {},
         labelDistributionIncome: {},
         labelDistributionSaving: {},
         labelDistribution: {},
@@ -117,14 +117,14 @@ const groupTransactionsByMonth = (transactions) => {
     const label = transaction.Label;
 
     if (transaction.Category === "Expense") {
-      groupedTransactions[key].totalSpending += transaction.Amount;
+      groupedTransactions[key].totalExpense += transaction.Amount;
       groupedTransactions[key].netTotal -= transaction.Amount;
       if (label) {
-        if (groupedTransactions[key].labelDistributionSpending[label]) {
-          groupedTransactions[key].labelDistributionSpending[label] +=
+        if (groupedTransactions[key].labelDistributionExpense[label]) {
+          groupedTransactions[key].labelDistributionExpense[label] +=
             transaction.Amount;
         } else {
-          groupedTransactions[key].labelDistributionSpending[label] =
+          groupedTransactions[key].labelDistributionExpense[label] =
             transaction.Amount;
         }
       }
@@ -156,12 +156,12 @@ const groupTransactionsByMonth = (transactions) => {
 
   // Determine top labels and sort by percentage (with stability)
   Object.keys(groupedTransactions).forEach((key) => {
-    const SpendingAmount = groupedTransactions[key].totalSpending;
-    const labelSpending = groupedTransactions[key].labelDistributionSpending;
+    const ExpenseAmount = groupedTransactions[key].totalExpense;
+    const labelExpense = groupedTransactions[key].labelDistributionExpense;
 
-    groupedTransactions[key].labelDistributionSpending = LabelDistribution(
-      SpendingAmount,
-      labelSpending
+    groupedTransactions[key].labelDistributionExpense = LabelDistribution(
+      ExpenseAmount,
+      labelExpense
     );
 
     const IncomeAmount = groupedTransactions[key].totalIncome;
@@ -179,13 +179,13 @@ const groupTransactionsByMonth = (transactions) => {
     );
 
     const netTotal =
-      groupedTransactions[key].totalSpending +
+      groupedTransactions[key].totalExpense +
       groupedTransactions[key].totalIncome +
       groupedTransactions[key].totalSaving;
 
     groupedTransactions[key].labelDistribution = {
-      Spending: Number(
-        ((groupedTransactions[key].totalSpending / netTotal) * 100).toFixed(2)
+      Expense: Number(
+        ((groupedTransactions[key].totalExpense / netTotal) * 100).toFixed(2)
       ),
       Income: Number(
         ((groupedTransactions[key].totalIncome / netTotal) * 100).toFixed(2)
@@ -284,14 +284,14 @@ const getNetAmounts = (Transactions) => {
   const result = months.reduce((acc, month) => {
     const incomeTotal =
       Number(Transactions[month]?.totalIncome?.toFixed(2)) || 0;
-    const spendingTotal =
-      Number(Transactions[month]?.totalSpending?.toFixed(2)) || 0;
+    const ExpenseTotal =
+      Number(Transactions[month]?.totalExpense?.toFixed(2)) || 0;
     const savingTotal =
       Number(Transactions[month]?.totalSaving?.toFixed(2)) || 0;
     const netTotal = Number(Transactions[month]?.netTotal?.toFixed(2)) || 0;
     acc[month] = {
       income: incomeTotal,
-      spending: spendingTotal,
+      Expense: ExpenseTotal,
       saving: savingTotal,
       net: netTotal,
       month: monthsNames[Number(month.split("-")[1]) - 1],
@@ -323,12 +323,12 @@ export const fetchTransactions = async ({ whichMonth, userId }) => {
     whichMonth
   );
 
-  const netAmounts = getNetAmounts(totalTransactions);
+  // const netAmounts = getNetAmounts(totalTransactions);
 
   return {
     selected,
     Availability,
     transactions,
-    netAmounts,
+    // netAmounts,
   };
 };
