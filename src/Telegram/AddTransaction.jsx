@@ -1,7 +1,7 @@
 import React from "react";
 import { animated } from "react-spring";
 import { GoArrowUpRight, GoArrowDownLeft, GoPlus } from "react-icons/go";
-import { ScalableElement } from "./tools";
+import { ScalableElement } from "../Tools/tools";
 
 const AddTransaction = ({ setIsAddClicked }) => {
   return (

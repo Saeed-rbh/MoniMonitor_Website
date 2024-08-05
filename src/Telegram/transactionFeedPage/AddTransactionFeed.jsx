@@ -10,7 +10,7 @@ import {
   Income_categories,
   SaveInvest_categories,
 } from "./Categories";
-import { useWindowHeight } from "../tools";
+import { useWindowHeight } from "../../Tools/tools";
 import { MdOutlineAutoAwesome } from "react-icons/md";
 import { animated, useSpring } from "react-spring";
 

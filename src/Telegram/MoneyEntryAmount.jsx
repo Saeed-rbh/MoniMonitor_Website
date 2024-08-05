@@ -6,7 +6,7 @@ import {
   GoPlus,
   GoPulse,
 } from "react-icons/go";
-import { formatNetTotal } from "./tools";
+import { formatNetTotal } from "../Tools/tools";
 
 const MoneyEntryAmount = ({ type, transaction, setIsMoreClicked }) => {
   const BannerAmount =

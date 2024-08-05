@@ -1,4 +1,5 @@
 import { format, parse, addMonths, isBefore } from "date-fns";
+import { GetDataFromDB } from "./apiService";
 
 const monthsNames = [
   "Jan",
@@ -301,11 +302,6 @@ const getNetAmounts = (Transactions) => {
   return result;
 };
 
-const fetchJson = async (url) => {
-  const response = await fetch(url, { cache: "no-store" });
-  return response.json();
-};
-
 const getSelectedMonthData = (transactionsByMonth, whichMonth) => {
   const entries = Object.entries(transactionsByMonth);
   return !!entries[entries.length - whichMonth - 1]
@@ -313,9 +309,8 @@ const getSelectedMonthData = (transactionsByMonth, whichMonth) => {
     : null;
 };
 
-export const fetchTransactions = async ({ whichMonth }) => {
-  const allTransactions = await fetchJson("/transactions_sorted.json");
-  // const allTransactions = await GetDataFromDB();
+export const fetchTransactions = async ({ whichMonth, userId }) => {
+  const allTransactions = await GetDataFromDB({ userId });
 
   const totalTransactions = groupTransactionsByMonth(allTransactions);
 

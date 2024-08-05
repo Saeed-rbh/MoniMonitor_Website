@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import { GoArrowUpRight, GoArrowDownLeft, GoPlus } from "react-icons/go";
 import CircularProgressBar from "./CircularProgressBar";
-import { ScalableElement } from "../tools";
+import { ScalableElement } from "../../Tools/tools";
 import { useDrag } from "@use-gesture/react";
 import { FaXmark } from "react-icons/fa6";
 
@@ -10,7 +10,7 @@ import {
   sendDataToDB,
   GetLabel,
   GetDataFromDB,
-} from "../apiService/apiService";
+} from "../../Tools/apiService";
 
 const Notif = ({
   addTransaction,

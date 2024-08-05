@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Header from "./Header/header";
 
 const Telegram = lazy(() => import("./Telegram/MoneyMonitor"));
+const Transactions = lazy(() => import("./Transactions/Transactions"));
 
 function App() {
   const [userData, setUserData] = useState({
@@ -41,6 +42,11 @@ function App() {
           <Header userData={userData} />
           <Routes>
             <Route path="/" element={<Telegram />} />
+            <Route
+              path="/Transactions"
+              element={<Transactions />}
+              userId={userData.userId}
+            />
           </Routes>
         </Suspense>
       </div>

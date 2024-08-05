@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSpring, animated } from "react-spring";
+import { fetchTransactions } from "../Tools/transactionService";
 
 export const formatNetTotal = (netTotal) => {
   const floatNetTotal = parseFloat(netTotal);
@@ -104,4 +105,32 @@ export const Gradient = ({
       className="CirleColor"
     ></animated.div>
   );
+};
+
+export const useTransactionData = (whichMonth, userId) => {
+  const [data, setData] = useState({
+    selected: [],
+    Availability: [],
+    netAmounts: [],
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const { selected, Availability, netAmounts, transactions } =
+        await fetchTransactions({
+          whichMonth,
+          userId,
+        });
+
+      setData({
+        selected: selected,
+        Availability: Availability,
+        transactions: transactions,
+        netAmounts: netAmounts,
+      });
+    };
+    fetchData();
+  }, [whichMonth]);
+
+  return data;
 };

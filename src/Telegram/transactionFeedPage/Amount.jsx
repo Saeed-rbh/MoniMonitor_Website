@@ -8,7 +8,7 @@ import React, {
 import { useSpring, animated } from "react-spring";
 import { FaCheck } from "react-icons/fa";
 import { FaXmark } from "react-icons/fa6";
-import { ScalableElement } from "../tools";
+import { ScalableElement } from "../../Tools/tools";
 
 const AmountLogo = ({ Animate1, Animate2, style1, style2, fontColor }) => {
   return (

@@ -1,5 +1,5 @@
 import React from "react";
-import { ScalableElement } from "../tools";
+import { ScalableElement } from "../../Tools/tools";
 
 const Confirm = ({ handleAddClick, whichType, setWhichType }) => {
   return (

@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import TransactionListMonthly from "./TransactionListMonthly";
-import TransactionModification from "../Transactions/TransactionModification";
+import TransactionModification from "./TransactionModification";
 import { useSpring, animated } from "@react-spring/web";
-import TransactionFilter from "../Transactions/transactionFilter";
+import TransactionFilter from "./transactionFilter";
 import { useCustomSpring, useWindowHeight } from "../Tools/tools";
-import ChooseTransactionMonth from "../Transactions/ChooseTransactionMonth";
+import ChooseTransactionMonth from "./ChooseTransactionMonth";
 import MoreOpen from "../Tools/MoreOpen";
 
 const TransactionList = ({

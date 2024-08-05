@@ -44,10 +44,10 @@ export const GetLabel = async ({ record_entry }) => {
   }
 };
 
-export const GetDataFromDB = async () => {
+export const GetDataFromDB = async ({ userId = 90260003 }) => {
   const data = {
     status: "read",
-    user_id: 90260003,
+    user_id: userId,
   };
   try {
     const response = await axios.post(

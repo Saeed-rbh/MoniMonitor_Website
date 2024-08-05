@@ -3,6 +3,7 @@ import { useSpring, animated, config } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
 import { RxCross2 } from "react-icons/rx";
 import { ScalableElement } from "./tools";
+import "./MoreOpen.css";
 const MoreOpen = ({
   isClicked,
   setIsClicked,
