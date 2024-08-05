@@ -41,6 +41,7 @@ function App() {
     <Router>
       <div className="App">
         <Suspense>
+          <h1>{!window.Telegram.WebApp}</h1>
           <Header userData={userData} />
           <Routes>
             <Route path="/" element={<Telegram />} />
