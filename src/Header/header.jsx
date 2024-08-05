@@ -2,9 +2,10 @@ import React, { useState } from "react";
 import "./header.css";
 import MenuButton from "./MenuButton";
 
-function Header(userData) {
+function Header({ userData }) {
   const { userId, userName } = userData;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
   return (
     <header className="MoneyMonitor_header">
       <div className="MoneyMonitor_User">

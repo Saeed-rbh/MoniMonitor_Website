@@ -38,18 +38,7 @@ function App() {
     <Router>
       <div className="App">
         <Suspense>
-          <div style={{ color: "#fff", background: "#000" }}>
-            <h1>Money Monitor</h1>
-            <p>User ID: {userData.userId}</p>
-            <p>User Name: {userData.userName}</p>
-            <p>Username: {userData.userUsername}</p>
-            <p>Language: {userData.userLanguage}</p>
-            <p>Query ID: {userData.queryId}</p>
-          </div>
           <Header userData={userData} />
-          {/* <Routes>
-            <Route path="/" element={<Telegram />} />
-          </Routes> */}
         </Suspense>
       </div>
     </Router>
