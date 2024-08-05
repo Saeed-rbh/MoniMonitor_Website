@@ -35,15 +35,10 @@ function App() {
     initTelegramWebApp();
   }, []);
 
-  console.log(!userData.queryId);
-
   return (
     <Router>
       <div className="App">
         <Suspense>
-          <h1 style={{ color: "#fff" }}>
-            {!!userData.queryId ? "Telegram" : "No Telegram"}
-          </h1>
           <Header userData={userData} />
           <Routes>
             <Route path="/" element={<Telegram />} />
