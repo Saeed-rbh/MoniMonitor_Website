@@ -7,7 +7,7 @@ import "./Transactions.css";
 
 const Transactions = ({
   monthData,
-  isMoreClicked,
+  isMoreClicked = "Balance",
   setIsMoreClicked,
   whichMonth,
   setWhichMonth,
