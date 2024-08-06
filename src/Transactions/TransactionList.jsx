@@ -418,10 +418,18 @@ const TransactionList = ({
               className="TransactionList_SummaryLines"
               // style={springProps2}
             >
-              <animated.li style={summaryStiles[0]}></animated.li>
-              <animated.li style={summaryStiles[1]}></animated.li>
-              <animated.li style={summaryStiles[2]}></animated.li>
-              <animated.li style={summaryStiles[3]}></animated.li>
+              {SummaryWidth[0] > 0 && (
+                <animated.li style={summaryStiles[0]}></animated.li>
+              )}
+              {SummaryWidth[1] > 0 && (
+                <animated.li style={summaryStiles[1]}></animated.li>
+              )}
+              {SummaryWidth[2] > 0 && (
+                <animated.li style={summaryStiles[2]}></animated.li>
+              )}
+              {SummaryWidth[3] > 0 && (
+                <animated.li style={summaryStiles[3]}></animated.li>
+              )}
             </animated.div>
             <animated.div
               className="TransactionList_SummaryNames"
