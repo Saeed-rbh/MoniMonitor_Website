@@ -5,6 +5,8 @@ import AddTransactionFeed from "../transactionFeedPage/AddTransactionFeed";
 import Notif from "./Notif/Notif";
 
 const AddTransaction = ({ isAddClicked, setIsAddClicked }) => {
+  console.log(isAddClicked);
+
   const [modify, setModify] = useState(false);
   const [open, setOpen] = useState(false);
   const [addTransaction, setAddTransaction] = useState({

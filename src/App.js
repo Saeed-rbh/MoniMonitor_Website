@@ -37,15 +37,13 @@ function App() {
     initTelegramWebApp();
   }, []);
 
-  console.log(userData.queryId.length > 0);
-
   const [whichMonth, setWhichMonth] = useState(0);
   const monthData = useTransactionData(
     whichMonth,
     userData.userId ? userData.userId : 90260003
   );
 
-  const [isMoreClicked, setIsMoreClicked] = useState("Balance");
+  const [isMoreClicked, setIsMoreClicked] = useState(null);
   const [isAddClicked, setIsAddClicked] = useState(null);
 
   return (

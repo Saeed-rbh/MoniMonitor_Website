@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useWindowHeight } from "../Tools/tools";
 import AddTransactionFeed from "../transactionFeedPage/AddTransactionFeed";
 import TransactionList from "./TransactionList";
@@ -12,6 +12,9 @@ const Transactions = ({
   whichMonth,
   setWhichMonth,
 }) => {
+  useEffect(() => {
+    !isMoreClicked && setIsMoreClicked("Balance");
+  }, []);
   const selectedData = monthData.selected;
   const availabilityData = monthData.Availability;
   const transactionsData = monthData.transactions;
