@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useSprings, useSpring, animated } from "react-spring";
 import { useDrag } from "@use-gesture/react";
-import { ScalableElement } from "../../Tools/tools";
+import { ScalableElement } from "../Tools/tools";
 
 const Category = ({
   List,

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useTransactionData, useWindowHeight } from "../Tools/tools";
+import AddTransactionFeed from "../transactionFeedPage/AddTransactionFeed";
 import TransactionList from "./TransactionList";
 import MoreOpen from "../Tools/MoreOpen";
 import "./Transactions.css";
@@ -50,6 +51,21 @@ const Transactions = ({ userId }) => {
       />
     );
   };
+
+  const [modify, setModify] = useState(false);
+  const [open, setOpen] = useState(false);
+  const AddFeed = () => {
+    return (
+      <AddTransactionFeed
+        isAddClicked={isAddClicked}
+        setIsClicked={setIsAddClicked}
+        setAddTransaction={setAddTransaction}
+        addTransaction={addTransaction}
+        setModify={setModify}
+        setOpen={setOpen}
+      />
+    );
+  };
   return (
     <>
       <MoreOpen
@@ -60,6 +76,15 @@ const Transactions = ({ userId }) => {
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
         blur={isAddClicked}
+      />
+      <MoreOpen
+        isClicked={isAddClicked}
+        setIsClicked={setIsAddClicked}
+        feed={AddFeed}
+        MoreOpenHeight={100}
+        handleCloseAddTransaction={handleCloseAddTransaction}
+        height={height}
+        zIndex={110}
       />
     </>
   );

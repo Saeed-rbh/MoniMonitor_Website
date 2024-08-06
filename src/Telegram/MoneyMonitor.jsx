@@ -9,7 +9,7 @@ import MainStatestics from "./MainStatestics";
 import { useWindowHeight } from "../Tools/tools";
 import AddTransaction from "./AddTransaction";
 import MoreOpen from "../Tools/MoreOpen";
-import AddTransactionFeed from "./transactionFeedPage/AddTransactionFeed";
+// import AddTransactionFeed from "./transactionFeedPage/AddTransactionFeed";
 import Notif from "./addedTransactionNotif/Notif";
 import axios from "axios";
 
@@ -84,29 +84,29 @@ const MoneyMonitor = () => {
     Timestamp: "",
     Type: "",
   });
-  const handleCloseAddTransaction = () => {
-    setAddTransaction({
-      Amount: "",
-      Category: "",
-      Label: "",
-      Reason: "",
-      Timestamp: "",
-      Type: "",
-    });
-  };
+  // const handleCloseAddTransaction = () => {
+  //   setAddTransaction({
+  //     Amount: "",
+  //     Category: "",
+  //     Label: "",
+  //     Reason: "",
+  //     Timestamp: "",
+  //     Type: "",
+  //   });
+  // };
 
-  const AddFeed = () => {
-    return (
-      <AddTransactionFeed
-        isAddClicked={isAddClicked}
-        setIsClicked={setIsAddClicked}
-        setAddTransaction={setAddTransaction}
-        addTransaction={addTransaction}
-        setModify={setModify}
-        setOpen={setOpen}
-      />
-    );
-  };
+  // const AddFeed = () => {
+  //   return (
+  //     <AddTransactionFeed
+  //       isAddClicked={isAddClicked}
+  //       setIsClicked={setIsAddClicked}
+  //       setAddTransaction={setAddTransaction}
+  //       addTransaction={addTransaction}
+  //       setModify={setModify}
+  //       setOpen={setOpen}
+  //     />
+  //   );
+  // };
 
   const TransactionFeed = () => {
     return (

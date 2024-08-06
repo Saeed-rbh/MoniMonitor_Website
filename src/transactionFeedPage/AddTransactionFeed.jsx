@@ -9,10 +9,11 @@ import {
   Expense_categories,
   Income_categories,
   SaveInvest_categories,
-} from "../../Tools/Categories";
-import { useWindowHeight } from "../../Tools/tools";
+} from "../Tools/Categories";
+import { useWindowHeight } from "../Tools/tools";
 import { MdOutlineAutoAwesome } from "react-icons/md";
 import { animated, useSpring } from "react-spring";
+import "./AddTransactionFeed.css";
 
 function AddTransactionFeed({
   isAddClicked,
