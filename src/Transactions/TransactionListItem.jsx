@@ -3,6 +3,11 @@ import { MdOutlineBrunchDining } from "react-icons/md";
 import { useSpring, animated, config } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
 import { ScalableElement } from "../Tools/tools";
+import {
+  Expense_categories,
+  Income_categories,
+  SaveInvest_categories,
+} from "../Tools/Categories";
 
 const TransactionListItem = ({
   icon: Icon,
@@ -15,7 +20,18 @@ const TransactionListItem = ({
   onClick,
   type,
   category,
+  label,
 }) => {
+  const OriginalList =
+    category === "Income"
+      ? Income_categories
+      : category === "Expense"
+      ? Expense_categories
+      : SaveInvest_categories;
+
+  const ModifyLabel = OriginalList.find((icon) => icon[0] === label)[1];
+  console.log(ModifyLabel);
+
   const [showActions, setShowActions] = useState(isSwiped);
   const [showActionsAnim, setShowActionsAnim] = useState(false);
   const [isScaled, setIsScaled] = useState(false);
@@ -95,9 +111,7 @@ const TransactionListItem = ({
       onTouchEnd={handleMouseUp}
     >
       <animated.p>
-        <animated.span>
-          <Icon />
-        </animated.span>
+        <animated.span>{ModifyLabel}</animated.span>
         <div className="transaction-Description">
           <h4>{truncateDescription(description)}</h4>
 
