@@ -353,7 +353,7 @@ const TransactionList = ({
               <h1>
                 Total:{" "}
                 <span style={colorStyle}>
-                  ${Math.abs(totalAmount).toFixed(2)}
+                  ${Math.abs(selectedData.netTotal).toFixed(2)}
                 </span>
               </h1>
             </animated.div>
