@@ -237,14 +237,13 @@
   align-items: center;
   width: calc(100% - 15px);
   height: 40px;
-  margin-bottom: 6px;
   font-size: 0.8rem;
   font-weight: 600;
   font-family: "Noto Sans", sans-serif;
   color: var(--Ac-2);
   background: var(--Ec-3);
   background: linear-gradient(165deg, var(--Ec-1) 40%, var(--Ec-1) 100%);
-  padding: 10px 20px 10px 5px;
+  padding: 5px 20px 10px 5px;
   border-radius: 20px;
   cursor: pointer;
   justify-content: space-between;
@@ -275,7 +274,7 @@
   height: 40px;
   margin-bottom: 5px;
   font-size: 0.8rem;
-  font-weight: 400;
+  font-weight: 600;
   font-family: "Noto Sans", sans-serif;
   color: var(--Ac-2);
   width: -moz-fit-content;
@@ -286,7 +285,7 @@
 
 .TransactionList_TransactionList li p:nth-of-type(2) {
   font-size: 1rem;
-  font-weight: 200;
+  font-weight: 400;
   font-family: "Noto Sans", sans-serif;
   color: var(--Ac-1);
   opacity: 0.9;
@@ -771,6 +770,24 @@
   flex-direction: row;
   align-items: flex-start;
   margin-top: 3px;
+}
+
+.transaction-Description h4 {
+  font-size: 0.8rem;
+  font-weight: 400;
+  font-family: "Noto Sans", sans-serif;
+  color: var(--Ac-1);
+  display: flex;
+  flex-direction: row;
+  margin: 0;
+  align-items: center;
+  justify-content: center;
+}
+.transaction-Description h4 span {
+  font-size: 1.5rem;
+  margin-right: 7px;
+  margin-left: 0;
+  height: 5px;
 }
 
 .transaction-Description h3 span {

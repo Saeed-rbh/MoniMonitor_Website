@@ -30,6 +30,7 @@ const TransactionListMonthly = ({
             type={transaction.Type}
             time={transaction.Timestamp}
             amount={transaction.Amount}
+            category={transaction.Category}
             isSwiped={swipedIndex[1] === index && swipedIndex[0] === MainIndex}
             onSwipe={() => handleSwipe(MainIndex, index)}
             onUnSwipe={handleUnSwipe}

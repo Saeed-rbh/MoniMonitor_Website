@@ -14,6 +14,7 @@ const TransactionListItem = ({
   onUnSwipe,
   onClick,
   type,
+  category,
 }) => {
   const [showActions, setShowActions] = useState(isSwiped);
   const [showActionsAnim, setShowActionsAnim] = useState(false);
@@ -75,6 +76,13 @@ const TransactionListItem = ({
     }
   };
 
+  const color =
+    category === "Income"
+      ? "var(--Gc-2)"
+      : category === "Expense"
+      ? "var(--Fc-2)"
+      : "var(--Ac-2)";
+
   return (
     <animated.li
       onClick={handleClick}
@@ -91,13 +99,14 @@ const TransactionListItem = ({
           <Icon />
         </animated.span>
         <div className="transaction-Description">
-          {truncateDescription(description)}
+          <h4>{truncateDescription(description)}</h4>
+
           <h3>
             {dateArray[2]} | <span>{weekdayName}</span> - {clockTime}
           </h3>
         </div>
       </animated.p>
-      <animated.p>${amount}</animated.p>
+      <animated.p style={{ color: color }}>${amount}</animated.p>
       {showActionsAnim && (
         <animated.div style={swipeAction} className="transaction-actions">
           <ScalableElement as="div" className="modify-button">
