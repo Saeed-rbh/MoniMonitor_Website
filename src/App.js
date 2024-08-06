@@ -9,9 +9,6 @@ const Transactions = lazy(() => import("./Transactions/Transactions"));
 const AddTransaction = lazy(() => import("./AddTransaction/AddTransaction"));
 
 function App() {
-  const [isMoreClicked, setIsMoreClicked] = useState(null);
-  const [isAddClicked, setIsAddClicked] = useState(null);
-
   const [userData, setUserData] = useState({
     userId: "",
     userName: "",
@@ -40,11 +37,16 @@ function App() {
     initTelegramWebApp();
   }, []);
 
+  console.log(userData.queryId.length > 0);
+
   const [whichMonth, setWhichMonth] = useState(0);
   const monthData = useTransactionData(
     whichMonth,
     userData.userId ? userData.userId : 90260003
   );
+
+  const [isMoreClicked, setIsMoreClicked] = useState("Balance");
+  const [isAddClicked, setIsAddClicked] = useState(null);
 
   return (
     <Router>
