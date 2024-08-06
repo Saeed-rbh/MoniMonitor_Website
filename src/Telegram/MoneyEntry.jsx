@@ -1,5 +1,6 @@
 import React from "react";
 import MoneyEntryAmount from "./MoneyEntryAmount.jsx";
+import { useNavigate } from "react-router-dom";
 
 const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
   const totalStyle = {
@@ -7,6 +8,12 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
       Transactions.netTotal > 0
         ? "rgba(131, 255, 201, 0.85)"
         : "rgb(255 102 102 / 85%)",
+  };
+
+  const redirect = useNavigate();
+
+  const redirectClick = () => {
+    redirect("/Transactions");
   };
 
   return (
@@ -25,11 +32,13 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
             type="Income"
             setIsMoreClicked={setIsMoreClicked}
             transaction={Transactions}
+            redirectClick={redirectClick}
           />
           <MoneyEntryAmount
             type="Expense"
             setIsMoreClicked={setIsMoreClicked}
             transaction={Transactions}
+            redirectClick={redirectClick}
           />
         </div>
         <div className="MoneyEntry_AmountBase">
@@ -37,11 +46,13 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
             type="Save&Invest"
             setIsMoreClicked={setIsMoreClicked}
             transaction={Transactions}
+            redirectClick={redirectClick}
           />
           <MoneyEntryAmount
             type="Balance"
             setIsMoreClicked={setIsMoreClicked}
             transaction={Transactions}
+            redirectClick={redirectClick}
           />
         </div>
       </div>

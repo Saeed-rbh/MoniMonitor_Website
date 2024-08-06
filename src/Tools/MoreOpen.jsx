@@ -3,6 +3,8 @@ import { useSpring, animated, config } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
 import { RxCross2 } from "react-icons/rx";
 import { ScalableElement } from "./tools";
+import { useNavigate } from "react-router-dom";
+
 import "./MoreOpen.css";
 const MoreOpen = ({
   isClicked,
@@ -12,7 +14,10 @@ const MoreOpen = ({
   handleCloseAddTransaction,
   zIndex = 105,
   blur = null,
+  toRedirect,
 }) => {
+  const redirect = useNavigate();
+
   const [isAnimationEnds, setIsAnimationEnds] = useState(false);
   useEffect(() => {
     !!isClicked && setIsAnimationEnds(true);
@@ -122,6 +127,7 @@ const MoreOpen = ({
   const handleCloseClick = () => {
     setIsClicked(null);
     handleCloseAddTransaction && handleCloseAddTransaction();
+    redirect(toRedirect);
   };
 
   return (

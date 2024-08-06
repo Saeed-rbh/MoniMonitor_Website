@@ -45,7 +45,7 @@ const useMainPageMonth = () => {
   return { mainPageMonth, setMainPageMonth };
 };
 
-const MoneyMonitor = () => {
+const MoneyMonitor = ({ isMoreClicked, setIsMoreClicked }) => {
   const height = useWindowHeight(100);
   const [whichMonth, setWhichMonth] = useState(0);
 
@@ -59,7 +59,6 @@ const MoneyMonitor = () => {
   const { mainPageMonth, setMainPageMonth } = useMainPageMonth();
   const { selected: mainSelected } = useTransactionData(mainPageMonth);
 
-  const [isMoreClicked, setIsMoreClicked] = useState(null);
   const [isAddClicked, setIsAddClicked] = useState(null);
 
   useEffect(() => {

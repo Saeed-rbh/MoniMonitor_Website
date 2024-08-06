@@ -1,11 +1,21 @@
 import React, { useState } from "react";
-import { useTransactionData, useWindowHeight } from "../Tools/tools";
+import { useWindowHeight } from "../Tools/tools";
 import AddTransactionFeed from "../transactionFeedPage/AddTransactionFeed";
 import TransactionList from "./TransactionList";
 import MoreOpen from "../Tools/MoreOpen";
 import "./Transactions.css";
 
-const Transactions = ({ userId }) => {
+const Transactions = ({
+  monthData,
+  isMoreClicked,
+  setIsMoreClicked,
+  whichMonth,
+  setWhichMonth,
+}) => {
+  const selectedData = monthData.selected;
+  const availabilityData = monthData.Availability;
+  const transactionsData = monthData.transactions;
+
   const [isAddClicked, setIsAddClicked] = useState(null);
   const [addTransaction, setAddTransaction] = useState({
     Amount: "",
@@ -25,14 +35,7 @@ const Transactions = ({ userId }) => {
       Type: "",
     });
   };
-  const [isMoreClicked, setIsMoreClicked] = useState("Balance");
-  const [whichMonth, setWhichMonth] = useState(0);
-
-  const {
-    selected: selectedData,
-    Availability: availabilityData,
-    transactions: transactionsData,
-  } = useTransactionData(whichMonth, userId);
+  // const [isMoreClicked, setIsMoreClicked] = useState("Balance");
 
   const height = useWindowHeight(100);
 
@@ -76,6 +79,7 @@ const Transactions = ({ userId }) => {
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
         blur={isAddClicked}
+        toRedirect={"/"}
       />
       <MoreOpen
         isClicked={isAddClicked}

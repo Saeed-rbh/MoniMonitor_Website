@@ -8,7 +8,12 @@ import {
 } from "react-icons/go";
 import { formatNetTotal } from "../Tools/tools";
 
-const MoneyEntryAmount = ({ type, transaction, setIsMoreClicked }) => {
+const MoneyEntryAmount = ({
+  type,
+  transaction,
+  setIsMoreClicked,
+  redirectClick,
+}) => {
   const BannerAmount =
     type === "Income"
       ? transaction.totalIncome
@@ -81,6 +86,11 @@ const MoneyEntryAmount = ({ type, transaction, setIsMoreClicked }) => {
     height: ((390 - 20) / 2 / 1.6) * heightFactor,
   });
 
+  const handleClick = () => {
+    setIsMoreClicked(type);
+    redirectClick("/Transactions");
+  };
+
   return (
     <animated.div
       className="MoneyEntry_Amount"
@@ -90,7 +100,7 @@ const MoneyEntryAmount = ({ type, transaction, setIsMoreClicked }) => {
       onMouseLeave={handleMouseUp}
       onTouchStart={handleMouseDown}
       onTouchEnd={handleMouseUp}
-      onClick={() => setIsMoreClicked(type)}
+      onClick={handleClick}
     >
       <div className="MoneyEntry_Amount_Gradient" style={gradientStyle}></div>
 

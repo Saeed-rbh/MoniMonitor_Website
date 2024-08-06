@@ -93,9 +93,9 @@ const TransactionListItem = ({
 
   const color =
     category === "Income"
-      ? "var(--Gc-2)"
-      : category === "Expense"
       ? "var(--Fc-2)"
+      : category === "Expense"
+      ? "var(--Gc-2)"
       : "var(--Ac-2)";
 
   return (

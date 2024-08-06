@@ -18,13 +18,14 @@ const TransactionList = ({
   setIsAddClicked,
   setAddTransaction,
 }) => {
+  console.log(Transactions);
+
   const filteredTransactions =
     isMoreClicked === "Balance"
       ? Transactions
       : Transactions.filter(
           (transaction) => transaction.Category === isMoreClicked
         );
-
 
   const WindowHeight = useWindowHeight(100);
 
@@ -140,17 +141,17 @@ const TransactionList = ({
       color:
         isMoreClicked === "Balance" && labelDistribution.length > 0
           ? labelDistribution[0].category === "Income"
-            ? "var(--Gc-2)"
-            : labelDistribution[0].category === "Expense"
             ? "var(--Fc-2)"
+            : labelDistribution[0].category === "Expense"
+            ? "var(--Gc-2)"
             : "var(--Ac-2)"
           : "var(--Cc-2)",
       backgroundColor:
         isMoreClicked === "Balance" && labelDistribution.length > 0
           ? labelDistribution[0].category === "Income"
-            ? "var(--Gc-2)"
-            : labelDistribution[0].category === "Expense"
             ? "var(--Fc-2)"
+            : labelDistribution[0].category === "Expense"
+            ? "var(--Gc-2)"
             : "var(--Ac-2)"
           : "var(--Cc-2)",
     }),
@@ -159,17 +160,17 @@ const TransactionList = ({
       color:
         isMoreClicked === "Balance" && labelDistribution.length > 0
           ? labelDistribution[1].category === "Income"
-            ? "var(--Gc-2)"
-            : labelDistribution[1].category === "Expense"
             ? "var(--Fc-2)"
+            : labelDistribution[1].category === "Expense"
+            ? "var(--Gc-2)"
             : "var(--Ac-2)"
           : "var(--Dc-2)",
       backgroundColor:
         isMoreClicked === "Balance" && labelDistribution.length > 0
           ? labelDistribution[1].category === "Income"
-            ? "var(--Gc-2)"
-            : labelDistribution[1].category === "Expense"
             ? "var(--Fc-2)"
+            : labelDistribution[1].category === "Expense"
+            ? "var(--Gc-2)"
             : "var(--Ac-2)"
           : "var(--Dc-2)",
     }),
@@ -178,17 +179,17 @@ const TransactionList = ({
       color:
         isMoreClicked === "Balance" && labelDistribution.length > 0
           ? labelDistribution[2].category === "Income"
-            ? "var(--Gc-2)"
-            : labelDistribution[2].category === "Expense"
             ? "var(--Fc-2)"
+            : labelDistribution[2].category === "Expense"
+            ? "var(--Gc-2)"
             : "var(--Ac-2)"
           : "var(--Bc-2)",
       backgroundColor:
         isMoreClicked === "Balance" && labelDistribution.length > 0
           ? labelDistribution[2].category === "Income"
-            ? "var(--Gc-2)"
-            : labelDistribution[2].category === "Expense"
             ? "var(--Fc-2)"
+            : labelDistribution[2].category === "Expense"
+            ? "var(--Gc-2)"
             : "var(--Ac-2)"
           : "var(--Bc-2)",
     }),
