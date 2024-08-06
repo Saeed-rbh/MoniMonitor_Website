@@ -160,7 +160,6 @@ const groupTransactionsByMonth = (transactions) => {
     }
   });
 
-
   // Determine top labels and sort by percentage (with stability)
   Object.keys(groupedTransactions).forEach((key) => {
     const ExpenseAmount = groupedTransactions[key].totalExpense;
@@ -330,12 +329,12 @@ export const fetchTransactions = async ({ whichMonth, userId }) => {
     whichMonth
   );
 
-  // const netAmounts = getNetAmounts(totalTransactions);
+  const netAmounts = getNetAmounts(totalTransactions);
 
   return {
     selected,
     Availability,
     transactions,
-    // netAmounts,
+    netAmounts,
   };
 };

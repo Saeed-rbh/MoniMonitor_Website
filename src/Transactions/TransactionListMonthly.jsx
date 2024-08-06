@@ -13,8 +13,10 @@ const TransactionListMonthly = ({
 }) => {
   const filteredTransactions =
     sortby === "All"
-      ? transactions
-      : transactions.filter((transaction) => transaction.Type === sortby);
+      ? [...transactions].reverse()
+      : transactions
+          .filter((transaction) => transaction.Type === sortby)
+          .reverse();
 
   return (
     <animated.div className="TransactionList_Monthly">
