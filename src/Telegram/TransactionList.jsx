@@ -18,6 +18,7 @@ const TransactionList = ({
   setIsAddClicked,
   setAddTransaction,
 }) => {
+
   const filteredTransactions =
     isMoreClicked === "Balance"
       ? Transactions
@@ -50,7 +51,6 @@ const TransactionList = ({
           ? selectedData.labelDistributionExpense
           : selectedData.labelDistributionSaving;
 
-      console.log(distribution);
 
       let other = 0;
       const sortedData = Object.entries(distribution)

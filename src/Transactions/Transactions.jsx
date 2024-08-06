@@ -33,6 +33,7 @@ const Transactions = ({ userId }) => {
     transactions: transactionsData,
   } = useTransactionData(whichMonth, userId);
 
+
   const height = useWindowHeight(100);
 
   const TransactionFeed = () => {

@@ -37,7 +37,13 @@ const TransactionList = ({
 
   useEffect(() => {
     if (selectedData.length !== 0) {
-      setTotalAmount(selectedData.netTotal);
+      setTotalAmount(
+        isMoreClicked === "Balance"
+          ? selectedData.totalExpense +
+              selectedData.totalIncome +
+              selectedData.totalSaving
+          : selectedData.netTotal
+      );
       setCurrentMonth(selectedData.month);
       setCurrentYear(selectedData.year);
 
@@ -49,8 +55,6 @@ const TransactionList = ({
           : isMoreClicked === "Expense"
           ? selectedData.labelDistributionExpense
           : selectedData.labelDistributionSaving;
-
-      console.log(distribution);
 
       let other = 0;
       const sortedData = Object.entries(distribution)
@@ -132,21 +136,60 @@ const TransactionList = ({
   const summaryStiles = [
     useSpring({
       width: SummaryWidth[0] + "%",
-      color: isMoreClicked === "Balance" ? "var(--Ac-2)" : "var(--Cc-2)",
+      color:
+        isMoreClicked === "Balance" && labelDistribution.length > 0
+          ? labelDistribution[0].category === "Income"
+            ? "var(--Gc-2)"
+            : labelDistribution[0].category === "Expense"
+            ? "var(--Fc-2)"
+            : "var(--Ac-2)"
+          : "var(--Cc-2)",
       backgroundColor:
-        isMoreClicked === "Balance" ? "var(--Ac-2)" : "var(--Cc-2)",
+        isMoreClicked === "Balance" && labelDistribution.length > 0
+          ? labelDistribution[0].category === "Income"
+            ? "var(--Gc-2)"
+            : labelDistribution[0].category === "Expense"
+            ? "var(--Fc-2)"
+            : "var(--Ac-2)"
+          : "var(--Cc-2)",
     }),
     useSpring({
       width: SummaryWidth[1] + "%",
-      color: isMoreClicked === "Balance" ? "var(--Fc-2)" : "var(--Dc-2)",
+      color:
+        isMoreClicked === "Balance" && labelDistribution.length > 0
+          ? labelDistribution[1].category === "Income"
+            ? "var(--Gc-2)"
+            : labelDistribution[1].category === "Expense"
+            ? "var(--Fc-2)"
+            : "var(--Ac-2)"
+          : "var(--Dc-2)",
       backgroundColor:
-        isMoreClicked === "Balance" ? "var(--Fc-2)" : "var(--Dc-2)",
+        isMoreClicked === "Balance" && labelDistribution.length > 0
+          ? labelDistribution[1].category === "Income"
+            ? "var(--Gc-2)"
+            : labelDistribution[1].category === "Expense"
+            ? "var(--Fc-2)"
+            : "var(--Ac-2)"
+          : "var(--Dc-2)",
     }),
     useSpring({
       width: SummaryWidth[2] + "%",
-      color: isMoreClicked === "Balance" ? "var(--Gc-2)" : "var(--Bc-2)",
+      color:
+        isMoreClicked === "Balance" && labelDistribution.length > 0
+          ? labelDistribution[2].category === "Income"
+            ? "var(--Gc-2)"
+            : labelDistribution[2].category === "Expense"
+            ? "var(--Fc-2)"
+            : "var(--Ac-2)"
+          : "var(--Bc-2)",
       backgroundColor:
-        isMoreClicked === "Balance" ? "var(--Gc-2)" : "var(--Bc-2)",
+        isMoreClicked === "Balance" && labelDistribution.length > 0
+          ? labelDistribution[2].category === "Income"
+            ? "var(--Gc-2)"
+            : labelDistribution[2].category === "Expense"
+            ? "var(--Fc-2)"
+            : "var(--Ac-2)"
+          : "var(--Bc-2)",
     }),
     useSpring({
       width: SummaryWidth[3] + "%",

@@ -117,42 +117,49 @@ const groupTransactionsByMonth = (transactions) => {
     const label = transaction.Label;
 
     if (transaction.Category === "Expense") {
-      groupedTransactions[key].totalExpense += transaction.Amount;
-      groupedTransactions[key].netTotal -= transaction.Amount;
+      groupedTransactions[key].totalExpense += Number(transaction.Amount);
+      groupedTransactions[key].netTotal -= Number(transaction.Amount);
       if (label) {
         if (groupedTransactions[key].labelDistributionExpense[label]) {
-          groupedTransactions[key].labelDistributionExpense[label] +=
-            transaction.Amount;
+          groupedTransactions[key].labelDistributionExpense[label] += Number(
+            transaction.Amount
+          );
         } else {
-          groupedTransactions[key].labelDistributionExpense[label] =
-            transaction.Amount;
+          groupedTransactions[key].labelDistributionExpense[label] = Number(
+            transaction.Amount
+          );
         }
       }
     } else if (transaction.Category === "Income") {
-      groupedTransactions[key].totalIncome += transaction.Amount;
-      groupedTransactions[key].netTotal += transaction.Amount;
+      groupedTransactions[key].totalIncome += Number(transaction.Amount);
+      groupedTransactions[key].netTotal += Number(transaction.Amount);
       if (label) {
         if (groupedTransactions[key].labelDistributionIncome[label]) {
-          groupedTransactions[key].labelDistributionIncome[label] +=
-            transaction.Amount;
+          groupedTransactions[key].labelDistributionIncome[label] += Number(
+            transaction.Amount
+          );
         } else {
-          groupedTransactions[key].labelDistributionIncome[label] =
-            transaction.Amount;
+          groupedTransactions[key].labelDistributionIncome[label] = Number(
+            transaction.Amount
+          );
         }
       }
     } else if (transaction.Category === "Save&Invest") {
-      groupedTransactions[key].totalSaving += transaction.Amount;
+      groupedTransactions[key].totalSaving += Number(transaction.Amount);
       if (label) {
         if (groupedTransactions[key].labelDistributionSaving[label]) {
-          groupedTransactions[key].labelDistributionSaving[label] +=
-            transaction.Amount;
+          groupedTransactions[key].labelDistributionSaving[label] += Number(
+            transaction.Amount
+          );
         } else {
-          groupedTransactions[key].labelDistributionSaving[label] =
-            transaction.Amount;
+          groupedTransactions[key].labelDistributionSaving[label] = Number(
+            transaction.Amount
+          );
         }
       }
     }
   });
+
 
   // Determine top labels and sort by percentage (with stability)
   Object.keys(groupedTransactions).forEach((key) => {
