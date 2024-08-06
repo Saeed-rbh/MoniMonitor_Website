@@ -2,7 +2,7 @@ import React, { useState, useCallback } from "react";
 import { useWindowHeight } from "../Tools/tools";
 import MoreOpen from "../Tools/MoreOpen";
 import AddTransactionFeed from "../transactionFeedPage/AddTransactionFeed";
-import Notif from "../addedTransactionNotif/Notif";
+import Notif from "./Notif/Notif";
 
 const AddTransaction = ({ isAddClicked, setIsAddClicked }) => {
   const [modify, setModify] = useState(false);

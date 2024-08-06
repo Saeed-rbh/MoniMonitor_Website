@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { useWindowHeight } from "../Tools/tools";
 import AddTransactionFeed from "../transactionFeedPage/AddTransactionFeed";
-import Notif from "../addedTransactionNotif/Notif";
 import TransactionList from "./TransactionList";
 import MoreOpen from "../Tools/MoreOpen";
 import "./Transactions.css";
@@ -90,14 +89,14 @@ const Transactions = ({
         height={height}
         zIndex={110}
       />
-      <Notif
+      {/* <Notif
         addTransaction={addTransaction}
         setAddTransaction={setAddTransaction}
         modify={modify}
         setModify={setModify}
         open={open}
         setOpen={setOpen}
-      />
+      /> */}
     </>
   );
 };

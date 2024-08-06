@@ -10,6 +10,16 @@ const CircularProgressBar = ({
   pathColor,
   tailColor,
 }) => {
+  const [progress, setProgress] = React.useState(valueStart);
+
+  React.useEffect(() => {
+    setInterval(() => {
+      setProgress((prevProgress) =>
+        prevProgress <= valueEnd ? valueStart : prevProgress - 1
+      );
+    }, 1);
+  }, []);
+
   return (
     <AnimatedProgressProvider
       valueStart={valueStart}
@@ -19,6 +29,8 @@ const CircularProgressBar = ({
     >
       {(value) => {
         const roundedValue = Math.ceil(value / 20);
+        console.log(value);
+
         return (
           <CircularProgressbar
             value={value}

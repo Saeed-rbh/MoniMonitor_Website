@@ -2,15 +2,12 @@ import React, { useEffect, useState } from "react";
 import { animated, useSpring } from "react-spring";
 import { GoArrowUpRight, GoArrowDownLeft, GoPlus } from "react-icons/go";
 import CircularProgressBar from "./CircularProgressBar";
-import { ScalableElement } from "../Tools/tools";
+import { ScalableElement } from "../../Tools/tools";
 import { useDrag } from "@use-gesture/react";
 import { FaXmark } from "react-icons/fa6";
+import { FaCheck } from "react-icons/fa";
 
-import {
-  sendDataToDB,
-  GetLabel,
-  GetDataFromDB,
-} from "../Tools/apiService";
+import { sendDataToDB, GetLabel, GetDataFromDB } from "../../Tools/apiService";
 
 const Notif = ({
   addTransaction,
@@ -20,7 +17,11 @@ const Notif = ({
   setOpen,
   open,
 }) => {
-  const [close, setClose] = useState(false);
+  const [closeData, setCloseData] = useState([
+    "Successfully Added",
+    <FaCheck color="var(--Fc-1)" />,
+  ]);
+  const [deleted, setDeleted] = useState(false);
 
   const Amount = new Intl.NumberFormat().format(addTransaction.Amount);
   const Reason =
@@ -38,21 +39,32 @@ const Notif = ({
     );
 
   useEffect(() => {
-    if (open && !close) {
+    if (open && !deleted) {
       const timer = setTimeout(() => {
-        setOpen(false);
+        setCloseData(["Successfully Added", <FaCheck color="var(--Fc-1)" />]);
+        setDeleted(true);
         api.start({
-          scale: 0.95,
-          y: -170,
-          onRest: () => {
-            handleFinish();
-          },
+          height: 55,
+          border: "1px solid var(--Fc-2)",
         });
+        setTimeout(() => {
+          setOpen(false);
+          setDeleted(false);
+          api.start({
+            y: -170,
+            scale: 0.95,
+            height: 150,
+            border: "0px solid var(--Fc-2)",
+            onRest: () => {
+              handleFinish();
+            },
+          });
+        }, 1500);
       }, 5000);
 
       return () => clearTimeout(timer);
     }
-  }, [open, setAddTransaction, close]);
+  }, [open, setAddTransaction, deleted]);
 
   async function processTransaction(addTransaction) {
     let Label = addTransaction.Label;
@@ -71,7 +83,7 @@ const Notif = ({
       Timestamp: "",
       Type: "",
     });
-    const NewData = await GetDataFromDB();
+    // const NewData = await GetDataFromDB();
   }
 
   const handleFinish = () => {
@@ -109,17 +121,28 @@ const Notif = ({
       if (y < 0) {
         if (last) {
           if (isQuickDragUp) {
-            setOpen(false);
-            setClose(false);
+            setCloseData([
+              "Successfully Added",
+              <FaCheck color="var(--Fc-1)" />,
+            ]);
+            setDeleted(true);
             api.start({
-              y: -170,
-              scale: 0.95,
-              height: 150,
-              border: "0px solid var(--Gc-2)",
-              onRest: () => {
-                handleFinish();
-              },
+              height: 55,
+              border: "1px solid var(--Fc-2)",
             });
+            setTimeout(() => {
+              setOpen(false);
+              setDeleted(false);
+              api.start({
+                y: -170,
+                scale: 0.95,
+                height: 150,
+                border: "0px solid var(--Fc-2)",
+                onRest: () => {
+                  handleFinish();
+                },
+              });
+            }, 1500);
           }
         }
       }
@@ -128,22 +151,20 @@ const Notif = ({
   );
 
   const HandleDelete = () => {
-    setClose(true);
+    setCloseData(["Transaction Deleted", <FaXmark color="var(--Gc-1)" />]);
+    setDeleted(true);
     api.start({
       height: 55,
       border: "1px solid var(--Gc-2)",
     });
     setTimeout(() => {
       setOpen(false);
-      setClose(false);
+      setDeleted(false);
       api.start({
         y: -170,
         scale: 0.95,
         height: 150,
         border: "0px solid var(--Gc-2)",
-        onRest: () => {
-          handleFinish();
-        },
       });
     }, 1500);
   };
@@ -156,16 +177,17 @@ const Notif = ({
       y: -170,
     });
   };
+
   const CloseOpacityStyle = useSpring({
-    opacity: !close ? (open ? 1 : 0) : 0,
-    y: !close ? (open ? 0 : -20) : -10,
-    delay: close ? 0 : 100,
+    opacity: !deleted ? (open ? 1 : 0) : 0,
+    y: !deleted ? (open ? 0 : -20) : -10,
+    delay: deleted ? 0 : 100,
   });
 
   const CloseInOpacityStyle = useSpring({
-    opacity: close ? 1 : 0,
-    y: close ? 0 : 50,
-    delay: close ? 0 : 100,
+    opacity: deleted ? 1 : 0,
+    y: deleted ? 0 : 50,
+    delay: deleted ? 0 : 100,
   });
 
   return (
@@ -199,13 +221,15 @@ const Notif = ({
         </h2>
       </animated.div>
       <animated.div style={CloseOpacityStyle} className="Notif_counter">
-        <CircularProgressBar
-          key={open ? "open" : "closed"}
-          pathColor="var(--Gc-2)"
-          tailColor="var(--Ac-4)"
-          valueStart={open ? 100 : 0}
-          valueEnd={0}
-        />
+        {open && !deleted && (
+          <CircularProgressBar
+            key={open ? "open" : "closed"}
+            pathColor="var(--Gc-2)"
+            tailColor="var(--Ac-4)"
+            valueStart={open ? 100 : 0}
+            valueEnd={0}
+          />
+        )}
       </animated.div>
       <ScalableElement
         style={CloseOpacityStyle}
@@ -225,10 +249,10 @@ const Notif = ({
         <GoPlus color="var(--Ac-1)" />
         Modify
       </ScalableElement>
-      {close && (
+      {deleted && (
         <animated.div style={CloseInOpacityStyle} className="Notif_Deleted">
-          <span>Transaction Deleted</span>
-          <FaXmark color="var(--Gc-1)" />
+          <span>{closeData[0]}</span>
+          {closeData[1]}
         </animated.div>
       )}
     </animated.div>

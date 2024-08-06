@@ -315,8 +315,8 @@ const getSelectedMonthData = (transactionsByMonth, whichMonth) => {
     : null;
 };
 
-export const fetchTransactions = async ({ whichMonth, userId }) => {
-  const allTransactions = await GetDataFromDB({ userId });
+export const fetchTransactions = async ({ whichMonth, userId = 90260003 }) => {
+  const allTransactions = await GetDataFromDB((userId = 90260003));
 
   const totalTransactions = groupTransactionsByMonth(allTransactions);
 
