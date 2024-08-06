@@ -117,7 +117,7 @@
   border-radius: 35px;
   background: var(--Ec-4);
   overflow: hidden;
-  background: linear-gradient(170deg, var(--Ac-3) -150%, var(--Ec-4) 95%);
+  background: linear-gradient(170deg, var(--Ec-1) -150%, var(--Ec-4) 95%);
 }
 
 .Add_Amount h1 span {
@@ -157,7 +157,7 @@
   align-items: flex-start;
   justify-content: center;
   background: var(--Ec-4);
-  background: linear-gradient(170deg, var(--Ac-3) -150%, var(--Ec-4) 95%);
+  background: linear-gradient(170deg, var(--Ec-1) -150%, var(--Ec-4) 95%);
   outline: 1px solid var(--Ac-3);
   height: 24%;
   border-radius: 30px;
@@ -403,7 +403,7 @@
   border-radius: 17px;
   box-sizing: border-box;
   margin: 0 5px;
-  background: linear-gradient(160deg, var(--Ac-3) -80%, var(--Ec-4) 80%);
+  background: linear-gradient(160deg, var(--Ec-1) -80%, var(--Ec-4) 80%);
   outline: 1px solid var(--Ac-3);
   font-size: 0.9rem;
   font-weight: 300;
@@ -530,7 +530,7 @@
   resize: none;
   padding-left: 90px;
   box-sizing: border-box;
-  background: linear-gradient(170deg, var(--Ac-3) -150%, var(--Ec-4) 95%);
+  background: linear-gradient(170deg, var(--Ec-1) -150%, var(--Ec-4) 95%);
 }
 .Add_Reason textarea::placeholder {
   color: var(--Ac-2);
@@ -556,7 +556,7 @@
   width: -webkit-fill-available;
   height: 100%;
 
-  background: linear-gradient(170deg, var(--Ac-3) -150%, var(--Ec-4) 95%);
+  background: linear-gradient(170deg, var(--Ec-1) -150%, var(--Ec-4) 95%);
 
   outline: 1px solid var(--Ac-3);
   border-radius: 30px;

@@ -10,7 +10,7 @@ import {
 } from "../Tools/Categories";
 
 const TransactionListItem = ({
-  icon: Icon,
+  icon = MdOutlineBrunchDining,
   description,
   time,
   amount,
@@ -18,7 +18,6 @@ const TransactionListItem = ({
   onSwipe,
   onUnSwipe,
   onClick,
-  type,
   category,
   label,
 }) => {
@@ -29,7 +28,9 @@ const TransactionListItem = ({
       ? Expense_categories
       : SaveInvest_categories;
 
-  const ModifyLabel = OriginalList.find((icon) => icon[0] === label)[1];
+  const ModifyLabel = OriginalList.find(
+    (icon) => icon[0].toLowerCase() === label.toLowerCase()
+  )[1];
 
   const [showActions, setShowActions] = useState(isSwiped);
   const [showActionsAnim, setShowActionsAnim] = useState(false);
@@ -132,10 +133,6 @@ const TransactionListItem = ({
       )}
     </animated.li>
   );
-};
-
-TransactionListItem.defaultProps = {
-  icon: MdOutlineBrunchDining,
 };
 
 export default TransactionListItem;

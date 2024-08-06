@@ -18,8 +18,6 @@ const TransactionList = ({
   setIsAddClicked,
   setAddTransaction,
 }) => {
-  console.log(Transactions);
-
   const filteredTransactions =
     isMoreClicked === "Balance"
       ? Transactions
@@ -44,7 +42,11 @@ const TransactionList = ({
           ? selectedData.totalExpense +
               selectedData.totalIncome +
               selectedData.totalSaving
-          : selectedData.netTotal
+          : isMoreClicked === "Income"
+          ? selectedData.totalIncome
+          : isMoreClicked === "Expense"
+          ? selectedData.totalExpense
+          : selectedData.totalSaving
       );
       setCurrentMonth(selectedData.month);
       setCurrentYear(selectedData.year);
@@ -355,7 +357,16 @@ const TransactionList = ({
               <h1>
                 Total:{" "}
                 <span style={colorStyle}>
-                  ${Math.abs(selectedData.netTotal).toFixed(2)}
+                  $
+                  {Math.abs(
+                    isMoreClicked === "Balance"
+                      ? selectedData.netTotal
+                      : isMoreClicked === "Income"
+                      ? selectedData.totalIncome
+                      : isMoreClicked === "Expense"
+                      ? selectedData.totalExpense
+                      : selectedData.totalSaving
+                  ).toFixed(2)}
                 </span>
               </h1>
             </animated.div>

@@ -6,9 +6,11 @@ import { useTransactionData } from "./Tools/tools";
 
 const Telegram = lazy(() => import("./Telegram/MoneyMonitor"));
 const Transactions = lazy(() => import("./Transactions/Transactions"));
+const AddTransaction = lazy(() => import("./AddTransaction/AddTransaction"));
 
 function App() {
   const [isMoreClicked, setIsMoreClicked] = useState(null);
+  const [isAddClicked, setIsAddClicked] = useState(null);
 
   const [userData, setUserData] = useState({
     userId: "",
@@ -52,6 +54,8 @@ function App() {
           <Telegram
             isMoreClicked={isMoreClicked}
             setIsMoreClicked={setIsMoreClicked}
+            isAddClicked={isAddClicked}
+            setIsAddClicked={setIsAddClicked}
           />
           <Routes>
             <Route
@@ -63,6 +67,16 @@ function App() {
                   monthData={monthData}
                   whichMonth={whichMonth}
                   setWhichMonth={setWhichMonth}
+                />
+              }
+              userId={userData.userId}
+            />
+            <Route
+              path="/AddTransaction"
+              element={
+                <AddTransaction
+                  isAddClicked={isAddClicked}
+                  setIsAddClicked={setIsAddClicked}
                 />
               }
               userId={userData.userId}

@@ -13,7 +13,6 @@ const TransactionListItem = ({
   onSwipe,
   onUnSwipe,
   onClick,
-  type,
 }) => {
   const [showActions, setShowActions] = useState(isSwiped);
   const [showActionsAnim, setShowActionsAnim] = useState(false);
@@ -40,6 +39,8 @@ const TransactionListItem = ({
     },
     { axis: "x" }
   );
+
+  console.log("time", time);
 
   const clockTime = time.split(" ")[1];
   const dateArray = time.split(" ")[0].split("-");

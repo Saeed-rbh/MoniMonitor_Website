@@ -1,17 +1,11 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import "./MoneyMonitor.css";
-// import MenuButton from "../Header/MenuButton";
 import MoneyEntry from "./MoneyEntry";
-import TransactionList from "./TransactionList";
-import { a, animated, useSpring } from "react-spring";
+import { animated, useSpring } from "react-spring";
 import { fetchTransactions } from "../Tools/transactionService";
 import MainStatestics from "./MainStatestics";
 import { useWindowHeight } from "../Tools/tools";
 import AddTransaction from "./AddTransaction";
-import MoreOpen from "../Tools/MoreOpen";
-// import AddTransactionFeed from "./transactionFeedPage/AddTransactionFeed";
-import Notif from "./addedTransactionNotif/Notif";
-import axios from "axios";
 
 const useTransactionData = (whichMonth) => {
   const [data, setData] = useState({
@@ -45,7 +39,12 @@ const useMainPageMonth = () => {
   return { mainPageMonth, setMainPageMonth };
 };
 
-const MoneyMonitor = ({ isMoreClicked, setIsMoreClicked }) => {
+const MoneyMonitor = ({
+  isMoreClicked,
+  setIsMoreClicked,
+  isAddClicked,
+  setIsAddClicked,
+}) => {
   const height = useWindowHeight(100);
   const [whichMonth, setWhichMonth] = useState(0);
 
@@ -58,8 +57,6 @@ const MoneyMonitor = ({ isMoreClicked, setIsMoreClicked }) => {
 
   const { mainPageMonth, setMainPageMonth } = useMainPageMonth();
   const { selected: mainSelected } = useTransactionData(mainPageMonth);
-
-  const [isAddClicked, setIsAddClicked] = useState(null);
 
   useEffect(() => {
     !isMoreClicked && setWhichMonth(mainPageMonth);
@@ -83,48 +80,8 @@ const MoneyMonitor = ({ isMoreClicked, setIsMoreClicked }) => {
     Timestamp: "",
     Type: "",
   });
-  // const handleCloseAddTransaction = () => {
-  //   setAddTransaction({
-  //     Amount: "",
-  //     Category: "",
-  //     Label: "",
-  //     Reason: "",
-  //     Timestamp: "",
-  //     Type: "",
-  //   });
-  // };
-
-  // const AddFeed = () => {
-  //   return (
-  //     <AddTransactionFeed
-  //       isAddClicked={isAddClicked}
-  //       setIsClicked={setIsAddClicked}
-  //       setAddTransaction={setAddTransaction}
-  //       addTransaction={addTransaction}
-  //       setModify={setModify}
-  //       setOpen={setOpen}
-  //     />
-  //   );
-  // };
-
-  const TransactionFeed = () => {
-    return (
-      <TransactionList
-        Transactions={transactionsData}
-        selectedData={selectedData}
-        isMoreClicked={isMoreClicked}
-        setIsMoreClicked={setIsMoreClicked}
-        setWhichMonth={setWhichMonth}
-        whichMonth={whichMonth}
-        dataAvailability={availabilityData}
-        setIsAddClicked={setIsAddClicked}
-        setAddTransaction={setAddTransaction}
-      />
-    );
-  };
 
   const [modify, setModify] = useState(false);
-  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (modify) {
@@ -134,35 +91,7 @@ const MoneyMonitor = ({ isMoreClicked, setIsMoreClicked }) => {
 
   return (
     <>
-      {/* <MoreOpen
-        isClicked={isAddClicked}
-        setIsClicked={setIsAddClicked}
-        feed={AddFeed}
-        MoreOpenHeight={100}
-        handleCloseAddTransaction={handleCloseAddTransaction}
-        height={height}
-        zIndex={110}
-      />
-      <MoreOpen
-        isClicked={isMoreClicked}
-        setIsClicked={setIsMoreClicked}
-        feed={TransactionFeed}
-        MoreOpenHeight={100}
-        handleCloseAddTransaction={handleCloseAddTransaction}
-        height={height}
-        blur={isAddClicked}
-      /> */}
-
       <div className="MoneyMonitor_Parent">
-        {/* <Notif
-          addTransaction={addTransaction}
-          setAddTransaction={setAddTransaction}
-          modify={modify}
-          setModify={setModify}
-          open={open}
-          setOpen={setOpen}
-        /> */}
-
         <animated.div style={scaleStyle}>
           <AddTransaction setIsAddClicked={setIsAddClicked} />
           <MainStatestics
