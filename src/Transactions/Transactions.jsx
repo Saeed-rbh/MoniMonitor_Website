@@ -33,7 +33,6 @@ const Transactions = ({ userId }) => {
     transactions: transactionsData,
   } = useTransactionData(whichMonth, userId);
 
-
   const height = useWindowHeight(100);
 
   const TransactionFeed = () => {
@@ -57,7 +56,7 @@ const Transactions = ({ userId }) => {
         isClicked={isMoreClicked}
         setIsClicked={setIsMoreClicked}
         feed={TransactionFeed}
-        MoreOpenHeight={100}
+        MoreOpenHeight={95}
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
         blur={isAddClicked}

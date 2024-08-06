@@ -30,7 +30,6 @@ const TransactionListItem = ({
       : SaveInvest_categories;
 
   const ModifyLabel = OriginalList.find((icon) => icon[0] === label)[1];
-  console.log(ModifyLabel);
 
   const [showActions, setShowActions] = useState(isSwiped);
   const [showActionsAnim, setShowActionsAnim] = useState(false);

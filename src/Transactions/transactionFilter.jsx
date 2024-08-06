@@ -9,7 +9,7 @@ const TransactionFilter = ({
   setIsCalendarClicked,
   isCalendarClicked,
 }) => {
-  const sortItems = ["All", "Daily", "Monthly"];
+  const sortItems = ["All", "daily", "monthly"];
 
   const [springs] = useSprings(
     sortItems.length,
@@ -40,9 +40,9 @@ const TransactionFilter = ({
           {sortItems[index]}
         </ScalableElement>
       ))}
-      <ScalableElement as="h2">
+      {/* <ScalableElement as="h2">
         <CiSearch />
-      </ScalableElement>
+      </ScalableElement> */}
       <ScalableElement
         as="h2"
         onClick={() => setIsCalendarClicked(!isCalendarClicked)}

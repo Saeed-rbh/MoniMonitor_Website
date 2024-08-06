@@ -25,6 +25,7 @@ const TransactionList = ({
           (transaction) => transaction.Category === isMoreClicked
         );
 
+
   const WindowHeight = useWindowHeight(100);
 
   const [sortby, setSortby] = useState("All");
