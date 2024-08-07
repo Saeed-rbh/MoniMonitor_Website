@@ -88,6 +88,7 @@ const Category = ({
 
   const startLongPress = useCallback((event) => {
     longPressTimeout.current = setTimeout(() => {
+      navigator.vibrate(200);
       setIsLongPress(true);
     }, 500); // Long press threshold
   }, []);
