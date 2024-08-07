@@ -292,6 +292,7 @@
   /* bottom: 5px; */
   margin: 0 5px;
   right: 0;
+  touch-action: none;
   top: 0px;
 }
 

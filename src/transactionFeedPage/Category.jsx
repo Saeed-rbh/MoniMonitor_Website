@@ -14,45 +14,36 @@ const Category = ({
 }) => {
   const containerRef = useRef(null);
 
-  const [fading, setFading] = useState(false);
-  const [newCategory, setNewCategory] = useState(
-    defaultValue.length > 0 ? defaultValue : List[0]
-  );
-
   const [isDragging, setIsDragging] = useState(false);
-
-  const handleChangeCategory = (newCategory) => {
-    if (newCategory === selectedCategory) return;
-    setFading(true);
-    setNewCategory(newCategory);
-  };
 
   const handleMouseDown = () => {
     setIsDragging(true);
   };
 
+  const [draggedX, setDraggedX] = useState(0);
+
+  const characterCounts = List.map((item) =>
+    Math.round(item[0].length * 7.35 + 40)
+  );
+  const cumulatedValues = characterCounts.reduce((acc, value) => {
+    const lastValue = acc.length > 0 ? acc[acc.length - 1] : 0;
+    acc.push(lastValue + value - 5);
+    return acc;
+  }, []);
+
   const handleClick = (item) => {
     if (isDragging) {
-      handleChangeCategory(List[item]);
       setIsLongPress(false);
+      setSelectedCategory(List[item]);
+      item !== 0 &&
+        item !== cumulatedValues.length - 1 &&
+        setDraggedX(cumulatedValues[item - 1]);
+      item === 0 && setDraggedX(0);
+      console.log(draggedX, cumulatedValues[item - 1]);
+
+      containerRef.current.style.transform = `translateX(0px)`;
     }
   };
-
-  const fadeOutRight = useSpring({
-    opacity: fading ? 0 : 1,
-    transform: fading ? "translateX(10px)" : "translateX(0px)",
-    config: { duration: 400 },
-    onRest: () => {
-      setSelectedCategory(newCategory);
-      setTimeout(() => setFading(false), 200);
-    },
-  });
-
-  const fadeInLeft = useSpring({
-    opacity: !fading ? 1 : 0,
-    transform: !fading ? "translateX(0px)" : "translateX(-10px)",
-    config: { duration: 300 },
-  });
 
   const [containerWidth, setContainerWidth] = useState(0);
   const [contentWidth, setContentWidth] = useState(0);
@@ -64,12 +55,18 @@ const Category = ({
     }
   }, []);
 
-  const [draggedX, setDraggedX] = useState(0);
-
   const listSprings = useSprings(
     List.length,
     List.map((item) => ({
       transform: `translateX(-${draggedX}px)`,
+      backgroundColor:
+        item[0] === selectedCategory[0] ? `var(--Bc-3)` : `var(--Ec-4)`,
+    }))
+  );
+
+  const listSpringsOpen = useSprings(
+    List.length,
+    List.map((item) => ({
       backgroundColor:
         item[0] === selectedCategory[0] ? `var(--Bc-3)` : `var(--Ec-4)`,
     }))
@@ -98,13 +95,12 @@ const Category = ({
         navigator.vibrate(1000);
       }
       setIsLongPress(true);
-    }, 500); // Long press threshold
+    }, 500);
   }, []);
 
   const handleMove = useCallback(
     (event) => {
       if (isLongPress) {
-        // setIsLongPress(false);
       }
     },
     [isLongPress]
@@ -145,70 +141,40 @@ const Category = ({
     alignItems: "flex-start",
     left: 0,
     background: "none",
-    // height: !isLongPress ? "0%" : "100%",
     flexWrap: "wrap",
     width: "auto",
   });
   const Apearh2 = useSpring({
     marginBottom: 4,
   });
-  const ApearLine = useSpring({
-    position: "absolute",
-    bottom: "10%",
-    left: 22,
-    width: 2,
-    height: !isLongPress ? "0%" : "55%",
-    background: "var(--Bc-3)",
-    borderRadius: 20,
-  });
+
   return (
     <>
-      <animated.li className="Add_Category" {...longBind()} style={Apear}>
-        {/* <animated.div style={ApearLine}></animated.div> */}
-        <animated.p style={ApearP}>
-          Select a category :{" "}
-          {/* <animated.span style={fading ? fadeOutRight : fadeInLeft}>
-          {selectedCategory[1]}
-          {selectedCategory[0]}
-        </animated.span> */}
-        </animated.p>{" "}
-        <animated.div
-          className="Add_Category_items"
-          ref={containerRef}
-          style={ApearItems}
-        >
-          {listSprings.map((animation, index) => (
-            <ScalableElement
-              style={{ ...animation, ...Apearh2 }}
-              as="h2"
-              key={index}
-              onMouseDown={() => handleMouseDown(index)}
-              onClick={() => handleClick(index)}
-            >
-              {List[index][1]}
-              {List[index][0]}
-            </ScalableElement>
-          ))}
-        </animated.div>
-        {/* <div className="Add_Category_guid">
-        <VscArrowSmallLeft />
-
-        <span>Drag Left & Right</span>
-        <VscArrowSmallRight />
-      </div> */}
-      </animated.li>
+      {isLongPress && (
+        <animated.li className="Add_Category" {...longBind()} style={Apear}>
+          <animated.p style={ApearP}>Select a category : </animated.p>{" "}
+          <animated.div className="Add_Category_items" style={ApearItems}>
+            {listSpringsOpen.map((animation, index) => (
+              <ScalableElement
+                style={{ ...animation, ...Apearh2 }}
+                as="h2"
+                key={index}
+                onMouseDown={() => handleMouseDown(index)}
+                onClick={() => handleClick(index)}
+              >
+                {List[index][1]}
+                {List[index][0]}
+              </ScalableElement>
+            ))}
+          </animated.div>
+        </animated.li>
+      )}
       <animated.li className="Add_Category" {...longBind()} style={fade}>
-        <p>
-          Category1 |{" "}
-          {/* <animated.span style={fading ? fadeOutRight : fadeInLeft}>
-          {selectedCategory[1]}
-          {selectedCategory[0]}
-        </animated.span> */}
-        </p>{" "}
+        <p>Category | </p>{" "}
         <div className="Add_Category_items" ref={containerRef} {...bind()}>
           {listSprings.map((animation, index) => (
             <ScalableElement
-              style={animation}
+              style={{ ...animation, width: `${characterCounts[index]}px` }}
               as="h2"
               key={index}
               onMouseDown={() => handleMouseDown(index)}
@@ -219,12 +185,6 @@ const Category = ({
             </ScalableElement>
           ))}
         </div>
-        {/* <div className="Add_Category_guid">
-        <VscArrowSmallLeft />
-
-        <span>Drag Left & Right</span>
-        <VscArrowSmallRight />
-      </div> */}
       </animated.li>
     </>
   );
