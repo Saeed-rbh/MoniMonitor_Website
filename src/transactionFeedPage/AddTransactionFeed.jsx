@@ -203,6 +203,7 @@ function AddTransactionFeed({
       <h3>
         <span style={DotStyle}>•</span>Add New{" "}
         <span>{isAddClicked.replace("&", " & ")}</span>
+        {height}
       </h3>
 
       <ul>

@@ -5,8 +5,6 @@ import AddTransactionFeed from "../transactionFeedPage/AddTransactionFeed";
 import Notif from "./Notif/Notif";
 
 const AddTransaction = ({ isAddClicked, setIsClicked, setIsAddClicked }) => {
-  console.log(isAddClicked);
-
   useEffect(() => {
     !isAddClicked && setIsClicked("Income");
   }, []);
