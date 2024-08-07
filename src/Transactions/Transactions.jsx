@@ -39,7 +39,7 @@ const Transactions = ({
     });
   };
 
-  const height = useWindowHeight(100);
+  const height = useWindowHeight(90);
 
   const TransactionFeed = () => {
     return (
@@ -77,7 +77,7 @@ const Transactions = ({
         isClicked={isMoreClicked}
         setIsClicked={setIsMoreClicked}
         feed={TransactionFeed}
-        MoreOpenHeight={95}
+        MoreOpenHeight={90}
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
         blur={isAddClicked}
@@ -87,7 +87,7 @@ const Transactions = ({
         isClicked={isAddClicked}
         setIsClicked={setIsAddClicked}
         feed={AddFeed}
-        MoreOpenHeight={100}
+        MoreOpenHeight={90}
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
         zIndex={110}

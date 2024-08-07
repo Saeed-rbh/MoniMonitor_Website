@@ -5,6 +5,7 @@ import Reason from "./Reason";
 import DateTime from "./DateTime";
 import Category from "./Category";
 import Confirm from "./Confirm";
+import Type from "./Type";
 import {
   Expense_categories,
   Income_categories,
@@ -25,7 +26,7 @@ function AddTransactionFeed({
 }) {
   const Modify = addTransaction.Amount > 0 ? true : false;
 
-  const height = Math.max(Math.min(useWindowHeight(160), 500), 470);
+  const height = Math.max(Math.min(useWindowHeight(160), 500), 480);
 
   const OriginalList =
     isAddClicked === "Income"
@@ -200,10 +201,20 @@ function AddTransactionFeed({
   return (
     <animated.div className="AddTransactionFeed" style={fade}>
       <h3>
-        <span style={DotStyle}>•</span>Add New <span>{isAddClicked}</span>
+        <span style={DotStyle}>•</span>Add New{" "}
+        <span>{isAddClicked.replace("&", " & ")}</span>
       </h3>
 
       <ul>
+        <Type
+          value={value}
+          defaultValue={Modify ? addTransaction.Amount : ""}
+          setValue={setValue}
+          valueError={valueError}
+          setValueError={setValueError}
+          whichType={isAddClicked}
+          setWhichType={setIsClicked}
+        />
         <Amount
           value={value}
           defaultValue={Modify ? addTransaction.Amount : ""}

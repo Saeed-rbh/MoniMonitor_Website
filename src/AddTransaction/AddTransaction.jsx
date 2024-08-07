@@ -27,7 +27,7 @@ const AddTransaction = ({ isAddClicked, setIsAddClicked }) => {
       Type: "",
     });
   };
-  const height = useWindowHeight(100);
+  const height = useWindowHeight(90);
 
   const AddFeed = useCallback(
     () => (
@@ -49,7 +49,7 @@ const AddTransaction = ({ isAddClicked, setIsAddClicked }) => {
         isClicked={isAddClicked}
         setIsClicked={setIsAddClicked}
         feed={AddFeed}
-        MoreOpenHeight={100}
+        MoreOpenHeight={90}
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
         zIndex={110}

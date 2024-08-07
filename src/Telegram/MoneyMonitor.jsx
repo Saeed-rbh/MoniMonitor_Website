@@ -45,7 +45,7 @@ const MoneyMonitor = ({
   isAddClicked,
   setIsAddClicked,
 }) => {
-  const height = useWindowHeight(100);
+  const height = useWindowHeight(90);
   const [whichMonth, setWhichMonth] = useState(0);
 
   const {

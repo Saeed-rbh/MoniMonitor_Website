@@ -83,10 +83,10 @@ const Category = ({
     <li className="Add_Category">
       <p>
         Category |{" "}
-        <animated.span style={fading ? fadeOutRight : fadeInLeft}>
+        {/* <animated.span style={fading ? fadeOutRight : fadeInLeft}>
           {selectedCategory[1]}
           {selectedCategory[0]}
-        </animated.span>
+        </animated.span> */}
       </p>{" "}
       <div className="Add_Category_items" ref={containerRef} {...bind()}>
         {listSprings.map((animation, index) => (
