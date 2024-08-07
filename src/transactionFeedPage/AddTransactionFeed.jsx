@@ -165,10 +165,15 @@ function AddTransactionFeed({
     }
   };
 
+  const [isLongPress, setIsLongPress] = useState(false);
   const fade = useSpring({
     from: { opacity: isAddClicked !== null ? 0 : 1, height: `${height}px` },
-    to: { opacity: isAddClicked !== null ? 1 : 0, height: `${height}px` },
-    config: { duration: 500 },
+    to: {
+      opacity: isAddClicked !== null ? 1 : 0,
+      height: `${height}px`,
+      // filter: !isLongPress ? "blur(0px)" : "blur(5px)",
+    },
+    // config: { duration: isLongPress ? 100 : 500 },
   });
 
   // const [autoLabel, setAutoLabel] = useState("");
@@ -203,7 +208,6 @@ function AddTransactionFeed({
       <h3>
         <span style={DotStyle}>•</span>Add New{" "}
         <span>{isAddClicked.replace("&", " & ")}</span>
-        {height}
       </h3>
 
       <ul>
@@ -215,6 +219,7 @@ function AddTransactionFeed({
           setValueError={setValueError}
           whichType={isAddClicked}
           setWhichType={setIsClicked}
+          isLongPress={isLongPress}
         />
         <Amount
           value={value}
@@ -224,11 +229,13 @@ function AddTransactionFeed({
           setValueError={setValueError}
           whichType={whichType}
           setWhichType={setWhichType}
+          isLongPress={isLongPress}
         />
         <Reason
           Reason={Reason}
           setReason={setReason}
           defaultValue={Modify ? addTransaction.Reason : ""}
+          isLongPress={isLongPress}
         />
         <DateTime
           currentTime={currentTime}
@@ -238,14 +245,17 @@ function AddTransactionFeed({
           month={month}
           year={year}
           defaultValue={Modify ? addTransaction.Timestamp : ""}
+          isLongPress={isLongPress}
         />
         <Category
           List={List}
           setSelectedCategory={setSelectedCategory}
           selectedCategory={selectedCategory}
           defaultValue={Modify ? addTransaction.Label : ""}
+          isLongPress={isLongPress}
+          setIsLongPress={setIsLongPress}
         />
-        <Confirm handleAddClick={handleAddClick} />
+        <Confirm handleAddClick={handleAddClick} isLongPress={isLongPress} />
       </ul>
     </animated.div>
   );

@@ -16,11 +16,12 @@ import { BiLogoBitcoin } from "react-icons/bi";
 
 export const Expense_categories = [
   ["Housing & Utilities", <TbHomeBolt />],
-  ["Transportation", <RiSubwayLine />],
+
   ["Groceries & Dining", <MdOutlineLocalGroceryStore />],
   ["Medical & Health", <PiPillBold />],
   ["Education & Training", <MdOutlineSchool />],
   ["Leisure & Recreation", <BiDrink />],
+  ["Transportation", <RiSubwayLine />],
   ["Other", <BiQuestionMark />],
 ];
 

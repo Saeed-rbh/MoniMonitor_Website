@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSpring, animated } from "react-spring";
 
 const DateTime = ({
   currentTime,
@@ -8,7 +9,12 @@ const DateTime = ({
   month,
   year,
   defaultValue,
+  isLongPress,
 }) => {
+  const fade = useSpring({
+    filter: !isLongPress ? "blur(0px)" : "blur(10px)",
+  });
+
   const Modify = defaultValue.length > 0;
   const getBorderStyle = (isValid) =>
     isValid ? {} : { border: "1px solid var(--Gc-2)" };
@@ -70,7 +76,7 @@ const DateTime = ({
   }, [currentTime]);
 
   return (
-    <li className="Add_DateTime">
+    <animated.li className="Add_DateTime" style={fade}>
       <h1>
         <p>
           • Time <span></span>
@@ -159,7 +165,7 @@ const DateTime = ({
           defaultValue={Modify ? defaultValue.split(" ")[0].split("-")[0] : ""}
         />
       </h1>
-    </li>
+    </animated.li>
   );
 };
 

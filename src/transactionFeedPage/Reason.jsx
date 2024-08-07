@@ -1,8 +1,12 @@
 import React, { useState } from "react";
-import { animated } from "react-spring";
+import { animated, useSpring } from "react-spring";
 import { ScalableElement } from "../Tools/tools";
 
-const Reason = ({ reason, setReason, defaultValue }) => {
+const Reason = ({ reason, setReason, defaultValue, isLongPress }) => {
+  const fade = useSpring({
+    filter: !isLongPress ? "blur(0px)" : "blur(10px)",
+  });
+
   const [ReasonCount, setReasonCount] = useState(0);
 
   const handleReason = (event) => {
@@ -17,7 +21,7 @@ const Reason = ({ reason, setReason, defaultValue }) => {
   };
 
   return (
-    <li className="Add_Reason">
+    <animated.li className="Add_Reason" style={fade}>
       <animated.label>Reason | </animated.label>
       <animated.textarea
         type="text"
@@ -35,7 +39,7 @@ const Reason = ({ reason, setReason, defaultValue }) => {
       </ScalableElement>
       <hr />
       <hr />
-    </li>
+    </animated.li>
   );
 };
 

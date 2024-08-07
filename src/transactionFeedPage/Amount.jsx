@@ -35,7 +35,12 @@ const Amount = ({
   defaultValue,
   whichType,
   setWhichType,
+  isLongPress,
 }) => {
+  const fade = useSpring({
+    filter: !isLongPress ? "blur(0px)" : "blur(10px)",
+  });
+
   const ConfirmStyle = useSpring({
     left: whichType ? "0%" : "43%",
     width: whichType ? "40%" : "57%",
@@ -142,7 +147,10 @@ const Amount = ({
   };
 
   return (
-    <animated.li className="Add_Amount" style={AnountBorderStyle}>
+    <animated.li
+      className="Add_Amount"
+      style={{ ...AnountBorderStyle, ...fade }}
+    >
       <animated.label style={AnountStyle}>Amount |</animated.label>
       <animated.textarea
         type="text"

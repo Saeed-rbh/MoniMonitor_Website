@@ -9,15 +9,11 @@ import { useSpring, animated } from "react-spring";
 import { GoArrowUpRight, GoArrowDownLeft, GoPlus } from "react-icons/go";
 import { ScalableElement } from "../Tools/tools";
 
-const Type = ({
-  value,
-  setValue,
-  valueError,
-  setValueError,
-  defaultValue,
-  whichType,
-  setWhichType,
-}) => {
+const Type = ({ whichType, setWhichType, isLongPress }) => {
+  const fade = useSpring({
+    filter: !isLongPress ? "blur(0px)" : "blur(10px)",
+  });
+
   const handleIncomeClick = () => {
     setWhichType("Income");
   };
@@ -44,7 +40,7 @@ const Type = ({
   });
 
   return (
-    <animated.li className="Add_Type">
+    <animated.li className="Add_Type" style={fade}>
       <ScalableElement
         as="h1"
         onClick={handleIncomeClick}

@@ -1,13 +1,16 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useSprings, useSpring, animated } from "react-spring";
 import { useDrag } from "@use-gesture/react";
 import { ScalableElement } from "../Tools/tools";
+import { useLongPress } from "use-long-press";
 
 const Category = ({
   List,
   selectedCategory,
   setSelectedCategory,
   defaultValue,
+  isLongPress,
+  setIsLongPress,
 }) => {
   const containerRef = useRef(null);
 
@@ -31,6 +34,7 @@ const Category = ({
   const handleClick = (item) => {
     if (isDragging) {
       handleChangeCategory(List[item]);
+      setIsLongPress(false);
     }
   };
 
@@ -79,36 +83,141 @@ const Category = ({
     isDragging && setIsDragging(mx !== 0 ? false : true);
   });
 
+  const [enabled, setEnabled] = useState(true);
+  const longPressTimeout = useRef(null);
+
+  const startLongPress = useCallback((event) => {
+    longPressTimeout.current = setTimeout(() => {
+      setIsLongPress(true);
+    }, 500); // Long press threshold
+  }, []);
+
+  const handleMove = useCallback(
+    (event) => {
+      if (isLongPress) {
+        // setIsLongPress(false);
+      }
+    },
+    [isLongPress]
+  );
+
+  const longBind = useLongPress(enabled ? startLongPress : null, {
+    onStart: (event) => {
+      document.addEventListener("mousemove", handleMove);
+      document.addEventListener("touchmove", handleMove);
+    },
+  });
+
+  const fade = useSpring({
+    filter: !isLongPress ? "blur(0px)" : "blur(10px)",
+  });
+
+  const Apear = useSpring({
+    opacity: !isLongPress ? 0 : 1,
+    position: "absolute",
+    top: !isLongPress
+      ? "calc(70% - 0px)"
+      : `calc(70% - ${listSprings.length * 40}px)`,
+    zIndex: 100,
+    height: `calc(70% + ${listSprings.length * 15}px)`,
+    overflow: "visible",
+    background: "none",
+    outline: "none",
+    display: "flex",
+    marginLeft: 10,
+  });
+  const ApearP = useSpring({
+    opacity: !isLongPress ? 0 : 1,
+    top: !isLongPress ? 0 : -15,
+    delay: !isLongPress ? 0 : 200,
+  });
+  const ApearItems = useSpring({
+    flexDirection: "column",
+    alignItems: "flex-start",
+    left: 0,
+    background: "none",
+    // height: !isLongPress ? "0%" : "100%",
+    flexWrap: "wrap",
+    width: "auto",
+  });
+  const Apearh2 = useSpring({
+    marginBottom: 4,
+  });
+  const ApearLine = useSpring({
+    position: "absolute",
+    bottom: "10%",
+    left: 22,
+    width: 2,
+    height: !isLongPress ? "0%" : "55%",
+    background: "var(--Bc-3)",
+    borderRadius: 20,
+  });
   return (
-    <li className="Add_Category">
-      <p>
-        Category |{" "}
-        {/* <animated.span style={fading ? fadeOutRight : fadeInLeft}>
+    <>
+      <animated.li className="Add_Category" {...longBind()} style={Apear}>
+        {/* <animated.div style={ApearLine}></animated.div> */}
+        <animated.p style={ApearP}>
+          Select a category :{" "}
+          {/* <animated.span style={fading ? fadeOutRight : fadeInLeft}>
           {selectedCategory[1]}
           {selectedCategory[0]}
         </animated.span> */}
-      </p>{" "}
-      <div className="Add_Category_items" ref={containerRef} {...bind()}>
-        {listSprings.map((animation, index) => (
-          <ScalableElement
-            style={animation}
-            as="h2"
-            key={index}
-            onMouseDown={() => handleMouseDown(index)}
-            onClick={() => handleClick(index)}
-          >
-            {List[index][1]}
-            {List[index][0]}
-          </ScalableElement>
-        ))}
-      </div>
-      {/* <div className="Add_Category_guid">
+        </animated.p>{" "}
+        <animated.div
+          className="Add_Category_items"
+          ref={containerRef}
+          style={ApearItems}
+        >
+          {listSprings.map((animation, index) => (
+            <ScalableElement
+              style={{ ...animation, ...Apearh2 }}
+              as="h2"
+              key={index}
+              onMouseDown={() => handleMouseDown(index)}
+              onClick={() => handleClick(index)}
+            >
+              {List[index][1]}
+              {List[index][0]}
+            </ScalableElement>
+          ))}
+        </animated.div>
+        {/* <div className="Add_Category_guid">
         <VscArrowSmallLeft />
 
         <span>Drag Left & Right</span>
         <VscArrowSmallRight />
       </div> */}
-    </li>
+      </animated.li>
+      <animated.li className="Add_Category" {...longBind()} style={fade}>
+        <p>
+          Category |{" "}
+          {/* <animated.span style={fading ? fadeOutRight : fadeInLeft}>
+          {selectedCategory[1]}
+          {selectedCategory[0]}
+        </animated.span> */}
+        </p>{" "}
+        <div className="Add_Category_items" ref={containerRef} {...bind()}>
+          {listSprings.map((animation, index) => (
+            <ScalableElement
+              style={animation}
+              as="h2"
+              key={index}
+              onMouseDown={() => handleMouseDown(index)}
+              onClick={() => handleClick(index)}
+            >
+              {List[index][1]}
+              {List[index][0]}
+            </ScalableElement>
+          ))}
+        </div>
+        {/* <div className="Add_Category_guid">
+        <VscArrowSmallLeft />
+
+        <span>Drag Left & Right</span>
+        <VscArrowSmallRight />
+      </div> */}
+      </animated.li>
+    </>
   );
 };
 

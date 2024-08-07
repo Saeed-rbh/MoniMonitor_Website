@@ -29,7 +29,7 @@ const AddTransaction = ({ isAddClicked, setIsClicked, setIsAddClicked }) => {
       Type: "",
     });
   };
-  const height = useWindowHeight(90);
+  const height = Math.max(Math.min(useWindowHeight(90), 480), 480);
 
   const AddFeed = useCallback(
     () => (
