@@ -8,7 +8,6 @@ const Category = ({
   List,
   selectedCategory,
   setSelectedCategory,
-  defaultValue,
   isLongPress,
   setIsLongPress,
 }) => {
@@ -22,14 +21,21 @@ const Category = ({
 
   const [draggedX, setDraggedX] = useState(0);
 
-  const characterCounts = List.map((item) =>
-    Math.round(item[0].length * 7.35 + 40)
-  );
-  const cumulatedValues = characterCounts.reduce((acc, value) => {
-    const lastValue = acc.length > 0 ? acc[acc.length - 1] : 0;
-    acc.push(lastValue + value - 5);
-    return acc;
-  }, []);
+  const [characterCounts, setCharacterCounts] = useState([]);
+  const [cumulatedValues, setCumulatedValues] = useState([]);
+
+  useEffect(() => {
+    const characterCounts = List.map((item) =>
+      Math.round(item[0].length * 7.35 + 40)
+    );
+    setCharacterCounts(characterCounts);
+    const cumulatedValues = characterCounts.reduce((acc, value) => {
+      const lastValue = acc.length > 0 ? acc[acc.length - 1] : 0;
+      acc.push(lastValue + value - 5);
+      return acc;
+    }, []);
+    setCumulatedValues(cumulatedValues);
+  }, [List]);
 
   const handleClick = (item) => {
     if (isDragging) {
