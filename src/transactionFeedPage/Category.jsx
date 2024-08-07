@@ -86,9 +86,17 @@ const Category = ({
   const [enabled, setEnabled] = useState(true);
   const longPressTimeout = useRef(null);
 
+  navigator.vibrate =
+    navigator.vibrate ||
+    navigator.webkitVibrate ||
+    navigator.mozVibrate ||
+    navigator.msVibrate;
+
   const startLongPress = useCallback((event) => {
     longPressTimeout.current = setTimeout(() => {
-      navigator.vibrate(200);
+      if (navigator.vibrate) {
+        navigator.vibrate(1000);
+      }
       setIsLongPress(true);
     }, 500); // Long press threshold
   }, []);
@@ -191,7 +199,7 @@ const Category = ({
       </animated.li>
       <animated.li className="Add_Category" {...longBind()} style={fade}>
         <p>
-          Category |{" "}
+          Category1 |{" "}
           {/* <animated.span style={fading ? fadeOutRight : fadeInLeft}>
           {selectedCategory[1]}
           {selectedCategory[0]}
