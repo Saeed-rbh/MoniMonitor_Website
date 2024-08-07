@@ -1,11 +1,15 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useWindowHeight } from "../Tools/tools";
 import MoreOpen from "../Tools/MoreOpen";
 import AddTransactionFeed from "../transactionFeedPage/AddTransactionFeed";
 import Notif from "./Notif/Notif";
 
-const AddTransaction = ({ isAddClicked, setIsAddClicked }) => {
+const AddTransaction = ({ isAddClicked, setIsClicked, setIsAddClicked }) => {
   console.log(isAddClicked);
+
+  useEffect(() => {
+    !isAddClicked && setIsClicked("Income");
+  }, []);
 
   const [modify, setModify] = useState(false);
   const [open, setOpen] = useState(false);

@@ -76,6 +76,7 @@ function App() {
               element={
                 <AddTransaction
                   isAddClicked={isAddClicked}
+                  setIsClicked={setIsAddClicked}
                   setIsAddClicked={setIsAddClicked}
                 />
               }

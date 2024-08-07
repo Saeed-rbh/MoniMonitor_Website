@@ -18,8 +18,6 @@ const Type = ({
   whichType,
   setWhichType,
 }) => {
-  console.log("Type", whichType);
-
   const handleIncomeClick = () => {
     setWhichType("Income");
   };
