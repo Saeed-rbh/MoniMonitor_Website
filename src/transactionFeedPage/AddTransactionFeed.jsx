@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNumericInput } from "./useNumericInput";
 import Amount from "./Amount";
 import Reason from "./Reason";
@@ -28,15 +28,26 @@ function AddTransactionFeed({
 
   const height = Math.max(Math.min(useWindowHeight(160), 500), 480);
 
-  const OriginalList =
-    isAddClicked === "Income"
-      ? Income_categories
-      : isAddClicked === "Expense"
-      ? Expense_categories
-      : SaveInvest_categories;
+  const OriginalList = useMemo(() => {
+    if (isAddClicked === "Income") {
+      return Income_categories;
+    } else if (isAddClicked === "Expense") {
+      return Expense_categories;
+    } else {
+      return SaveInvest_categories;
+    }
+  }, [isAddClicked]);
 
-  const AutoDetect = ["Auto Detect", <MdOutlineAutoAwesome />];
-  const List = [AutoDetect, ...OriginalList];
+  const AutoDetect = useMemo(
+    () => ["Auto Detect", <MdOutlineAutoAwesome />],
+    []
+  );
+
+  const List = useMemo(
+    () => [AutoDetect, ...OriginalList],
+    [AutoDetect, OriginalList]
+  );
+
   const ModifyLabel = List.find((person) => person[0] === addTransaction.Label);
   const [selectedCategory, setSelectedCategory] = useState(
     Modify ? ModifyLabel : List[0]

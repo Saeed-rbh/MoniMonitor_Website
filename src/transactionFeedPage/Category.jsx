@@ -1,4 +1,10 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import { useSprings, useSpring, animated } from "react-spring";
 import { useDrag } from "@use-gesture/react";
 import { ScalableElement } from "../Tools/tools";
@@ -21,21 +27,26 @@ const Category = ({
 
   const [draggedX, setDraggedX] = useState(0);
 
-  const [characterCounts, setCharacterCounts] = useState([]);
-  const [cumulatedValues, setCumulatedValues] = useState([]);
+  const characterCountsIni = useMemo(() => {
+    return List.map((item) => Math.round(item[0].length * 7.35 + 40));
+  }, [List]);
+  const [characterCounts, setCharacterCounts] = useState(characterCountsIni);
 
-  useEffect(() => {
-    const characterCounts = List.map((item) =>
-      Math.round(item[0].length * 7.35 + 40)
-    );
-    setCharacterCounts(characterCounts);
-    const cumulatedValues = characterCounts.reduce((acc, value) => {
+  const cumulatedValuesIni = useMemo(() => {
+    return characterCounts.reduce((acc, value) => {
       const lastValue = acc.length > 0 ? acc[acc.length - 1] : 0;
-      acc.push(lastValue + value - 5);
+      acc.push(lastValue + value - 5 * acc.length);
       return acc;
     }, []);
-    setCumulatedValues(cumulatedValues);
-  }, [List]);
+  }, [characterCounts]);
+  const [cumulatedValues, setCumulatedValues] = useState(cumulatedValuesIni);
+
+  useEffect(() => {
+    setDraggedX(0);
+    setSelectedCategory(List[0]);
+    setCharacterCounts(characterCountsIni);
+    setCumulatedValues(cumulatedValuesIni);
+  }, [characterCountsIni, cumulatedValuesIni, List, setSelectedCategory]);
 
   const handleClick = (item) => {
     if (isDragging) {
@@ -45,8 +56,6 @@ const Category = ({
         item !== cumulatedValues.length - 1 &&
         setDraggedX(cumulatedValues[item - 1]);
       item === 0 && setDraggedX(0);
-      console.log(draggedX, cumulatedValues[item - 1]);
-
       containerRef.current.style.transform = `translateX(0px)`;
     }
   };
@@ -64,7 +73,6 @@ const Category = ({
   const listSprings = useSprings(
     List.length,
     List.map((item) => ({
-      transform: `translateX(-${draggedX}px)`,
       backgroundColor:
         item[0] === selectedCategory[0] ? `var(--Bc-3)` : `var(--Ec-4)`,
     }))
@@ -77,6 +85,10 @@ const Category = ({
         item[0] === selectedCategory[0] ? `var(--Bc-3)` : `var(--Ec-4)`,
     }))
   );
+
+  const dragSpring = useSpring({
+    transform: `translateX(-${draggedX}px)`,
+  });
 
   const bind = useDrag(({ movement: [mx], dragging }) => {
     const maxDrag = contentWidth - containerWidth;
@@ -178,18 +190,20 @@ const Category = ({
       <animated.li className="Add_Category" {...longBind()} style={fade}>
         <p>Category | </p>{" "}
         <div className="Add_Category_items" ref={containerRef} {...bind()}>
-          {listSprings.map((animation, index) => (
-            <ScalableElement
-              style={{ ...animation, width: `${characterCounts[index]}px` }}
-              as="h2"
-              key={index}
-              onMouseDown={() => handleMouseDown(index)}
-              onClick={() => handleClick(index)}
-            >
-              {List[index][1]}
-              {List[index][0]}
-            </ScalableElement>
-          ))}
+          <animated.div className="Add_Category_items_in" style={dragSpring}>
+            {listSprings.map((animation, index) => (
+              <ScalableElement
+                style={{ ...animation, width: `${characterCounts[index]}px` }}
+                as="h2"
+                key={index}
+                onMouseDown={() => handleMouseDown(index)}
+                onClick={() => handleClick(index)}
+              >
+                {List[index][1]}
+                {List[index][0]}
+              </ScalableElement>
+            ))}
+          </animated.div>
         </div>
       </animated.li>
     </>

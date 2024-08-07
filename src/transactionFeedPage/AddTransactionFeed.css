@@ -320,7 +320,6 @@
   margin: 0 2px;
   outline: 1px solid var(--Ac-3);
   width: max-content;
-  text-wrap: nowrap;
   align-items: center;
   justify-content: center;
   background: linear-gradient(165deg, var(--Ac-4) -20%, var(--Ec-1) 120%);
@@ -332,6 +331,18 @@
   color: var(--Bc-1);
   box-sizing: border-box;
   opacity: 0.6;
+}
+
+.Add_Category_items_in {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  list-style-type: none;
+  height: max-content;
+  box-sizing: border-box;
+  background: var(--Ec-3);
+  border-radius: 35px;
 }
 
 .Add_Confirm {
