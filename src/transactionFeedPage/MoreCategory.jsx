@@ -6,11 +6,10 @@ import React, {
   useMemo,
 } from "react";
 import { useSprings, useSpring, animated } from "react-spring";
-import { useDrag } from "@use-gesture/react";
 import { ScalableElement } from "../Tools/tools";
 import { useLongPress } from "use-long-press";
 
-const Category = ({
+const MoreCategory = ({
   List,
   selectedCategory,
   setSelectedCategory,
@@ -42,8 +41,6 @@ const Category = ({
   const [cumulatedValues, setCumulatedValues] = useState(cumulatedValuesIni);
 
   useEffect(() => {
-    setDraggedX(0);
-    setSelectedCategory(List[0]);
     setCharacterCounts(characterCountsIni);
     setCumulatedValues(cumulatedValuesIni);
   }, [characterCountsIni, cumulatedValuesIni, List, setSelectedCategory]);
@@ -52,33 +49,19 @@ const Category = ({
     if (isDragging) {
       setIsLongPress(false);
       setSelectedCategory(List[item]);
+      item !== 0 &&
+        item !== cumulatedValues.length - 1 &&
+        setDraggedX(cumulatedValues[item - 1]);
+      item === 0 && setDraggedX(0);
+      if (
+        item === cumulatedValues.length - 1 &&
+        containerRef.current.scrollWidth - 265 >
+          cumulatedValues[item - 1] - characterCounts[item - 1]
+      ) {
+        setDraggedX(containerRef.current.scrollWidth - 265);
+      }
     }
   };
-
-  useEffect(() => {
-    const index = List.findIndex((item) => selectedCategory[0] === item[0]);
-    index !== 0 &&
-      index !== cumulatedValues.length - 1 &&
-      setDraggedX(cumulatedValues[index - 1]);
-    selectedCategory === 0 && setDraggedX(0);
-    if (
-      index === cumulatedValues.length - 1 &&
-      containerRef.current.scrollWidth - 265 >
-        cumulatedValues[index - 1] - characterCounts[index - 1]
-    ) {
-      setDraggedX(containerRef.current.scrollWidth - 265);
-    }
-  }, [selectedCategory]);
-
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [contentWidth, setContentWidth] = useState(0);
-
-  useEffect(() => {
-    if (containerRef.current) {
-      setContainerWidth(containerRef.current.clientWidth);
-      setContentWidth(containerRef.current.scrollWidth);
-    }
-  }, []);
 
   const listSprings = useSprings(
     List.length,
@@ -88,17 +71,13 @@ const Category = ({
     }))
   );
 
-  const dragSpring = useSpring({
-    transform: `translateX(-${draggedX}px)`,
-  });
-
-  const bind = useDrag(({ movement: [mx], dragging }) => {
-    const maxDrag = contentWidth - containerWidth;
-    const newDraggedX = draggedX - mx / 15;
-    const constrainedX = Math.max(0, Math.min(maxDrag, newDraggedX));
-    mx !== 0 && setDraggedX(constrainedX);
-    isDragging && setIsDragging(mx !== 0 ? false : true);
-  });
+  const listSpringsOpen = useSprings(
+    List.length,
+    List.map((item) => ({
+      backgroundColor:
+        item[0] === selectedCategory[0] ? `var(--Bc-3)` : `var(--Ec-4)`,
+    }))
+  );
 
   const [enabled, setEnabled] = useState(true);
   const longPressTimeout = useRef(null);
@@ -133,18 +112,57 @@ const Category = ({
     },
   });
 
-  const fade = useSpring({
-    filter: !isLongPress ? "blur(0px)" : "blur(10px)",
+  const Apear = useSpring({
+    from: {
+      opacity: isLongPress ? 0 : 1,
+      top: isLongPress
+        ? "calc(70% - 0px)"
+        : `calc(70% - ${listSprings.length * 40}px)`,
+    },
+    to: {
+      opacity: !isLongPress ? 0 : 1,
+      position: "absolute",
+      top: !isLongPress
+        ? "calc(70% - 0px)"
+        : `calc(70% - ${listSprings.length * 40}px)`,
+      zIndex: 100,
+      height: `calc(70% + ${listSprings.length * 15}px)`,
+      overflow: "visible",
+      background: "none",
+      outline: "none",
+      display: "flex",
+      marginLeft: 10,
+    },
+  });
+  const ApearP = useSpring({
+    opacity: !isLongPress ? 0 : 1,
+    top: !isLongPress ? 0 : -15,
+    delay: !isLongPress ? 0 : 200,
+  });
+  const ApearItems = useSpring({
+    flexDirection: "column",
+    alignItems: "flex-start",
+    left: 0,
+    background: "none",
+    flexWrap: "wrap",
+    width: "auto",
+  });
+  const Apearh2 = useSpring({
+    marginBottom: 4,
   });
 
   return (
-    <animated.li className="Add_Category" {...longBind()} style={fade}>
-      <p>Category | </p>{" "}
-      <div className="Add_Category_items" ref={containerRef} {...bind()}>
-        <animated.div className="Add_Category_items_in" style={dragSpring}>
-          {listSprings.map((animation, index) => (
+    <>
+      <animated.li className="Add_Category" {...longBind()} style={Apear}>
+        <animated.p style={ApearP}>Select a category : </animated.p>{" "}
+        <animated.div className="Add_Category_items" style={ApearItems}>
+          {listSpringsOpen.map((animation, index) => (
             <ScalableElement
-              style={{ ...animation, width: `${characterCounts[index]}px` }}
+              style={{
+                ...animation,
+                ...Apearh2,
+                width: `${characterCounts[index]}px`,
+              }}
               as="h2"
               key={index}
               onMouseDown={() => handleMouseDown(index)}
@@ -155,9 +173,9 @@ const Category = ({
             </ScalableElement>
           ))}
         </animated.div>
-      </div>
-    </animated.li>
+      </animated.li>
+    </>
   );
 };
 
-export default Category;
+export default MoreCategory;

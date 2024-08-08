@@ -15,6 +15,7 @@ import { useWindowHeight } from "../Tools/tools";
 import { MdOutlineAutoAwesome } from "react-icons/md";
 import { animated, useSpring } from "react-spring";
 import "./AddTransactionFeed.css";
+import MoreCategory from "./MoreCategory";
 
 function AddTransactionFeed({
   isAddClicked,
@@ -182,9 +183,13 @@ function AddTransactionFeed({
     to: {
       opacity: isAddClicked !== null ? 1 : 0,
       height: `${height}px`,
-      // filter: !isLongPress ? "blur(0px)" : "blur(5px)",
     },
     // config: { duration: isLongPress ? 100 : 500 },
+  });
+
+  const moreBlurStyle = useSpring({
+    filter: !isLongPress ? "blur(0px)" : "blur(10px)",
+    scale: !isLongPress ? 1 : 0.9,
   });
 
   // const [autoLabel, setAutoLabel] = useState("");
@@ -220,8 +225,18 @@ function AddTransactionFeed({
         <span style={DotStyle}>•</span>Add New{" "}
         <span>{isAddClicked.replace("&", " & ")}</span>
       </h3>
+      {isLongPress && (
+        <MoreCategory
+          List={List}
+          setSelectedCategory={setSelectedCategory}
+          selectedCategory={selectedCategory}
+          defaultValue={Modify ? addTransaction.Label : ""}
+          isLongPress={isLongPress}
+          setIsLongPress={setIsLongPress}
+        />
+      )}
 
-      <ul>
+      <animated.ul style={moreBlurStyle}>
         <Type
           value={value}
           defaultValue={Modify ? addTransaction.Amount : ""}
@@ -230,7 +245,6 @@ function AddTransactionFeed({
           setValueError={setValueError}
           whichType={isAddClicked}
           setWhichType={setIsClicked}
-          isLongPress={isLongPress}
         />
         <Amount
           value={value}
@@ -240,13 +254,11 @@ function AddTransactionFeed({
           setValueError={setValueError}
           whichType={whichType}
           setWhichType={setWhichType}
-          isLongPress={isLongPress}
         />
         <Reason
           Reason={Reason}
           setReason={setReason}
           defaultValue={Modify ? addTransaction.Reason : ""}
-          isLongPress={isLongPress}
         />
         <DateTime
           currentTime={currentTime}
@@ -256,7 +268,6 @@ function AddTransactionFeed({
           month={month}
           year={year}
           defaultValue={Modify ? addTransaction.Timestamp : ""}
-          isLongPress={isLongPress}
         />
         <Category
           List={List}
@@ -267,7 +278,7 @@ function AddTransactionFeed({
           setIsLongPress={setIsLongPress}
         />
         <Confirm handleAddClick={handleAddClick} isLongPress={isLongPress} />
-      </ul>
+      </animated.ul>
     </animated.div>
   );
 }
