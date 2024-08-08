@@ -344,6 +344,7 @@
   box-sizing: border-box;
   background: var(--Ec-3);
   border-radius: 35px;
+  width: min-content;
 }
 
 .Add_Confirm {

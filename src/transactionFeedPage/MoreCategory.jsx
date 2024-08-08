@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { useSprings, useSpring, animated, easings } from "react-spring";
 import { ScalableElement } from "../Tools/tools";
+import useClickOutside from "../Tools/useClickOutside";
 import { useLongPress } from "use-long-press";
 
 const MoreCategory = ({
@@ -17,14 +18,13 @@ const MoreCategory = ({
   setIsLongPress,
 }) => {
   const containerRef = useRef(null);
+  useClickOutside(containerRef, () => setIsLongPress(false));
 
   const [isDragging, setIsDragging] = useState(false);
 
   const handleMouseDown = () => {
     setIsDragging(true);
   };
-
-  const [draggedX, setDraggedX] = useState(0);
 
   const characterCountsIni = useMemo(() => {
     return List.map((item) => Math.round(item[0].length * 6 + 65));
@@ -38,11 +38,9 @@ const MoreCategory = ({
       return acc;
     }, []);
   }, [characterCounts]);
-  const [cumulatedValues, setCumulatedValues] = useState(cumulatedValuesIni);
 
   useEffect(() => {
     setCharacterCounts(characterCountsIni);
-    setCumulatedValues(cumulatedValuesIni);
   }, [characterCountsIni, cumulatedValuesIni, List, setSelectedCategory]);
 
   const handleClick = (item) => {
@@ -51,14 +49,6 @@ const MoreCategory = ({
       setSelectedCategory(List[item]);
     }
   };
-
-  const listSprings = useSprings(
-    List.length,
-    List.map((item) => ({
-      backgroundColor:
-        item[0] === selectedCategory[0] ? `var(--Bc-3)` : `var(--Ec-4)`,
-    }))
-  );
 
   const listSpringsOpen = useSprings(
     List.length,
@@ -104,18 +94,15 @@ const MoreCategory = ({
   const Apear = useSpring({
     from: {
       opacity: isLongPress ? 0 : 1,
-      top: isLongPress
-        ? `calc(70% - ${listSprings.length * 40 - 50}px)`
-        : `calc(70% - ${listSprings.length * 40}px)`,
     },
     to: {
       opacity: !isLongPress ? 0 : 1,
       position: "absolute",
-      top: !isLongPress
-        ? `calc(70% - ${listSprings.length * 40 - 50}px)`
-        : `calc(70% - ${listSprings.length * 40}px)`,
+      top: "-10%",
+      height: "110%",
+      width: "100%",
       zIndex: 100,
-      height: `calc(70% + ${listSprings.length * 15}px)`,
+      // height: `calc(70% + ${listSprings.length * 15}px)`,
       overflow: "visible",
       background: "none",
       outline: "none",
@@ -125,17 +112,27 @@ const MoreCategory = ({
     config: { duration: 1000, easing: easings.easeOutExpo },
   });
   const ApearP = useSpring({
-    opacity: !isLongPress ? 0 : 1,
-    top: !isLongPress ? 0 : -15,
-    delay: !isLongPress ? 0 : 200,
+    from: { opacity: isLongPress ? 0 : 1, top: isLongPress ? 50 : 25 },
+    to: {
+      opacity: !isLongPress ? 0 : 1,
+      top: !isLongPress ? 50 : 25,
+      position: "relative",
+    },
   });
   const ApearItems = useSpring({
-    flexDirection: "column",
-    alignItems: "flex-start",
-    left: 0,
-    background: "none",
-    flexWrap: "wrap",
-    width: "auto",
+    from: {
+      top: 50,
+    },
+    to: {
+      position: "relative",
+      top: 25,
+      flexDirection: "column",
+      alignItems: "flex-start",
+      left: 0,
+      background: "none",
+      flexWrap: "wrap",
+      width: "max-content",
+    },
   });
   const Apearh2 = useSpring({
     marginBottom: 6,
@@ -145,7 +142,11 @@ const MoreCategory = ({
     <>
       <animated.li className="Add_Category" {...longBind()} style={Apear}>
         <animated.p style={ApearP}>Select a category : </animated.p>{" "}
-        <animated.div className="Add_Category_items" style={ApearItems}>
+        <animated.div
+          className="Add_Category_items"
+          style={ApearItems}
+          ref={containerRef}
+        >
           {listSpringsOpen.map((animation, index) => (
             <ScalableElement
               style={{

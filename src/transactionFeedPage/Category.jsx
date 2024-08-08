@@ -70,16 +70,6 @@ const Category = ({
     }
   }, [selectedCategory]);
 
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [contentWidth, setContentWidth] = useState(0);
-
-  useEffect(() => {
-    if (containerRef.current) {
-      setContainerWidth(containerRef.current.clientWidth);
-      setContentWidth(containerRef.current.scrollWidth);
-    }
-  }, []);
-
   const listSprings = useSprings(
     List.length,
     List.map((item) => ({
@@ -93,14 +83,14 @@ const Category = ({
   });
 
   const bind = useDrag(({ movement: [mx], dragging }) => {
-    const maxDrag = contentWidth - containerWidth;
+    const maxDrag =
+      containerRef.current.scrollWidth - containerRef.current.clientWidth;
     const newDraggedX = draggedX - mx / 15;
     const constrainedX = Math.max(0, Math.min(maxDrag, newDraggedX));
     mx !== 0 && setDraggedX(constrainedX);
     isDragging && setIsDragging(mx !== 0 ? false : true);
   });
 
-  const [enabled, setEnabled] = useState(true);
   const longPressTimeout = useRef(null);
 
   navigator.vibrate =
@@ -126,7 +116,7 @@ const Category = ({
     [isLongPress]
   );
 
-  const longBind = useLongPress(enabled ? startLongPress : null, {
+  const longBind = useLongPress(true ? startLongPress : null, {
     onStart: (event) => {
       document.addEventListener("mousemove", handleMove);
       document.addEventListener("touchmove", handleMove);
