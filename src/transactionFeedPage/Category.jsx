@@ -63,7 +63,6 @@ const Category = ({
       ) {
         setDraggedX(containerRef.current.scrollWidth - 265);
       }
-      containerRef.current.style.transform = `translateX(0px)`;
     }
   };
 
@@ -101,7 +100,7 @@ const Category = ({
     const maxDrag = contentWidth - containerWidth;
     const newDraggedX = draggedX - mx / 15;
     const constrainedX = Math.max(0, Math.min(maxDrag, newDraggedX));
-    setDraggedX(constrainedX);
+    mx !== 0 && setDraggedX(constrainedX);
     isDragging && setIsDragging(mx !== 0 ? false : true);
   });
 
