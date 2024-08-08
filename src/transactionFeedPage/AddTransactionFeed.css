@@ -315,19 +315,20 @@
   color: var(--Ac-1);
   border-radius: 50px;
   cursor: pointer;
-  /* padding: 0 20px; */
+  padding: 0 20px;
   background: var(--Ec-2);
   margin: 0 2px;
   outline: 1px solid var(--Ac-3);
   width: max-content;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   background: linear-gradient(165deg, var(--Ac-4) -20%, var(--Ec-1) 120%);
   height: 50px;
+  box-sizing: border-box;
 }
 .Add_Category_items h2 svg {
   font-size: 0.9rem;
-  margin-right: 5px;
+  margin-right: 8px;
   color: var(--Bc-1);
   box-sizing: border-box;
   opacity: 0.6;

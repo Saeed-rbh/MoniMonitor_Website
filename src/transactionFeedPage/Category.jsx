@@ -28,7 +28,7 @@ const Category = ({
   const [draggedX, setDraggedX] = useState(0);
 
   const characterCountsIni = useMemo(() => {
-    return List.map((item) => Math.round(item[0].length * 7.6 + 40));
+    return List.map((item) => Math.round(item[0].length * 4.5 + 80));
   }, [List]);
   const [characterCounts, setCharacterCounts] = useState(characterCountsIni);
 
