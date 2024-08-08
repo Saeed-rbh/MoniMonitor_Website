@@ -116,14 +116,14 @@ const MoreCategory = ({
     from: {
       opacity: isLongPress ? 0 : 1,
       top: isLongPress
-        ? "calc(70% - 0px)"
+        ? `calc(70% - ${listSprings.length * 40 - 50}px)`
         : `calc(70% - ${listSprings.length * 40}px)`,
     },
     to: {
       opacity: !isLongPress ? 0 : 1,
       position: "absolute",
       top: !isLongPress
-        ? "calc(70% - 0px)"
+        ? `calc(70% - ${listSprings.length * 40 - 50}px)`
         : `calc(70% - ${listSprings.length * 40}px)`,
       zIndex: 100,
       height: `calc(70% + ${listSprings.length * 15}px)`,
