@@ -28,14 +28,14 @@ const Category = ({
   const [draggedX, setDraggedX] = useState(0);
 
   const characterCountsIni = useMemo(() => {
-    return List.map((item) => Math.round(item[0].length * 7.35 + 40));
+    return List.map((item) => Math.round(item[0].length * 7.6 + 40));
   }, [List]);
   const [characterCounts, setCharacterCounts] = useState(characterCountsIni);
 
   const cumulatedValuesIni = useMemo(() => {
     return characterCounts.reduce((acc, value) => {
       const lastValue = acc.length > 0 ? acc[acc.length - 1] : 0;
-      acc.push(lastValue + value - 5 * acc.length);
+      acc.push(lastValue + value);
       return acc;
     }, []);
   }, [characterCounts]);
@@ -56,6 +56,13 @@ const Category = ({
         item !== cumulatedValues.length - 1 &&
         setDraggedX(cumulatedValues[item - 1]);
       item === 0 && setDraggedX(0);
+      if (
+        item === cumulatedValues.length - 1 &&
+        containerRef.current.scrollWidth - 265 >
+          cumulatedValues[item - 1] - characterCounts[item - 1]
+      ) {
+        setDraggedX(containerRef.current.scrollWidth - 265);
+      }
       containerRef.current.style.transform = `translateX(0px)`;
     }
   };
@@ -174,7 +181,11 @@ const Category = ({
           <animated.div className="Add_Category_items" style={ApearItems}>
             {listSpringsOpen.map((animation, index) => (
               <ScalableElement
-                style={{ ...animation, ...Apearh2 }}
+                style={{
+                  ...animation,
+                  ...Apearh2,
+                  width: `${characterCounts[index]}px`,
+                }}
                 as="h2"
                 key={index}
                 onMouseDown={() => handleMouseDown(index)}

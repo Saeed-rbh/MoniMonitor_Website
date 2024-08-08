@@ -315,7 +315,7 @@
   color: var(--Ac-1);
   border-radius: 50px;
   cursor: pointer;
-  padding: 0 20px;
+  /* padding: 0 20px; */
   background: var(--Ec-2);
   margin: 0 2px;
   outline: 1px solid var(--Ac-3);
