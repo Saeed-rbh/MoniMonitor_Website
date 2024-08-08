@@ -49,17 +49,6 @@ const MoreCategory = ({
     if (isDragging) {
       setIsLongPress(false);
       setSelectedCategory(List[item]);
-      // item !== 0 &&
-      //   item !== cumulatedValues.length - 1 &&
-      //   setDraggedX(cumulatedValues[item - 1]);
-      // item === 0 && setDraggedX(0);
-      // if (
-      //   item === cumulatedValues.length - 1 &&
-      //   containerRef.current.scrollWidth - 265 >
-      //     cumulatedValues[item - 1] - characterCounts[item - 1]
-      // ) {
-      //   setDraggedX(containerRef.current.scrollWidth - 265);
-      // }
     }
   };
 
@@ -149,7 +138,7 @@ const MoreCategory = ({
     width: "auto",
   });
   const Apearh2 = useSpring({
-    marginBottom: 4,
+    marginBottom: 6,
   });
 
   return (
