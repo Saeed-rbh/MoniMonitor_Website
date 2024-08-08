@@ -4,7 +4,7 @@
   flex-direction: row;
   align-items: flex-start;
   justify-content: flex-start;
-  width: calc(100% - 40px);
+  width: calc(100% - 30px);
   padding-top: 0px;
   border-radius: 30px;
   flex-wrap: wrap;
