@@ -57,14 +57,13 @@ const Category = ({
 
   useEffect(() => {
     const index = List.findIndex((item) => selectedCategory[0] === item[0]);
-    index !== 0 &&
-      index !== cumulatedValues.length - 1 &&
+    if (index === 0) {
+      setDraggedX(0);
+    } else if (index !== cumulatedValues.length - 1) {
       setDraggedX(cumulatedValues[index - 1]);
-    selectedCategory === 0 && setDraggedX(0);
-    if (
-      index === cumulatedValues.length - 1 &&
+    } else if (
       containerRef.current.scrollWidth - 265 >
-        cumulatedValues[index - 1] - characterCounts[index - 1]
+      cumulatedValues[index - 1] - characterCounts[index - 1]
     ) {
       setDraggedX(containerRef.current.scrollWidth - 265);
     }
