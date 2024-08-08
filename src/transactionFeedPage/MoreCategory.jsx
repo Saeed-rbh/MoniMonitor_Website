@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { useSprings, useSpring, animated } from "react-spring";
+import { useSprings, useSpring, animated, easings } from "react-spring";
 import { ScalableElement } from "../Tools/tools";
 import { useLongPress } from "use-long-press";
 
@@ -133,6 +133,7 @@ const MoreCategory = ({
       display: "flex",
       marginLeft: 10,
     },
+    config: { duration: 1000, easing: easings.easeOutExpo },
   });
   const ApearP = useSpring({
     opacity: !isLongPress ? 0 : 1,
