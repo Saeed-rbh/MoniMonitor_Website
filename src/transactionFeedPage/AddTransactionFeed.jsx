@@ -26,7 +26,6 @@ function AddTransactionFeed({
   setOpen,
 }) {
   const Modify = addTransaction.Amount > 0 ? true : false;
-
   const height = Math.max(Math.min(useWindowHeight(160), 500), 480);
 
   const OriginalList = useMemo(() => {

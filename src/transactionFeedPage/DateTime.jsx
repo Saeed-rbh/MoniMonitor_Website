@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSpring, animated } from "react-spring";
-
+import DatePicker from "../Tools/DatePicker";
+import TimePicker from "../Tools/TimePicker";
 const DateTime = ({
   currentTime,
   hour,
@@ -11,6 +12,37 @@ const DateTime = ({
   defaultValue,
   isLongPress,
 }) => {
+  const currentDate = new Date();
+  const [selectedDate, setSelectedDate] = useState({
+    year: String(currentDate.getFullYear()),
+    month: String(currentDate.getMonth() + 1).padStart(2, "0"),
+    day: String(currentDate.getDate()).padStart(2, "0"),
+    hours: String(currentDate.getHours()).padStart(2, "0"),
+    minutes: String(currentDate.getMinutes()).padStart(2, "0"),
+    zone: String(currentDate.getTimezoneOffset()),
+  });
+
+  useEffect(() => {
+    const inputTime = new Date(
+      `${selectedDate.year}-${String(selectedDate.month).padStart(
+        2,
+        "0"
+      )}-${String(selectedDate.day).padStart(2, "0")}T${String(
+        selectedDate.hours
+      ).padStart(2, "0")}:${String(selectedDate.minutes).padStart(2, "0")}`
+    );
+    if (inputTime > currentDate) {
+      setSelectedDate({
+        year: String(currentDate.getFullYear()),
+        month: String(currentDate.getMonth() + 1).padStart(2, "0"),
+        day: String(currentDate.getDate()).padStart(2, "0"),
+        hours: String(currentDate.getHours()).padStart(2, "0"),
+        minutes: String(currentDate.getMinutes()).padStart(2, "0"),
+        zone: String(currentDate.getTimezoneOffset()),
+      });
+    }
+  }, [selectedDate]);
+
   const fade = useSpring({
     filter: !isLongPress ? "blur(0px)" : "blur(10px)",
   });
@@ -81,88 +113,19 @@ const DateTime = ({
         <p>
           • Time <span></span>
         </p>
-        <textarea
-          type="text"
-          maxLength="2"
-          inputMode="numeric"
-          placeholder={currentTime.hours}
-          value={
-            ModifiedTime[0] || !Modify
-              ? hour.value
-              : defaultValue.split(" ")[1].split(":")[0]
-          }
-          onChange={hour.handleChange}
-          // onBlur={hour.handleBlur}
-          style={getBorderStyle(hour.isValid)}
-          defaultValue={Modify ? defaultValue.split(" ")[1].split(":")[0] : ""}
-        />
-        :
-        <textarea
-          type="text"
-          maxLength="2"
-          inputMode="numeric"
-          placeholder={currentTime.minutes}
-          value={
-            ModifiedTime[1] || !Modify
-              ? minute.value
-              : defaultValue.split(" ")[1].split(":")[1]
-          }
-          onChange={minute.handleChange}
-          onBlur={minute.handleBlur}
-          style={getBorderStyle(minute.isValid)}
-          defaultValue={Modify ? defaultValue.split(" ")[1].split(":")[1] : ""}
+        <TimePicker
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
         />
       </h1>
       <h1>
         <p>
           • Date <span></span>
         </p>
-        <textarea
-          type="text"
-          maxLength="2"
-          inputMode="numeric"
-          placeholder={currentTime.day}
-          value={
-            ModifiedTime[2] || !Modify
-              ? day.value
-              : defaultValue.split(" ")[0].split("-")[2]
-          }
-          onChange={day.handleChange}
-          onBlur={day.handleBlur}
-          style={getBorderStyle(day.isValid)}
-          defaultValue={Modify ? defaultValue.split(" ")[0].split("-")[2] : ""}
-        />
-        /
-        <textarea
-          type="text"
-          maxLength="2"
-          inputMode="numeric"
-          placeholder={currentTime.month}
-          value={
-            ModifiedTime[3] || !Modify
-              ? month.value
-              : defaultValue.split(" ")[0].split("-")[1]
-          }
-          onChange={month.handleChange}
-          onBlur={month.handleBlur}
-          style={getBorderStyle(month.isValid)}
-          defaultValue={Modify ? defaultValue.split(" ")[0].split("-")[1] : ""}
-        />
-        /
-        <textarea
-          type="text"
-          maxLength="4"
-          inputMode="numeric"
-          placeholder={currentTime.year}
-          value={
-            ModifiedTime[4] || !Modify
-              ? year.value
-              : defaultValue.split(" ")[0].split("-")[0]
-          }
-          onChange={year.handleChange}
-          onBlur={year.handleBlur}
-          style={getBorderStyle(year.isValid)}
-          defaultValue={Modify ? defaultValue.split(" ")[0].split("-")[0] : ""}
+        <DatePicker
+          setSelectedDate={setSelectedDate}
+          selectedDate={selectedDate}
+          maxDate={selectedDate}
         />
       </h1>
     </animated.li>

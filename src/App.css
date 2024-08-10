@@ -48,6 +48,7 @@ body {
   overflow-x: hidden; /* Hide horizontal scrollbar */
   margin: 0;
   background-color: var(--Ec-1);
+  font-family: "Noto Sans", sans-serif;
 }
 #root {
   --safe-area-inset-bottom: env(safe-area-inset-bottom);
@@ -64,6 +65,7 @@ body {
   justify-content: center;
   padding: 10px;
   box-sizing: border-box;
+  font-family: "Noto Sans", sans-serif;
 }
 
 .MainBackground {
