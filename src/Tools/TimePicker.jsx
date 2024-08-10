@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-const TimePicker = ({ setSelectedDate, selectedDate }) => {
+const TimePicker = ({ setSelectedDate, selectedDate, submit }) => {
   const [hours, setHours] = useState(selectedDate.hours);
   const [minutes, setMinutes] = useState(selectedDate.minutes);
   const [blur, setBlur] = useState(true);
@@ -86,9 +86,12 @@ const TimePicker = ({ setSelectedDate, selectedDate }) => {
     selectContent(e.target);
   };
 
-  const handleBlur = (e, setFunction, defaultValue) => {
+  const handleBlur = (e, setFunction, defaultValue, order) => {
+    if (defaultValue.length < order) {
+      setFunction(defaultValue.padStart(order, "0"));
+    }
+
     e.target.style.backgroundColor = "transparent";
-    // Set default value if input is empty
     if (e.target.innerText.trim() === "") {
       setFunction(defaultValue);
       e.target.innerText = defaultValue;
@@ -156,6 +159,7 @@ const TimePicker = ({ setSelectedDate, selectedDate }) => {
     if (sliced.length < 0) {
       sliced = min;
     }
+
     return sliced;
   };
 
@@ -174,7 +178,7 @@ const TimePicker = ({ setSelectedDate, selectedDate }) => {
           contentEditable
           suppressContentEditableWarning
           onFocus={handleFocus}
-          onBlur={(e) => handleBlur(e, setHours, hours)}
+          onBlur={(e) => handleBlur(e, setHours, hours, 2)}
           onKeyDown={(e) => handleKeyDown(e)}
           onInput={(e) => handleInput(e, setHours, "00", "23", 2)}
           style={inputStyle}
@@ -189,7 +193,7 @@ const TimePicker = ({ setSelectedDate, selectedDate }) => {
           contentEditable
           suppressContentEditableWarning
           onFocus={handleFocus}
-          onBlur={(e) => handleBlur(e, setMinutes, minutes)}
+          onBlur={(e) => handleBlur(e, setMinutes, minutes, 2)}
           onKeyDown={(e) => handleKeyDown(e)}
           onInput={(e) => handleInput(e, setMinutes, "01", "59", 2)}
           style={inputStyle}

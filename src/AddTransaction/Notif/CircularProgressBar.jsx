@@ -29,7 +29,6 @@ const CircularProgressBar = ({
     >
       {(value) => {
         const roundedValue = Math.ceil(value / 20);
-        console.log(value);
 
         return (
           <CircularProgressbar

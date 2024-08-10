@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
 
-const DatePicker = ({ minDate, maxDate, setSelectedDate, selectedDate }) => {
+const DatePicker = ({
+  minDate,
+  maxDate,
+  setSelectedDate,
+  selectedDate,
+}) => {
   const [day, setDay] = useState(selectedDate.day);
   const [month, setMonth] = useState(selectedDate.month);
   const [year, setYear] = useState(selectedDate.year);
@@ -89,7 +94,10 @@ const DatePicker = ({ minDate, maxDate, setSelectedDate, selectedDate }) => {
     selectContent(e.target);
   };
 
-  const handleBlur = (e, setFunction, defaultValue) => {
+  const handleBlur = (e, setFunction, defaultValue, order) => {
+    if (defaultValue.length < order) {
+      setFunction(defaultValue.padStart(order, "0"));
+    }
     e.target.style.backgroundColor = "transparent";
     // Set default value if input is empty
     if (e.target.innerText.trim() === "") {
@@ -186,7 +194,7 @@ const DatePicker = ({ minDate, maxDate, setSelectedDate, selectedDate }) => {
           contentEditable
           suppressContentEditableWarning
           onFocus={handleFocus}
-          onBlur={(e) => handleBlur(e, setDay, day)}
+          onBlur={(e) => handleBlur(e, setDay, day, 2)}
           onKeyDown={(e) => handleKeyDown(e)}
           onInput={(e) => handleInput(e, setDay, "01", "31", 2)}
           style={inputStyle}
@@ -201,7 +209,7 @@ const DatePicker = ({ minDate, maxDate, setSelectedDate, selectedDate }) => {
           contentEditable
           suppressContentEditableWarning
           onFocus={handleFocus}
-          onBlur={(e) => handleBlur(e, setMonth, month)}
+          onBlur={(e) => handleBlur(e, setMonth, month, 2)}
           onKeyDown={(e) => handleKeyDown(e)}
           onInput={(e) => handleInput(e, setMonth, "01", "12", 2)}
           style={inputStyle}
@@ -219,7 +227,7 @@ const DatePicker = ({ minDate, maxDate, setSelectedDate, selectedDate }) => {
           contentEditable
           suppressContentEditableWarning
           onFocus={handleFocus}
-          onBlur={(e) => handleBlur(e, setYear, year)}
+          onBlur={(e) => handleBlur(e, setYear, year, 4)}
           onKeyDown={(e) => handleKeyDown(e)}
           onInput={(e) =>
             handleInput(

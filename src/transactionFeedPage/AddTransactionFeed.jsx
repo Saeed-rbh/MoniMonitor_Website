@@ -25,6 +25,16 @@ function AddTransactionFeed({
   setModify,
   setOpen,
 }) {
+  const currentDate = new Date();
+  const [selectedDate, setSelectedDate] = useState({
+    year: String(currentDate.getFullYear()),
+    month: String(currentDate.getMonth() + 1).padStart(2, "0"),
+    day: String(currentDate.getDate()).padStart(2, "0"),
+    hours: String(currentDate.getHours()).padStart(2, "0"),
+    minutes: String(currentDate.getMinutes()).padStart(2, "0"),
+    zone: String(currentDate.getTimezoneOffset()),
+  });
+
   const Modify = addTransaction.Amount > 0 ? true : false;
   const height = Math.max(Math.min(useWindowHeight(160), 500), 480);
 
@@ -100,11 +110,11 @@ function AddTransactionFeed({
     });
   }, []);
 
-  const [hour] = useNumericInput("", 0, 23);
-  const [minute] = useNumericInput("", 0, 59);
-  const [day] = useNumericInput("", 1, 31);
-  const [month] = useNumericInput("", 1, 12);
-  const [year] = useNumericInput("", 2023, currentTime.year, true);
+  // const [hour] = useNumericInput("", 0, 23);
+  // const [minute] = useNumericInput("", 0, 59);
+  // const [day] = useNumericInput("", 1, 31);
+  // const [month] = useNumericInput("", 1, 12);
+  // const [year] = useNumericInput("", 2023, currentTime.year, true);
 
   const [whichType, setWhichType] = useState(
     addTransaction.Type === "Daily"
@@ -114,49 +124,11 @@ function AddTransactionFeed({
       : true
   );
 
-  const handleAddClick = () => {
+  const handleAddClick = async () => {
     value.length < 1 && !Modify ? setValueError(false) : setValueError(true);
     if (value.length > 0 || Modify) {
-      const yearSave =
-        year.value.length < 1
-          ? Modify
-            ? addTransaction.Timestamp.split(" ")[0].split("-")[0]
-            : currentTime.year
-          : year.value;
-      const monthSave =
-        month.value.length < 1
-          ? Modify
-            ? addTransaction.Timestamp.split(" ")[0].split("-")[1]
-            : currentTime.month
-          : month.value;
-      const daySave =
-        day.value.length < 1
-          ? Modify
-            ? addTransaction.Timestamp.split(" ")[0].split("-")[2]
-            : currentTime.day
-          : day.value;
-      const hourSave =
-        hour.value.length < 1
-          ? Modify
-            ? addTransaction.Timestamp.split(" ")[1].split(":")[0]
-            : currentTime.hours
-          : hour.value;
-      const minuteSave =
-        minute.value.length < 1
-          ? Modify
-            ? addTransaction.Timestamp.split(" ")[1].split(":")[1]
-            : currentTime.minutes
-          : minute.value;
-
       const selectedReason =
         reason.length !== 0 ? reason : addTransaction.Reason;
-
-      // if (selectedCategory[0] === "Auto Detect") {
-      //   fetchLabel({
-      //     reason: selectedReason,
-      //     type: isAddClicked,
-      //   });
-      // }
       const newTransaction = {
         Amount:
           Number(value.replace(/[^0-9]/g, "")) !== 0
@@ -164,10 +136,11 @@ function AddTransactionFeed({
             : addTransaction.Amount,
         Reason: selectedReason,
         Label: selectedCategory[0],
-        Timestamp: `${yearSave}-${monthSave}-${daySave} ${hourSave}:${minuteSave}`,
+        Timestamp: `${selectedDate.year}-${selectedDate.month}-${selectedDate.day} ${selectedDate.hours}:${selectedDate.minutes}`,
         Type: whichType ? "Daily" : "Monthly",
         Category: isAddClicked,
       };
+      console.log(newTransaction);
 
       setAddTransaction(newTransaction);
       setIsClicked(null);
@@ -191,38 +164,11 @@ function AddTransactionFeed({
     scale: !isLongPress ? 1 : 0.9,
   });
 
-  // const [autoLabel, setAutoLabel] = useState("");
-  // const fetchLabel = async (Data) => {
-  //   const response = await fetch("/api/get-label", {
-  //     method: "POST",
-  //     headers: {
-  //       "Content-Type": "application/json",
-  //     },
-  //     body: JSON.stringify(Data),
-  //   });
-  //   const data = await response.json();
-  //   const autoLabel = List.find((item) => item[0] === data.label);
-  //   setAutoLabel(autoLabel);
-  // };
-  // useEffect(() => {
-  //   if (autoLabel.length > 0) {
-  //     const newTransaction = {
-  //       Amount: addTransaction.Amount,
-  //       Reason: addTransaction.Reason,
-  //       Label: autoLabel[0],
-  //       Timestamp: addTransaction.Timestamp,
-  //       Type: addTransaction.Type,
-  //       Category: addTransaction.Category,
-  //     };
-  //     setAddTransaction(newTransaction);
-  //   }
-  // }, [autoLabel]);
-
   return (
     <animated.div className="AddTransactionFeed" style={fade}>
       <h3>
         <span style={DotStyle}>•</span>Add New{" "}
-        <span>{isAddClicked.replace("&", " & ")}</span>
+        <span>{isAddClicked?.replace("&", " & ")}</span>
       </h3>
       {isLongPress && (
         <MoreCategory
@@ -260,13 +206,9 @@ function AddTransactionFeed({
           defaultValue={Modify ? addTransaction.Reason : ""}
         />
         <DateTime
-          currentTime={currentTime}
-          hour={hour}
-          day={day}
-          minute={minute}
-          month={month}
-          year={year}
-          defaultValue={Modify ? addTransaction.Timestamp : ""}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          currentDate={currentDate}
         />
         <Category
           List={List}
