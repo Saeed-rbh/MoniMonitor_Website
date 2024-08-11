@@ -51,12 +51,12 @@ function App() {
       <div className="App">
         <Suspense>
           <Header userData={userData} />
-          <Telegram
+          {/* <Telegram
             isMoreClicked={isMoreClicked}
             setIsMoreClicked={setIsMoreClicked}
             isAddClicked={isAddClicked}
             setIsAddClicked={setIsAddClicked}
-          />
+          /> */}
           <Routes>
             <Route
               path="/Transactions"

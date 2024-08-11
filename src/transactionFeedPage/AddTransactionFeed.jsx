@@ -60,8 +60,18 @@ function AddTransactionFeed({
 
   const ModifyLabel = List.find((person) => person[0] === addTransaction.Label);
   const [selectedCategory, setSelectedCategory] = useState(
-    Modify ? ModifyLabel : List[0]
+    Modify
+      ? ModifyLabel
+      : addTransaction.Label?.length > 0
+      ? List.find((item) => addTransaction.Label === item[0])
+      : List[1]
   );
+
+  // useEffect(() => {
+  //   if (addTransaction.Label?.length > 0) {
+  //     setSelectedCategory(addTransaction.Label);
+  //   }
+  // }, []);
 
   const DotStyle = {
     color:
@@ -81,40 +91,6 @@ function AddTransactionFeed({
   }, [isAddClicked]);
 
   const [reason, setReason] = useState("");
-
-  const [currentTime, setCurrentTime] = useState({
-    hours: "",
-    minutes: "",
-    year: "",
-    month: "",
-    day: "",
-  });
-
-  useEffect(() => {
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const year = now.getFullYear();
-    let month = now.getMonth() + 1;
-    let day = now.getDate();
-
-    month = month < 10 ? `0${month}` : month;
-    day = day < 10 ? `0${day}` : day;
-
-    setCurrentTime({
-      hours: hours < 10 ? `0${hours}` : hours,
-      minutes: minutes < 10 ? `0${minutes}` : minutes,
-      year: year,
-      month: month,
-      day: day,
-    });
-  }, []);
-
-  // const [hour] = useNumericInput("", 0, 23);
-  // const [minute] = useNumericInput("", 0, 59);
-  // const [day] = useNumericInput("", 1, 31);
-  // const [month] = useNumericInput("", 1, 12);
-  // const [year] = useNumericInput("", 2023, currentTime.year, true);
 
   const [whichType, setWhichType] = useState(
     addTransaction.Type === "Daily"
@@ -140,7 +116,6 @@ function AddTransactionFeed({
         Type: whichType ? "Daily" : "Monthly",
         Category: isAddClicked,
       };
-      console.log(newTransaction);
 
       setAddTransaction(newTransaction);
       setIsClicked(null);
@@ -156,7 +131,6 @@ function AddTransactionFeed({
       opacity: isAddClicked !== null ? 1 : 0,
       height: `${height}px`,
     },
-    // config: { duration: isLongPress ? 100 : 500 },
   });
 
   const moreBlurStyle = useSpring({

@@ -43,7 +43,7 @@ const Category = ({
 
   useEffect(() => {
     setDraggedX(0);
-    setSelectedCategory(List[0]);
+    setSelectedCategory(selectedCategory);
     setCharacterCounts(characterCountsIni);
     setCumulatedValues(cumulatedValuesIni);
   }, [characterCountsIni, cumulatedValuesIni, List, setSelectedCategory]);
