@@ -2,13 +2,18 @@ import React, { useEffect } from "react";
 import { useSpring, animated } from "react-spring";
 import DatePicker from "../Tools/DatePicker";
 import TimePicker from "../Tools/TimePicker";
+import useLongPressHandler from "../Tools/useLongPressHandler";
+
 const DateTime = ({
   isLongPress,
   selectedDate,
   setSelectedDate,
   currentDate,
   submit,
+  setIsLongPress,
 }) => {
+  const longBind = useLongPressHandler({ isLongPress, setIsLongPress });
+
   useEffect(() => {
     const inputTime = new Date(
       `${selectedDate.year}-${String(selectedDate.month).padStart(
@@ -35,7 +40,7 @@ const DateTime = ({
   });
 
   return (
-    <animated.li className="Add_DateTime" style={fade}>
+    <animated.li className="Add_DateTime" style={fade} {...longBind()}>
       <h1>
         <p>
           • Time <span></span>

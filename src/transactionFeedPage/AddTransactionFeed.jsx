@@ -183,6 +183,8 @@ function AddTransactionFeed({
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           currentDate={currentDate}
+          isLongPress={isLongPress}
+          setIsLongPress={setIsLongPress}
         />
         <Category
           List={List}
