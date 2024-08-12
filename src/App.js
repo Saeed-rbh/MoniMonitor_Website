@@ -58,6 +58,8 @@ function App() {
             setIsAddClicked={setIsAddClicked}
           />
           <Routes>
+            <Route path="/" element={<div />} />
+
             <Route
               path="/Transactions"
               element={

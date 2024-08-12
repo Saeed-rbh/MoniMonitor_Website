@@ -74,7 +74,7 @@ const LabelDistribution = (Amount, labels) => {
 const groupTransactionsByMonth = (transactions) => {
   const groupedTransactions = {};
 
-  transactions.sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
+  transactions?.sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
 
   transactions.forEach((transaction) => {
     const months = [

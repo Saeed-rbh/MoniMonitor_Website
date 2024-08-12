@@ -61,12 +61,12 @@ const TransactionList = ({
           : selectedData.labelDistributionSaving;
 
       let other = 0;
-      const sortedData = Object.entries(distribution)
+      let sortedData = Object.entries(distribution)
         .map(([category, percentage]) => {
           const percentageValue = percentage;
           if (
             category !== "Other" &&
-            (Object.entries(distribution).length < 4 || percentageValue > 15)
+            (Object.entries(distribution).length < 4 || percentageValue > 5)
           ) {
             return {
               category,
@@ -79,6 +79,8 @@ const TransactionList = ({
         })
         .filter((item) => item !== null)
         .sort((a, b) => b.percentage - a.percentage);
+      console.log(distribution);
+
       if (sortedData.length === 1) {
         sortedData.push(null, null);
       } else if (sortedData.length === 2) {
@@ -87,12 +89,15 @@ const TransactionList = ({
         for (let index = 3; index < sortedData.length; index++) {
           other += sortedData[index].percentage;
         }
-        sortedData.slice(0, 3);
+
+        sortedData = sortedData.slice(0, 3);
       }
       sortedData.push({ category: "Other", percentage: other });
       setLabelDistribution(sortedData);
     }
   }, [selectedData, whichMonth, isMoreClicked]);
+
+  console.log(labelDistribution);
 
   const monthlyMainRef = useRef(null);
 
@@ -178,6 +183,7 @@ const TransactionList = ({
     }),
     useSpring({
       width: SummaryWidth[2] + "%",
+      justifyContent: "flex-end",
       color:
         isMoreClicked === "Balance" && labelDistribution.length > 0
           ? labelDistribution[2].category === "Income"
@@ -199,6 +205,7 @@ const TransactionList = ({
       width: SummaryWidth[3] + "%",
       color: "var(--Ac-1)",
       backgroundColor: "var(--Ac-2)",
+      justifyContent: "flex-end",
     }),
   ];
 
