@@ -57,20 +57,9 @@ function AddTransactionFeed({
     [AutoDetect, OriginalList]
   );
 
-  const ModifyLabel = List.find((person) => person[0] === addTransaction.Label);
   const [selectedCategory, setSelectedCategory] = useState(
-    Modify
-      ? ModifyLabel
-      : addTransaction.Label?.length > 0
-      ? List.find((item) => addTransaction.Label === item[0])
-      : List[1]
+    Modify ? List.find((item) => addTransaction.Label === item[0]) : List[0]
   );
-
-  // useEffect(() => {
-  //   if (addTransaction.Label?.length > 0) {
-  //     setSelectedCategory(addTransaction.Label);
-  //   }
-  // }, []);
 
   const DotStyle = {
     color:

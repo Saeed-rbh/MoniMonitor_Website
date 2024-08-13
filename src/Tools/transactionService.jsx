@@ -49,7 +49,6 @@ const LabelDistribution = (Amount, labels) => {
     };
   });
 
-  // Sort labels by percentage descending, with stability by label name
   labelPercentages.sort((a, b) => {
     if (b.percentage !== a.percentage) {
       return b.percentage - a.percentage; // Sort by percentage descending
@@ -57,16 +56,12 @@ const LabelDistribution = (Amount, labels) => {
       return a.label.localeCompare(b.label); // Maintain stability by label name
     }
   });
-
-  // Reconstruct label distribution with sorted percentages
   const sortedLabelDistributionExpense = {};
   labelPercentages?.forEach((item) => {
     sortedLabelDistributionExpense[item.label] = Number(
       item.percentage.toFixed(2)
     );
   });
-
-  // Assign sorted label distribution back to groupedTransactions
 
   return sortedLabelDistributionExpense;
 };
