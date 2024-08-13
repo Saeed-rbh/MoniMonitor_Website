@@ -60,7 +60,7 @@ const LabelDistribution = (Amount, labels) => {
 
   // Reconstruct label distribution with sorted percentages
   const sortedLabelDistributionExpense = {};
-  labelPercentages.forEach((item) => {
+  labelPercentages?.forEach((item) => {
     sortedLabelDistributionExpense[item.label] = Number(
       item.percentage.toFixed(2)
     );
@@ -161,7 +161,7 @@ const groupTransactionsByMonth = (transactions) => {
   });
 
   // Determine top labels and sort by percentage (with stability)
-  Object.keys(groupedTransactions).forEach((key) => {
+  Object.keys(groupedTransactions)?.forEach((key) => {
     const ExpenseAmount = groupedTransactions[key].totalExpense;
     const labelExpense = groupedTransactions[key].labelDistributionExpense;
 
@@ -207,7 +207,7 @@ const groupTransactionsByMonth = (transactions) => {
   );
 
   let previousNetTotal = null;
-  sortedGroupedTransactions.forEach(([key, value], index) => {
+  sortedGroupedTransactions?.forEach(([key, value], index) => {
     const currentNetTotal = value.netTotal;
     if (index > 0 && previousNetTotal !== null) {
       const percentageChange =
@@ -231,7 +231,7 @@ const getMonthDataAvailability = (data) => {
   let counter = Object.entries(data).length;
 
   // Populate availability with true for months with data
-  Object.entries(data).forEach((item) => {
+  Object.entries(data)?.forEach((item) => {
     const timestamp = item[0];
     const [year, month] = timestamp.split("-");
     const monthName = monthsNames[Number(month) - 1];

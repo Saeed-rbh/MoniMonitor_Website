@@ -1,14 +1,8 @@
-import React, {
-  useState,
-  useRef,
-  useEffect,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useSprings, useSpring, animated } from "react-spring";
 import { useDrag } from "@use-gesture/react";
 import { ScalableElement } from "../Tools/tools";
-import { useLongPress } from "use-long-press";
+import useLongPressHandler from "../Tools/useLongPressHandler";
 
 const Category = ({
   List,
@@ -50,7 +44,7 @@ const Category = ({
 
   const handleClick = (item) => {
     if (isDragging) {
-      setIsLongPress(false);
+      setIsLongPress([false, null]);
       setSelectedCategory(List[item]);
     }
   };
@@ -90,40 +84,17 @@ const Category = ({
     isDragging && setIsDragging(mx !== 0 ? false : true);
   });
 
-  const longPressTimeout = useRef(null);
-
-  navigator.vibrate =
-    navigator.vibrate ||
-    navigator.webkitVibrate ||
-    navigator.mozVibrate ||
-    navigator.msVibrate;
-
-  const startLongPress = useCallback((event) => {
-    longPressTimeout.current = setTimeout(() => {
-      if (navigator.vibrate) {
-        navigator.vibrate(1000);
-      }
-      setIsLongPress(true);
-    }, 500);
-  }, []);
-
-  const handleMove = useCallback(
-    (event) => {
-      if (isLongPress) {
-      }
-    },
-    [isLongPress]
-  );
-
-  const longBind = useLongPress(true ? startLongPress : null, {
-    onStart: (event) => {
-      document.addEventListener("mousemove", handleMove);
-      document.addEventListener("touchmove", handleMove);
-    },
+  const longBind = useLongPressHandler({
+    isLongPress: isLongPress,
+    setIsLongPress: setIsLongPress,
+    component: "Category",
   });
 
   const fade = useSpring({
-    filter: !isLongPress ? "blur(0px)" : "blur(10px)",
+    filter:
+      isLongPress[0] && isLongPress[1] === "Category"
+        ? "blur(10px)"
+        : "blur(0px)",
   });
 
   return (

@@ -1,7 +1,7 @@
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef } from "react";
 import { useLongPress } from "use-long-press";
 
-const useLongPressHandler = ({ isLongPress, setIsLongPress }) => {
+const useLongPressHandler = ({ isLongPress, setIsLongPress, component }) => {
   const longPressTimeout = useRef(null);
 
   navigator.vibrate =
@@ -15,13 +15,13 @@ const useLongPressHandler = ({ isLongPress, setIsLongPress }) => {
       if (navigator.vibrate) {
         navigator.vibrate(1000);
       }
-      setIsLongPress(true);
+      setIsLongPress([true, component]);
     }, 500);
   }, []);
 
   const handleMove = useCallback(
     (event) => {
-      if (isLongPress) {
+      if (isLongPress[0]) {
       }
     },
     [isLongPress]

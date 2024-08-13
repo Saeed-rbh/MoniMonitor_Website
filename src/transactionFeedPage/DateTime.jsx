@@ -12,7 +12,11 @@ const DateTime = ({
   submit,
   setIsLongPress,
 }) => {
-  const longBind = useLongPressHandler({ isLongPress, setIsLongPress });
+  const longBind = useLongPressHandler({
+    isLongPress: isLongPress,
+    setIsLongPress: setIsLongPress,
+    component: "DateTime",
+  });
 
   useEffect(() => {
     const inputTime = new Date(
@@ -36,7 +40,10 @@ const DateTime = ({
   }, [selectedDate]);
 
   const fade = useSpring({
-    filter: !isLongPress ? "blur(0px)" : "blur(10px)",
+    filter:
+      isLongPress[0] && isLongPress[1] === "DateTime"
+        ? "blur(10px)"
+        : "blur(0px)",
   });
 
   return (

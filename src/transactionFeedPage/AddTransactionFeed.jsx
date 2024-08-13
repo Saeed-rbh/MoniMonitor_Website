@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useNumericInput } from "./useNumericInput";
 import Amount from "./Amount";
 import Reason from "./Reason";
 import DateTime from "./DateTime";
@@ -124,7 +123,7 @@ function AddTransactionFeed({
     }
   };
 
-  const [isLongPress, setIsLongPress] = useState(false);
+  const [isLongPress, setIsLongPress] = useState([false, null]);
   const fade = useSpring({
     from: { opacity: isAddClicked !== null ? 0 : 1, height: `${height}px` },
     to: {
@@ -134,8 +133,8 @@ function AddTransactionFeed({
   });
 
   const moreBlurStyle = useSpring({
-    filter: !isLongPress ? "blur(0px)" : "blur(10px)",
-    scale: !isLongPress ? 1 : 0.9,
+    filter: !isLongPress[0] ? "blur(0px)" : "blur(10px)",
+    scale: !isLongPress[0] ? 1 : 0.9,
   });
 
   return (
@@ -144,7 +143,7 @@ function AddTransactionFeed({
         <span style={DotStyle}>•</span>Add New{" "}
         <span>{isAddClicked?.replace("&", " & ")}</span>
       </h3>
-      {isLongPress && (
+      {isLongPress[0] && isLongPress[1] === "Category" && (
         <MoreCategory
           List={List}
           setSelectedCategory={setSelectedCategory}
