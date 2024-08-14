@@ -845,7 +845,7 @@
 .calendar {
   display: flex;
   flex-direction: column;
-  width: calc(100% - 10px);
+  width: calc(100% - 30px);
   margin-top: 10px;
   color: var(--Ac-1);
   position: relative;
@@ -869,7 +869,7 @@
   position: relative;
   /* padding: 7px; */
   width: auto;
-  height: 40px;
+  aspect-ratio: 1/1;
   margin: 3px;
   background: var(--Ac-4);
   border-radius: 20px;
