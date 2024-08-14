@@ -894,7 +894,7 @@
 .day-name {
   color: var(--Ac-1);
   background: var(--Ec-3);
-  outline: 1px solid var(--Ec-1);
+  /* outline: 1px solid var(--Ec-1); */
   font-weight: 300;
   font-size: 0.75rem;
 }
