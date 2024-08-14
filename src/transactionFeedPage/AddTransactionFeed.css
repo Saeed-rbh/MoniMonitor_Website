@@ -833,7 +833,7 @@
 .Calendar_header h1 svg {
   position: absolute;
   right: 9px;
-  width: min-content;
+  height: 20px;
   height: 20px;
   color: var(--Ac-3);
 }
