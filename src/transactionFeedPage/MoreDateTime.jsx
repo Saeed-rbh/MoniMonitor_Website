@@ -44,8 +44,8 @@ const Calendar = ({ month, year, selectedDay, setSelectedDay }) => {
     daysOfWeek.map((name, index) => ({
       background:
         selectedDay !== null &&
-        ((calendarDays.findIndex((day) => day === selectedDay) + 1) % 7) - 1 ===
-          index
+        (calendarDays.findIndex((day) => day === selectedDay) + 1) % 7 ===
+          (index + 1) % 7
           ? "var(--Bc-3)"
           : "var(--Ec-2)",
     }))
