@@ -15,6 +15,7 @@ import { MdOutlineAutoAwesome } from "react-icons/md";
 import { animated, useSpring } from "react-spring";
 import "./AddTransactionFeed.css";
 import MoreCategory from "./MoreCategory";
+import MoreDateTime from "./MoreDateTime";
 
 function AddTransactionFeed({
   isAddClicked,
@@ -138,6 +139,12 @@ function AddTransactionFeed({
           setSelectedCategory={setSelectedCategory}
           selectedCategory={selectedCategory}
           defaultValue={Modify ? addTransaction.Label : ""}
+          isLongPress={isLongPress}
+          setIsLongPress={setIsLongPress}
+        />
+      )}
+      {isLongPress[0] && isLongPress[1] === "DateTime" && (
+        <MoreDateTime
           isLongPress={isLongPress}
           setIsLongPress={setIsLongPress}
         />

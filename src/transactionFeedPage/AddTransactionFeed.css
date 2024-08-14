@@ -780,3 +780,119 @@
     var(--Ec-4) 65%
   );
 }
+
+.Calendar_header {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 250px;
+  height: 10%;
+  min-height: 50px;
+  border-radius: 30px;
+  background: var(--Ec-4);
+  padding: 1px;
+  box-sizing: border-box;
+}
+
+.Calendar_header svg {
+  font-size: 5rem;
+  color: var(--Ac-2);
+  width: 22px;
+  height: 22px;
+  padding: 7px;
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+  border-radius: 30px;
+}
+.Calendar_header svg:hover {
+  background: var(--Ac-4);
+}
+.Calendar_header h1 {
+  position: relative;
+  font-size: 0.7rem;
+  font-weight: 200;
+  font-family: "Noto Sans", sans-serif;
+  color: var(--Ac-1);
+  border-radius: 50px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* padding: 0 20px; */
+  padding-right: 20px;
+  width: 150px;
+  box-sizing: border-box;
+  height: 100%;
+  background: var(--Ac-4);
+  outline: 1px solid var(--Ac-3);
+  border: 1px solid var(--Ac-4);
+  margin: 0;
+}
+.Calendar_header h1 svg {
+  position: absolute;
+  right: 9px;
+  width: min-content;
+  height: 20px;
+  color: var(--Ac-3);
+}
+.Calendar_header h1 span {
+  font-weight: 300;
+  margin-right: 5px;
+}
+
+.calendar {
+  display: flex;
+  flex-direction: column;
+  width: 280px;
+  height: 300px;
+  margin-top: 10px;
+  color: var(--Ac-1);
+  position: relative;
+  font-weight: 300;
+  font-size: 0.75rem;
+  box-sizing: border-box;
+}
+
+.day-names,
+.day-numbers {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+}
+
+.day-name,
+.day-number {
+  /* padding: 7px; */
+  width: 32px;
+  height: 32px;
+  margin: 3px;
+  background: var(--Ac-4);
+  border-radius: 20px;
+  outline: 1px solid var(--Ac-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.day-names {
+  margin-bottom: 10px;
+  background: var(--Bc-4);
+  outline: 1px solid var(--Ac-3);
+  border-radius: 30px;
+  padding: 5px;
+}
+.day-numbers {
+  background: var(--Ac-4);
+  outline: 1px solid var(--Ac-3);
+  border-radius: 30px;
+  padding: 10px 8px;
+  cursor: pointer;
+}
+.day-name {
+  color: var(--Ac-1);
+  background: var(--Ac-4);
+  outline: 1px solid var(--Ac-3);
+  font-weight: 300;
+  font-size: 0.75rem;
+}
