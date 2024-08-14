@@ -873,7 +873,6 @@
   margin: 3px;
   background: var(--Ac-4);
   border-radius: 20px;
-  outline: 1px solid var(--Ac-3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -894,8 +893,8 @@
 }
 .day-name {
   color: var(--Ac-1);
-  background: var(--Ac-4);
-  outline: 1px solid var(--Ac-3);
+  background: var(--Ec-3);
+  outline: 1px solid var(--Ec-1);
   font-weight: 300;
   font-size: 0.75rem;
 }
