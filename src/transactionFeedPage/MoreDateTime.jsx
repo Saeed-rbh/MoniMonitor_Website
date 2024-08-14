@@ -34,13 +34,30 @@ const Calendar = ({ month, year, selectedDay, setSelectedDay }) => {
     }))
   );
 
+  console.log(
+    selectedDay,
+    (calendarDays.findIndex((day) => day === selectedDay) + 1) % 7
+  );
+
+  const nameStyle = useSprings(
+    daysOfWeek.length,
+    daysOfWeek.map((name, index) => ({
+      background:
+        selectedDay !== null &&
+        ((calendarDays.findIndex((day) => day === selectedDay) + 1) % 7) - 1 ===
+          index
+          ? "var(--Bc-3)"
+          : "var(--Ec-2)",
+    }))
+  );
+
   return (
     <div className="calendar">
       <div className="day-names">
-        {daysOfWeek.map((day, index) => (
-          <div key={index} className="day-name">
-            {day}
-          </div>
+        {nameStyle.map((style, index) => (
+          <animated.div key={index} className="day-name" style={style}>
+            {daysOfWeek[index]}
+          </animated.div>
         ))}
       </div>
       <div className="day-numbers">
