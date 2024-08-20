@@ -12,6 +12,7 @@
   "dependencies": {
     "@aws-amplify/ui-react": "^6.2.0",
     "@use-gesture/react": "^10.3.1",
+    "amazon-cognito-identity-js": "^6.3.12",
     "aws-amplify": "^6.5.1",
     "axios": "^1.7.4",
     "d3-ease": "^3.0.1",
