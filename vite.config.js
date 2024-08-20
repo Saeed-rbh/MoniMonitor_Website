@@ -11,8 +11,8 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/setupTests.js"],
   },
-  // server: {
-  //   port: 3000,
-  //   host: "localhost", // Bind to localhost
-  // },
+  server: {
+    port: 3000,
+    host: "localhost", // Bind to localhost
+  },
 });

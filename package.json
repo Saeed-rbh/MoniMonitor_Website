@@ -10,7 +10,9 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@aws-amplify/ui-react": "^6.2.0",
     "@use-gesture/react": "^10.3.1",
+    "aws-amplify": "^6.5.1",
     "axios": "^1.7.4",
     "d3-ease": "^3.0.1",
     "date-fns": "^3.6.0",
@@ -24,12 +26,20 @@
     "use-long-press": "^3.2.0"
   },
   "devDependencies": {
+    "@aws-amplify/backend": "^1.1.1",
+    "@aws-amplify/backend-cli": "^1.2.3",
     "@testing-library/jest-dom": "^6.1.6",
     "@testing-library/react": "^14.1.2",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.20",
+    "aws-cdk": "^2.153.0",
+    "aws-cdk-lib": "^2.153.0",
+    "constructs": "^10.3.0",
+    "esbuild": "^0.23.1",
     "jsdom": "^23.0.1",
     "postcss": "^8.4.41",
+    "tsx": "^4.17.0",
+    "typescript": "^5.5.4",
     "vite": "^5.0.8",
     "vitest": "^1.1.1"
   }
