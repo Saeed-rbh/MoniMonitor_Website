@@ -24,4 +24,9 @@ import awsExports from "./aws-exports";
 
 Amplify.configure(awsExports); // Configure AWS Amplify with your settings
 
-ReactDOM.render(<App />, document.getElementById("root"));
+ReactDOM.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+  document.getElementById("root")
+);
