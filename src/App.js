@@ -8,7 +8,7 @@ import Header from "./Header/header";
 import { useTransactionData } from "./Tools/tools";
 
 import { Amplify } from "aws-amplify";
-import awsExports from "./aws-exports";
+import awsExports from "./config/aws-exports";
 
 Amplify.configure(awsExports);
 
