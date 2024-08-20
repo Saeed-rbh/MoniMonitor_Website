@@ -7,6 +7,11 @@ import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Header from "./Header/header";
 import { useTransactionData } from "./Tools/tools";
 
+import { Amplify } from "aws-amplify";
+import awsExports from "./aws-exports";
+
+Amplify.configure(awsExports);
+
 const Telegram = lazy(() => import("./Telegram/MoneyMonitor"));
 const Transactions = lazy(() => import("./Transactions/Transactions"));
 const AddTransaction = lazy(() => import("./AddTransaction/AddTransaction"));
