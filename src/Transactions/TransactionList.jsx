@@ -79,7 +79,6 @@ const TransactionList = ({
         })
         .filter((item) => item !== null)
         .sort((a, b) => b.percentage - a.percentage);
-      console.log(distribution);
 
       if (sortedData.length === 1) {
         sortedData.push(null, null);
@@ -96,8 +95,6 @@ const TransactionList = ({
       setLabelDistribution(sortedData);
     }
   }, [selectedData, whichMonth, isMoreClicked]);
-
-  console.log(labelDistribution);
 
   const monthlyMainRef = useRef(null);
 

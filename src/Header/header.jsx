@@ -10,10 +10,7 @@ function Header({ userData }) {
     <header className="MoneyMonitor_header">
       <div className="MoneyMonitor_User">
         <div className="MoneyMonitor_Logo">
-          <img
-            src={`${process.env.PUBLIC_URL}/MoneyMonitor.jpg`}
-            alt="MoneyMonitor Logo"
-          />
+          <img src={`../../public/MoneyMonitor.jpg`} alt="MoneyMonitor Logo" />
         </div>
         <p>
           <span>{userName}</span>

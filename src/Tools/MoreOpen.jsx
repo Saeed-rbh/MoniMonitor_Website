@@ -58,7 +58,7 @@ const MoreOpen = ({
   };
 
   useEffect(() => {
-    isAnimationEnds &&
+    if (isAnimationEnds) {
       api.start({
         scale: !!isClicked ? 1 : 0.9,
         opacity: !isClicked ? 0 : 1,
@@ -66,9 +66,12 @@ const MoreOpen = ({
           ? `calc(100vh - ${MoreOpenHeight}px)`
           : `calc(0vh - ${MoreOpenHeight}px)`,
         onRest: () => {
-          handleOnRest();
+          setTimeout(() => {
+            handleOnRest();
+          }, 0); // Delay the rest handler slightly
         },
       });
+    }
   }, [isClicked, isAnimationEnds, api]);
 
   const bind = useDrag(
