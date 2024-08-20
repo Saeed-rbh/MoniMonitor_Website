@@ -3,6 +3,7 @@ import React, { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import Header from "./Header/header";
 import { useTransactionData } from "./Tools/tools";
+import signUp from "./auth/signUp";
 
 import { Amplify } from "aws-amplify";
 import { withAuthenticator, Button, Heading } from "@aws-amplify/ui-react";
@@ -54,7 +55,7 @@ const App = ({ signOut }) => {
   return (
     <Router>
       <div className="App">
-        {" "}
+        <h1 onClick={signOut}>signOut</h1>{" "}
         <Suspense>
           {" "}
           <Header userData={userData} />
@@ -66,7 +67,6 @@ const App = ({ signOut }) => {
           />
           <Routes>
             <Route path="/" element={<div />} />
-
             <Route
               path="/Transactions"
               element={
