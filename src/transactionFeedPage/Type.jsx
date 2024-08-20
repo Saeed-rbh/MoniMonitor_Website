@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useMemo,
-  useCallback,
-  useRef,
-  useEffect,
-} from "react";
+import React from "react";
 import { useSpring, animated } from "react-spring";
 import { GoArrowUpRight, GoArrowDownLeft, GoPlus } from "react-icons/go";
 import { ScalableElement } from "../Tools/tools";
