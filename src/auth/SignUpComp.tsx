@@ -14,7 +14,7 @@ interface SignUpForm extends HTMLFormElement {
   readonly elements: SignUpFormElements;
 }
 
-export default function SignUp() {
+export default function SignUpComp() {
   async function handleSubmit(event: FormEvent<SignUpForm>) {
     event.preventDefault()
     const form = event.currentTarget
