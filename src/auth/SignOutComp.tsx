@@ -22,7 +22,6 @@ export default function SignOutComp({setAuthState}) {
         position: "absolute",
         top: "10px",
         right: "10px",
-
     }}>
       Sign out
     </div>
