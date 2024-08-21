@@ -1,9 +1,9 @@
 import React from "react";
 import { Amplify } from "aws-amplify"
 import { signOut } from "aws-amplify/auth"
-import amplify_outputs from '../../amplify_outputs.json';
+import amplifyConfig from '../amplifyconfiguration.json';
 
-Amplify.configure(amplify_outputs);
+Amplify.configure(amplifyConfig);
 
 export default function SignOutComp({setAuthState}) {
   async function handleSignOut() {
