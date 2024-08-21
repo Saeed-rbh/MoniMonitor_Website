@@ -1,9 +1,9 @@
 import React, { FormEvent } from "react";
 import { Amplify } from "aws-amplify";
 import { signUp } from "aws-amplify/auth"
-import outputs from "../../amplify_outputs.json";
+import amplifyConfig from '../amplifyconfiguration.json';
 
-Amplify.configure(outputs);
+Amplify.configure(amplifyConfig);
 
 interface SignUpFormElements extends HTMLFormControlsCollection {
   email: HTMLInputElement;
