@@ -10,6 +10,11 @@
       "StackName": "amplify-monimonitorwebsite-dev-4312f",
       "StackId": "arn:aws:cloudformation:us-east-1:533267242577:stack/amplify-monimonitorwebsite-dev-4312f/3ab2dfe0-642a-11ef-93b1-0e8f933bf777",
       "AmplifyAppId": "d2avz626blisge"
+    },
+    "categories": {
+      "auth": {
+        "monimonitorwebsite16da3e11": {}
+      }
     }
   }
 }
