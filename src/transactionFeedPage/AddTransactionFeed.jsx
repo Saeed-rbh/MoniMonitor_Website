@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
+import { FaCheck } from "react-icons/fa";
+
 import Amount from "./Amount";
 import Reason from "./Reason";
 import DateTime from "./DateTime";
@@ -16,6 +19,7 @@ import { animated, useSpring } from "react-spring";
 import "./AddTransactionFeed.css";
 import MoreCategory from "./MoreCategory";
 import MoreDateTime from "./MoreDateTime";
+import { ScalableElement } from "../Tools/tools";
 
 function AddTransactionFeed({
   isAddClicked,
@@ -25,6 +29,7 @@ function AddTransactionFeed({
   setModify,
   setOpen,
 }) {
+  const [addStage, setAddStage] = useState(0);
   const currentDate = new Date();
   const [selectedDate, setSelectedDate] = useState({
     year: String(currentDate.getFullYear()),
@@ -127,6 +132,15 @@ function AddTransactionFeed({
     scale: !isLongPress[0] ? 1 : 0.9,
   });
 
+  const buttunStyle = useSpring({
+    opacity: addStage !== 0 ? 1 : 0,
+    y: addStage !== 0 ? 0 : 10,
+  });
+
+  const handleNext = () => {
+    setAddStage(addStage + 1);
+  };
+
   return (
     <animated.div className="AddTransactionFeed" style={fade}>
       <h3>
@@ -159,6 +173,38 @@ function AddTransactionFeed({
           setValueError={setValueError}
           whichType={isAddClicked}
           setWhichType={setIsClicked}
+          addStage={addStage}
+          setAddStage={setAddStage}
+        />
+        {addStage > 0 && (
+          <Amount
+            value={value}
+            defaultValue={Modify ? addTransaction.Amount : ""}
+            setValue={setValue}
+            valueError={valueError}
+            setValueError={setValueError}
+            whichType={whichType}
+            setWhichType={setWhichType}
+            addStage={addStage}
+          />
+        )}
+        {addStage > 1 && (
+          <Reason
+            Reason={Reason}
+            setReason={setReason}
+            addStage={addStage}
+            defaultValue={Modify ? addTransaction.Reason : ""}
+          />
+        )}
+
+        {/*   <Type
+          value={value}
+          defaultValue={Modify ? addTransaction.Amount : ""}
+          setValue={setValue}
+          valueError={valueError}
+          setValueError={setValueError}
+          whichType={isAddClicked}
+          setWhichType={setIsClicked}
         />
         <Amount
           value={value}
@@ -181,15 +227,34 @@ function AddTransactionFeed({
           isLongPress={isLongPress}
           setIsLongPress={setIsLongPress}
         />
-        <Category
+        
+        <Confirm handleAddClick={handleAddClick} isLongPress={isLongPress} /> */}
+        {/* <Category
           List={List}
           setSelectedCategory={setSelectedCategory}
           selectedCategory={selectedCategory}
           defaultValue={Modify ? addTransaction.Label : ""}
           isLongPress={isLongPress}
           setIsLongPress={setIsLongPress}
-        />
-        <Confirm handleAddClick={handleAddClick} isLongPress={isLongPress} />
+        /> */}
+        {addStage !== 0 && (
+          <animated.div
+            style={buttunStyle}
+            className="AddTransactionFeed_button"
+          >
+            <ScalableElement as="button">
+              <MdKeyboardArrowLeft />
+            </ScalableElement>
+            <ScalableElement as="button" onClick={() => handleNext()}>
+              <MdKeyboardArrowRight />
+              <span>Next</span>
+            </ScalableElement>
+            <ScalableElement as="button">
+              <FaCheck />
+              <span>Confirm</span>
+            </ScalableElement>
+          </animated.div>
+        )}
       </animated.ul>
     </animated.div>
   );

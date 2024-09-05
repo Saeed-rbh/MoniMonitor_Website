@@ -1,45 +1,30 @@
-import React, { FormEvent } from "react";
-import { Amplify } from "aws-amplify"
-import { signIn } from "aws-amplify/auth"
-import amplifyConfig from '../amplifyconfiguration.json';
+import React from "react";
+import { Amplify } from 'aws-amplify';
+import { withAuthenticator } from '@aws-amplify/ui-react';
+import '@aws-amplify/ui-react/styles.css';
 
-Amplify.configure(amplifyConfig);
+import awsExports from '../aws-exports';
+Amplify.configure(awsExports);
 
-interface SignInFormElements extends HTMLFormControlsCollection {
-  email: HTMLInputElement
-  password: HTMLInputElement
-}
-
-interface SignInForm extends HTMLFormElement {
-  readonly elements: SignInFormElements
-}
-
-export default function SignInComp({setAuthState}) {
-
-  async function handleSubmit(event: FormEvent<SignInForm>) {
-    event.preventDefault();
-    const form = event.currentTarget;
-
-    try {
-    await signIn({
-        username: form.elements.email.value,
-        password: form.elements.password.value,
-      })
-      console.log("Sign in successful!");
-    await setAuthState(true);
-    } catch (error) {
-      console.error("Error during sign in:", error);
-      alert("Sign in failed: " + error.message);
-    }
+function SignInComp({ isPassedToWithAuthenticator, signOut, user }) {
+  if (!isPassedToWithAuthenticator) {
+    throw new Error(`isPassedToWithAuthenticator was not provided`);
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <label htmlFor="email">Email:</label>
-      <input type="text" id="email" name="email" />
-      <label htmlFor="password">Password:</label>
-      <input type="password" id="password" name="password" />
-      <input type="submit" />
-    </form>
-  )
+    <>
+      <h1>Hello {user.username}</h1>
+      <button onClick={signOut}>Sign out</button>
+    </>
+  );
+}
+
+export default withAuthenticator(SignInComp);
+
+export async function getStaticProps() {
+  return {
+    props: {
+      isPassedToWithAuthenticator: true,
+    },
+  };
 }

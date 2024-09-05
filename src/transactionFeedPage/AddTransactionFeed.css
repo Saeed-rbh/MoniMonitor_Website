@@ -66,7 +66,7 @@
   justify-content: center;
   height: 20px;
   width: 20px;
-  right: calc(40% +18px);
+  right: calc(25px);
   top: calc(50% - 10px);
 }
 
@@ -647,6 +647,7 @@
   width: 80px;
   display: flex;
   box-sizing: border-box;
+  opacity: 1 !important;
 }
 
 .Add_Amount label {
@@ -701,13 +702,12 @@
 }
 
 .Add_Type {
-  position: relative;
+  position: absolute;
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  height: 13%;
   min-height: 55px;
   border-radius: 50px;
   /* background: var(--Ac-4); */
@@ -717,9 +717,8 @@
 }
 
 .Add_Type h1 {
-  position: relative;
+  /* position: relative;
   font-size: 0.7rem;
-  /* background-color: var(--Ac-4); */
   font-weight: 200;
   height: 100%;
   padding: 0 10px 0 5px;
@@ -727,38 +726,71 @@
   color: var(--Ac-1);
   border-radius: 50px;
   cursor: pointer;
-  /* background: linear-gradient(165deg, var(--Ac-4) 10%, var(--Ec-4) 100%); */
   border: 1px solid var(--Ac-4);
   outline: 1px solid var(--Ac-4);
   display: flex;
   align-items: center;
   justify-content: flex-start;
   overflow: hidden;
-  /* background: var(--Ac-4); */
   width: 30%;
   z-index: 11;
-  transition: background 0.5s ease-in-out;
+  transition: background 0.5s ease-in-out; */
+  position: relative;
+  display: flex;
+  font-size: 0.7rem;
+  font-weight: 200;
+  font-family: "Noto Sans", sans-serif;
+  color: var(--Ac-1);
+  border-radius: 50px;
+  cursor: pointer;
+  padding: 0 20px;
+  background: var(--Ec-2);
+  margin: 0 2px;
+  outline: 1px solid var(--Ac-3);
+  width: max-content;
+  align-items: center;
+  justify-content: flex-start;
+  background: linear-gradient(165deg, var(--Ac-4) -20%, var(--Ec-1) 120%);
+  height: 50px;
+  box-sizing: border-box;
+  transition: background-color 0.3s ease-in-out;
 }
 .Add_Type h1 svg {
   font-size: 1rem;
-  background: linear-gradient(165deg, var(--Ec-2) 20%, var(--Ec-4) 100%);
-  padding: 10px;
+  /* background: linear-gradient(165deg, var(--Ec-2) 20%, var(--Ec-4) 100%); */
+  /* padding: 10px; */
   border-radius: 50px;
-  margin-left: 3px;
-  /* margin-right: 7px; */
+  margin-right: 10px;
+  /* margin-left: 3px; */
   color: var(--Ac-2);
   z-index: 10;
 }
 .Add_Type h1 span {
   font-weight: 400;
 }
-.Add_Type h1:first-of-type {
+.Add_Type p {
+  display: flex;
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 400;
+  font-family: "Noto Sans", sans-serif;
+  color: var(--Bc-1);
+  cursor: pointer;
+  width: max-content;
+  text-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
+  margin-left: 10px;
+  margin-bottom: 5px;
+}
+/* .Add_Type h1:first-of-type {
   margin-left: 0;
 }
 .Add_Type h1:last-of-type {
   margin-right: 0;
   width: 40%;
-}
+} */
 .Add_Type_color {
   position: absolute;
   display: flex;
@@ -897,4 +929,71 @@
   /* outline: 1px solid var(--Ec-1); */
   font-weight: 300;
   font-size: 0.75rem;
+}
+
+.AddTransactionFeed_button {
+  width: 100%;
+  bottom: 10px;
+  position: absolute;
+  height: 50px;
+  display: flex;
+}
+.AddTransactionFeed_button button {
+  position: relative;
+  height: 100%;
+  border-radius: 30px;
+  background: var(--Ec-4);
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--Ac-1);
+  cursor: pointer;
+  margin: 0 3px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.AddTransactionFeed_button button:nth-last-of-type(1) {
+  width: -webkit-fill-available;
+  outline: 1px solid var(--Bc-2);
+  background: var(--Bc-4);
+  background: radial-gradient(
+    circle at 30% -20%,
+    var(--Bc-2) -100%,
+    var(--Ec-4) 80%
+  );
+  padding-left: 10px;
+}
+.AddTransactionFeed_button button:nth-last-of-type(2) {
+  /* width: 40%; */
+  min-width: calc(40% - 20px);
+  outline: 1px solid var(--Ac-2);
+  background: var(--Ac-4);
+  background: radial-gradient(
+    circle at 30% -20%,
+    var(--Ac-2) -100%,
+    var(--Ec-4) 80%
+  );
+  padding-left: 10px;
+}
+.AddTransactionFeed_button button:nth-last-of-type(3) {
+  width: 50px;
+  min-width: 50px;
+  outline: 1px solid var(--Ac-2);
+  background: var(--Ac-4);
+  background: radial-gradient(
+    circle at 30% -20%,
+    var(--Ac-2) -100%,
+    var(--Ec-4) 80%
+  );
+}
+.AddTransactionFeed_button svg {
+  position: absolute;
+  font-size: 1.3rem;
+  color: var(--Ac-1);
+  left: 15px;
+}
+.AddTransactionFeed_button button:nth-last-of-type(1) svg {
+  font-size: 1rem;
+  color: var(--Bc-2);
 }

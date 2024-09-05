@@ -2,9 +2,18 @@ import React, { useState } from "react";
 import { animated, useSpring } from "react-spring";
 import { ScalableElement } from "../Tools/tools";
 
-const Reason = ({ reason, setReason, defaultValue, isLongPress }) => {
+const Reason = ({ reason, setReason, defaultValue, isLongPress, addStage }) => {
   const fade = useSpring({
-    filter: !isLongPress ? "blur(0px)" : "blur(10px)",
+    from: {
+      filter: !isLongPress ? "blur(10px)" : "blur(0px)",
+      opacity: addStage > 1 ? 0 : 1,
+      y: addStage > 1 ? 70 : 50,
+    },
+    to: {
+      filter: !isLongPress ? "blur(0px)" : "blur(10px)",
+      opacity: addStage > 1 ? 1 : 0,
+      y: addStage > 1 ? 50 : 70,
+    },
   });
 
   const [ReasonCount, setReasonCount] = useState(0);

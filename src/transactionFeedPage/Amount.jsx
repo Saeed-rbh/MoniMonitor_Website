@@ -36,9 +36,27 @@ const Amount = ({
   whichType,
   setWhichType,
   isLongPress,
+  addStage,
+  setAddStage,
 }) => {
   const fade = useSpring({
-    filter: !isLongPress ? "blur(0px)" : "blur(10px)",
+    from: {
+      filter: isLongPress ? "blur(0px)" : "blur(10px)",
+      opacity: addStage !== 0 ? 0 : 1,
+      top: addStage !== 0 ? "50px" : "30px",
+      position: "absolute",
+    },
+    to: {
+      filter: isLongPress ? "blur(10px)" : "blur(0px)",
+      opacity: addStage !== 0 ? 1 : 0,
+      top: addStage > 1 ? "10px" : addStage !== 0 ? "30px" : "50px",
+      position: "absolute",
+    },
+  });
+
+  const textareaStyle = useSpring({
+    padding: addStage === 1 ? "10px 90px" : "0px 90px",
+    outline: addStage === 1 ? "1px solid var(--Ac-3)" : "1px solid var(--Ec-4)",
   });
 
   const ConfirmStyle = useSpring({
@@ -67,9 +85,11 @@ const Amount = ({
 
   const AnountStyle = useSpring({
     color: valueError ? "var(--Bc-1)" : "var(--Gc-1)",
+    left: addStage > 1 ? 20 : 25,
   });
   const AnountBorderStyle = useSpring({
     outline: valueError ? "1px solid var(--Ac-4)" : "1px solid var(--Gc-2)",
+    height: "auto",
   });
 
   const previousValue = useRef(value.length);
@@ -160,6 +180,7 @@ const Amount = ({
         placeholder="$1000"
         value={modifyValue ? value : fornatDefualtValue}
         onChange={handleChange}
+        style={textareaStyle}
       />
       <AmountLogo
         Animate1={Animate1}
@@ -168,9 +189,9 @@ const Amount = ({
         style2={style2}
         fontColor={fontColor}
       />
-      <hr />
-      <hr />
-      <h1>
+      {/* <hr />
+      <hr /> */}
+      {/* <h1>
         <ScalableElement
           as="span"
           onClick={() => setWhichType(true)}
@@ -186,7 +207,7 @@ const Amount = ({
           Monthly
         </ScalableElement>
         <animated.span style={ConfirmStyle}></animated.span>
-      </h1>
+      </h1> */}
     </animated.li>
   );
 };
