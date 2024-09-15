@@ -42,6 +42,8 @@ function App() {
     whichMonth,
     userData.userId ? userData.userId : 90260003
   );
+  console.log("Hello world!");
+
 
   const [isMoreClicked, setIsMoreClicked] = useState(null);
   const [isAddClicked, setIsAddClicked] = useState(null);
