@@ -29,7 +29,7 @@ function AddTransactionFeed({
   setModify,
   setOpen,
 }) {
-  const [addStage, setAddStage] = useState(0);
+  const [addStage, setAddStage] = useState(5);
   const currentDate = new Date();
   const [selectedDate, setSelectedDate] = useState({
     year: String(currentDate.getFullYear()),
@@ -138,7 +138,16 @@ function AddTransactionFeed({
   });
 
   const handleNext = () => {
-    setAddStage(addStage + 1);
+    console.log(value);
+    if (value.length > 0) {
+      setAddStage(addStage + 1);
+    } else {
+      setValueError(false);
+    }
+  };
+
+  const handleLast = () => {
+    setAddStage(addStage - 1);
   };
 
   return (
@@ -176,26 +185,41 @@ function AddTransactionFeed({
           addStage={addStage}
           setAddStage={setAddStage}
         />
-        {addStage > 0 && (
-          <Amount
-            value={value}
-            defaultValue={Modify ? addTransaction.Amount : ""}
-            setValue={setValue}
-            valueError={valueError}
-            setValueError={setValueError}
-            whichType={whichType}
-            setWhichType={setWhichType}
-            addStage={addStage}
-          />
-        )}
-        {addStage > 1 && (
-          <Reason
-            Reason={Reason}
-            setReason={setReason}
-            addStage={addStage}
-            defaultValue={Modify ? addTransaction.Reason : ""}
-          />
-        )}
+        <Amount
+          value={value}
+          defaultValue={Modify ? addTransaction.Amount : ""}
+          setValue={setValue}
+          valueError={valueError}
+          setValueError={setValueError}
+          whichType={whichType}
+          setWhichType={setWhichType}
+          addStage={addStage}
+          isAddClicked={isAddClicked}
+        />
+        <Reason
+          Reason={reason}
+          setReason={setReason}
+          addStage={addStage}
+          defaultValue={Modify ? addTransaction.Reason : ""}
+          isAddClicked={isAddClicked}
+        />
+        <DateTime
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          currentDate={currentDate}
+          isLongPress={isLongPress}
+          setIsLongPress={setIsLongPress}
+          addStage={addStage}
+        />
+        <Category
+          List={List}
+          setSelectedCategory={setSelectedCategory}
+          selectedCategory={selectedCategory}
+          defaultValue={Modify ? addTransaction.Label : ""}
+          isLongPress={isLongPress}
+          setIsLongPress={setIsLongPress}
+          addStage={addStage}
+        />
 
         {/*   <Type
           value={value}
@@ -242,7 +266,7 @@ function AddTransactionFeed({
             style={buttunStyle}
             className="AddTransactionFeed_button"
           >
-            <ScalableElement as="button">
+            <ScalableElement as="button" onClick={() => handleLast()}>
               <MdKeyboardArrowLeft />
             </ScalableElement>
             <ScalableElement as="button" onClick={() => handleNext()}>

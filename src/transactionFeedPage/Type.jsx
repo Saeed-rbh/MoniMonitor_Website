@@ -2,6 +2,7 @@ import React from "react";
 import { useSprings, useSpring, animated } from "react-spring";
 import { GoArrowUpRight, GoArrowDownLeft, GoPlus } from "react-icons/go";
 import { ScalableElement } from "../Tools/tools";
+import { MdModeEditOutline } from "react-icons/md";
 
 const Type = ({
   whichType,
@@ -10,7 +11,10 @@ const Type = ({
   addStage,
   setAddStage,
 }) => {
-  // Define transaction types as an array of objects
+  const handleClick = (label) => {
+    setWhichType(label);
+    setAddStage(1);
+  };
   const transactionTypes = [
     {
       label: "Income",
@@ -29,8 +33,7 @@ const Type = ({
   const transactionSprings = useSprings(
     transactionTypes.length,
     transactionTypes.map((_, index) => ({
-      top: addStage === 0 ? `${25 + index * 57}px` : `-18px`,
-      marginTop: addStage === 0 ? "25px" : "0px",
+      top: addStage === 0 ? `${35 + index * 57}px` : `-7px`,
       opacity:
         addStage !== 0
           ? whichType === transactionTypes[index].label
@@ -44,20 +47,17 @@ const Type = ({
             : `var(--Ec-4)`
           : `none`,
       position: "absolute",
-      padding: addStage === 0 ? "0px 25px 0px 20px" : "0px 0px 0px 0px",
-      margin: "3px 5px",
+      padding: addStage === 0 ? "0px 25px 0px 20px" : "10px 10px 10px 10px",
       background:
         addStage === 0
           ? "linear-gradient(165deg, var(--Ac-4) -20%, var(--Ec-1) 120%)"
           : "none",
-      left: addStage === 0 ? 0 : 120,
+      left: addStage === 0 ? 70 : 130,
       outline:
         addStage === 0 ? "1px solid var(--Ac-3)" : "1px solid var(--Ec-4)",
-      config: { tension: 170, friction: 26 }, // Customize animation behavior
     }))
   );
 
-  // Fade animation for the container
   const fade = useSpring({
     filter: !isLongPress ? "blur(0px)" : "blur(10px)",
     flexDirection: "column",
@@ -67,7 +67,8 @@ const Type = ({
     alignItems: "flex-start",
     marginLeft: "10px",
     top: 5,
-    left: addStage === 0 ? 20 : 0,
+    zIndex: 10000,
+    // left: addStage === 0 ? 20 : 0,
   });
 
   const each = useSpring({
@@ -83,21 +84,41 @@ const Type = ({
   });
 
   const p = useSpring({
+    fontSize: "0.7em",
+    color: "var(--Bc-1)",
+    width: 50,
+    padding: "10px 5px",
     position: "absolute",
     top: 0,
+    left: addStage === 0 ? 60 : 25,
   });
 
-  const handleClick = (label) => {
-    setWhichType(label);
-    setAddStage(1);
-  };
+  const label = useSpring({
+    fontSize: addStage !== 0 ? "1rem" : "0.7rem",
+    color: "var(--Bc-2)",
+    border: "1px solid var(--Bc-2)",
+    borderRadius: "30px",
+    width: addStage !== 0 ? 35 : 70,
+    height: 35,
+    // padding: "10px 5px",
+    display: "flex",
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "center",
+    top: 0,
+    left: -10,
+    margin: 0,
+    cursor: addStage !== 0 ? "pointer" : "auto",
+  });
 
   return (
     <animated.div className="Add_Type" style={fade}>
+      <animated.h2 style={label}>
+        {addStage === 0 ? "Type" : <MdModeEditOutline />}
+      </animated.h2>
       <animated.p style={p}>
         {addStage === 0 ? "Select" : ""} Transaction Type:{" "}
       </animated.p>
-      {/* {transactionTypes.map(({ label, icon }, index) => ( */}
       {transactionSprings.map((springStyle, index) => (
         <ScalableElement
           key={transactionTypes[index].label}
@@ -105,16 +126,6 @@ const Type = ({
           onClick={() => handleClick(transactionTypes[index].label)}
           style={{
             ...springStyle,
-            // ...each,
-            // marginTop: addStage === 0 ? "25px" : "0px",
-            // top: addStage === 0 ? `${index * 57}px` : `-18px`, // Dynamically set top based on index
-            // opacity: addStage === 1 ? (whichType === label ? 1 : 0) : 1,
-            // backgroundColor:
-            //   addStage === 0
-            //     ? whichType === label
-            //       ? `var(--Bc-3)`
-            //       : `var(--Ec-4)`
-            //     : `none`,
           }}
         >
           {transactionTypes[index].icon}

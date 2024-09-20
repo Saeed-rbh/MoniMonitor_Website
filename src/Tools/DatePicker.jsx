@@ -1,11 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-const DatePicker = ({
-  minDate,
-  maxDate,
-  setSelectedDate,
-  selectedDate,
-}) => {
+const DatePicker = ({ minDate, maxDate, setSelectedDate, selectedDate }) => {
   const [day, setDay] = useState(selectedDate.day);
   const [month, setMonth] = useState(selectedDate.month);
   const [year, setYear] = useState(selectedDate.year);
@@ -32,9 +27,9 @@ const DatePicker = ({
   }, [day, month, year, setSelectedDate, blur]);
 
   const parentStyle = {
-    border: "1px solid var(--Ac-3)",
+    // border: "1px solid var(--Ac-3)",
     borderRadius: "18px",
-    padding: "5px",
+    // padding: "5px",
     textAlign: "center",
     backgroundColor: "transparent",
     outline: "none",
@@ -44,7 +39,7 @@ const DatePicker = ({
     alignItems: "center",
     justifyContent: "center",
     color: "var(--Ac-2)",
-    height: "100%",
+    // height: "100%",
     boxSizing: "border-box",
     aspectRatio: "1/1",
   };
@@ -60,9 +55,9 @@ const DatePicker = ({
     transition: "background-color 0.3s ease",
     caretColor: "transparent", // Hide caret
     border: "none",
-    padding: "2px 4px",
-    fontSize: "0.9rem",
-    fontWeight: "300",
+    // padding: "2px 4px",
+    fontSize: "0.7rem",
+    fontWeight: "400",
   };
 
   const inputFocusStyle = {
@@ -187,6 +182,7 @@ const DatePicker = ({
         gap: "5px",
         height: "100%",
         maxHeight: 54,
+        margin: "0 10px",
       }}
     >
       <div style={parentStyle} onFocus={parentFocus} onBlur={parentBlur}>
@@ -218,11 +214,7 @@ const DatePicker = ({
         </div>
       </div>
       <span style={separatorStyle}>/</span>
-      <div
-        style={{ ...parentStyle, width: "80px" }}
-        onFocus={parentFocus}
-        onBlur={parentBlur}
-      >
+      <div style={{ ...parentStyle }} onFocus={parentFocus} onBlur={parentBlur}>
         <div
           contentEditable
           suppressContentEditableWarning

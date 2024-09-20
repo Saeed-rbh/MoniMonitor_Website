@@ -20,7 +20,7 @@ const MoreOpen = ({
 
   const [isAnimationEnds, setIsAnimationEnds] = useState(false);
   useEffect(() => {
-    !!isClicked && setIsAnimationEnds(true);
+    -!!isClicked && setIsAnimationEnds(true);
   }, [isClicked]);
 
   const [Open_TransactionList, api] = useSpring(() => ({
@@ -56,6 +56,8 @@ const MoreOpen = ({
   const handleOnRest = () => {
     !isOpenRef.current && setIsAnimationEnds(false);
   };
+
+  console.log(MoreOpenHeight);
 
   useEffect(() => {
     if (isAnimationEnds) {
@@ -148,11 +150,12 @@ const MoreOpen = ({
             <div
               className="MoreOpen_TopLine"
               style={{
+                position: "absolute",
                 background: "var(--Ac-3)",
                 height: "1px",
-                marginTop: "30px",
-                width: "75%",
-                marginRight: "55px",
+                marginTop: "45px",
+                width: "60%",
+                left: "20px",
                 opacity: "0.5",
               }}
             ></div>
