@@ -923,11 +923,12 @@
 }
 
 .AddTransactionFeed_button {
-  width: 100%;
-  bottom: 10px;
+  width: calc(100% + 10px);
+  bottom: 22px;
   position: absolute;
-  height: 50px;
+  height: 60px;
   display: flex;
+  left: -5px;
 }
 .AddTransactionFeed_button button {
   position: relative;
@@ -950,31 +951,31 @@
   background: var(--Bc-4);
   background: radial-gradient(
     circle at 30% -20%,
-    var(--Bc-2) -100%,
+    var(--Bc-3) -100%,
     var(--Ec-4) 80%
   );
   padding-left: 10px;
 }
 .AddTransactionFeed_button button:nth-last-of-type(2) {
   /* width: 40%; */
-  min-width: calc(40% - 50px);
+  min-width: calc(40% - 40px);
   outline: 1px solid var(--Ac-2);
   background: var(--Ac-4);
   background: radial-gradient(
     circle at 30% -20%,
-    var(--Ac-2) -100%,
+    var(--Ac-3) -100%,
     var(--Ec-4) 80%
   );
   padding-left: 15px;
 }
 .AddTransactionFeed_button button:nth-last-of-type(3) {
-  width: 50px;
-  min-width: 50px;
+  width: 60px;
+  min-width: 60px;
   outline: 1px solid var(--Ac-2);
   background: var(--Ac-4);
   background: radial-gradient(
     circle at 30% -20%,
-    var(--Ac-2) -100%,
+    var(--Ac-3) -100%,
     var(--Ec-4) 80%
   );
 }
@@ -982,7 +983,7 @@
   position: absolute;
   font-size: 1.3rem;
   color: var(--Ac-1);
-  left: 15px;
+  left: 19px;
 }
 .AddTransactionFeed_button button:nth-last-of-type(1) svg {
   font-size: 1rem;
