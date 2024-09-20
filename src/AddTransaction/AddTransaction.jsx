@@ -51,7 +51,7 @@ const AddTransaction = ({ isAddClicked, setIsClicked, setIsAddClicked }) => {
         isClicked={isAddClicked}
         setIsClicked={setIsAddClicked}
         feed={AddFeed}
-        MoreOpenHeight={90}
+        MoreOpenHeight={120}
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
         zIndex={110}

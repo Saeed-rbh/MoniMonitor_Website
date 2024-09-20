@@ -3,6 +3,7 @@ import { useSprings, useSpring, animated } from "react-spring";
 import { useDrag } from "@use-gesture/react";
 import { ScalableElement } from "../Tools/tools";
 import useLongPressHandler from "../Tools/useLongPressHandler";
+import { MdModeEditOutline } from "react-icons/md";
 
 const Category = ({
   List,
@@ -10,6 +11,7 @@ const Category = ({
   setSelectedCategory,
   isLongPress,
   setIsLongPress,
+  addStage,
 }) => {
   const containerRef = useRef(null);
 
@@ -95,14 +97,81 @@ const Category = ({
       isLongPress[0] && isLongPress[1] === "Category"
         ? "blur(10px)"
         : "blur(0px)",
+    top: 150,
+  });
+
+  const labelPar = useSpring({
+    position: "absolute",
+    height: 100,
+    top: 5,
+    left: 0,
+    margin: 0,
+    display: "flex",
+    alignItems: "flex-start",
+    justifyContent: "flex-start",
+    flexDirection: "column",
+    margin: 0,
+  });
+  const labelDot = useSpring({
+    position: "relative",
+    fontSize: "1.5em",
+    color: "var(--Bc-2)",
+    margin: "5px 10px 0px 17px",
+    lineHeight: `15px`,
+    width: 2,
+    height: addStage > 2 ? 2 : 7,
+    borderRadius: 30,
+    background: "var(--Bc-2)",
+  });
+  const label = useSpring({
+    position: "relative",
+    fontSize: addStage !== 2 ? "1rem" : "0.7rem",
+    color: "var(--Bc-2)",
+    border: "1px solid var(--Bc-2)",
+    borderRadius: "30px",
+    width: addStage !== 2 ? 35 : 70,
+    height: 35,
+    // padding: "10px 5px",
+    display: "flex",
+    position: "absolute",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: addStage !== 2 ? 15 : 20,
+    cursor: addStage !== 2 ? "pointer" : "auto",
+  });
+
+  const labelTitle = useSpring({
+    top: addStage > 2 ? 27 : 30,
+    left: addStage > 2 ? 40 : 75,
+    width: "max-content",
+    margin: 0,
+    position: "absolute",
+    fontSize: "0.7em",
+    color: "var(--Bc-1)",
+    padding: "5px 10px",
+    borderRadius: "30px",
+    display: "flex",
+    alignItems: "center",
   });
 
   return (
     <animated.li className="Add_Category" {...longBind()} style={fade}>
-      <p>Category | </p>{" "}
+      <animated.div style={labelPar}>
+        <animated.h4 style={labelDot}></animated.h4>{" "}
+        <animated.h4 style={label}>
+          {addStage === 2 ? "Reason" : <MdModeEditOutline />}
+        </animated.h4>
+      </animated.div>
+      <animated.label style={labelTitle}>
+        {addStage === 2 && `What is the`} Category:{" "}
+      </animated.label>
       <div className="Add_Category_items" ref={containerRef} {...bind()}>
         <animated.div className="Add_Category_items_in" style={dragSpring}>
-          {listSprings.map((animation, index) => (
+          <h2>
+            {selectedCategory[1]}
+            {selectedCategory[0]}
+          </h2>
+          {/* {listSprings.map((animation, index) => (
             <ScalableElement
               style={{ ...animation, width: `${characterCounts[index]}px` }}
               as="h2"
@@ -113,7 +182,7 @@ const Category = ({
               {List[index][1]}
               {List[index][0]}
             </ScalableElement>
-          ))}
+          ))} */}
         </animated.div>
       </div>
     </animated.li>
