@@ -7,6 +7,7 @@ import { Authenticator } from "@aws-amplify/ui-react";
 import { Amplify } from "aws-amplify";
 import awsExports from "./aws-exports";
 
+const MainMenu = lazy(() => import("./MainMenu/MainMenu"));
 const Header = lazy(() => import("./Header/header"));
 const Telegram = lazy(() => import("./Telegram/MoneyMonitor"));
 const Transactions = lazy(() => import("./Transactions/Transactions"));
@@ -76,6 +77,7 @@ const App = () => {
       <div className="App">
         <Suspense fallback={<div>Loading...</div>}>
           <Header userData={userData} />
+          <MainMenu />
           <Telegram
             isMoreClicked={isMoreClicked}
             setIsMoreClicked={setIsMoreClicked}

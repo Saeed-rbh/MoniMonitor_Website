@@ -93,7 +93,7 @@ const MoneyMonitor = ({
     <>
       <div className="MoneyMonitor_Parent">
         <animated.div style={scaleStyle}>
-          <AddTransaction setIsAddClicked={setIsAddClicked} />
+          {/* <AddTransaction setIsAddClicked={setIsAddClicked} /> */}
           <MainStatestics
             height={height}
             netAmounts={netAmountsData}
