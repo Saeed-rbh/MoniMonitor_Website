@@ -1,34 +1,93 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { animated, useSpring } from "react-spring";
 import { useDrag } from "@use-gesture/react";
 import useClickOutside from "../Tools/useClickOutside";
 import { IoClose } from "react-icons/io5";
 
-const ChooseMonth = ({ isDateClicked, setIsDateClicked }) => {
+const MainStyle = {
+  position: "absolute",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  backgroundColor: "var(--Ac-4)",
+  color: "var(--Ac-1)",
+  borderRadius: "50px",
+  cursor: "pointer",
+  fontSize: "0.65rem",
+  width: "max-content",
+  height: "35px",
+  overflow: "visible",
+  right: 60,
+  top: 8,
+  padding: "3px 1px",
+  zIndex: 100,
+  transition: "background-color 0.5s ease",
+};
+
+// const availabilityData = [
+//   ["2024", { Aug: [true, 1], Sep: [true, 0] }],
+//   ["2022", { Jan: [true, 0], Feb: [true, 1], Mar: [true, 1], Apr: [true, 1] }],
+//   ["2021", { Jan: [true, 0], Feb: [true, 1], Mar: [true, 1], Apr: [true, 1] }],
+//   ["2020", { Jan: [true, 0], Feb: [true, 1], Mar: [true, 1], Apr: [true, 1] }],
+//   // Add more years and months as needed
+// ];
+
+const ChooseMonth = ({ isDateClicked, setIsDateClicked, availabilityData }) => {
   const containerRef = useRef(null);
   useClickOutside(containerRef, () => setIsDateClicked(false));
-  const MainStyle = {
-    position: "absolute",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "var(--Ac-4)",
-    color: "var(--Ac-1)",
-    // opacity: 0.7,
-    // border: "2px solid var(--Ac-4)",
-    borderRadius: "50px",
-    cursor: "pointer",
-    fontSize: "0.65rem",
-    width: "max-content",
-    height: "35px",
-    overflow: "visible",
-    right: 60,
-    top: 8,
-    padding: "3px 1px",
-    cursor: "pointer",
-    zIndex: 100,
-  };
+
+  // Extract available years and months from availabilityData
+  const availableYears = availabilityData.map((yearData) =>
+    parseInt(yearData[0])
+  );
+  const availableMonths = {};
+
+  availabilityData.forEach((yearData) => {
+    const months = yearData[1];
+    Object.keys(months).forEach((month) => {
+      if (!availableMonths[month]) {
+        availableMonths[month] = true;
+      }
+    });
+  });
+
+  // Initialize selected month and year
+  const currentYear = new Date().getFullYear();
+  const currentMonthIndex = new Date().getMonth(); // 0 = Jan, 1 = Feb, ..., 11 = Dec
+  const monthNames = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
+
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [selectedMonth, setSelectedMonth] = useState("");
+
+  useEffect(() => {
+    // Find the nearest available month for the current year
+    const yearData = availabilityData.find(
+      (data) => data[0] === String(selectedYear)
+    );
+    if (yearData) {
+      const months = yearData[1];
+      const availableMonthKeys = Object.keys(months);
+      const nearestMonth = availableMonthKeys.find(
+        (_, index) => index >= currentMonthIndex
+      );
+      setSelectedMonth(nearestMonth || availableMonthKeys[0] || ""); // Fallback to the first available month
+    }
+  }, [selectedYear]);
+
   const SVGStyle = {
     display: "flex",
     justifyContent: "center",
@@ -41,7 +100,9 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked }) => {
     border: "3px solid var(--Bc-4)",
     color: "var(--Bc-1)",
     transform: "rotate(90deg)",
+    transition: "background-color 0.5s ease",
   };
+
   const MonthStyle = {
     width: "75px",
     height: "35px",
@@ -53,11 +114,15 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked }) => {
     backgroundColor: "var(--Ec-3)",
     border: "3px solid var(--Ac-4)",
     fontWeight: "400",
+    transition: "background-color 0.5s ease",
   };
+
   const MonthSpanStyle = {
     marginLeft: "5px",
     fontWeight: "200",
+    transition: "background-color 0.5s ease",
   };
+
   const OpenStyle = {
     position: "absolute",
     top: "50px",
@@ -71,13 +136,16 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked }) => {
     backgroundColor: "var(--Ec-2)",
     border: "3px solid var(--Ac-4)",
     color: "var(--Bc-1)",
+    transition: "background-color 0.5s ease",
   };
+
   const OpenStyleAnim = useSpring({
     opacity: isDateClicked ? 1 : 0,
     scale: isDateClicked ? 1 : 0.9,
     top: isDateClicked ? 50 : 30,
     right: isDateClicked ? 0 : -10,
   });
+
   const openYearStyle = {
     position: "absolute",
     top: "15px",
@@ -90,6 +158,7 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked }) => {
     boxSizing: "border-box",
     scrollbarWidth: "none", // Firefox
     msOverflowStyle: "none", // IE 10+
+    transition: "background-color 0.5s ease",
   };
 
   const yearStyle = {
@@ -106,6 +175,7 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked }) => {
     margin: "0 1px",
     cursor: "pointer",
     fontSize: "0.65rem",
+    transition: "background-color 0.5s ease",
   };
 
   const YearSVGStyle = {
@@ -117,13 +187,15 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked }) => {
     height: "35px",
     fontSize: "1rem",
     borderRadius: "50px",
-    // backgroundColor: "var(--Ac-4)",
     color: "var(--Bc-1)",
     top: 15,
+    transition: "background-color 0.5s ease",
   };
+
   const YearSVGLStyle = {
     right: 0,
   };
+
   const YearSVGRStyle = { left: 0 };
 
   const openMonthStyle = {
@@ -136,22 +208,24 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked }) => {
     overflow: "hidden",
     left: "5px",
     boxSizing: "border-box",
+    transition: "background-color 0.5s ease",
   };
+
   const monthStyle = {
     minWidth: "50px",
     height: "40px",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    // backgroundColor: "var(--Ac-4)",
     opacity: 0.7,
     color: "var(--Ac-1)",
-    // border: "2px solid var(--Ac-4)",
     borderRadius: "20px",
     margin: "3px",
     cursor: "pointer",
     fontSize: "0.65rem",
+    transition: "background-color 0.5s ease",
   };
+
   const OpenAllStyle = {
     position: "fixed",
     top: 10,
@@ -163,28 +237,14 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked }) => {
     zIndex: -1,
     config: { duration: 10 },
   };
+
   const OpenAllStyleAmin = useSpring({
     display: isDateClicked ? "block" : "none",
   });
 
-  const monthNames = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
   const startYear = 2020;
-  const currentYear = new Date().getFullYear();
   const yearDates = Array.from(
-    { length: currentYear - startYear + 1 },
+    { length: new Date().getFullYear() - startYear + 1 },
     (_, index) => startYear + index
   );
 
@@ -247,21 +307,22 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked }) => {
     api.start({ x: newX });
   };
 
-  const [selectedYear, setSelectedYear] = useState(2023);
   const handleYearClick = (year) => {
-    setSelectedYear(year);
+    setSelectedYear(year); // Update selected year
   };
-  const [selectedMonth, setSelectedMonth] = useState("Feb");
+
   const handleMonthClick = (month) => {
-    setSelectedMonth(month);
-    toggleOpen();
+    setSelectedMonth(month); // Update selected month
+    setIsDateClicked(false); // Close
   };
 
   return (
     <>
-      <animated.div
-        style={{ ...OpenAllStyle, ...OpenAllStyleAmin }}
-      ></animated.div>
+      {isDateClicked && (
+        <animated.div
+          style={{ ...OpenAllStyle, ...OpenAllStyleAmin }}
+        ></animated.div>
+      )}
       <div style={MainStyle} ref={containerRef}>
         <p style={MonthStyle} onClick={toggleOpen}>
           {selectedMonth} <span style={MonthSpanStyle}>{selectedYear}</span>
@@ -270,49 +331,61 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked }) => {
           {isDateClicked ? <IoClose /> : <FiChevronRight />}
         </div>
         <animated.div style={{ ...OpenStyle, ...OpenStyleAnim }}>
+          {/* Year Navigation */}
           <div
             style={{ ...YearSVGStyle, ...YearSVGRStyle }}
             onClick={handleClickLeft}
           >
             <FiChevronLeft />
           </div>
-          <animated.div
-            style={{
-              ...openYearStyle,
-            }}
-            {...bind()}
-          >
+          <animated.div style={{ ...openYearStyle }} {...bind()}>
             {yearDates.map((year, index) => (
               <animated.p
                 key={index}
                 style={{
                   ...yearStyle,
-                  opacity: year === selectedYear ? 1 : 0.7,
-
+                  opacity: availableYears.includes(year) ? 1 : 0.5,
                   transform: x.to((x) => `translate3d(${x}px,0,0)`),
+                  cursor: availableYears.includes(year) ? "pointer" : "default",
                   backgroundColor:
-                    year === selectedYear ? "var(--Bc-4)" : "var(--Ac-4)",
+                    parseInt(selectedYear) === parseInt(year)
+                      ? "var(--Bc-4)"
+                      : availableYears.includes(year)
+                      ? "var(--Ac-4)"
+                      : "var(--Ac-4)",
                 }}
-                onClick={() => handleYearClick(year)}
+                onClick={() =>
+                  availableYears.includes(year) && handleYearClick(year)
+                } // Prevent click on unavailable years
               >
                 {year}
               </animated.p>
             ))}
           </animated.div>
+
+          {/* Month Navigation */}
           <div style={openMonthStyle}>
-            {monthNames.map((month, index) => (
-              <p
-                key={index}
-                style={{
-                  ...monthStyle,
-                  backgroundColor:
-                    month === selectedMonth ? "var(--Bc-3)" : "var(--Ec-4)",
-                }}
-                onClick={() => handleMonthClick(month)}
-              >
-                {month}
-              </p>
-            ))}
+            {monthNames.map((month, index) => {
+              const isDisabled =
+                (selectedYear === currentYear && index > currentMonthIndex) ||
+                !availableMonths[month]; // Disable if not available or future month in current year
+
+              return (
+                <p
+                  key={index}
+                  style={{
+                    ...monthStyle,
+                    backgroundColor:
+                      month === selectedMonth ? "var(--Bc-3)" : "var(--Ec-4)",
+                    cursor: isDisabled ? "default" : "pointer",
+                    opacity: isDisabled ? 0.5 : 1, // Visually indicate disabled months
+                  }}
+                  onClick={() => !isDisabled && handleMonthClick(month)}
+                >
+                  {month}
+                </p>
+              );
+            })}
           </div>
           <div
             style={{ ...YearSVGStyle, ...YearSVGLStyle }}

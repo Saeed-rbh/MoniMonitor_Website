@@ -3,7 +3,12 @@ import "./header.css";
 import MenuButton from "./MenuButton";
 import ChooseMonth from "../ChooseMonth/ChooseMonth";
 
-function Header({ userData, isDateClicked, setIsDateClicked }) {
+function Header({
+  userData,
+  isDateClicked,
+  setIsDateClicked,
+  availabilityData,
+}) {
   const { userId, userName } = userData;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -12,6 +17,7 @@ function Header({ userData, isDateClicked, setIsDateClicked }) {
       <ChooseMonth
         isDateClicked={isDateClicked}
         setIsDateClicked={setIsDateClicked}
+        availabilityData={availabilityData}
       />
       <div className="MoneyMonitor_User">
         <div className="MoneyMonitor_Logo">
