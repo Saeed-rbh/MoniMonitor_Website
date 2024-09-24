@@ -5,6 +5,7 @@ import { HiOutlinePlusSm } from "react-icons/hi";
 import { LuLayoutList } from "react-icons/lu";
 import { IoWalletOutline } from "react-icons/io5";
 import { RiDonutChartFill } from "react-icons/ri";
+import { ScalableElement } from "../Tools/tools";
 
 const MainMenu = () => {
   const [Active, setActive] = React.useState("Summary");
@@ -49,8 +50,8 @@ const MainMenu = () => {
     flexDirection: "column",
     color: "var(--Bc-1)",
     fontSize: "0.9rem",
-    borderRadius: "14px",
-    padding: "2px",
+    borderRadius: "12px",
+    padding: "8px",
     transition: "all 0.3s ease",
   };
   const handleClick = (e) => {
@@ -58,7 +59,8 @@ const MainMenu = () => {
   };
   return (
     <animated.div style={MainMenuStyle}>
-      <animated.p
+      <ScalableElement
+        as="p"
         style={{ ...MainMenuPStyle, opacity: Active == "Summary" ? 1 : 0.6 }}
         onClick={() => handleClick("Summary")}
       >
@@ -66,14 +68,22 @@ const MainMenu = () => {
           style={{
             ...MainMenuSVGStyle,
             background: Active == "Summary" ? "var(--Bc-4)" : "var(--Ec-4)",
-            padding: Active == "Summary" ? 8 : 3,
+            // padding: Active == "Summary" ? 8 : 3,
           }}
         >
           <TbHomeStats />
         </div>
-        <span>Summary</span>
-      </animated.p>
-      <p
+        <span
+          style={{
+            marginTop: Active == "Summary" ? 0 : -4,
+            transition: "all 0.3s ease",
+          }}
+        >
+          Summary
+        </span>
+      </ScalableElement>
+      <ScalableElement
+        as="p"
         style={{ ...MainMenuPStyle, opacity: Active == "Insight" ? 1 : 0.6 }}
         onClick={() => handleClick("Insight")}
       >
@@ -81,28 +91,37 @@ const MainMenu = () => {
           style={{
             ...MainMenuSVGStyle,
             background: Active == "Insight" ? "var(--Bc-4)" : "var(--Ec-4)",
-            padding: Active == "Insight" ? 8 : 3,
+            // padding: Active == "Insight" ? 8 : 3,
           }}
         >
           <RiDonutChartFill />
         </div>
-        <span>Insight</span>
-      </p>
-      <p style={{ ...MainMenuPStyle }} onClick={() => handleClick("Add")}>
+        <span
+          style={{
+            marginTop: Active == "Insight" ? 0 : -4,
+            transition: "all 0.3s ease",
+          }}
+        >
+          Insight
+        </span>
+      </ScalableElement>
+      <ScalableElement as="p" style={{ ...MainMenuPStyle }}>
         <div
           style={{
             ...MainMenuSVGStyle,
             fontSize: "1.5rem",
-            padding: "10px",
+            padding: "9px",
             background:
-              "linear-gradient(165deg, var(--Bc-3) -50%, var(--Ec-1) 130%)",
-            borderRadius: "18px",
+              "linear-gradient(165deg, var(--Bc-3) -80%, var(--Ec-1) 130%)",
+            outline: "2px solid var(--Bc-3)",
+            borderRadius: "17px",
           }}
         >
           <HiOutlinePlusSm />
         </div>
-      </p>
-      <p
+      </ScalableElement>
+      <ScalableElement
+        as="p"
         style={{
           ...MainMenuPStyle,
           opacity: Active == "Transactions" ? 1 : 0.6,
@@ -114,14 +133,22 @@ const MainMenu = () => {
             ...MainMenuSVGStyle,
             background:
               Active == "Transactions" ? "var(--Bc-4)" : "var(--Ec-4)",
-            padding: Active == "Transactions" ? 8 : 3,
+            // padding: Active == "Transactions" ? 8 : 3,
           }}
         >
           <LuLayoutList />
         </div>
-        <span>Transactions</span>
-      </p>
-      <p
+        <span
+          style={{
+            marginTop: Active == "Transactions" ? 0 : -4,
+            transition: "all 0.3s ease",
+          }}
+        >
+          Transactions
+        </span>
+      </ScalableElement>
+      <ScalableElement
+        as="p"
         style={{ ...MainMenuPStyle, opacity: Active == "Acount" ? 1 : 0.6 }}
         onClick={() => handleClick("Acount")}
       >
@@ -129,13 +156,20 @@ const MainMenu = () => {
           style={{
             ...MainMenuSVGStyle,
             background: Active == "Acount" ? "var(--Bc-4)" : "var(--Ec-4)",
-            padding: Active == "Acount" ? 8 : 3,
+            // padding: Active == "Acount" ? 8 : 3,
           }}
         >
           <IoWalletOutline />
         </div>
-        <span>Acount</span>
-      </p>
+        <span
+          style={{
+            marginTop: Active == "Acount" ? 0 : -4,
+            transition: "all 0.3s ease",
+          }}
+        >
+          Acount
+        </span>
+      </ScalableElement>
     </animated.div>
   );
 };

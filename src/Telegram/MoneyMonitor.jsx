@@ -40,6 +40,7 @@ const useMainPageMonth = () => {
 };
 
 const MoneyMonitor = ({
+  isDateClicked,
   isMoreClicked,
   setIsMoreClicked,
   isAddClicked,
@@ -67,9 +68,12 @@ const MoneyMonitor = ({
     display: "flex",
     flexDirection: "column",
     width: "100%",
-    scale: isMoreClicked || isAddClicked !== null ? 0.9 : 1,
-    opacity: isMoreClicked || isAddClicked !== null ? 0.5 : 1,
-    filter: isMoreClicked || isAddClicked !== null ? "blur(10px)" : "blur(0px)",
+    scale: isDateClicked || isMoreClicked || isAddClicked !== null ? 0.9 : 1,
+    opacity: isDateClicked || isMoreClicked || isAddClicked !== null ? 0.5 : 1,
+    filter:
+      isDateClicked || isMoreClicked || isAddClicked !== null
+        ? "blur(10px)"
+        : "blur(0px)",
   });
 
   const [addTransaction, setAddTransaction] = useState({

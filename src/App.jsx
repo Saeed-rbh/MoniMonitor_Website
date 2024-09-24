@@ -69,6 +69,7 @@ const App = () => {
   );
   const [isMoreClicked, setIsMoreClicked] = useState(null);
   const [isAddClicked, setIsAddClicked] = useState(null);
+  const [isDateClicked, setIsDateClicked] = useState(false);
 
   Amplify.configure(awsExports);
 
@@ -76,9 +77,15 @@ const App = () => {
     <Router>
       <div className="App">
         <Suspense fallback={<div>Loading...</div>}>
-          <Header userData={userData} />
+          <Header
+            userData={userData}
+            isDateClicked={isDateClicked}
+            setIsDateClicked={setIsDateClicked}
+          />
           <MainMenu />
+
           <Telegram
+            isDateClicked={isDateClicked}
             isMoreClicked={isMoreClicked}
             setIsMoreClicked={setIsMoreClicked}
             isAddClicked={isAddClicked}

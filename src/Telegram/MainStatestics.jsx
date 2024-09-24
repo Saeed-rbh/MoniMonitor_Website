@@ -231,6 +231,7 @@ const MainStatestics = ({
   const [currentX, setCurrentX] = useState(0);
 
   const bind = useDrag(({ down, movement: [mx], cancel, memo = false }) => {
+    springs.length < 5 && cancel();
     const newX = currentX + mx;
     if (newX > 0) return setCurrentX(0) && setMainPageMonth(1);
     if (-1 * newX > 31.5 * springs.length)

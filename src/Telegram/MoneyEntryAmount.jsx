@@ -46,12 +46,12 @@ const MoneyEntryAmount = ({
   const gradientStyle = {
     background:
       type === "Income"
-        ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Fc-2) 100%)"
+        ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Fc-3) 100%)"
         : type === "Expense"
-        ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Gc-2) 100%)"
+        ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Gc-3) 100%)"
         : type === "Save&Invest"
-        ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Ac-2) 100%)"
-        : "linear-gradient(165deg, var(--Ec-1) 30%, var(--Bc-2) 100%)",
+        ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Ac-3) 100%)"
+        : "linear-gradient(165deg, var(--Ec-1) 30%, var(--Bc-3) 100%)",
   };
 
   const ColorStyle = {
