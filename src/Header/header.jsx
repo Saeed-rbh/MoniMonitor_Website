@@ -8,6 +8,9 @@ function Header({
   isDateClicked,
   setIsDateClicked,
   availabilityData,
+  whichMonth,
+  setWhichMonth,
+  setMainPageMonth,
 }) {
   const { userId, userName } = userData;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -18,6 +21,9 @@ function Header({
         isDateClicked={isDateClicked}
         setIsDateClicked={setIsDateClicked}
         availabilityData={availabilityData}
+        whichMonth={whichMonth}
+        setWhichMonth={setWhichMonth}
+        setMainPageMonth={setMainPageMonth}
       />
       <div className="MoneyMonitor_User">
         <div className="MoneyMonitor_Logo">

@@ -33,11 +33,17 @@ const MainStyle = {
 //   // Add more years and months as needed
 // ];
 
-const ChooseMonth = ({ isDateClicked, setIsDateClicked, availabilityData }) => {
+const ChooseMonth = ({
+  isDateClicked,
+  setIsDateClicked,
+  availabilityData,
+  whichMonth,
+  setWhichMonth,
+  setMainPageMonth,
+}) => {
   const containerRef = useRef(null);
   useClickOutside(containerRef, () => setIsDateClicked(false));
 
-  // Extract available years and months from availabilityData
   const availableYears = availabilityData.map((yearData) =>
     parseInt(yearData[0])
   );
@@ -52,9 +58,12 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked, availabilityData }) => {
     });
   });
 
-  // Initialize selected month and year
   const currentYear = new Date().getFullYear();
-  const currentMonthIndex = new Date().getMonth(); // 0 = Jan, 1 = Feb, ..., 11 = Dec
+  const currentMonthNum = new Date().getMonth();
+  const currentMonth = new Date().toLocaleString("default", {
+    month: "short",
+  });
+  const currentMonthIndex = new Date().getMonth();
   const monthNames = [
     "Jan",
     "Feb",
@@ -71,22 +80,61 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked, availabilityData }) => {
   ];
 
   const [selectedYear, setSelectedYear] = useState(currentYear);
-  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
-  useEffect(() => {
-    // Find the nearest available month for the current year
-    const yearData = availabilityData.find(
-      (data) => data[0] === String(selectedYear)
-    );
-    if (yearData) {
-      const months = yearData[1];
-      const availableMonthKeys = Object.keys(months);
-      const nearestMonth = availableMonthKeys.find(
-        (_, index) => index >= currentMonthIndex
-      );
-      setSelectedMonth(nearestMonth || availableMonthKeys[0] || ""); // Fallback to the first available month
+  const calculateTotalMargin = () => {
+    // Convert input month to a number (0 = January, 11 = December)
+    const monthMap = {
+      Jan: 0,
+      Feb: 1,
+      Mar: 2,
+      Apr: 3,
+      May: 4,
+      Jun: 5,
+      Jul: 6,
+      Aug: 7,
+      Sep: 8,
+      Oct: 9,
+      Nov: 10,
+      Dec: 11,
+    };
+
+    const monthNumber = monthMap[selectedMonth];
+    const yearDifference = currentYear - selectedYear;
+
+    // Calculate the total margin in months
+    if (monthNumber !== undefined) {
+      const totalMargin = yearDifference * 12 + (currentMonthNum - monthNumber);
+      // Adjust the margin to ensure it behaves correctly
+      return totalMargin >= 0 ? totalMargin : null; // Return null for future dates
+    } else {
+      throw new Error("Invalid month input");
     }
-  }, [selectedYear]);
+  };
+
+  const getTwoMonthsAgo = (N) => {
+    const currentDate = new Date(); // Get the current date
+    currentDate.setMonth(currentDate.getMonth() - N); // Subtract 2 months
+    return currentDate.toLocaleString("default", { month: "short" }); // Return the month in long format (e.g., August)
+  };
+  useEffect(() => {
+    const twoMonthsAgo = getTwoMonthsAgo(whichMonth);
+    setSelectedMonth(twoMonthsAgo);
+  }, [whichMonth]);
+
+  // useEffect(() => {
+  //   const yearData = availabilityData.find(
+  //     (item) => item[0] === selectedYear.toString()
+  //   );
+  //   // let monthData = [];
+  //   // if (yearData) {
+  //   //   monthData = yearData[1][selectedMonth][1];
+  //   // }
+  //   // if (monthData && monthData !== whichMonth) {
+  //   //   setWhichMonth(monthData);
+  //   //   setMainPageMonth(monthData);
+  //   // }
+  // }, [selectedYear, selectedMonth, availabilityData]);
 
   const SVGStyle = {
     display: "flex",
@@ -156,8 +204,8 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked, availabilityData }) => {
     overflow: "auto",
     left: "33px",
     boxSizing: "border-box",
-    scrollbarWidth: "none", // Firefox
-    msOverflowStyle: "none", // IE 10+
+    scrollbarWidth: "none",
+    msOverflowStyle: "none",
     transition: "background-color 0.5s ease",
   };
 
@@ -253,54 +301,44 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked, availabilityData }) => {
   const [{ x }, api] = useSpring(() => ({ x: 0 }));
   const [currentX, setCurrentX] = useState(0);
 
-  // Define the width of each item and dynamically compute the max scroll value
-  const itemWidth = 33; // Adjust as necessary
-  const maxScroll = (yearDates.length - 1) * itemWidth; // Max positive scroll based on the number of years
+  const itemWidth = 33;
+  const maxScroll = (yearDates.length - 1) * itemWidth;
 
-  // Helper function to snap to nearest element, with proper boundary handling
   const snapToElement = (value) => {
-    if (value < itemWidth / 2) return 0; // Snap to start if close to 0
-    if (value > maxScroll - itemWidth / 2) return maxScroll; // Snap to end if close to max scroll
-    return Math.round(value / itemWidth) * itemWidth; // Otherwise snap to nearest element
+    if (value < itemWidth / 2) return 0;
+    if (value > maxScroll - itemWidth / 2) return maxScroll;
+    return Math.round(value / itemWidth) * itemWidth;
   };
 
-  // Handle dragging interaction
   const bind = useDrag(({ down, movement: [mx], cancel }) => {
-    if (yearDates.length < 5) cancel(); // Disable dragging if there are less than 5 years
+    if (yearDates.length < 5) cancel();
 
     const newX = currentX + mx;
 
-    // Enforce boundaries while dragging
-    if (newX < 0) return setCurrentX(0); // Prevent scrolling past the left (min 0)
-    if (newX > maxScroll) return setCurrentX(maxScroll); // Prevent scrolling past the right (max scroll)
+    if (newX < 0) return setCurrentX(0);
+    if (newX > maxScroll) return setCurrentX(maxScroll);
 
-    // When dragging stops, snap to the nearest element
     if (!down) {
       const snappedX = snapToElement(newX);
       setCurrentX(snappedX);
       api.start({ x: snappedX });
     } else {
-      // Animate the position while dragging
       api.start({ x: newX });
     }
   });
 
-  // Handle clicking left (scroll right)
   const handleClickLeft = () => {
-    const newX = snapToElement(currentX + itemWidth * 2); // Scroll right by two item widths
+    const newX = snapToElement(currentX + itemWidth * 2);
 
-    // Enforce the boundary
     if (newX > maxScroll) return setCurrentX(maxScroll);
 
     setCurrentX(newX);
     api.start({ x: newX });
   };
 
-  // Handle clicking right (scroll left)
   const handleClickRight = () => {
-    const newX = snapToElement(currentX - itemWidth * 2); // Scroll left by two item widths
+    const newX = snapToElement(currentX - itemWidth * 2);
 
-    // Enforce the boundary
     if (newX < 0) return setCurrentX(0);
 
     setCurrentX(newX);
@@ -308,12 +346,20 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked, availabilityData }) => {
   };
 
   const handleYearClick = (year) => {
-    setSelectedYear(year); // Update selected year
+    setSelectedYear(year);
   };
 
+  useEffect(() => {
+    if (!isDateClicked) {
+      const margin = calculateTotalMargin();
+      setWhichMonth(margin);
+      setMainPageMonth(margin);
+    }
+  }, [isDateClicked]);
+
   const handleMonthClick = (month) => {
-    setSelectedMonth(month); // Update selected month
-    setIsDateClicked(false); // Close
+    setSelectedMonth(month);
+    setIsDateClicked(false);
   };
 
   return (
@@ -330,70 +376,74 @@ const ChooseMonth = ({ isDateClicked, setIsDateClicked, availabilityData }) => {
         <div style={SVGStyle} onClick={toggleOpen}>
           {isDateClicked ? <IoClose /> : <FiChevronRight />}
         </div>
-        <animated.div style={{ ...OpenStyle, ...OpenStyleAnim }}>
-          {/* Year Navigation */}
-          <div
-            style={{ ...YearSVGStyle, ...YearSVGRStyle }}
-            onClick={handleClickLeft}
-          >
-            <FiChevronLeft />
-          </div>
-          <animated.div style={{ ...openYearStyle }} {...bind()}>
-            {yearDates.map((year, index) => (
-              <animated.p
-                key={index}
-                style={{
-                  ...yearStyle,
-                  opacity: availableYears.includes(year) ? 1 : 0.5,
-                  transform: x.to((x) => `translate3d(${x}px,0,0)`),
-                  cursor: availableYears.includes(year) ? "pointer" : "default",
-                  backgroundColor:
-                    parseInt(selectedYear) === parseInt(year)
-                      ? "var(--Bc-4)"
-                      : availableYears.includes(year)
-                      ? "var(--Ac-4)"
-                      : "var(--Ac-4)",
-                }}
-                onClick={() =>
-                  availableYears.includes(year) && handleYearClick(year)
-                } // Prevent click on unavailable years
-              >
-                {year}
-              </animated.p>
-            ))}
-          </animated.div>
-
-          {/* Month Navigation */}
-          <div style={openMonthStyle}>
-            {monthNames.map((month, index) => {
-              const isDisabled =
-                (selectedYear === currentYear && index > currentMonthIndex) ||
-                !availableMonths[month]; // Disable if not available or future month in current year
-
-              return (
-                <p
+        {isDateClicked && (
+          <animated.div style={{ ...OpenStyle, ...OpenStyleAnim }}>
+            {/* Year Navigation */}
+            <div
+              style={{ ...YearSVGStyle, ...YearSVGRStyle }}
+              onClick={handleClickLeft}
+            >
+              <FiChevronLeft />
+            </div>
+            <animated.div style={{ ...openYearStyle }} {...bind()}>
+              {yearDates.map((year, index) => (
+                <animated.p
                   key={index}
                   style={{
-                    ...monthStyle,
+                    ...yearStyle,
+                    opacity: availableYears.includes(year) ? 1 : 0.5,
+                    transform: x.to((x) => `translate3d(${x}px,0,0)`),
+                    cursor: availableYears.includes(year)
+                      ? "pointer"
+                      : "default",
                     backgroundColor:
-                      month === selectedMonth ? "var(--Bc-3)" : "var(--Ec-4)",
-                    cursor: isDisabled ? "default" : "pointer",
-                    opacity: isDisabled ? 0.5 : 1, // Visually indicate disabled months
+                      parseInt(selectedYear) === parseInt(year)
+                        ? "var(--Bc-4)"
+                        : availableYears.includes(year)
+                        ? "var(--Ac-4)"
+                        : "var(--Ac-4)",
                   }}
-                  onClick={() => !isDisabled && handleMonthClick(month)}
+                  onClick={() =>
+                    availableYears.includes(year) && handleYearClick(year)
+                  } // Prevent click on unavailable years
                 >
-                  {month}
-                </p>
-              );
-            })}
-          </div>
-          <div
-            style={{ ...YearSVGStyle, ...YearSVGLStyle }}
-            onClick={handleClickRight}
-          >
-            <FiChevronRight />
-          </div>
-        </animated.div>
+                  {year}
+                </animated.p>
+              ))}
+            </animated.div>
+
+            {/* Month Navigation */}
+            <div style={openMonthStyle}>
+              {monthNames.map((month, index) => {
+                const isDisabled =
+                  (selectedYear === currentYear && index > currentMonthIndex) ||
+                  !availableMonths[month]; // Disable if not available or future month in current year
+
+                return (
+                  <p
+                    key={index}
+                    style={{
+                      ...monthStyle,
+                      backgroundColor:
+                        month === selectedMonth ? "var(--Bc-3)" : "var(--Ec-4)",
+                      cursor: isDisabled ? "default" : "pointer",
+                      opacity: isDisabled ? 0.5 : 1, // Visually indicate disabled months
+                    }}
+                    onClick={() => !isDisabled && handleMonthClick(month)}
+                  >
+                    {month}
+                  </p>
+                );
+              })}
+            </div>
+            <div
+              style={{ ...YearSVGStyle, ...YearSVGLStyle }}
+              onClick={handleClickRight}
+            >
+              <FiChevronRight />
+            </div>
+          </animated.div>
+        )}
       </div>
     </>
   );

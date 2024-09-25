@@ -106,7 +106,6 @@ const App = () => {
   const [isDateClicked, setIsDateClicked] = useState(false);
 
   const {
-    selected: selectedData,
     Availability: availabilityData,
     netAmounts: netAmountsData,
     transactions: transactionsData,
@@ -116,6 +115,8 @@ const App = () => {
   const { selected: mainSelected } = useTransactionData(mainPageMonth);
 
   Amplify.configure(awsExports);
+
+  // console.log("selected", whichMonth, mainPageMonth);
 
   return (
     <ErrorBoundary>
@@ -127,6 +128,9 @@ const App = () => {
               isDateClicked={isDateClicked}
               setIsDateClicked={setIsDateClicked}
               availabilityData={availabilityData}
+              whichMonth={whichMonth}
+              setWhichMonth={setWhichMonth}
+              setMainPageMonth={setMainPageMonth}
             />
             <MainMenu />
 

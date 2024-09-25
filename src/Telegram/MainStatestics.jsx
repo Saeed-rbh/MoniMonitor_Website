@@ -77,8 +77,7 @@ const MainStatestics = ({
     processedData.length > 0 &&
       processedData[mainPageMonth].income +
         processedData[mainPageMonth].Expense +
-        processedData[mainPageMonth].saving +
-        processedData[mainPageMonth].net ===
+        processedData[mainPageMonth].saving ===
         0 &&
       setMainPageMonth(mainPageMonth + 1);
   }, [processedData]);
@@ -374,8 +373,7 @@ const MainStatestics = ({
                 cursor:
                   processedData[index].income +
                     processedData[index].Expense +
-                    processedData[index].saving +
-                    processedData[index].net !==
+                    processedData[index].saving !==
                   0
                     ? "pointer"
                     : "default",
@@ -383,8 +381,7 @@ const MainStatestics = ({
               onClick={() => {
                 processedData[index].income +
                   processedData[index].Expense +
-                  processedData[index].saving +
-                  processedData[index].net !==
+                  processedData[index].saving !==
                   0 && setMainPageMonth(index);
               }}
             >
