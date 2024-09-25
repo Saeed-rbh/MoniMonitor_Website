@@ -226,20 +226,6 @@ const ChooseMonth = ({
     transition: "background-color 0.5s ease",
   };
 
-  const YearSVGStyle = {
-    position: "absolute",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    width: "35px",
-    height: "35px",
-    fontSize: "1rem",
-    borderRadius: "50px",
-    color: "var(--Bc-1)",
-    top: 15,
-    transition: "background-color 0.5s ease",
-  };
-
   const YearSVGLStyle = {
     right: 0,
   };
@@ -328,6 +314,7 @@ const ChooseMonth = ({
   });
 
   const handleClickLeft = () => {
+    if (availableYears.length < 4) return;
     const newX = snapToElement(currentX + itemWidth * 2);
 
     if (newX > maxScroll) return setCurrentX(maxScroll);
@@ -337,6 +324,7 @@ const ChooseMonth = ({
   };
 
   const handleClickRight = () => {
+    if (availableYears.length < 4) return;
     const newX = snapToElement(currentX - itemWidth * 2);
 
     if (newX < 0) return setCurrentX(0);
@@ -362,6 +350,20 @@ const ChooseMonth = ({
     setIsDateClicked(false);
   };
 
+  const YearSVGStyle = {
+    position: "absolute",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    width: "35px",
+    height: "35px",
+    fontSize: "1rem",
+    borderRadius: "50px",
+    color: "var(--Bc-1)",
+    opacity: availableYears.length < 4 ? 0.5 : 1,
+    top: 15,
+    transition: "background-color 0.5s ease",
+  };
   return (
     <>
       {isDateClicked && (
