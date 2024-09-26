@@ -116,8 +116,6 @@ const App = () => {
 
   Amplify.configure(awsExports);
 
-  // console.log("selected", whichMonth, mainPageMonth);
-
   return (
     <ErrorBoundary>
       <Router>
@@ -132,8 +130,7 @@ const App = () => {
               setWhichMonth={setWhichMonth}
               setMainPageMonth={setMainPageMonth}
             />
-            <MainMenu />
-
+            <MainMenu isMoreClicked={isMoreClicked} />
             <Telegram
               isDateClicked={isDateClicked}
               isMoreClicked={isMoreClicked}

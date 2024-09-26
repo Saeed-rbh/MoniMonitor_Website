@@ -18,10 +18,10 @@ const MainStyle = {
   width: "max-content",
   height: "35px",
   overflow: "visible",
-  right: 60,
+  right: 0,
   top: 8,
   padding: "3px 1px",
-  zIndex: 100,
+  zIndex: 1000000,
   transition: "background-color 0.5s ease",
 };
 

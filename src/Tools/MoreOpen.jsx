@@ -57,8 +57,6 @@ const MoreOpen = ({
     !isOpenRef.current && setIsAnimationEnds(false);
   };
 
-  console.log(MoreOpenHeight);
-
   useEffect(() => {
     if (isAnimationEnds) {
       api.start({
@@ -147,7 +145,7 @@ const MoreOpen = ({
             className="MoreOpen_Wall"
             style={{ background: "var(--Ec-2)" }}
           >
-            <div
+            {/* <div
               className="MoreOpen_TopLine"
               style={{
                 position: "absolute",
@@ -158,7 +156,7 @@ const MoreOpen = ({
                 left: "20px",
                 opacity: "0.5",
               }}
-            ></div>
+            ></div> */}
             <ScalableElement
               as="div"
               className="MoreOpen_Close"

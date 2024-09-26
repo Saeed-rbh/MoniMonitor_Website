@@ -7,6 +7,7 @@ import {
   GoPulse,
 } from "react-icons/go";
 import { formatNetTotal } from "../Tools/tools";
+import { useWindowHeight } from "../Tools/tools";
 
 const MoneyEntryAmount = ({
   type,
@@ -77,9 +78,12 @@ const MoneyEntryAmount = ({
     setIsScaled(false);
   };
 
+  const height = useWindowHeight(0);
+
   const widthFactor =
     type === "Save&Invest" ? 1.12 : type === "Balance" ? 0.88 : 1;
-  const heightFactor = 0.98;
+  const heightFactor = Math.min(height / 675, 1);
+
   const scaleStyle = useSpring({
     scale: isScaled ? 0.9 : 1,
     width: ((390 - 10) / 2) * widthFactor,

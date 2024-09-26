@@ -1,5 +1,5 @@
 import React from "react";
-import { animated } from "react-spring";
+import { useSpring, animated } from "react-spring";
 import { TbHomeStats } from "react-icons/tb";
 import { HiOutlinePlusSm } from "react-icons/hi";
 import { LuLayoutList } from "react-icons/lu";
@@ -7,7 +7,7 @@ import { IoWalletOutline } from "react-icons/io5";
 import { RiDonutChartFill } from "react-icons/ri";
 import { ScalableElement } from "../Tools/tools";
 
-const MainMenu = () => {
+const MainMenu = ({ isMoreClicked }) => {
   const [Active, setActive] = React.useState("Summary");
   const MainMenuStyle = {
     position: "fixed",
@@ -21,14 +21,21 @@ const MainMenu = () => {
     flexDirection: "row",
     color: "var(--Ac-2)",
     fontSize: "0.6rem",
+    // bottom: "15px",
     borderRadius: "25px",
-    bottom: "15px",
     flex: "1",
     padding: "15px",
     boxSizing: "border-box",
     border: "2px solid var(--Ac-4)",
-    transition: "all 0.5s ease",
+    zIndex: 10000,
   };
+  const MainMenuStyleAnim = useSpring({
+    bottom: isMoreClicked === null ? 15 : 40,
+    opacity: isMoreClicked === null ? 1 : 0,
+    scale: isMoreClicked === null ? 1 : 0.95,
+    filter: isMoreClicked === null ? "blur(0px)" : "blur(2px)",
+  });
+
   const MainMenuPStyle = {
     display: "flex",
     justifyContent: "space-around",
@@ -58,7 +65,7 @@ const MainMenu = () => {
     setActive(e);
   };
   return (
-    <animated.div style={MainMenuStyle}>
+    <animated.div style={{ ...MainMenuStyleAnim, ...MainMenuStyle }}>
       <ScalableElement
         as="p"
         style={{ ...MainMenuPStyle, opacity: Active == "Summary" ? 1 : 0.6 }}

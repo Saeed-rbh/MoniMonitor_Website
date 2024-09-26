@@ -114,7 +114,9 @@ const MainStatestics = ({
     }))
   );
 
-  const heightFactor = height - 225 - 85 + 20 + 10 - 70;
+  const buttunsHeight =
+    ((390 - 20) / 2 / 1.6) * Math.min(height / 675, 1) * 2 + 10;
+  const heightFactor = height - buttunsHeight - height / 3.7;
 
   const valueSpringIn = useSpring({
     position: "absolute",

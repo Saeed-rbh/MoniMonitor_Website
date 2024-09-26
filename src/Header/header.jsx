@@ -34,7 +34,7 @@ function Header({
           <span>{userId}</span>
         </p>
       </div>
-      <MenuButton handleButtonClick={setIsMenuOpen} isMenuOpen={isMenuOpen} />
+      {/* <MenuButton handleButtonClick={setIsMenuOpen} isMenuOpen={isMenuOpen} /> */}
     </header>
   );
 }
