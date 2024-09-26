@@ -22,7 +22,7 @@
   padding-bottom: 10px;
   width: calc(100%);
   border-radius: 35px 35px 0 0;
-  padding: 30px 10px 0 10px;
+  padding: 45px 10px 0 10px;
 }
 
 .TransactionList_Wall::-webkit-scrollbar {
@@ -36,7 +36,7 @@
   color: var(--Ac-1);
   width: calc(100% - 80px);
   display: flex;
-  margin-top: 5px;
+  margin-top: -20px;
   margin-left: 10px;
   align-items: baseline;
   justify-content: flex-start;
@@ -55,7 +55,7 @@
   font-size: 0.7rem;
   color: var(--Bc-1);
   font-weight: 400;
-  bottom: -17px;
+  bottom: -10px;
   left: 15px;
 }
 .TransactionList_SummaryLines {
@@ -184,8 +184,9 @@
 }
 .TransactionList_Wall h1 span:first-of-type {
   margin-right: 5px;
-  font-size: 1.5rem;
+  font-size: 1.3rem;
   font-weight: 200;
+  margin-top: -5px;
 }
 
 .TransactionList_Title {
@@ -211,9 +212,10 @@
   width: -moz-fit-content;
   display: flex;
   opacity: 1;
-  margin-top: -20px;
+  margin-top: -30px;
   right: 80px;
   align-items: baseline;
+  flex-direction: column;
 }
 
 .TransactionList_Title h1 span {

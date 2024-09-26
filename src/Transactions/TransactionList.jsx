@@ -354,9 +354,9 @@ const TransactionList = ({
             <animated.div className="TransactionList_Title">
               <p style={colorStyle} onClick={() => setIsMoreClicked(null)}>
                 •<span>{isMoreClicked}</span>
-                {/* <div className="TransactionList_TitleMonth">
+                <div className="TransactionList_TitleMonth">
                   {currentMonth} | {currentYear}
-                </div> */}
+                </div>
               </p>
               <h1>
                 Total:{" "}

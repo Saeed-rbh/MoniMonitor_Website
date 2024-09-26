@@ -16,7 +16,7 @@ function Header({
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <header className="MoneyMonitor_header" style={{ zIndex: 100 }}>
+    <header className="MoneyMonitor_header" style={{ zIndex: 1000000 }}>
       <ChooseMonth
         isDateClicked={isDateClicked}
         setIsDateClicked={setIsDateClicked}

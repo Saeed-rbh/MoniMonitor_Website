@@ -6,9 +6,12 @@ import { LuLayoutList } from "react-icons/lu";
 import { IoWalletOutline } from "react-icons/io5";
 import { RiDonutChartFill } from "react-icons/ri";
 import { ScalableElement } from "../Tools/tools";
+import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
-const MainMenu = ({ isMoreClicked }) => {
-  const [Active, setActive] = React.useState("Summary");
+const MainMenu = ({ isMoreClicked, setIsMoreClicked }) => {
+  const location = useLocation().pathname;
+
   const MainMenuStyle = {
     position: "fixed",
     width: "385px",
@@ -21,7 +24,6 @@ const MainMenu = ({ isMoreClicked }) => {
     flexDirection: "row",
     color: "var(--Ac-2)",
     fontSize: "0.6rem",
-    // bottom: "15px",
     borderRadius: "25px",
     flex: "1",
     padding: "15px",
@@ -61,20 +63,33 @@ const MainMenu = ({ isMoreClicked }) => {
     padding: "8px",
     transition: "all 0.3s ease",
   };
-  const handleClick = (e) => {
-    setActive(e);
+  // const handleClick = (e) => {
+  //   setActive(e);
+  // };
+
+  const redirect = useNavigate();
+  const redirectClick = () => {
+    redirect("/Transactions");
+  };
+  const handleTransactionsClick = () => {
+    setIsMoreClicked("Balance");
+    redirectClick("/Transactions");
+    // handleClick("Transactions");
   };
   return (
     <animated.div style={{ ...MainMenuStyleAnim, ...MainMenuStyle }}>
       <ScalableElement
         as="p"
-        style={{ ...MainMenuPStyle, opacity: Active == "Summary" ? 1 : 0.6 }}
-        onClick={() => handleClick("Summary")}
+        style={{
+          ...MainMenuPStyle,
+          opacity: location === "/" ? 1 : 0.6,
+        }}
+        // onClick={() => handleClick("Summary")}
       >
         <div
           style={{
             ...MainMenuSVGStyle,
-            background: Active == "Summary" ? "var(--Bc-4)" : "var(--Ec-4)",
+            background: location === "/" ? "var(--Bc-4)" : "var(--Ec-4)",
             // padding: Active == "Summary" ? 8 : 3,
           }}
         >
@@ -82,7 +97,7 @@ const MainMenu = ({ isMoreClicked }) => {
         </div>
         <span
           style={{
-            marginTop: Active == "Summary" ? 0 : -4,
+            marginTop: location === "/" ? 0 : -4,
             transition: "all 0.3s ease",
           }}
         >
@@ -91,13 +106,16 @@ const MainMenu = ({ isMoreClicked }) => {
       </ScalableElement>
       <ScalableElement
         as="p"
-        style={{ ...MainMenuPStyle, opacity: Active == "Insight" ? 1 : 0.6 }}
-        onClick={() => handleClick("Insight")}
+        style={{
+          ...MainMenuPStyle,
+          opacity: location === "/Insight" ? 1 : 0.6,
+        }}
+        // onClick={() => handleClick("Insight")}
       >
         <div
           style={{
             ...MainMenuSVGStyle,
-            background: Active == "Insight" ? "var(--Bc-4)" : "var(--Ec-4)",
+            background: location === "/Insight" ? "var(--Bc-4)" : "var(--Ec-4)",
             // padding: Active == "Insight" ? 8 : 3,
           }}
         >
@@ -105,7 +123,7 @@ const MainMenu = ({ isMoreClicked }) => {
         </div>
         <span
           style={{
-            marginTop: Active == "Insight" ? 0 : -4,
+            marginTop: location === "/Insight" ? 0 : -4,
             transition: "all 0.3s ease",
           }}
         >
@@ -131,15 +149,15 @@ const MainMenu = ({ isMoreClicked }) => {
         as="p"
         style={{
           ...MainMenuPStyle,
-          opacity: Active == "Transactions" ? 1 : 0.6,
+          opacity: location === "/Transactions" ? 1 : 0.6,
         }}
-        onClick={() => handleClick("Transactions")}
+        onClick={handleTransactionsClick}
       >
         <div
           style={{
             ...MainMenuSVGStyle,
             background:
-              Active == "Transactions" ? "var(--Bc-4)" : "var(--Ec-4)",
+              location === "/Transactions" ? "var(--Bc-4)" : "var(--Ec-4)",
             // padding: Active == "Transactions" ? 8 : 3,
           }}
         >
@@ -147,7 +165,7 @@ const MainMenu = ({ isMoreClicked }) => {
         </div>
         <span
           style={{
-            marginTop: Active == "Transactions" ? 0 : -4,
+            marginTop: location === "/Transactions" ? 0 : -4,
             transition: "all 0.3s ease",
           }}
         >
@@ -156,13 +174,13 @@ const MainMenu = ({ isMoreClicked }) => {
       </ScalableElement>
       <ScalableElement
         as="p"
-        style={{ ...MainMenuPStyle, opacity: Active == "Acount" ? 1 : 0.6 }}
-        onClick={() => handleClick("Acount")}
+        style={{ ...MainMenuPStyle, opacity: location === "/Acount" ? 1 : 0.6 }}
+        // onClick={() => handleClick("Acount")}
       >
         <div
           style={{
             ...MainMenuSVGStyle,
-            background: Active == "Acount" ? "var(--Bc-4)" : "var(--Ec-4)",
+            background: location === "/Acount" ? "var(--Bc-4)" : "var(--Ec-4)",
             // padding: Active == "Acount" ? 8 : 3,
           }}
         >
@@ -170,7 +188,7 @@ const MainMenu = ({ isMoreClicked }) => {
         </div>
         <span
           style={{
-            marginTop: Active == "Acount" ? 0 : -4,
+            marginTop: location === "/Acount" ? 0 : -4,
             transition: "all 0.3s ease",
           }}
         >

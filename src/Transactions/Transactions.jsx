@@ -11,6 +11,7 @@ const Transactions = ({
   setIsMoreClicked,
   whichMonth,
   setWhichMonth,
+  isDateClicked,
 }) => {
   useEffect(() => {
     !isMoreClicked && setIsMoreClicked("Balance");
@@ -71,6 +72,7 @@ const Transactions = ({
       />
     );
   };
+
   return (
     <>
       <MoreOpen
@@ -80,7 +82,7 @@ const Transactions = ({
         MoreOpenHeight={90}
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
-        blur={isAddClicked}
+        blur={isAddClicked !== null || isDateClicked}
         toRedirect={"/"}
       />
       <MoreOpen

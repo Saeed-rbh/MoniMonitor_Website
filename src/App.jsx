@@ -130,7 +130,10 @@ const App = () => {
               setWhichMonth={setWhichMonth}
               setMainPageMonth={setMainPageMonth}
             />
-            <MainMenu isMoreClicked={isMoreClicked} />
+            <MainMenu
+              isMoreClicked={isMoreClicked}
+              setIsMoreClicked={setIsMoreClicked}
+            />
             <Telegram
               isDateClicked={isDateClicked}
               isMoreClicked={isMoreClicked}
@@ -157,6 +160,7 @@ const App = () => {
                     whichMonth={whichMonth}
                     setWhichMonth={setWhichMonth}
                     userId={userData.userId}
+                    isDateClicked={isDateClicked}
                   />
                 }
               />

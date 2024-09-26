@@ -13,7 +13,7 @@ const MoreOpen = ({
   MoreOpenHeight,
   handleCloseAddTransaction,
   zIndex = 105,
-  blur = null,
+  blur = false,
   toRedirect,
 }) => {
   const redirect = useNavigate();
@@ -32,7 +32,7 @@ const MoreOpen = ({
   }));
 
   useEffect(() => {
-    if (blur !== null) {
+    if (blur) {
       api.start({
         scale: 0.9,
         opacity: 0.5,
