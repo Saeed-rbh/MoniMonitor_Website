@@ -242,13 +242,13 @@
   font-weight: 600;
   font-family: "Noto Sans", sans-serif;
   color: var(--Ac-2);
-  background: var(--Ec-3);
-  background: linear-gradient(165deg, var(--Ec-1) 40%, var(--Ec-1) 100%);
-  padding: 5px 20px 10px 5px;
-  border-radius: 20px;
+  background: var(--Ac-5);
+  /* background: linear-gradient(165deg, var(--Ec-1) 40%, var(--Ec-1) 100%); */
+  padding: 7px 20px 10px 5px;
+  border-radius: 30px;
   cursor: pointer;
   justify-content: space-between;
-  outline: 2px solid var(--Ec-2);
+  border: 3px solid var(--Ec-1);
   z-index: 100;
 }
 
@@ -324,7 +324,7 @@
   justify-content: flex-start;
   width: calc(100% - 10px);
   /* height: 30px; */
-  margin: -15px;
+  margin: -35px -15px -15px -15px;
   padding: 30px 5px;
   overflow-x: auto;
   overflow-y: visible;
@@ -364,7 +364,7 @@
     var(--Bc-3) -100%,
     var(--Ec-4) 65%
   );
-  outline: 1px solid var(--Ac-2);
+  outline: 2px solid var(--Ac-2);
 }
 .TransactionList_Menu h1:first-of-type {
   /* width: 17px;
@@ -487,10 +487,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  width: calc(100% - 30px);
+  width: calc(100% - 20px);
   height: -moz-fit-content;
   height: fit-content;
-  margin: 0px 15px 10px 0;
+  margin: 0px 10px 10px 0;
+  padding: 0 10px;
   border-radius: 30px;
 }
 

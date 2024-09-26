@@ -3,17 +3,12 @@ import { useSprings, animated, useSpring } from "react-spring";
 import { ScalableElement } from "../Tools/tools";
 import { useDrag } from "@use-gesture/react";
 
-const TransactionFilter = ({
-  sortby,
-  setSortby,
-  setIsCalendarClicked,
-  isCalendarClicked,
-}) => {
+const TransactionFilter = ({ sortby, setSortby }) => {
   const sortItems = ["All", "daily", "monthly", "Income", "Expense", "Today"];
   const [scrollWidth, setScrollWidth] = useState(0);
   const [{ x }, api] = useSpring(() => ({ x: 0 }));
   const [currentX, setCurrentX] = useState(0);
-  const [isScrolling, setIsScrolling] = useState(false); // Track scrolling state
+  const [isScrolling, setIsScrolling] = useState(false);
   const widthRef = useRef(null);
   const ParWidthRef = useRef(null);
 
@@ -49,8 +44,8 @@ const TransactionFilter = ({
       fontWeight: sortby === sortItems[index] ? "600" : "200",
       outline:
         sortby === sortItems[index]
-          ? "1px solid var(--Bc-2)"
-          : "1px solid var(--Bc-2)",
+          ? "1px solid var(--Bc-3)"
+          : "1px solid var(--Bc-3)",
     }),
     [sortby]
   );
@@ -67,9 +62,9 @@ const TransactionFilter = ({
       {...bind()}
       ref={ParWidthRef}
     >
-      <p>
+      {/* <p>
         <h3>Filter</h3> Transactions
-      </p>
+      </p> */}
       <animated.div
         ref={widthRef}
         style={{
