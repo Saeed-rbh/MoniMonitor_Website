@@ -112,7 +112,7 @@ const Amount = ({
     // left: addStage > 1 ? 20 : 25,
     position: "absolute",
     top: addStage > 1 ? 30 : 35,
-    left: addStage === 1 ? 85 : 50,
+    left: addStage === 1 ? 85 : 40,
   });
   const AnountBorderStyle = useSpring({
     height: "auto",
@@ -217,7 +217,7 @@ const Amount = ({
     position: "relative",
     fontSize: addStage !== 1 ? "1rem" : "0.7rem",
     color: "var(--Bc-2)",
-    border: "1px solid var(--Bc-2)",
+    // border: "1px solid var(--Bc-2)",
     borderRadius: "30px",
     width: addStage !== 1 ? 35 : 70,
     height: 35,
@@ -278,6 +278,9 @@ const Amount = ({
       <animated.label style={AnountStyle}>
         {addStage === 1 && `Insert`} Amount:
       </animated.label>
+      <div className="Add_edit">
+        <MdModeEditOutline /> Tap fot Edit
+      </div>
       <animated.textarea
         type="text"
         defaultValue={fornatDefualtValue}

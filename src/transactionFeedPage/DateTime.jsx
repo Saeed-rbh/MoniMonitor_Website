@@ -78,7 +78,7 @@ const DateTime = ({
     position: "relative",
     fontSize: addStage !== 2 ? "1rem" : "0.7rem",
     color: "var(--Bc-2)",
-    border: "1px solid var(--Bc-2)",
+    // border: "1px solid var(--Bc-2)",
     borderRadius: "30px",
     width: addStage !== 2 ? 35 : 70,
     height: 35,
@@ -93,7 +93,7 @@ const DateTime = ({
 
   const labelTitle = useSpring({
     top: addStage > 2 ? 27 : 30,
-    left: addStage > 2 ? 40 : 75,
+    left: addStage > 2 ? 30 : 75,
     width: "max-content",
     margin: 0,
     position: "absolute",
@@ -123,6 +123,9 @@ const DateTime = ({
             addStage={addStage}
           />
         </animated.label>
+        <div className="Add_edit">
+          <MdModeEditOutline /> Tap fot Edit
+        </div>
       </h1>
       <h1>
         <animated.div style={labelPar}>

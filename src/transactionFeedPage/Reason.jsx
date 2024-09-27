@@ -69,7 +69,7 @@ const Reason = ({
     position: "relative",
     fontSize: addStage !== 2 ? "1rem" : "0.7rem",
     color: "var(--Bc-2)",
-    border: "1px solid var(--Bc-2)",
+    // border: "1px solid var(--Bc-2)",
     borderRadius: "30px",
     width: addStage !== 2 ? 35 : 70,
     height: 35,
@@ -84,7 +84,7 @@ const Reason = ({
 
   const labelTitle = useSpring({
     top: addStage > 2 ? 25 : 30,
-    left: addStage > 2 ? 40 : 75,
+    left: addStage > 2 ? 30 : 75,
     width: "max-content",
     margin: 0,
     position: "absolute",
@@ -198,6 +198,9 @@ const Reason = ({
       <animated.label style={labelTitle}>
         {addStage === 2 && `What is the`} Reason:{" "}
       </animated.label>
+      <div className="Add_edit">
+        <MdModeEditOutline /> Tap fot Edit
+      </div>
       <animated.textarea
         type="text"
         inputMode="50"

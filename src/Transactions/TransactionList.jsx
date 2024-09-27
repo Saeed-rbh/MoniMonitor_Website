@@ -261,7 +261,7 @@ const TransactionList = ({
   };
 
   const springProps4 = useSpring({
-    height: WindowHeight - 210,
+    height: WindowHeight - 180,
   });
 
   const ClickBlurStyle = useSpring({

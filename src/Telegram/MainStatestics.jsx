@@ -77,8 +77,7 @@ const MainStatestics = ({
     processedData.length > 0 &&
       processedData[mainPageMonth].income +
         processedData[mainPageMonth].Expense +
-        processedData[mainPageMonth].saving +
-        processedData[mainPageMonth].net ===
+        processedData[mainPageMonth].saving ===
         0 &&
       setMainPageMonth(mainPageMonth + 1);
   }, [processedData]);
@@ -115,7 +114,9 @@ const MainStatestics = ({
     }))
   );
 
-  const heightFactor = height - 225 - 85 + 20 + 10 - 70;
+  const buttunsHeight =
+    ((390 - 20) / 2 / 1.6) * Math.min(height / 675, 1) * 2 + 10;
+  const heightFactor = height - buttunsHeight - height / 3.7;
 
   const valueSpringIn = useSpring({
     position: "absolute",
@@ -231,6 +232,7 @@ const MainStatestics = ({
   const [currentX, setCurrentX] = useState(0);
 
   const bind = useDrag(({ down, movement: [mx], cancel, memo = false }) => {
+    springs.length < 5 && cancel();
     const newX = currentX + mx;
     if (newX > 0) return setCurrentX(0) && setMainPageMonth(1);
     if (-1 * newX > 31.5 * springs.length)
@@ -373,8 +375,7 @@ const MainStatestics = ({
                 cursor:
                   processedData[index].income +
                     processedData[index].Expense +
-                    processedData[index].saving +
-                    processedData[index].net !==
+                    processedData[index].saving !==
                   0
                     ? "pointer"
                     : "default",
@@ -382,8 +383,7 @@ const MainStatestics = ({
               onClick={() => {
                 processedData[index].income +
                   processedData[index].Expense +
-                  processedData[index].saving +
-                  processedData[index].net !==
+                  processedData[index].saving !==
                   0 && setMainPageMonth(index);
               }}
             >

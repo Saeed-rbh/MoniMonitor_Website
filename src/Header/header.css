@@ -16,7 +16,7 @@
   justify-content: flex-start;
   position: fixed;
   top: 10px;
-  z-index: 11;
+  z-index: 100000;
 }
 .MoneyMonitor_User {
   height: 50px;

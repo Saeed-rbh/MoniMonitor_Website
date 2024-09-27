@@ -6,7 +6,10 @@ import { useTransactionData } from "./Tools/tools";
 import { Authenticator } from "@aws-amplify/ui-react";
 import { Amplify } from "aws-amplify";
 import awsExports from "./aws-exports";
+import { fetchTransactions } from "./Tools/transactionService";
+import ErrorBoundary from "./ErrorBoundary";
 
+const MainMenu = lazy(() => import("./MainMenu/MainMenu"));
 const Header = lazy(() => import("./Header/header"));
 const Telegram = lazy(() => import("./Telegram/MoneyMonitor"));
 const Transactions = lazy(() => import("./Transactions/Transactions"));
@@ -14,6 +17,38 @@ const AddTransaction = lazy(() => import("./AddTransaction/AddTransaction"));
 const SignInComp = lazy(() => import("./auth/SignInComp"));
 
 const App = () => {
+  const useTransactionData = (whichMonth) => {
+    const [data, setData] = useState({
+      selected: [],
+      Availability: [],
+      netAmounts: [],
+    });
+
+    useEffect(() => {
+      const fetchData = async () => {
+        const { selected, Availability, netAmounts, transactions } =
+          await fetchTransactions({
+            whichMonth,
+          });
+
+        setData({
+          selected: selected,
+          Availability: Availability,
+          transactions: transactions,
+          netAmounts: netAmounts,
+        });
+      };
+      fetchData();
+    }, [whichMonth]);
+
+    return data;
+  };
+
+  const useMainPageMonth = () => {
+    const [mainPageMonth, setMainPageMonth] = useState(0);
+    return { mainPageMonth, setMainPageMonth };
+  };
+
   const [userData, setUserData] = useState({
     userId: "",
     userName: "",
@@ -68,50 +103,83 @@ const App = () => {
   );
   const [isMoreClicked, setIsMoreClicked] = useState(null);
   const [isAddClicked, setIsAddClicked] = useState(null);
+  const [isDateClicked, setIsDateClicked] = useState(false);
+
+  const {
+    Availability: availabilityData,
+    netAmounts: netAmountsData,
+    transactions: transactionsData,
+  } = useTransactionData(whichMonth);
+
+  const { mainPageMonth, setMainPageMonth } = useMainPageMonth();
+  const { selected: mainSelected } = useTransactionData(mainPageMonth);
 
   Amplify.configure(awsExports);
 
   return (
-    <Router>
-      <div className="App">
-        <Suspense fallback={<div>Loading...</div>}>
-          <Header userData={userData} />
-          <Telegram
-            isMoreClicked={isMoreClicked}
-            setIsMoreClicked={setIsMoreClicked}
-            isAddClicked={isAddClicked}
-            setIsAddClicked={setIsAddClicked}
-          />
-          <Routes>
-            <Route path="/" element={<div />} />
-            <Route
-              path="/Transactions"
-              element={
-                <Transactions
-                  isMoreClicked={isMoreClicked}
-                  setIsMoreClicked={setIsMoreClicked}
-                  monthData={monthData}
-                  whichMonth={whichMonth}
-                  setWhichMonth={setWhichMonth}
-                  userId={userData.userId}
-                />
-              }
+    <ErrorBoundary>
+      <Router>
+        <div className="App">
+          <Suspense fallback={<div>Loading...</div>}>
+            <Header
+              userData={userData}
+              isDateClicked={isDateClicked}
+              setIsDateClicked={setIsDateClicked}
+              availabilityData={availabilityData}
+              whichMonth={whichMonth}
+              setWhichMonth={setWhichMonth}
+              setMainPageMonth={setMainPageMonth}
             />
-            <Route
-              path="/AddTransaction"
-              element={
-                <AddTransaction
-                  isAddClicked={isAddClicked}
-                  setIsClicked={setIsAddClicked}
-                  setIsAddClicked={setIsAddClicked}
-                  userId={userData.userId}
-                />
-              }
+            <MainMenu
+              isMoreClicked={isMoreClicked}
+              setIsMoreClicked={setIsMoreClicked}
             />
-          </Routes>
-        </Suspense>
-      </div>
-    </Router>
+            <Telegram
+              isDateClicked={isDateClicked}
+              isMoreClicked={isMoreClicked}
+              setIsMoreClicked={setIsMoreClicked}
+              isAddClicked={isAddClicked}
+              setIsAddClicked={setIsAddClicked}
+              mainPageMonth={mainPageMonth}
+              setMainPageMonth={setMainPageMonth}
+              mainSelected={mainSelected}
+              Availability={availabilityData}
+              netAmountsData={netAmountsData}
+              transactions={transactionsData}
+              setWhichMonth={setWhichMonth}
+            />
+            <Routes>
+              <Route path="/" element={<div />} />
+              <Route
+                path="/Transactions"
+                element={
+                  <Transactions
+                    isMoreClicked={isMoreClicked}
+                    setIsMoreClicked={setIsMoreClicked}
+                    monthData={monthData}
+                    whichMonth={whichMonth}
+                    setWhichMonth={setWhichMonth}
+                    userId={userData.userId}
+                    isDateClicked={isDateClicked}
+                  />
+                }
+              />
+              <Route
+                path="/AddTransaction"
+                element={
+                  <AddTransaction
+                    isAddClicked={isAddClicked}
+                    setIsClicked={setIsAddClicked}
+                    setIsAddClicked={setIsAddClicked}
+                    userId={userData.userId}
+                  />
+                }
+              />
+            </Routes>
+          </Suspense>
+        </div>
+      </Router>
+    </ErrorBoundary>
     // <Authenticator socialProviders={["google"]}>
     //   {({ signOut, user }) => (
     //     <div className="App">

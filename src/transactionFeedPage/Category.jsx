@@ -75,6 +75,7 @@ const Category = ({
 
   const dragSpring = useSpring({
     transform: `translateX(-${draggedX}px)`,
+    marginLeft: 15,
   });
 
   const bind = useDrag(({ movement: [mx], dragging }) => {
@@ -127,10 +128,11 @@ const Category = ({
     position: "relative",
     fontSize: addStage !== 2 ? "1rem" : "0.7rem",
     color: "var(--Bc-2)",
-    border: "1px solid var(--Bc-2)",
-    borderRadius: "30px",
+    // border: "1px solid var(--Bc-2)",
+    borderRadius: "20px",
     width: addStage !== 2 ? 35 : 70,
-    height: 35,
+    height: 45,
+    width: 45,
     // padding: "10px 5px",
     display: "flex",
     position: "absolute",
@@ -138,11 +140,14 @@ const Category = ({
     justifyContent: "center",
     marginTop: addStage !== 2 ? 15 : 20,
     cursor: addStage !== 2 ? "pointer" : "auto",
+    backgroundColor: "var(--Ec-1)",
+    left: 7,
+    top: 7,
   });
 
   const labelTitle = useSpring({
     top: addStage > 2 ? 27 : 30,
-    left: addStage > 2 ? 40 : 75,
+    left: addStage > 2 ? 55 : 75,
     width: "max-content",
     margin: 0,
     position: "absolute",
@@ -156,6 +161,7 @@ const Category = ({
 
   return (
     <animated.li className="Add_Category" {...longBind()} style={fade}>
+      <div className="Add_background"></div>
       <animated.div style={labelPar}>
         <animated.h4 style={labelDot}></animated.h4>{" "}
         <animated.h4 style={label}>
@@ -165,12 +171,16 @@ const Category = ({
       <animated.label style={labelTitle}>
         {addStage === 2 && `What is the`} Category:{" "}
       </animated.label>
+      <div className="Add_edit">
+        <MdModeEditOutline /> Tap fot Edit
+      </div>
       <div className="Add_Category_items" ref={containerRef} {...bind()}>
         <animated.div className="Add_Category_items_in" style={dragSpring}>
           <h2>
             {selectedCategory[1]}
             {selectedCategory[0]}
           </h2>
+
           {/* {listSprings.map((animation, index) => (
             <ScalableElement
               style={{ ...animation, width: `${characterCounts[index]}px` }}

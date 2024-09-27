@@ -1,13 +1,30 @@
 import React, { useState } from "react";
 import "./header.css";
 import MenuButton from "./MenuButton";
+import ChooseMonth from "../ChooseMonth/ChooseMonth";
 
-function Header({ userData }) {
+function Header({
+  userData,
+  isDateClicked,
+  setIsDateClicked,
+  availabilityData,
+  whichMonth,
+  setWhichMonth,
+  setMainPageMonth,
+}) {
   const { userId, userName } = userData;
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <header className="MoneyMonitor_header">
+    <header className="MoneyMonitor_header" style={{ zIndex: 1000000 }}>
+      <ChooseMonth
+        isDateClicked={isDateClicked}
+        setIsDateClicked={setIsDateClicked}
+        availabilityData={availabilityData}
+        whichMonth={whichMonth}
+        setWhichMonth={setWhichMonth}
+        setMainPageMonth={setMainPageMonth}
+      />
       <div className="MoneyMonitor_User">
         <div className="MoneyMonitor_Logo">
           <img src={`../../public/MoneyMonitor.jpg`} alt="MoneyMonitor Logo" />
@@ -17,7 +34,7 @@ function Header({ userData }) {
           <span>{userId}</span>
         </p>
       </div>
-      <MenuButton handleButtonClick={setIsMenuOpen} isMenuOpen={isMenuOpen} />
+      {/* <MenuButton handleButtonClick={setIsMenuOpen} isMenuOpen={isMenuOpen} /> */}
     </header>
   );
 }

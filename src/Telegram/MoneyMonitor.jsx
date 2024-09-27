@@ -7,56 +7,32 @@ import MainStatestics from "./MainStatestics";
 import { useWindowHeight } from "../Tools/tools";
 import AddTransaction from "./AddTransaction";
 
-const useTransactionData = (whichMonth) => {
-  const [data, setData] = useState({
-    selected: [],
-    Availability: [],
-    netAmounts: [],
-  });
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const { selected, Availability, netAmounts, transactions } =
-        await fetchTransactions({
-          whichMonth,
-        });
-
-      setData({
-        selected: selected,
-        Availability: Availability,
-        transactions: transactions,
-        netAmounts: netAmounts,
-      });
-    };
-    fetchData();
-  }, [whichMonth]);
-
-  return data;
-};
-
-const useMainPageMonth = () => {
-  const [mainPageMonth, setMainPageMonth] = useState(0);
-  return { mainPageMonth, setMainPageMonth };
-};
-
 const MoneyMonitor = ({
+  isDateClicked,
   isMoreClicked,
   setIsMoreClicked,
   isAddClicked,
   setIsAddClicked,
+  mainPageMonth,
+  setMainPageMonth,
+  netAmountsData,
+  mainSelected,
+  setWhichMonth,
 }) => {
   const height = useWindowHeight(100);
-  const [whichMonth, setWhichMonth] = useState(0);
+  // const [whichMonth, setWhichMonth] = useState(0);
 
-  const {
-    selected: selectedData,
-    Availability: availabilityData,
-    netAmounts: netAmountsData,
-    transactions: transactionsData,
-  } = useTransactionData(whichMonth);
+  // const {
+  //   selected: selectedData,
+  //   Availability: availabilityData,
+  //   netAmounts: netAmountsData,
+  //   transactions: transactionsData,
+  // } = useTransactionData(whichMonth);
 
-  const { mainPageMonth, setMainPageMonth } = useMainPageMonth();
-  const { selected: mainSelected } = useTransactionData(mainPageMonth);
+  // const { mainPageMonth, setMainPageMonth } = useMainPageMonth();
+  // const { selected: mainSelected } = useTransactionData(mainPageMonth);
+
+  // console.log(mainSelected);
 
   useEffect(() => {
     !isMoreClicked && setWhichMonth(mainPageMonth);
@@ -67,9 +43,12 @@ const MoneyMonitor = ({
     display: "flex",
     flexDirection: "column",
     width: "100%",
-    scale: isMoreClicked || isAddClicked !== null ? 0.9 : 1,
-    opacity: isMoreClicked || isAddClicked !== null ? 0.5 : 1,
-    filter: isMoreClicked || isAddClicked !== null ? "blur(10px)" : "blur(0px)",
+    scale: isDateClicked || isMoreClicked || isAddClicked !== null ? 0.9 : 1,
+    opacity: isDateClicked || isMoreClicked || isAddClicked !== null ? 0.5 : 1,
+    filter:
+      isDateClicked || isMoreClicked || isAddClicked !== null
+        ? "blur(10px)"
+        : "blur(0px)",
   });
 
   const [addTransaction, setAddTransaction] = useState({
@@ -93,7 +72,7 @@ const MoneyMonitor = ({
     <>
       <div className="MoneyMonitor_Parent">
         <animated.div style={scaleStyle}>
-          <AddTransaction setIsAddClicked={setIsAddClicked} />
+          {/* <AddTransaction setIsAddClicked={setIsAddClicked} /> */}
           <MainStatestics
             height={height}
             netAmounts={netAmountsData}
