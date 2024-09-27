@@ -4,7 +4,20 @@
   "aws_cognito_region": "us-east-1",
   "aws_user_pools_id": "us-east-1_SO4b39ntJ",
   "aws_user_pools_web_client_id": "43rki7kqif2mesm80nl1ienb0b",
-  "oauth": {},
+  "oauth": {
+    "domain": "monimonitorwebsite75d7f072-75d7f072-dev.auth.us-east-1.amazoncognito.com",
+    "scope": [
+      "phone",
+      "email",
+      "openid",
+      "profile",
+      "aws.cognito.signin.user.admin"
+    ],
+    "redirectSignIn": "https://monimonitor.com/",
+    "redirectSignOut": "https://monimonitor.com/",
+    "responseType": "code"
+  },
+  "federationTarget": "COGNITO_USER_POOLS",
   "aws_cognito_username_attributes": [
     "EMAIL",
     "PHONE_NUMBER"
@@ -23,5 +36,12 @@
   },
   "aws_cognito_verification_mechanisms": [
     "EMAIL"
+  ],
+  "aws_cloud_logic_custom": [
+    {
+      "name": "AdminQueries",
+      "endpoint": "https://80r7uymayk.execute-api.us-east-1.amazonaws.com/dev",
+      "region": "us-east-1"
+    }
   ]
 }

@@ -13,7 +13,17 @@
     },
     "categories": {
       "auth": {
-        "monimonitorwebsite16da3e11": {}
+        "monimonitorwebsite16da3e11": {},
+        "userPoolGroups": {}
+      },
+      "function": {
+        "AdminQueriesa7360476": {
+          "deploymentBucketName": "amplify-monimonitorwebsite-dev-4312f-deployment",
+          "s3Key": "amplify-builds/AdminQueriesa7360476-47372f75535637797238-build.zip"
+        }
+      },
+      "api": {
+        "AdminQueries": {}
       }
     }
   }
