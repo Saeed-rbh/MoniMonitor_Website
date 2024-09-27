@@ -1,7 +1,6 @@
 import "./App.css";
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import { useTransactionData } from "./Tools/tools";
 import { fetchTransactions } from "./Tools/transactionService";
 import ErrorBoundary from "./ErrorBoundary";
 
@@ -10,7 +9,6 @@ const Header = lazy(() => import("./Header/header"));
 const Telegram = lazy(() => import("./Telegram/MoneyMonitor"));
 const Transactions = lazy(() => import("./Transactions/Transactions"));
 const AddTransaction = lazy(() => import("./AddTransaction/AddTransaction"));
-const SignInComp = lazy(() => import("./auth/SignInComp"));
 
 const App = () => {
   const useTransactionData = (whichMonth) => {
