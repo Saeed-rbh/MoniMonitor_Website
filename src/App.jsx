@@ -1,11 +1,11 @@
 import "./App.css";
 import React, { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
-import { fetchUserAttributes } from "aws-amplify/auth";
+// import { fetchUserAttributes } from "aws-amplify/auth";
 import { useTransactionData } from "./Tools/tools";
-import { Authenticator } from "@aws-amplify/ui-react";
-import { Amplify } from "aws-amplify";
-import awsExports from "./aws-exports";
+// import { Authenticator } from "@aws-amplify/ui-react";
+// import { Amplify } from "aws-amplify";
+// import awsExports from "./aws-exports";
 import { fetchTransactions } from "./Tools/transactionService";
 import ErrorBoundary from "./ErrorBoundary";
 
@@ -114,7 +114,7 @@ const App = () => {
   const { mainPageMonth, setMainPageMonth } = useMainPageMonth();
   const { selected: mainSelected } = useTransactionData(mainPageMonth);
 
-  Amplify.configure(awsExports);
+  // Amplify.configure(awsExports);
 
   return (
     <ErrorBoundary>
