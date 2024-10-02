@@ -8,6 +8,7 @@ import { RiDonutChartFill } from "react-icons/ri";
 import { ScalableElement } from "../Tools/tools";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
+import ShineBorder from "@/components/ui/shine-border";
 
 const MainMenu = ({ isMoreClicked, setIsMoreClicked }) => {
   const location = useLocation().pathname;
@@ -37,7 +38,6 @@ const MainMenu = ({ isMoreClicked, setIsMoreClicked }) => {
     scale: isMoreClicked === null ? 1 : 0.95,
     filter: isMoreClicked === null ? "blur(0px)" : "blur(2px)",
   });
-
   const MainMenuPStyle = {
     display: "flex",
     justifyContent: "space-around",
@@ -63,9 +63,6 @@ const MainMenu = ({ isMoreClicked, setIsMoreClicked }) => {
     padding: "8px",
     transition: "all 0.3s ease",
   };
-  // const handleClick = (e) => {
-  //   setActive(e);
-  // };
 
   const redirect = useNavigate();
   const redirectClick = () => {
@@ -74,7 +71,6 @@ const MainMenu = ({ isMoreClicked, setIsMoreClicked }) => {
   const handleTransactionsClick = () => {
     setIsMoreClicked("Balance");
     redirectClick("/Transactions");
-    // handleClick("Transactions");
   };
   return (
     <animated.div style={{ ...MainMenuStyleAnim, ...MainMenuStyle }}>
@@ -90,7 +86,6 @@ const MainMenu = ({ isMoreClicked, setIsMoreClicked }) => {
           style={{
             ...MainMenuSVGStyle,
             background: location === "/" ? "var(--Bc-4)" : "var(--Ec-4)",
-            // padding: Active == "Summary" ? 8 : 3,
           }}
         >
           <TbHomeStats />
@@ -130,21 +125,44 @@ const MainMenu = ({ isMoreClicked, setIsMoreClicked }) => {
           Insight
         </span>
       </ScalableElement>
-      <ScalableElement as="p" style={{ ...MainMenuPStyle }}>
+
+      <ScalableElement as="p">
         <div
           style={{
             ...MainMenuSVGStyle,
             fontSize: "1.5rem",
-            padding: "9px",
+            padding: "0px",
             background:
               "linear-gradient(165deg, var(--Bc-3) -80%, var(--Ec-1) 130%)",
-            outline: "2px solid var(--Bc-3)",
+            outline: "none",
             borderRadius: "17px",
           }}
         >
-          <HiOutlinePlusSm />
+          <ShineBorder
+            color={["var(--Bc-3)", "var(--Ac-4)", "var(--Bc-4)"]}
+            borderRadius={17}
+            padding={9}
+          >
+            <HiOutlinePlusSm />
+          </ShineBorder>
         </div>
       </ScalableElement>
+
+      {/* <ScalableElement as="p" style={{ ...MainMenuPStyle }}>
+          <div
+            style={{
+              ...MainMenuSVGStyle,
+              fontSize: "1.5rem",
+              padding: "9px",
+              background:
+                "linear-gradient(165deg, var(--Bc-3) -80%, var(--Ec-1) 130%)",
+              outline: "2px solid var(--Bc-3)",
+              borderRadius: "17px",
+            }}
+          >
+            <HiOutlinePlusSm />
+          </div>
+        </ScalableElement> */}
       <ScalableElement
         as="p"
         style={{

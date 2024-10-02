@@ -141,7 +141,10 @@ const TransactionList = ({
 
   const summaryStiles = [
     useSpring({
-      width: SummaryWidth[0] + "%",
+      width:
+        labelDistribution.length > 0
+          ? Math.max(SummaryWidth[0], 8) + "%"
+          : 0 + "%",
       color:
         isMoreClicked === "Balance" && labelDistribution.length > 0
           ? labelDistribution[0].category === "Income"
@@ -158,9 +161,21 @@ const TransactionList = ({
             ? "var(--Gc-2)"
             : "var(--Ac-2)"
           : "var(--Cc-2)",
+      outline: `3px solid ${
+        isMoreClicked === "Balance" && labelDistribution.length > 0
+          ? labelDistribution[0].category === "Income"
+            ? "var(--Fc-4)"
+            : labelDistribution[0].category === "Expense"
+            ? "var(--Gc-4)"
+            : "var(--Ac-4)"
+          : "var(--Cc-4)"
+      }`,
     }),
     useSpring({
-      width: SummaryWidth[1] + "%",
+      width:
+        labelDistribution.length > 0
+          ? Math.max(SummaryWidth[1], 8) + "%"
+          : 0 + "%",
       color:
         isMoreClicked === "Balance" && labelDistribution.length > 0
           ? labelDistribution[1].category === "Income"
@@ -177,9 +192,21 @@ const TransactionList = ({
             ? "var(--Gc-2)"
             : "var(--Ac-2)"
           : "var(--Dc-2)",
+      outline: `3px solid ${
+        isMoreClicked === "Balance" && labelDistribution.length > 0
+          ? labelDistribution[1].category === "Income"
+            ? "var(--Fc-4)"
+            : labelDistribution[1].category === "Expense"
+            ? "var(--Gc-4)"
+            : "var(--Ac-4)"
+          : "var(--Cc-4)"
+      }`,
     }),
     useSpring({
-      width: SummaryWidth[2] + "%",
+      width:
+        labelDistribution.length > 0
+          ? Math.max(SummaryWidth[2], 8) + "%"
+          : 0 + "%",
       justifyContent: "flex-end",
       color:
         isMoreClicked === "Balance" && labelDistribution.length > 0
@@ -197,12 +224,25 @@ const TransactionList = ({
             ? "var(--Gc-2)"
             : "var(--Ac-2)"
           : "var(--Bc-2)",
+      outline: `3px solid ${
+        isMoreClicked === "Balance" && labelDistribution.length > 0
+          ? labelDistribution[2].category === "Income"
+            ? "var(--Fc-4)"
+            : labelDistribution[2].category === "Expense"
+            ? "var(--Gc-4)"
+            : "var(--Ac-4)"
+          : "var(--Cc-4)"
+      }`,
     }),
     useSpring({
-      width: SummaryWidth[3] + "%",
+      width:
+        labelDistribution.length > 0
+          ? Math.max(SummaryWidth[3], 8) + "%"
+          : 0 + "%",
       color: "var(--Ac-1)",
       backgroundColor: "var(--Ac-2)",
       justifyContent: "flex-end",
+      outline: `3px solid var(--Ac-4)`,
     }),
   ];
 
@@ -328,6 +368,40 @@ const TransactionList = ({
     }
   }, [isCalendarClicked, isAnimationEnds]);
 
+  const TransactionList_Line = useSpring({
+    width:
+      isMoreClicked === "Expense"
+        ? `25px`
+        : isMoreClicked === "Income" || isMoreClicked === "Balance"
+        ? `15px`
+        : `65px`,
+    position: `absolute`,
+    height: `1px`,
+    background: `var(--Ac-3)`,
+    top: `8px`,
+    left: `63px`,
+  });
+
+  const TransactionList_Line2 = useSpring({
+    width:
+      Math.abs(
+        isMoreClicked === "Balance"
+          ? selectedData.netTotal
+          : isMoreClicked === "Income"
+          ? selectedData.totalIncome
+          : isMoreClicked === "Expense"
+          ? selectedData.totalExpense
+          : selectedData.totalSaving
+      ).toFixed(2).length *
+        8 +
+      5,
+    position: `absolute`,
+    height: `1px`,
+    background: `var(--Ac-3)`,
+    top: `8px`,
+    left: `40px`,
+  });
+
   return (
     <>
       <MoreOpen
@@ -336,7 +410,7 @@ const TransactionList = ({
         feed={calendarFeed}
         MoreOpenHeight={MoreOpenHeight}
       />
-      {isAnimationEnds && (
+      {isAnimationEnds && filteredTransactions.length !== 0 && (
         <animated.div
           className="TransactionList_Main"
           style={Open_TransactionList}
@@ -353,13 +427,15 @@ const TransactionList = ({
             <div className="TransactionList_TopLine"></div>
             <animated.div className="TransactionList_Title">
               <p style={colorStyle} onClick={() => setIsMoreClicked(null)}>
-                •<span>{isMoreClicked}</span>
+                <span>{isMoreClicked}</span>
                 <div className="TransactionList_TitleMonth">
                   {currentMonth} | {currentYear}
+                  <animated.div style={TransactionList_Line}></animated.div>
                 </div>
               </p>
               <h1>
                 Total:{" "}
+                <animated.div style={TransactionList_Line2}></animated.div>
                 <span style={colorStyle}>
                   $
                   {Math.abs(
@@ -383,11 +459,17 @@ const TransactionList = ({
                   style={{
                     ...summaryStiles[0],
                     backgroundColor: "transparent",
+                    outline: "none",
                   }}
                 >
                   $
                   {labelDistribution.length > 0
-                    ? Math.abs((SummaryWidth[0] * totalAmount) / 100).toFixed(0)
+                    ? Math.max(
+                        Math.abs((SummaryWidth[0] * totalAmount) / 100).toFixed(
+                          0
+                        ),
+                        8
+                      )
                     : 0}
                 </animated.li>
               )}
@@ -396,11 +478,17 @@ const TransactionList = ({
                   style={{
                     ...summaryStiles[1],
                     backgroundColor: "transparent",
+                    outline: "none",
                   }}
                 >
                   $
                   {labelDistribution.length > 0
-                    ? Math.abs((SummaryWidth[1] * totalAmount) / 100).toFixed(0)
+                    ? Math.max(
+                        Math.abs((SummaryWidth[1] * totalAmount) / 100).toFixed(
+                          0
+                        ),
+                        8
+                      )
                     : 0}
                 </animated.li>
               )}
@@ -409,11 +497,17 @@ const TransactionList = ({
                   style={{
                     ...summaryStiles[2],
                     backgroundColor: "transparent",
+                    outline: "none",
                   }}
                 >
                   $
                   {labelDistribution.length > 0
-                    ? Math.abs((SummaryWidth[2] * totalAmount) / 100).toFixed(0)
+                    ? Math.max(
+                        Math.abs((SummaryWidth[2] * totalAmount) / 100).toFixed(
+                          0
+                        ),
+                        8
+                      )
                     : 0}
                 </animated.li>
               )}
@@ -422,11 +516,17 @@ const TransactionList = ({
                   style={{
                     ...summaryStiles[3],
                     backgroundColor: "transparent",
+                    outline: "none",
                   }}
                 >
                   $
                   {labelDistribution.length > 0
-                    ? Math.abs((SummaryWidth[3] * totalAmount) / 100).toFixed(0)
+                    ? Math.max(
+                        Math.abs((SummaryWidth[3] * totalAmount) / 100).toFixed(
+                          0
+                        ),
+                        8
+                      )
                     : 0}
                 </animated.li>
               )}
@@ -459,6 +559,7 @@ const TransactionList = ({
                       ...summaryStiles[0],
                       width: "fit-content",
                       backgroundColor: "transparent",
+                      outline: "none",
                     }}
                   >
                     •
@@ -475,6 +576,7 @@ const TransactionList = ({
                       ...summaryStiles[1],
                       width: "fit-content",
                       backgroundColor: "transparent",
+                      outline: "none",
                     }}
                   >
                     •
@@ -491,6 +593,7 @@ const TransactionList = ({
                       ...summaryStiles[2],
                       width: "fit-content",
                       backgroundColor: "transparent",
+                      outline: "none",
                     }}
                   >
                     •
@@ -507,6 +610,7 @@ const TransactionList = ({
                       ...summaryStiles[3],
                       width: "fit-content",
                       backgroundColor: "transparent",
+                      outline: "none",
                     }}
                   >
                     •
@@ -521,6 +625,7 @@ const TransactionList = ({
               isMoreClicked={isMoreClicked}
               setIsCalendarClicked={setIsCalendarClicked}
               isCalendarClicked={isCalendarClicked}
+              loaded={filteredTransactions.length !== 0}
             />
 
             <animated.div

@@ -85,7 +85,7 @@ const MoreOpen = ({
     }) => {
       const clientY = event.touches ? event.touches[0].clientY : event.clientY;
       if (!isClicked) return memo;
-      if (clientY - y > 400 || y < 0) return memo;
+      if (clientY - y > 200 || y < 0) return memo;
 
       const newHeight = Math.max(y + MoreOpenHeight, MoreOpenHeight);
       const isQuickDragDown = velocity[1] > 0.01 && y > initialY;

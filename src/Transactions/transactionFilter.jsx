@@ -3,7 +3,7 @@ import { useSprings, animated, useSpring } from "react-spring";
 import { ScalableElement } from "../Tools/tools";
 import { useDrag } from "@use-gesture/react";
 
-const TransactionFilter = ({ sortby, setSortby }) => {
+const TransactionFilter = ({ sortby, setSortby, loaded }) => {
   const sortItems = ["All", "daily", "monthly", "Income", "Expense", "Today"];
   const [scrollWidth, setScrollWidth] = useState(0);
   const [{ x }, api] = useSpring(() => ({ x: 0 }));
@@ -57,35 +57,36 @@ const TransactionFilter = ({ sortby, setSortby }) => {
   };
 
   return (
-    <animated.div
-      className="TransactionList_Menu"
-      {...bind()}
-      ref={ParWidthRef}
-    >
-      {/* <p>
-        <h3>Filter</h3> Transactions
-      </p> */}
-      <animated.div
-        ref={widthRef}
-        style={{
-          display: "flex",
-          transform: x.to((x) => `translate3d(${x}px,0,0)`),
-        }}
-      >
-        {springs.map((props, index) => (
-          <ScalableElement
-            as="h1"
-            key={sortItems[index]}
+    <>
+      {loaded && (
+        <animated.div
+          className="TransactionList_Menu"
+          {...bind()}
+          ref={ParWidthRef}
+        >
+          <animated.div
+            ref={widthRef}
             style={{
-              ...props,
+              display: "flex",
+              transform: x.to((x) => `translate3d(${x}px,0,0)`),
             }}
-            onClick={() => handleClick(index)}
           >
-            {sortItems[index]}
-          </ScalableElement>
-        ))}
-      </animated.div>
-    </animated.div>
+            {springs.map((props, index) => (
+              <ScalableElement
+                as="h1"
+                key={sortItems[index]}
+                style={{
+                  ...props,
+                }}
+                onClick={() => handleClick(index)}
+              >
+                {sortItems[index]}
+              </ScalableElement>
+            ))}
+          </animated.div>
+        </animated.div>
+      )}
+    </>
   );
 };
 

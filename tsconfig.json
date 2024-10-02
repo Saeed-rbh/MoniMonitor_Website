@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+          "@/*": ["./src/*"]
+        },
+      "forceConsistentCasingInFileNames": true,  // Enforces consistent file name casing
+      "strict": true  // Enables all strict type-checking options
+    },
+    "include": ["src"]
+  }
+  
+  
