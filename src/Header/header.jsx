@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import "./header.css";
-import MenuButton from "./MenuButton";
 import ChooseMonth from "../ChooseMonth/ChooseMonth";
+import BlurFade from "@/components/ui/blur-fade";
 
 function Header({
   userData,
@@ -13,28 +13,31 @@ function Header({
   setMainPageMonth,
 }) {
   const { userId, userName } = userData;
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
     <header className="MoneyMonitor_header" style={{ zIndex: 1000000 }}>
-      <ChooseMonth
-        isDateClicked={isDateClicked}
-        setIsDateClicked={setIsDateClicked}
-        availabilityData={availabilityData}
-        whichMonth={whichMonth}
-        setWhichMonth={setWhichMonth}
-        setMainPageMonth={setMainPageMonth}
-      />
-      <div className="MoneyMonitor_User">
-        <div className="MoneyMonitor_Logo">
-          <img src={`../../public/MoneyMonitor.jpg`} alt="MoneyMonitor Logo" />
+      <BlurFade delay={0.3 + 0.05 * 6} duration={0.3}>
+        <ChooseMonth
+          isDateClicked={isDateClicked}
+          setIsDateClicked={setIsDateClicked}
+          availabilityData={availabilityData}
+          whichMonth={whichMonth}
+          setWhichMonth={setWhichMonth}
+          setMainPageMonth={setMainPageMonth}
+        />
+        <div className="MoneyMonitor_User">
+          <div className="MoneyMonitor_Logo">
+            <img
+              src={`../../public/MoneyMonitor.jpg`}
+              alt="MoneyMonitor Logo"
+            />
+          </div>
+          <p>
+            <span>{userName}</span>
+            <span>{userId}</span>
+          </p>
         </div>
-        <p>
-          <span>{userName}</span>
-          <span>{userId}</span>
-        </p>
-      </div>
-      {/* <MenuButton handleButtonClick={setIsMenuOpen} isMenuOpen={isMenuOpen} /> */}
+      </BlurFade>
     </header>
   );
 }

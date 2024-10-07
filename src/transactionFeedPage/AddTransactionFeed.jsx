@@ -273,7 +273,7 @@ function AddTransactionFeed({
               <MdKeyboardArrowRight />
               <span>Next</span>
             </ScalableElement>
-            <ScalableElement as="button">
+            <ScalableElement as="button" onClick={() => handleAddClick()}>
               <FaCheck />
               <span>Confirm</span>
             </ScalableElement>

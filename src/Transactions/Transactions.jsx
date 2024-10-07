@@ -54,6 +54,7 @@ const Transactions = ({
         dataAvailability={availabilityData}
         setIsAddClicked={setIsAddClicked}
         setAddTransaction={setAddTransaction}
+        isAddClicked={isAddClicked}
       />
     );
   };
@@ -79,7 +80,7 @@ const Transactions = ({
         isClicked={isMoreClicked}
         setIsClicked={setIsMoreClicked}
         feed={TransactionFeed}
-        MoreOpenHeight={90}
+        MoreOpenHeight={75}
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
         blur={isAddClicked !== null || isDateClicked}
@@ -89,7 +90,7 @@ const Transactions = ({
         isClicked={isAddClicked}
         setIsClicked={setIsAddClicked}
         feed={AddFeed}
-        MoreOpenHeight={90}
+        MoreOpenHeight={75}
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
         zIndex={110}

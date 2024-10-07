@@ -122,7 +122,7 @@
   align-items: flex-start;
   width: 100%;
   z-index: 10;
-  height: 220px;
+  margin-top: -5px;
 }
 
 .MoneyEntry_Title {
@@ -240,7 +240,7 @@
 .MoneyEntry_Amount p:first-of-type {
   position: relative;
   display: flex;
-  padding: 15px 0 0 10px;
+  padding: 27px 0 0 10px;
   font-size: 1.2rem;
   font-weight: 200;
   font-family: "Noto Sans", sans-serif;
@@ -471,7 +471,7 @@
   position: relative;
   display: flex;
   flex-direction: row;
-  overflow: auto;
+  overflow: visible;
   -ms-overflow-style: none; /* Internet Explorer 10+ */
   scrollbar-width: none; /* Firefox */
   width: -webkit-fill-available;
@@ -480,6 +480,13 @@
   -webkit-user-select: none;
   box-sizing: border-box;
   margin-bottom: 5px;
+}
+
+.MoneyEntry_AmountBase div:last-of-type {
+  margin-left: 3px;
+}
+.MoneyEntry_AmountBase div:first-of-type {
+  margin-right: 3px;
 }
 
 .MoneyEntry_AmountBase::-webkit-scrollbar {
@@ -827,8 +834,9 @@
   font-family: "Noto Sans", sans-serif;
   color: var(--Ac-1);
   margin: 0;
-  margin-top: -5px;
+  margin-top: -8px;
 }
+
 .MoneyEntry_Balance h2 {
   font-size: 0.7rem;
   font-weight: 300;

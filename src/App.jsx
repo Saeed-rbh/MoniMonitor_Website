@@ -78,6 +78,7 @@ const App = () => {
               />
 
               {/* Main Menu Component */}
+
               <MainMenu
                 isMoreClicked={isMoreClicked}
                 setIsMoreClicked={setIsMoreClicked}

@@ -8,12 +8,14 @@ import {
 } from "react-icons/go";
 import { formatNetTotal } from "../Tools/tools";
 import { useWindowHeight } from "../Tools/tools";
+import BlurFade from "@/components/ui/blur-fade";
 
 const MoneyEntryAmount = ({
   type,
   transaction,
   setIsMoreClicked,
   redirectClick,
+  index,
 }) => {
   const BannerAmount =
     type === "Income"
@@ -25,6 +27,7 @@ const MoneyEntryAmount = ({
       : transaction.netTotal;
 
   const amountStyle = {
+    height: "100%",
     background:
       type === "Income"
         ? "linear-gradient(165deg, var(--Ec-4) 30%, var(--Fc-4) 100%)"
@@ -45,6 +48,8 @@ const MoneyEntryAmount = ({
   };
 
   const gradientStyle = {
+    height: "100%",
+    width: "100%",
     background:
       type === "Income"
         ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Fc-3) 100%)"
@@ -82,7 +87,7 @@ const MoneyEntryAmount = ({
 
   const widthFactor =
     type === "Save&Invest" ? 1.12 : type === "Balance" ? 0.88 : 1;
-  const heightFactor = Math.min(height / 675, 1);
+  const heightFactor = Math.min(height / 660, 1);
 
   const scaleStyle = useSpring({
     scale: isScaled ? 0.9 : 1,
@@ -97,8 +102,7 @@ const MoneyEntryAmount = ({
 
   return (
     <animated.div
-      className="MoneyEntry_Amount"
-      style={{ ...amountStyle, ...scaleStyle }}
+      style={{ ...scaleStyle }}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
@@ -106,40 +110,45 @@ const MoneyEntryAmount = ({
       onTouchEnd={handleMouseUp}
       onClick={handleClick}
     >
-      <div className="MoneyEntry_Amount_Gradient" style={gradientStyle}></div>
-
-      <p>
-        <span className={`MoneyEntry_Dot`} style={gradientStyle}></span>
-        {type}
-      </p>
-
-      <div style={ColorStyle} className={`MoneyEntry_type_Open`}>
-        {type === "Income" ? (
-          <GoArrowDownLeft />
-        ) : type === "Expense" ? (
-          <GoArrowUpRight />
-        ) : type === "Save&Invest" ? (
-          <GoPlus />
-        ) : (
-          <GoPulse />
-        )}
-      </div>
-      <div className="MoneyEntry_Balance">
-        <h2>
-          {type === "Save&Invest" || type === "Balance"
-            ? "Total"
-            : "Total Amount"}
-          :
-        </h2>
-        <h1>
-          {type === "Balance"
-            ? formatNetTotal(BannerAmount) > 0
-              ? "+"
-              : "-"
-            : ""}
-          ${formatNetTotal(BannerAmount).replace("-", "")}
-        </h1>
-      </div>
+      <BlurFade
+        delay={0.3 + 0.05 * index}
+        duration={0.4}
+        className="MoneyEntry_Amount"
+        style={amountStyle}
+      >
+        <div className="MoneyEntry_Amount_Gradient" style={gradientStyle}></div>
+        <p>
+          <span className={`MoneyEntry_Dot`} style={gradientStyle}></span>
+          {type}
+        </p>
+        <div style={ColorStyle} className={`MoneyEntry_type_Open`}>
+          {type === "Income" ? (
+            <GoArrowDownLeft />
+          ) : type === "Expense" ? (
+            <GoArrowUpRight />
+          ) : type === "Save&Invest" ? (
+            <GoPlus />
+          ) : (
+            <GoPulse />
+          )}
+        </div>
+        <div className="MoneyEntry_Balance">
+          <h2>
+            {type === "Save&Invest" || type === "Balance"
+              ? "Total"
+              : "Total Amount"}
+            :
+          </h2>
+          <h1>
+            {type === "Balance"
+              ? formatNetTotal(BannerAmount) > 0
+                ? "+"
+                : "-"
+              : ""}
+            ${formatNetTotal(BannerAmount).replace("-", "")}
+          </h1>
+        </div>
+      </BlurFade>
     </animated.div>
   );
 };

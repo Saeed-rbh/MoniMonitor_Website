@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSprings, animated, useSpring } from "react-spring";
 import { useDrag } from "@use-gesture/react";
+import BlurFade from "@/components/ui/blur-fade";
 
 // Constants
 const PERCENTAGE_FACTOR = 40;
@@ -250,63 +251,45 @@ const MainStatestics = ({
       className="MainStatestics"
       {...bind()}
     >
-      <h3>
-        <span className="MoneyEntry_Dot" style={{ color: "var(--Bc-1)" }}>
-          •
-        </span>
-        <span>Insight</span> Dashboard
-      </h3>
-      {/* <ScalableElement as="div" className="MainStatestics-arrowN">
-        <animated.div
-          style={{ opacity: 0.4 }}
-          className="CirleColor"
-        ></animated.div>
-        <MdKeyboardArrowRight />
-      </ScalableElement>
-      <ScalableElement as="div" className="MainStatestics-arrowL">
-        <animated.div
-          style={{ opacity: 0.4 }}
-          className="CirleColor"
-        ></animated.div>
-        <MdKeyboardArrowLeft />
-      </ScalableElement> */}
-      {/* <ScalableElement as="div" className="MainStatestics-arrowC">
-        {" "}
-        <animated.div
-          style={{ opacity: 0.4 }}
-          className="CirleColor"
-        ></animated.div>
-        Current Month
-      </ScalableElement> */}
-
-      <div
-        className="MainStatestics-Graph"
-        style={{ marginTop: `${marginTop}px` }}
+      <BlurFade
+        delay={0.3 + 0.05 * 5}
+        style={{ height: `${heightFactor + 60}px` }}
+        duration={0.3}
       >
+        <h3>
+          <span className="MoneyEntry_Dot" style={{ color: "var(--Bc-1)" }}>
+            •
+          </span>
+          <span>Insight</span> Dashboard
+        </h3>
         <div
-          className="MainStatestics-dash"
-          style={{ marginLeft: "20px", width: "calc(100%)" }}
-        ></div>
-        <animated.div style={valueSpringIn} className="MainStatestics-dash">
-          <animated.h1 style={valueSpringInText}>
-            + $
-            {processedData[mainPageMonth]
-              ? Number(processedData[mainPageMonth].income.toFixed(0))
-              : 0}
-          </animated.h1>
-        </animated.div>
+          className="MainStatestics-Graph"
+          style={{ marginTop: `${marginTop}px` }}
+        >
+          <div
+            className="MainStatestics-dash"
+            style={{ marginLeft: "20px", width: "calc(100%)" }}
+          ></div>
+          <animated.div style={valueSpringIn} className="MainStatestics-dash">
+            <animated.h1 style={valueSpringInText}>
+              + $
+              {processedData[mainPageMonth]
+                ? Number(processedData[mainPageMonth].income.toFixed(0))
+                : 0}
+            </animated.h1>
+          </animated.div>
 
-        <animated.div style={valueSpringSp} className="MainStatestics-dash">
-          <animated.h1 style={valueSpringSpText}>
-            - $
-            {processedData[mainPageMonth]
-              ? Number(processedData[mainPageMonth].Expense.toFixed(0))
-              : 0}
-            $
-          </animated.h1>
-        </animated.div>
+          <animated.div style={valueSpringSp} className="MainStatestics-dash">
+            <animated.h1 style={valueSpringSpText}>
+              - $
+              {processedData[mainPageMonth]
+                ? Number(processedData[mainPageMonth].Expense.toFixed(0))
+                : 0}
+              $
+            </animated.h1>
+          </animated.div>
 
-        {/* <div className="MainStatestics-guid">
+          {/* <div className="MainStatestics-guid">
           <p>
             Income
             <animated.span
@@ -349,79 +332,80 @@ const MainStatestics = ({
           </p>
         </div> */}
 
-        <animated.ul>
-          {springs.map((style, index) => (
-            <animated.div
-              key={index}
-              className="MainStatestics-batch"
-              style={{
-                opacity: x.to((x) => {
-                  const threshold = 50 * (index + 1) - 30;
-                  const distance = -x - threshold;
+          <animated.ul>
+            {springs.map((style, index) => (
+              <animated.div
+                key={index}
+                className="MainStatestics-batch"
+                style={{
+                  opacity: x.to((x) => {
+                    const threshold = 50 * (index + 1) - 30;
+                    const distance = -x - threshold;
 
-                  const minOpacity = 0.0;
-                  const maxOpacity = index === mainPageMonth ? 0.8 : 0.4;
-                  const fadeDistance = 5;
+                    const minOpacity = 0.0;
+                    const maxOpacity = index === mainPageMonth ? 0.8 : 0.4;
+                    const fadeDistance = 5;
 
-                  const sigmoid = (x) => 1 / (1 + Math.exp(-x));
-                  const transition = sigmoid(distance / fadeDistance);
+                    const sigmoid = (x) => 1 / (1 + Math.exp(-x));
+                    const transition = sigmoid(distance / fadeDistance);
 
-                  const opacity =
-                    maxOpacity * (1 - transition) + minOpacity * transition;
-                  return opacity;
-                }),
-                filter: style.filter,
-                transform: x.to((x) => `translate3d(${x}px,0,0)`),
-                cursor:
+                    const opacity =
+                      maxOpacity * (1 - transition) + minOpacity * transition;
+                    return opacity;
+                  }),
+                  filter: style.filter,
+                  transform: x.to((x) => `translate3d(${x}px,0,0)`),
+                  cursor:
+                    processedData[index].income +
+                      processedData[index].Expense +
+                      processedData[index].saving !==
+                    0
+                      ? "pointer"
+                      : "default",
+                }}
+                onClick={() => {
                   processedData[index].income +
                     processedData[index].Expense +
                     processedData[index].saving !==
-                  0
-                    ? "pointer"
-                    : "default",
-              }}
-              onClick={() => {
-                processedData[index].income +
-                  processedData[index].Expense +
-                  processedData[index].saving !==
-                  0 && setMainPageMonth(index);
-              }}
-            >
-              <li></li>
-              <animated.li
-                style={{
-                  height: style.savingHeight,
-                  display: style.savingDesplay,
+                    0 && setMainPageMonth(index);
                 }}
-              ></animated.li>
-              <animated.li
-                style={{
-                  height: style.netHeight,
-                  display: style.netDesplay,
-                  bottom: style.netBottom,
-                  top: style.netTop,
-                }}
-              ></animated.li>
-              <animated.li
-                style={{
-                  height: style.ExpenseHeight,
-                  background: style.ExpenseBg,
-                }}
-              ></animated.li>
-              <animated.li
-                style={{
-                  height: style.incomeHeight,
-                  background: style.incomeBg,
-                }}
-              ></animated.li>
-              <li>
-                {processedData[index].month}{" "}
-                <span>{processedData[index].year}</span>
-              </li>
-            </animated.div>
-          ))}
-        </animated.ul>
-      </div>
+              >
+                <li></li>
+                <animated.li
+                  style={{
+                    height: style.savingHeight,
+                    display: style.savingDesplay,
+                  }}
+                ></animated.li>
+                <animated.li
+                  style={{
+                    height: style.netHeight,
+                    display: style.netDesplay,
+                    bottom: style.netBottom,
+                    top: style.netTop,
+                  }}
+                ></animated.li>
+                <animated.li
+                  style={{
+                    height: style.ExpenseHeight,
+                    background: style.ExpenseBg,
+                  }}
+                ></animated.li>
+                <animated.li
+                  style={{
+                    height: style.incomeHeight,
+                    background: style.incomeBg,
+                  }}
+                ></animated.li>
+                <li>
+                  {processedData[index].month}{" "}
+                  <span>{processedData[index].year}</span>
+                </li>
+              </animated.div>
+            ))}
+          </animated.ul>
+        </div>
+      </BlurFade>
     </div>
   );
 };

@@ -8,6 +8,7 @@ import {
   Income_categories,
   SaveInvest_categories,
 } from "../Tools/Categories";
+import { use } from "framer-motion/client";
 
 const TransactionListItem = ({
   icon = MdOutlineBrunchDining,
@@ -20,6 +21,7 @@ const TransactionListItem = ({
   onClick,
   category,
   label,
+  isAddClicked,
 }) => {
   const OriginalList =
     category === "Income"
@@ -32,30 +34,46 @@ const TransactionListItem = ({
     (icon) => icon[0].toLowerCase() === label.toLowerCase()
   )[1];
 
-  const [showActions, setShowActions] = useState(isSwiped);
-  const [showActionsAnim, setShowActionsAnim] = useState(false);
+  const [visibleButton, setVisibleButton] = useState("M");
+  const [showLeftActions, setLeftShowActions] = useState(false);
+  const [showRightActions, setRightShowActions] = useState(false);
+
   const [isScaled, setIsScaled] = useState(false);
 
   const handleMouseDown = useCallback(() => setIsScaled(true), []);
   const handleMouseUp = useCallback(() => setIsScaled(false), []);
 
-  useEffect(() => {
-    if (!isSwiped) {
-      setShowActions(false);
-    }
-  }, [isSwiped]);
-
   const bind = useDrag(
-    ({ down, movement: [mx] }) => {
-      if (!down && mx < -50) {
-        onSwipe();
-        setShowActions(true);
-        setShowActionsAnim(true);
-      } else if (!down && mx > 50) {
-        onUnSwipe();
+    ({ down, movement: [mx], tap, memo = false, elapsedTime }) => {
+      if (!down && Math.abs(mx) < 5 && elapsedTime < 200 && onClick) {
+        onClick();
       }
+      if (!down && mx < -50) {
+        if (visibleButton === "R" || visibleButton === "RR") {
+          setVisibleButton("M");
+        } else if (visibleButton === "L") {
+          setVisibleButton("LL");
+          setLeftShowActions(true);
+        } else {
+          setVisibleButton("L");
+          setLeftShowActions(true);
+        }
+      }
+      if (!down && mx > 50) {
+        if (visibleButton === "L" || visibleButton === "LL") {
+          setVisibleButton("M");
+        } else if (visibleButton === "R") {
+          setVisibleButton("RR");
+          setRightShowActions(true);
+        } else {
+          setVisibleButton("R");
+          setRightShowActions(true);
+        }
+      }
+
+      return memo;
     },
-    { axis: "x" }
+    { axis: "x", filterTaps: true }
   );
 
   const clockTime = time.split(" ")[1];
@@ -65,24 +83,85 @@ const TransactionListItem = ({
     weekday: "long",
   }).format(date);
 
-  const swipeAction = useSpring({
-    transform: isSwiped ? "translateX(120px)" : "translateX(200px)",
-    opacity: isSwiped ? 1 : 0,
-    config: config.slow,
-    onRest: () => !showActions && setShowActionsAnim(false),
-  });
-
-  const swipeStyle = useSpring({
-    transform: isSwiped ? "translateX(-120px)" : "translateX(0px)",
-    scale: isScaled && !isSwiped ? 0.9 : 1,
-  });
-
-  const handleClick = (event) => {
-    const { clientY } = event;
-    if (onClick) {
-      onClick(clientY);
+  const [finalDel, setFinalDel] = useState(false);
+  const handleDelRest = () => {
+    if (showLeftActions && visibleButton === "M") {
+      setLeftShowActions(false);
+    } else if (showLeftActions && visibleButton === "LL") {
+      setFinalDel(true);
     }
   };
+  const swipeDelAction = useSpring({
+    transform:
+      visibleButton === "L"
+        ? "translateX(90px)"
+        : visibleButton === "LL"
+        ? "translateX(380px)"
+        : "translateX(100px)",
+    width: visibleButton === "LL" ? "340px" : "80px",
+    opacity: finalDel
+      ? 0
+      : visibleButton === "L" || visibleButton === "LL"
+      ? 1
+      : 0,
+    config: visibleButton === "LL" ? config.default : config.slow,
+    onRest: () => handleDelRest(),
+  });
+
+  const [finalMod, setFinalMod] = useState(false);
+  const [resetMod, setResetMod] = useState(false);
+  const handleModRest = () => {
+    if (showRightActions && visibleButton === "M") {
+      setRightShowActions(false);
+    } else if (showRightActions && visibleButton === "RR") {
+      onClick();
+      setFinalMod(true);
+    }
+    if (finalMod === true) {
+      setResetMod(true);
+    }
+  };
+  const swipeModAction = useSpring({
+    transform:
+      visibleButton === "R"
+        ? "translateX(-90px)"
+        : visibleButton === "RR"
+        ? "translateX(-385px)"
+        : "translateX(-100px)",
+    width: visibleButton === "RR" ? "350px" : "80px",
+    opacity: finalMod
+      ? 0
+      : visibleButton === "R" || visibleButton === "RR"
+      ? 1
+      : 0,
+    config: visibleButton === "RR" ? config.default : config.slow,
+    onRest: () => handleModRest(),
+  });
+
+  const [isdeleted, setIsDeleted] = useState(false);
+  const handlecomplete = () => {
+    if (visibleButton === "LL") {
+      setIsDeleted(true);
+    }
+  };
+
+  const swipeStyle = useSpring({
+    transform:
+      visibleButton === "L" && !resetMod
+        ? "translateX(-80px)"
+        : visibleButton === "LL" && !resetMod
+        ? "translateX(-380px)"
+        : visibleButton === "R" && !resetMod
+        ? "translateX(90px)"
+        : visibleButton === "RR" && !resetMod
+        ? "translateX(380px)"
+        : "translateX(0px)",
+    touchAction: "none",
+    marginTop: finalDel || finalMod ? -55 : 0,
+    opacity: finalDel || finalMod ? 0 : 1,
+    scale: isScaled && !isSwiped ? 0.9 : 1,
+    onRest: () => handlecomplete(),
+  });
 
   const truncateDescription = (description, maxLength = 30) => {
     if (description.length > maxLength) {
@@ -92,6 +171,14 @@ const TransactionListItem = ({
     }
   };
 
+  useEffect(() => {
+    if (isAddClicked === null) {
+      setFinalMod(false);
+      setResetMod(false);
+      setVisibleButton("M");
+    }
+  }, [isAddClicked]);
+
   const color =
     category === "Income"
       ? "var(--Fc-2)"
@@ -100,38 +187,49 @@ const TransactionListItem = ({
       : "var(--Ac-2)";
 
   return (
-    <animated.li
-      onClick={handleClick}
-      {...bind()}
-      style={swipeStyle}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      onTouchStart={handleMouseDown}
-      onTouchEnd={handleMouseUp}
-    >
-      <animated.p>
-        <animated.span>{ModifyLabel}</animated.span>
-        <div className="transaction-Description">
-          <h4>{truncateDescription(description)}</h4>
+    <>
+      {!isdeleted && (
+        <animated.li
+          {...bind()}
+          style={swipeStyle}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={handleMouseDown}
+          onTouchEnd={handleMouseUp}
+        >
+          {showRightActions && (
+            <ScalableElement
+              as="div"
+              className="modify-button"
+              style={swipeModAction}
+            >
+              Modify
+            </ScalableElement>
+          )}
+          <animated.p>
+            <animated.span>{ModifyLabel}</animated.span>
+            <div className="transaction-Description">
+              <h4>{truncateDescription(description)}</h4>
 
-          <h3>
-            {dateArray[2]} | <span>{weekdayName}</span> - {clockTime}
-          </h3>
-        </div>
-      </animated.p>
-      <animated.p style={{ color: color }}>${amount}</animated.p>
-      {showActionsAnim && (
-        <animated.div style={swipeAction} className="transaction-actions">
-          <ScalableElement as="div" className="modify-button">
-            Modify
-          </ScalableElement>
-          <ScalableElement as="div" className="delete-button">
-            Delete
-          </ScalableElement>
-        </animated.div>
+              <h3>
+                {dateArray[2]} | <span>{weekdayName}</span> - {clockTime}
+              </h3>
+            </div>
+          </animated.p>
+          <animated.p style={{ color: color }}>${amount}</animated.p>
+          {showLeftActions && (
+            <ScalableElement
+              as="div"
+              className="delete-button"
+              style={swipeDelAction}
+            >
+              Delete
+            </ScalableElement>
+          )}
+        </animated.li>
       )}
-    </animated.li>
+    </>
   );
 };
 

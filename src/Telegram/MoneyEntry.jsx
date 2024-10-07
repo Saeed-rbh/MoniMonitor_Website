@@ -1,6 +1,7 @@
 import React from "react";
 import MoneyEntryAmount from "./MoneyEntryAmount.jsx";
 import { useNavigate } from "react-router-dom";
+import BlurFade from "@/components/ui/blur-fade";
 
 const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
   const totalStyle = {
@@ -19,14 +20,16 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
   return (
     Transactions && (
       <div className="MoneyEntry">
-        <div className="MoneyEntry_Title">
-          <h1>
-            <span className="MoneyEntry_Dot" style={totalStyle}>
-              •{" "}
-            </span>
-            <span>{Transactions.month}</span> Summary
-          </h1>
-        </div>
+        <BlurFade delay={0.3 + 0.05 * 4} duration={0.4}>
+          <div className="MoneyEntry_Title">
+            <h1>
+              <span className="MoneyEntry_Dot" style={totalStyle}>
+                •{" "}
+              </span>
+              <span>{Transactions.month}</span> Summary
+            </h1>
+          </div>
+        </BlurFade>
         <div className="MoneyEntry_Data">
           <div className="MoneyEntry_AmountBase">
             <MoneyEntryAmount
@@ -34,12 +37,15 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
               setIsMoreClicked={setIsMoreClicked}
               transaction={Transactions}
               redirectClick={redirectClick}
+              index={3}
             />
+
             <MoneyEntryAmount
               type="Expense"
               setIsMoreClicked={setIsMoreClicked}
               transaction={Transactions}
               redirectClick={redirectClick}
+              index={2}
             />
           </div>
           <div className="MoneyEntry_AmountBase">
@@ -48,12 +54,14 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
               setIsMoreClicked={setIsMoreClicked}
               transaction={Transactions}
               redirectClick={redirectClick}
+              index={1}
             />
             <MoneyEntryAmount
               type="Balance"
               setIsMoreClicked={setIsMoreClicked}
               transaction={Transactions}
               redirectClick={redirectClick}
+              index={0}
             />
           </div>
         </div>

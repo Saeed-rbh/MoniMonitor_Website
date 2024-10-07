@@ -17,6 +17,7 @@ const TransactionList = ({
   whichMonth,
   setIsAddClicked,
   setAddTransaction,
+  isAddClicked,
 }) => {
   const filteredTransactions =
     isMoreClicked === "Balance"
@@ -649,6 +650,7 @@ const TransactionList = ({
                   dataAvailability={dataAvailability}
                   setWhichMonth={setWhichMonth}
                   whichMonth={whichMonth}
+                  isAddClicked={isAddClicked}
                 />
               )}
             </animated.div>

@@ -8,6 +8,7 @@ interface ShineBorderProps {
   borderRadius?: number;
   borderWidth?: number;
   duration?: number;
+  curser?: string;
   color?: TColorProp;
   className?: string;
   children: React.ReactNode;
@@ -19,6 +20,7 @@ interface ShineBorderProps {
  * @description It is an animated background border effect component with easy to use and configurable props.
  * @param borderRadius defines the radius of the border.
  * @param padding defines the padding of the border.
+ * @param curser defines the curser of the border.
  * @param borderWidth defines the width of the border.
  * @param duration defines the animation duration to be applied on the shining border
  * @param color a string or string array to define border color.
@@ -29,10 +31,11 @@ interface ShineBorderProps {
 export default function ShineBorder({
   borderRadius = 8,
   borderWidth = 1,
-  duration = 14,
+  duration = 15,
   padding = 0,
   color = "#000000",
   className,
+  curser="default",
   children,
 }: ShineBorderProps) {
   return (
@@ -42,6 +45,7 @@ export default function ShineBorder({
           "--border-radius": `${borderRadius}px`,
           'position': 'relative',
           'padding': `${padding}px`,
+          'cursor': curser,
         } as React.CSSProperties
       }
       className={cn(
