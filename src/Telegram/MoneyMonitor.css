@@ -1276,12 +1276,16 @@
 }
 
 .Notif_Type h1 span {
-  font-weight: 200;
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--Bc-1);
+  margin: 0;
   line-height: 15px;
+  text-transform: capitalize;
 }
 
 .Notif_Type svg {
-  font-size: 1.2rem;
+  font-size: 3rem;
   margin-right: 8px;
   background: linear-gradient(165deg, var(--Ec-2) 10%, var(--Ec-4) 100%);
   padding: 15px;
@@ -1298,16 +1302,17 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: flex-start;
-  bottom: 19px;
+  bottom: 17px;
   left: 67px;
-
   height: 35px;
 }
 .Notif_Amount h1 {
   font-size: 0.7rem;
-  font-weight: 300;
+  font-weight: 400;
   color: var(--Bc-1);
   margin: 0;
+  line-height: 13px;
+  text-transform: capitalize;
 }
 .Notif_Amount h2 {
   font-size: 1.4rem;
@@ -1331,14 +1336,15 @@
 }
 .Notif_Time h1 {
   font-size: 0.7rem;
-  font-weight: 300;
+  font-weight: 400;
   color: var(--Bc-1);
   margin: 0;
-  line-height: 15px;
+  line-height: 18px;
+  text-transform: capitalize;
 }
 .Notif_Time h2 {
   font-size: 0.8rem;
-  font-weight: 300;
+  font-weight: 400;
   color: var(--Ac-1);
   margin: 0;
   line-height: 15px;
@@ -1363,14 +1369,15 @@
 }
 .Notif_Reason h1 {
   font-size: 0.7rem;
-  font-weight: 300;
+  font-weight: 400;
   color: var(--Bc-1);
   margin: 0;
   line-height: 15px;
+  text-transform: capitalize;
 }
 .Notif_Reason h2 {
   font-size: 0.8rem;
-  font-weight: 300;
+  font-weight: 400;
   color: var(--Ac-1);
   margin: 0;
   line-height: 15px;
@@ -1403,15 +1410,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 85px;
-  height: 40px;
+  width: 100px;
+  height: 50px;
   border-radius: 100px;
   color: var(--Ac-1);
   font-size: 0.7rem;
   font-weight: 300;
   font-family: "Noto Sans", sans-serif;
-  bottom: 10px;
-  right: 10px;
+  bottom: 15px;
+  right: 15px;
   background: var(--Gc-4);
   outline: 1px solid var(--Gc-2);
   text-wrap: nowrap;
@@ -1419,7 +1426,7 @@
 }
 .Notif_Delete svg {
   font-size: 0.9rem;
-  margin-right: 3px;
+  margin-right: 5px;
   margin-left: -3px;
 }
 .Notif_Modify {

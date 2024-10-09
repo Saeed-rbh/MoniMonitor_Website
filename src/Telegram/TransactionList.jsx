@@ -18,7 +18,6 @@ const TransactionList = ({
   setIsAddClicked,
   setAddTransaction,
 }) => {
-
   const filteredTransactions =
     isMoreClicked === "Balance"
       ? Transactions
@@ -50,7 +49,6 @@ const TransactionList = ({
           : isMoreClicked === "Expense"
           ? selectedData.labelDistributionExpense
           : selectedData.labelDistributionSaving;
-
 
       let other = 0;
       const sortedData = Object.entries(distribution)
@@ -208,10 +206,6 @@ const TransactionList = ({
         ? "var(--Fc-2)"
         : "var(--Gc-2)",
   };
-
-  const springProps4 = useSpring({
-    height: WindowHeight - 210,
-  });
 
   const ClickBlurStyle = useSpring({
     from: {
@@ -455,10 +449,10 @@ const TransactionList = ({
               isCalendarClicked={isCalendarClicked}
             />
 
-            <animated.div
+            <div
               className="TransactionList_MonthlyMain"
               ref={monthlyMainRef}
-              style={springProps4}
+              style={{ height: WindowHeight - 210 }}
             >
               {selectedData.length !== 0 && (
                 <TransactionListMonthly
@@ -476,9 +470,10 @@ const TransactionList = ({
                   dataAvailability={dataAvailability}
                   setWhichMonth={setWhichMonth}
                   whichMonth={whichMonth}
+                  height={WindowHeight - 210}
                 />
               )}
-            </animated.div>
+            </div>
           </animated.div>
         </animated.div>
       )}

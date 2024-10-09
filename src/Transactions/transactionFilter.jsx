@@ -67,8 +67,9 @@ const TransactionFilter = ({ sortby, setSortby, loaded }) => {
           <animated.div
             ref={widthRef}
             style={{
+              height: "40px",
               display: "flex",
-              transform: x.to((x) => `translate3d(${x}px,0,0)`),
+              transform: x.to((x) => `translateX(${x}px)`),
             }}
           >
             {springs.map((props, index) => (

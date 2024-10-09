@@ -57,14 +57,14 @@ const AddTransaction = ({ isAddClicked, setIsClicked, setIsAddClicked }) => {
         zIndex={110}
         toRedirect={"/"}
       />
-      <Notif
+      {/* <Notif
         addTransaction={addTransaction}
         setAddTransaction={setAddTransaction}
         modify={modify}
         setModify={setModify}
         open={open}
         setOpen={setOpen}
-      />
+      /> */}
     </>
   );
 };

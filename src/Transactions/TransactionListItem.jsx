@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { MdOutlineBrunchDining } from "react-icons/md";
 import { useSpring, animated, config } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
 import { ScalableElement } from "../Tools/tools";
@@ -8,20 +7,19 @@ import {
   Income_categories,
   SaveInvest_categories,
 } from "../Tools/Categories";
-import { use } from "framer-motion/client";
 
 const TransactionListItem = ({
-  icon = MdOutlineBrunchDining,
   description,
   time,
   amount,
   isSwiped,
-  onSwipe,
-  onUnSwipe,
   onClick,
   category,
   label,
+  type,
   isAddClicked,
+  setOpen,
+  setShowTransaction,
 }) => {
   const OriginalList =
     category === "Income"
@@ -97,7 +95,7 @@ const TransactionListItem = ({
         ? "translateX(90px)"
         : visibleButton === "LL"
         ? "translateX(380px)"
-        : "translateX(100px)",
+        : "translateX(90px)",
     width: visibleButton === "LL" ? "340px" : "80px",
     opacity: finalDel
       ? 0
@@ -144,11 +142,26 @@ const TransactionListItem = ({
       setIsDeleted(true);
     }
   };
+  const handleResolve = () => {
+    if (visibleButton === "LL") {
+      setShowTransaction({
+        Amount: amount,
+        Category: category,
+        Label: label,
+        Reason: description,
+        Timestamp: time,
+        Type: type,
+        icon: ModifyLabel,
+      });
+      setOpen("delete");
+      setVisibleButton("M");
+    }
+  };
 
   const swipeStyle = useSpring({
     transform:
       visibleButton === "L" && !resetMod
-        ? "translateX(-80px)"
+        ? "translateX(-90px)"
         : visibleButton === "LL" && !resetMod
         ? "translateX(-380px)"
         : visibleButton === "R" && !resetMod
@@ -160,7 +173,13 @@ const TransactionListItem = ({
     marginTop: finalDel || finalMod ? -55 : 0,
     opacity: finalDel || finalMod ? 0 : 1,
     scale: isScaled && !isSwiped ? 0.9 : 1,
+    width: "calc(100% - 10px)",
+    height: "55px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
     onRest: () => handlecomplete(),
+    onResolve: () => handleResolve(),
   });
 
   const truncateDescription = (description, maxLength = 30) => {

@@ -1,7 +1,6 @@
-import React from "react";
+import React, { useMemo, useCallback } from "react";
 import TransactionListItem from "./TransactionListItem";
-import { animated } from "react-spring";
-import BlurFade from "@/components/ui/blur-fade";
+import { FixedSizeList as List } from "react-window"; // For virtualization
 
 const TransactionListMonthly = ({
   MainIndex,
@@ -12,49 +11,75 @@ const TransactionListMonthly = ({
   transactions,
   sortby,
   isAddClicked,
+  setOpen,
+  setShowTransaction,
+  height,
 }) => {
-  const filteredTransactions =
-    sortby === "All"
-      ? [...transactions].reverse()
-      : transactions
-          .filter((transaction) => transaction.Type === sortby)
-          .reverse();
+  // Memoize the filtered transactions
+  const filteredTransactions = useMemo(() => {
+    const filtered =
+      sortby === "All"
+        ? [...transactions].reverse()
+        : transactions
+            .filter((transaction) => transaction.Type === sortby)
+            .reverse();
+    return filtered;
+  }, [transactions, sortby]);
+
+  // Memoize the handleSwipe, handleUnSwipe, and handleTransactionClick to avoid re-creating functions
+  const memoizedHandleSwipe = useCallback(
+    (index) => handleSwipe(MainIndex, index),
+    [MainIndex, handleSwipe]
+  );
+
+  const memoizedHandleUnSwipe = useCallback(handleUnSwipe, [handleUnSwipe]);
+
+  const memoizedHandleTransactionClick = useCallback(
+    (transaction) => handleTransactionClick(transaction),
+    [handleTransactionClick]
+  );
+
+  const Row = ({ index, style }) => {
+    const transaction = filteredTransactions[index];
+    return (
+      <div style={style}>
+        <TransactionListItem
+          key={index}
+          index={index}
+          icon={transaction.icon}
+          description={transaction.Reason}
+          type={transaction.Type}
+          time={transaction.Timestamp}
+          amount={transaction.Amount}
+          category={transaction.Category}
+          label={transaction.Label}
+          isSwiped={swipedIndex[1] === index && swipedIndex[0] === MainIndex}
+          onSwipe={() => memoizedHandleSwipe(index)}
+          onUnSwipe={memoizedHandleUnSwipe}
+          onClick={() => memoizedHandleTransactionClick(transaction)}
+          isAddClicked={isAddClicked}
+          setOpen={setOpen}
+          setShowTransaction={setShowTransaction}
+        />
+      </div>
+    );
+  };
 
   return (
-    <animated.div className="TransactionList_Monthly">
-      <ul className="TransactionList_TransactionList">
-        {filteredTransactions.map((transaction, index) => {
-          const transactionItem = (
-            <TransactionListItem
-              key={index}
-              index={index}
-              icon={transaction.icon}
-              description={transaction.Reason}
-              type={transaction.Type}
-              time={transaction.Timestamp}
-              amount={transaction.Amount}
-              category={transaction.Category}
-              label={transaction.Label}
-              isSwiped={
-                swipedIndex[1] === index && swipedIndex[0] === MainIndex
-              }
-              onSwipe={() => handleSwipe(MainIndex, index)}
-              onUnSwipe={handleUnSwipe}
-              onClick={() => handleTransactionClick(transaction)}
-              isAddClicked={isAddClicked}
-            />
-          );
-
-          return index < 7 ? (
-            <BlurFade key={index} delay={0.15 * index}>
-              {transactionItem}
-            </BlurFade>
-          ) : (
-            transactionItem
-          );
-        })}
-      </ul>
-    </animated.div>
+    <>
+      {filteredTransactions && (
+        <div className="TransactionList_Monthly">
+          <List
+            height={height}
+            itemCount={filteredTransactions.length}
+            itemSize={55}
+            className="TransactionList_TransactionList"
+          >
+            {Row}
+          </List>
+        </div>
+      )}
+    </>
   );
 };
 

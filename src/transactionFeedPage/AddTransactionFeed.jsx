@@ -64,7 +64,9 @@ function AddTransactionFeed({
   );
 
   const [selectedCategory, setSelectedCategory] = useState(
-    Modify ? List.find((item) => addTransaction.Label === item[0]) : List[0]
+    Modify
+      ? List.find((item) => addTransaction.Label === item[0].toLowerCase())
+      : List[0]
   );
 
   const DotStyle = {

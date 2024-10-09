@@ -18,6 +18,8 @@ const TransactionList = ({
   setIsAddClicked,
   setAddTransaction,
   isAddClicked,
+  setOpen,
+  setShowTransaction,
 }) => {
   const filteredTransactions =
     isMoreClicked === "Balance"
@@ -113,6 +115,7 @@ const TransactionList = ({
 
   const handleTransactionClick = (transaction) => {
     setIsAddClicked(transaction.Category);
+
     setAddTransaction({
       Amount: transaction.Amount,
       Category: transaction.Category,
@@ -451,175 +454,183 @@ const TransactionList = ({
                 </span>
               </h1>
             </animated.div>
-            <animated.div
-              className="TransactionList_SummaryAmount"
-              // style={springProps2}
+            <div
+              style={{
+                width: "calc(100% + 10px)",
+                position: "relative",
+                margin: "0 0 0 10px",
+              }}
             >
-              {SummaryWidth[0] > 0 && (
-                <animated.li
-                  style={{
-                    ...summaryStiles[0],
-                    backgroundColor: "transparent",
-                    outline: "none",
-                  }}
-                >
-                  $
-                  {labelDistribution.length > 0
-                    ? Math.max(
-                        Math.abs((SummaryWidth[0] * totalAmount) / 100).toFixed(
-                          0
-                        ),
-                        8
-                      )
-                    : 0}
-                </animated.li>
-              )}
-              {SummaryWidth[1] > 0 && (
-                <animated.li
-                  style={{
-                    ...summaryStiles[1],
-                    backgroundColor: "transparent",
-                    outline: "none",
-                  }}
-                >
-                  $
-                  {labelDistribution.length > 0
-                    ? Math.max(
-                        Math.abs((SummaryWidth[1] * totalAmount) / 100).toFixed(
-                          0
-                        ),
-                        8
-                      )
-                    : 0}
-                </animated.li>
-              )}
-              {SummaryWidth[2] > 0 && (
-                <animated.li
-                  style={{
-                    ...summaryStiles[2],
-                    backgroundColor: "transparent",
-                    outline: "none",
-                  }}
-                >
-                  $
-                  {labelDistribution.length > 0
-                    ? Math.max(
-                        Math.abs((SummaryWidth[2] * totalAmount) / 100).toFixed(
-                          0
-                        ),
-                        8
-                      )
-                    : 0}
-                </animated.li>
-              )}
-              {SummaryWidth[3] > 0 && (
-                <animated.li
-                  style={{
-                    ...summaryStiles[3],
-                    backgroundColor: "transparent",
-                    outline: "none",
-                  }}
-                >
-                  $
-                  {labelDistribution.length > 0
-                    ? Math.max(
-                        Math.abs((SummaryWidth[3] * totalAmount) / 100).toFixed(
-                          0
-                        ),
-                        8
-                      )
-                    : 0}
-                </animated.li>
-              )}
-            </animated.div>
-            <animated.div
-              className="TransactionList_SummaryLines"
-              // style={springProps2}
-            >
-              {SummaryWidth[0] > 0 && (
-                <animated.li style={summaryStiles[0]}></animated.li>
-              )}
-              {SummaryWidth[1] > 0 && (
-                <animated.li style={summaryStiles[1]}></animated.li>
-              )}
-              {SummaryWidth[2] > 0 && (
-                <animated.li style={summaryStiles[2]}></animated.li>
-              )}
-              {SummaryWidth[3] > 0 && (
-                <animated.li style={summaryStiles[3]}></animated.li>
-              )}
-            </animated.div>
-            <animated.div
-              className="TransactionList_SummaryNames"
-              // style={springProps2}
-            >
-              {SummaryWidth[0] > 0 && (
-                <animated.li>
-                  <animated.span
+              <animated.div
+                className="TransactionList_SummaryAmount"
+                // style={springProps2}
+              >
+                {SummaryWidth[0] > 0 && (
+                  <animated.li
                     style={{
                       ...summaryStiles[0],
-                      width: "fit-content",
                       backgroundColor: "transparent",
                       outline: "none",
                     }}
                   >
-                    •
-                  </animated.span>
-                  {labelDistribution.length > 0
-                    ? labelDistribution[0].category.split(" ")[0]
-                    : ""}
-                </animated.li>
-              )}
-              {SummaryWidth[1] > 0 && (
-                <animated.li>
-                  <animated.span
+                    $
+                    {labelDistribution.length > 0
+                      ? Math.max(
+                          Math.abs(
+                            (SummaryWidth[0] * totalAmount) / 100
+                          ).toFixed(0),
+                          8
+                        )
+                      : 0}
+                  </animated.li>
+                )}
+                {SummaryWidth[1] > 0 && (
+                  <animated.li
                     style={{
                       ...summaryStiles[1],
-                      width: "fit-content",
                       backgroundColor: "transparent",
                       outline: "none",
                     }}
                   >
-                    •
-                  </animated.span>
-                  {labelDistribution.length > 0
-                    ? labelDistribution[1].category.split(" ")[0]
-                    : ""}
-                </animated.li>
-              )}
-              {SummaryWidth[2] > 0 && (
-                <animated.li>
-                  <animated.span
+                    $
+                    {labelDistribution.length > 0
+                      ? Math.max(
+                          Math.abs(
+                            (SummaryWidth[1] * totalAmount) / 100
+                          ).toFixed(0),
+                          8
+                        )
+                      : 0}
+                  </animated.li>
+                )}
+                {SummaryWidth[2] > 0 && (
+                  <animated.li
                     style={{
                       ...summaryStiles[2],
-                      width: "fit-content",
                       backgroundColor: "transparent",
                       outline: "none",
                     }}
                   >
-                    •
-                  </animated.span>
-                  {labelDistribution.length > 0
-                    ? labelDistribution[2].category.split(" ")[0]
-                    : ""}
-                </animated.li>
-              )}
-              {SummaryWidth[3] > 0 && (
-                <animated.li>
-                  <animated.span
+                    $
+                    {labelDistribution.length > 0
+                      ? Math.max(
+                          Math.abs(
+                            (SummaryWidth[2] * totalAmount) / 100
+                          ).toFixed(0),
+                          8
+                        )
+                      : 0}
+                  </animated.li>
+                )}
+                {SummaryWidth[3] > 0 && (
+                  <animated.li
                     style={{
                       ...summaryStiles[3],
-                      width: "fit-content",
                       backgroundColor: "transparent",
                       outline: "none",
                     }}
                   >
-                    •
-                  </animated.span>
-                  Other
-                </animated.li>
-              )}
-            </animated.div>
+                    $
+                    {labelDistribution.length > 0
+                      ? Math.max(
+                          Math.abs(
+                            (SummaryWidth[3] * totalAmount) / 100
+                          ).toFixed(0),
+                          8
+                        )
+                      : 0}
+                  </animated.li>
+                )}
+              </animated.div>
+              <animated.div
+                className="TransactionList_SummaryLines"
+                // style={springProps2}
+              >
+                {SummaryWidth[0] > 0 && (
+                  <animated.li style={summaryStiles[0]}></animated.li>
+                )}
+                {SummaryWidth[1] > 0 && (
+                  <animated.li style={summaryStiles[1]}></animated.li>
+                )}
+                {SummaryWidth[2] > 0 && (
+                  <animated.li style={summaryStiles[2]}></animated.li>
+                )}
+                {SummaryWidth[3] > 0 && (
+                  <animated.li style={summaryStiles[3]}></animated.li>
+                )}
+              </animated.div>
+              <animated.div
+                className="TransactionList_SummaryNames"
+                // style={springProps2}
+              >
+                {SummaryWidth[0] > 0 && (
+                  <animated.li>
+                    <animated.span
+                      style={{
+                        ...summaryStiles[0],
+                        width: "fit-content",
+                        backgroundColor: "transparent",
+                        outline: "none",
+                      }}
+                    >
+                      •
+                    </animated.span>
+                    {labelDistribution.length > 0
+                      ? labelDistribution[0].category.split(" ")[0]
+                      : ""}
+                  </animated.li>
+                )}
+                {SummaryWidth[1] > 0 && (
+                  <animated.li>
+                    <animated.span
+                      style={{
+                        ...summaryStiles[1],
+                        width: "fit-content",
+                        backgroundColor: "transparent",
+                        outline: "none",
+                      }}
+                    >
+                      •
+                    </animated.span>
+                    {labelDistribution.length > 0
+                      ? labelDistribution[1].category.split(" ")[0]
+                      : ""}
+                  </animated.li>
+                )}
+                {SummaryWidth[2] > 0 && (
+                  <animated.li>
+                    <animated.span
+                      style={{
+                        ...summaryStiles[2],
+                        width: "fit-content",
+                        backgroundColor: "transparent",
+                        outline: "none",
+                      }}
+                    >
+                      •
+                    </animated.span>
+                    {labelDistribution.length > 0
+                      ? labelDistribution[2].category.split(" ")[0]
+                      : ""}
+                  </animated.li>
+                )}
+                {SummaryWidth[3] > 0 && (
+                  <animated.li>
+                    <animated.span
+                      style={{
+                        ...summaryStiles[3],
+                        width: "fit-content",
+                        backgroundColor: "transparent",
+                        outline: "none",
+                      }}
+                    >
+                      •
+                    </animated.span>
+                    Other
+                  </animated.li>
+                )}
+              </animated.div>
+            </div>
             <TransactionFilter
               sortby={sortby}
               setSortby={setSortby}
@@ -651,6 +662,9 @@ const TransactionList = ({
                   setWhichMonth={setWhichMonth}
                   whichMonth={whichMonth}
                   isAddClicked={isAddClicked}
+                  setOpen={setOpen}
+                  setShowTransaction={setShowTransaction}
+                  height={WindowHeight - 180}
                 />
               )}
             </animated.div>
