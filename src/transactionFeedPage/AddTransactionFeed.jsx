@@ -263,7 +263,7 @@ function AddTransactionFeed({
           isLongPress={isLongPress}
           setIsLongPress={setIsLongPress}
         /> */}
-        {addStage !== 0 && (
+        {/* {addStage !== 0 && (
           <animated.div
             style={buttunStyle}
             className="AddTransactionFeed_button"
@@ -280,7 +280,7 @@ function AddTransactionFeed({
               <span>Confirm</span>
             </ScalableElement>
           </animated.div>
-        )}
+        )} */}
       </animated.ul>
     </animated.div>
   );

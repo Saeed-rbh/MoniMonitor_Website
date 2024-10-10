@@ -74,14 +74,32 @@ const DateTime = ({
     borderRadius: 30,
     background: "var(--Bc-2)",
   });
+  // const label = useSpring({
+  //   position: "relative",
+  //   fontSize: addStage !== 2 ? "1rem" : "0.7rem",
+  //   color: "var(--Bc-2)",
+  //   // border: "1px solid var(--Bc-2)",
+  //   borderRadius: "30px",
+  //   width: addStage !== 2 ? 35 : 70,
+  //   height: 35,
+  //   // padding: "10px 5px",
+  //   display: "flex",
+  //   position: "absolute",
+  //   alignItems: "center",
+  //   justifyContent: "center",
+  //   marginTop: addStage !== 2 ? 15 : 20,
+  //   cursor: addStage !== 2 ? "pointer" : "auto",
+  // });
+
   const label = useSpring({
     position: "relative",
     fontSize: addStage !== 2 ? "1rem" : "0.7rem",
     color: "var(--Bc-2)",
     // border: "1px solid var(--Bc-2)",
-    borderRadius: "30px",
+    borderRadius: "18px",
     width: addStage !== 2 ? 35 : 70,
-    height: 35,
+    height: 45,
+    width: 45,
     // padding: "10px 5px",
     display: "flex",
     position: "absolute",
@@ -89,27 +107,45 @@ const DateTime = ({
     justifyContent: "center",
     marginTop: addStage !== 2 ? 15 : 20,
     cursor: addStage !== 2 ? "pointer" : "auto",
+    backgroundColor: "var(--Ec-2)",
+    left: 7,
+    top: 7,
+    flexDirection: "column",
   });
 
+  // const labelTitle = useSpring({
+  //   top: addStage > 2 ? 27 : 30,
+  //   left: addStage > 2 ? 30 : 75,
+  //   width: "max-content",
+  //   margin: 0,
+  //   position: "absolute",
+  //   fontSize: "0.7em",
+  //   color: "var(--Bc-1)",
+  //   padding: "5px 10px",
+  //   borderRadius: "30px",
+  //   display: "flex",
+  //   alignItems: "center",
+  // });
   const labelTitle = useSpring({
-    top: addStage > 2 ? 27 : 30,
-    left: addStage > 2 ? 30 : 75,
+    top: addStage > 2 ? 33 : 30,
+    left: addStage > 2 ? 48 : 75,
     width: "max-content",
     margin: 0,
     position: "absolute",
-    fontSize: "0.7em",
     color: "var(--Bc-1)",
     padding: "5px 10px",
     borderRadius: "30px",
     display: "flex",
     alignItems: "center",
+    fontSize: "0.7rem",
   });
 
   return (
     <animated.li className="Add_DateTime" style={fade} {...longBind()}>
       <h1>
+        <div className="Add_background"></div>
         <animated.div style={labelPar}>
-          <animated.h4 style={labelDot}></animated.h4>{" "}
+          {/* <animated.h4 style={labelDot}></animated.h4>{" "} */}
           <animated.h4 style={label}>
             {addStage === 2 ? "Reason" : <MdModeEditOutline />}
           </animated.h4>
@@ -123,11 +159,10 @@ const DateTime = ({
             addStage={addStage}
           />
         </animated.label>
-        <div className="Add_edit">
-          <MdModeEditOutline /> Tap fot Edit
-        </div>
+        <div className="Add_edit">Transaction Time</div>
       </h1>
       <h1>
+        <div className="Add_background"></div>
         <animated.div style={labelPar}>
           <animated.h4 style={label}>
             {addStage === 2 ? "Reason" : <MdModeEditOutline />}
@@ -143,6 +178,7 @@ const DateTime = ({
             addStage={addStage}
           />
         </animated.label>
+        <div className="Add_edit">Transaction Date</div>
       </h1>
     </animated.li>
   );

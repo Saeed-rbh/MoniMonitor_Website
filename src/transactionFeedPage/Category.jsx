@@ -4,6 +4,8 @@ import { useDrag } from "@use-gesture/react";
 import { ScalableElement } from "../Tools/tools";
 import useLongPressHandler from "../Tools/useLongPressHandler";
 import { MdModeEditOutline } from "react-icons/md";
+import AnimatedGradientText from "@/components/ui/animated-gradient-text";
+import { cn } from "@/lib/utils";
 
 const Category = ({
   List,
@@ -98,7 +100,7 @@ const Category = ({
       isLongPress[0] && isLongPress[1] === "Category"
         ? "blur(10px)"
         : "blur(0px)",
-    top: 150,
+    top: 165,
   });
 
   const labelPar = useSpring({
@@ -129,7 +131,7 @@ const Category = ({
     fontSize: addStage !== 2 ? "1rem" : "0.7rem",
     color: "var(--Bc-2)",
     // border: "1px solid var(--Bc-2)",
-    borderRadius: "20px",
+    borderRadius: "18px",
     width: addStage !== 2 ? 35 : 70,
     height: 45,
     width: 45,
@@ -140,14 +142,14 @@ const Category = ({
     justifyContent: "center",
     marginTop: addStage !== 2 ? 15 : 20,
     cursor: addStage !== 2 ? "pointer" : "auto",
-    backgroundColor: "var(--Ec-1)",
+    backgroundColor: "var(--Ec-2)",
     left: 7,
     top: 7,
   });
 
   const labelTitle = useSpring({
-    top: addStage > 2 ? 27 : 30,
-    left: addStage > 2 ? 55 : 75,
+    top: addStage > 2 ? 30 : 30,
+    left: addStage > 2 ? 50 : 75,
     width: "max-content",
     margin: 0,
     position: "absolute",
@@ -163,7 +165,7 @@ const Category = ({
     <animated.li className="Add_Category" {...longBind()} style={fade}>
       <div className="Add_background"></div>
       <animated.div style={labelPar}>
-        <animated.h4 style={labelDot}></animated.h4>{" "}
+        {/* <animated.h4 style={labelDot}></animated.h4>{" "} */}
         <animated.h4 style={label}>
           {addStage === 2 ? "Reason" : <MdModeEditOutline />}
         </animated.h4>
@@ -172,7 +174,18 @@ const Category = ({
         {addStage === 2 && `What is the`} Category:{" "}
       </animated.label>
       <div className="Add_edit">
-        <MdModeEditOutline /> Tap fot Edit
+        {" "}
+        <AnimatedGradientText>
+          {" "}
+          <span
+            className={cn(
+              `inline animate-gradient bg-gradient-to-r from-[var(--Ac-3)] via-[var(--Ac-1)] to-[var(--Ac-3)] bg-[length:var(--bg-size)_100%] bg-clip-text text-transparent`
+            )}
+          >
+            Auto Detect
+          </span>
+        </AnimatedGradientText>{" "}
+        uses AI to identify category.
       </div>
       <div className="Add_Category_items" ref={containerRef} {...bind()}>
         <animated.div className="Add_Category_items_in" style={dragSpring}>

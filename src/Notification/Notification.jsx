@@ -23,6 +23,7 @@ const Notification = ({
       api.start({
         scale: 1,
         y: 0,
+        delay: 50,
       });
   }, []);
 
@@ -112,8 +113,6 @@ const Notification = ({
     zIndex: 1000000,
     scale: 0.95,
     y: -170,
-    config: { tension: 200, friction: 35 },
-    delay: !open ? 0 : 100,
     height: 150,
     border: "0px solid var(--Gc-2)",
     outline:

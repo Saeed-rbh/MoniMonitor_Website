@@ -64,11 +64,12 @@ const TimePicker = ({ setSelectedDate, selectedDate, submit, addStage }) => {
 
   const separatorStyle = {
     lineHeight: "40px",
-    color: "var(--Bc-2)",
+    color: "var(--Bc-1)",
     width: "2px",
     justifyContent: "center",
     alignItems: "center",
     display: "flex",
+    marginTop: "-2px",
   };
 
   const parentFocus = (e) => {
@@ -168,10 +169,10 @@ const TimePicker = ({ setSelectedDate, selectedDate, submit, addStage }) => {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: "5px",
+        gap: "3px",
         height: "100%",
         maxHeight: 54,
-        margin: "0 10px",
+        margin: "0 7px",
       }}
     >
       <div style={parentStyle} onFocus={parentFocus} onBlur={parentBlur}>
