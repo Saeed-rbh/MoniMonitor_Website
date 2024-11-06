@@ -9,6 +9,7 @@ import { useSprings, useSpring, animated, easings } from "react-spring";
 import { ScalableElement } from "../Tools/tools";
 import useClickOutside from "../Tools/useClickOutside";
 import { useLongPress } from "use-long-press";
+import { filter } from "framer-motion/client";
 
 const MoreCategory = ({
   List,
@@ -27,7 +28,7 @@ const MoreCategory = ({
   };
 
   const characterCountsIni = useMemo(() => {
-    return List.map((item) => Math.round(item[0].length * 6 + 65));
+    return List.map((item) => Math.round(item[0].length * 5 + 70));
   }, [List]);
   const [characterCounts, setCharacterCounts] = useState(characterCountsIni);
 
@@ -54,7 +55,7 @@ const MoreCategory = ({
     List.length,
     List.map((item) => ({
       backgroundColor:
-        item[0] === selectedCategory[0] ? `var(--Bc-3)` : `var(--Ec-4)`,
+        item[0] === selectedCategory[0] ? `var(--Bc-3)` : `var(--Ac-5)`,
     }))
   );
 
@@ -97,6 +98,7 @@ const MoreCategory = ({
     },
     to: {
       opacity: !isLongPress ? 0 : 1,
+      filter: !isLongPress ? "blur(10px)" : "blur(0px)",
       position: "absolute",
       top: "-10%",
       height: "110%",
@@ -121,17 +123,18 @@ const MoreCategory = ({
   });
   const ApearItems = useSpring({
     from: {
-      top: 50,
+      top: 150,
     },
     to: {
       position: "relative",
-      top: 25,
+      top: 100,
       flexDirection: "column",
       alignItems: "flex-start",
-      left: 0,
+      left: -108,
       background: "none",
       flexWrap: "wrap",
       width: "max-content",
+      minHeight: 300,
     },
   });
   const Apearh2 = useSpring({
@@ -141,7 +144,7 @@ const MoreCategory = ({
   return (
     <>
       <animated.li className="Add_Category" {...longBind()} style={Apear}>
-        <animated.p style={ApearP}>Select a category : </animated.p>{" "}
+        {/* <animated.p style={ApearP}>Select a category : </animated.p>{" "} */}
         <animated.div
           className="Add_Category_items"
           style={ApearItems}

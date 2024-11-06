@@ -10,29 +10,47 @@ const Reason = ({
   isLongPress,
   addStage,
   isAddClicked,
+  setAddStage,
+  index,
+  topAdd,
+  opacity,
 }) => {
   const fade = useSpring({
     from: {
       filter: !isLongPress ? "blur(10px)" : "blur(0px)",
-      // opacity: addStage > 1 ? 0 : 1,
-      y: addStage > 1 ? 70 : 50,
+      y: addStage > index ? 0 : 0,
       position: "absolute",
     },
     to: {
       filter:
-        addStage < 2 ? "blur(10px)" : !isLongPress ? "blur(0px)" : "blur(10px)",
-      // opacity: addStage > 1 ? 1 : 0,
-      y: addStage > 1 ? 50 : 70,
+        addStage === null
+          ? "blur(0px)"
+          : addStage < index || addStage === 3 || opacity
+          ? "blur(10px)"
+          : !isLongPress
+          ? "blur(0px)"
+          : "blur(10px)",
+      y: addStage > index ? 0 : 0,
       position: "absolute",
-      top: 44,
-      height: 500,
+      top: 113,
+      height: addStage > index ? 100 : 295,
+      y: topAdd,
+      opacity: addStage === 3 || opacity ? 0.5 : 1,
+      zIndex: 100002,
     },
+  });
+  const backgroundStyle = useSpring({
+    opacity: addStage !== index ? 1 : 0,
+  });
+
+  const labeledit = useSpring({
+    left: addStage === index ? 59 : 39,
   });
 
   const [ReasonCount, setReasonCount] = useState(0);
 
   const handleReason = (event) => {
-    const newValue = event.target.value.replace(/\n/g, "");
+    const newValue = event.target.value.replace(/\n/g, "").slice(0, 50);
     setReason(newValue);
     setReasonCount(newValue.length);
   };
@@ -54,37 +72,29 @@ const Reason = ({
     flexDirection: "column",
     margin: 0,
   });
-  const labelDot = useSpring({
-    position: "relative",
-    fontSize: "1.5em",
-    color: "var(--Bc-2)",
-    margin: "5px 10px 0px 17px",
-    lineHeight: `15px`,
-    width: 2,
-    height: addStage > 2 ? 2 : 7,
-    borderRadius: 30,
-    background: "var(--Bc-2)",
-  });
   const label = useSpring({
     position: "relative",
-    fontSize: addStage !== 2 ? "1rem" : "0.7rem",
+    fontSize: addStage !== index ? "1rem" : "0.7rem",
     color: "var(--Bc-2)",
-    // border: "1px solid var(--Bc-2)",
-    borderRadius: "30px",
-    width: addStage !== 2 ? 35 : 70,
-    height: 35,
-    // padding: "10px 5px",
+    borderRadius: "18px",
+    width: addStage !== index ? 35 : 70,
+    height: 45,
+    width: addStage !== index ? 45 : 65,
     display: "flex",
     position: "absolute",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: addStage !== 2 ? 15 : 20,
-    cursor: addStage !== 2 ? "pointer" : "auto",
+    cursor: addStage !== index ? "pointer" : "auto",
+    top: addStage !== 0 ? 3 : 12,
+    backgroundColor: addStage !== index ? "var(--Ec-2)" : "var(--Ac-5)",
+    left: addStage === index ? 0 : 7,
+    top: 23,
+    margin: 0,
   });
 
   const labelTitle = useSpring({
-    top: addStage > 2 ? 25 : 30,
-    left: addStage > 2 ? 30 : 75,
+    top: addStage > index ? 30 : 30,
+    left: addStage === index ? 70 : 50,
     width: "max-content",
     margin: 0,
     position: "absolute",
@@ -93,9 +103,10 @@ const Reason = ({
     padding: "5px 10px",
     borderRadius: "30px",
   });
+
   const textareaStyle = useSpring({
-    top: addStage > 2 ? 15 : 70,
-    left: addStage > 2 ? 90 : 0,
+    top: addStage === index ? 80 : 20,
+    left: addStage === index ? 0 : 100,
     margin: `0 1px`,
     height: 100,
     padding: "15px 20px",
@@ -103,27 +114,26 @@ const Reason = ({
     fontSize: "0.7em",
     color: "var(--Ac-1)",
     outline:
-      addStage > 2
-        ? "rgb(255 245 240 / 0%) solid 1px"
-        : "1px solid var(--Bc-2)",
+      addStage === index ? "1px solid var(--Bc-2)" : "1px solid var(--Ec-4)",
     borderRadius: "25px",
     background:
-      addStage === 0
+      addStage === index
         ? "linear-gradient(165deg, var(--Ac-4) -20%, var(--Ec-1) 120%)"
         : "none",
   });
 
   const characterStyle = useSpring({
     bottom: "auto",
-    top: addStage > 2 ? 110 : 130,
+    top: 140,
     left: 20,
-    opacity: addStage > 2 ? 0 : 1,
+    opacity: addStage === index ? 1 : 0,
   });
 
   const clearStyle = useSpring({
     bottom: "auto",
-    top: addStage > 2 ? 100 : 110,
-    opacity: addStage > 2 ? 0 : 1,
+    top: 115,
+    right: 15,
+    opacity: addStage === index ? 1 : 0,
   });
 
   const incomeExample = [
@@ -179,35 +189,39 @@ const Reason = ({
     }
   }, [isAddClicked]);
   const exampleStyle = useSpring({
-    opacity: addStage === 2 ? 1 : 0,
-    x: addStage === 2 ? 0 : -20,
-    y: addStage === 2 ? 105 : 65,
-    scale: addStage === 2 ? 1 : 0.95,
+    opacity: addStage === index ? 1 : 0,
+    x: addStage === index ? 0 : -20,
+    y: addStage === index ? 105 : 65,
+    scale: addStage === index ? 1 : 0.95,
     flexDirection: "row",
     flexWrap: "wrap",
   });
 
   return (
     <animated.li className="Add_Reason" style={fade}>
+      <animated.div
+        className="Add_background"
+        style={backgroundStyle}
+      ></animated.div>
       <animated.div style={labelPar}>
-        <animated.h4 style={labelDot}></animated.h4>{" "}
         <animated.h4 style={label}>
-          {addStage === 2 ? "Reason" : <MdModeEditOutline />}
+          {addStage === index ? "Reason" : <MdModeEditOutline />}
         </animated.h4>
       </animated.div>
       <animated.label style={labelTitle}>
-        {addStage === 2 && `What is the`} Reason:{" "}
+        {addStage === index && `What is the`} Reason:{" "}
       </animated.label>
-      <div className="Add_edit">
-        <MdModeEditOutline /> Tap fot Edit
-      </div>
+      {(addStage === index || ReasonCount < 45) && (
+        <animated.div className="Add_edit" style={labeledit}>
+          Briefly describe the purpose of this transaction.
+        </animated.div>
+      )}
       <animated.textarea
         type="text"
-        inputMode="50"
+        maxLength={50}
         placeholder={
-          addStage === 2 ? example && example[0] : "No Reason Provided"
+          addStage === index ? example && example[0] : "No Reason Provided"
         }
-        // defaultValue={defaultValue}
         value={Reason}
         onChange={handleReason}
         style={textareaStyle}
@@ -219,15 +233,16 @@ const Reason = ({
         Clear All
       </ScalableElement>
 
-      <animated.div
-        className="AddTransactionFeed_Examples"
-        style={exampleStyle}
-      >
-        <animated.p>
-          <span>{isAddClicked}</span> <span>Shorcuts :</span>
-        </animated.p>
-        {example &&
-          example.map((value, index) => (
+      {addStage === index && example && (
+        <animated.div
+          className="AddTransactionFeed_Examples"
+          style={exampleStyle}
+        >
+          <animated.p style={{ margin: "5px" }}>
+            <span>{isAddClicked}</span>{" "}
+            <span style={{ marginLeft: "7px" }}>Shorcuts :</span>
+          </animated.p>
+          {example.map((value, index) => (
             <ScalableElement
               key={index}
               as="h4"
@@ -235,13 +250,14 @@ const Reason = ({
               style={{
                 width: "fit-content",
                 margin: "3px",
-                transform: "translateY(20px)",
+                transform: "translateY(25px)",
               }}
             >
               {value}
             </ScalableElement>
           ))}
-      </animated.div>
+        </animated.div>
+      )}
     </animated.li>
   );
 };

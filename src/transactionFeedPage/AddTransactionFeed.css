@@ -12,7 +12,7 @@
   border-radius: 30px;
   flex-wrap: wrap;
   height: calc(100% - 70px);
-  top: 75px;
+  top: 72px;
 }
 
 .AddTransactionFeed h3 {
@@ -316,7 +316,7 @@
 .Add_Category_items h2 {
   position: relative;
   display: flex;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 200;
   font-family: "Noto Sans", sans-serif;
   color: var(--Ac-1);
@@ -353,6 +353,9 @@
   /* background: var(--Ec-3); */
   border-radius: 35px;
   width: min-content;
+  position: absolute;
+  top: 26px;
+  right: -15px;
 }
 
 .Add_Confirm {
@@ -411,9 +414,10 @@
   width: 55%;
   justify-content: flex-end;
   font-weight: 400;
-  font-size: 1.2rem;
+  font-size: 0.8rem;
   justify-content: center;
   margin-left: 2px;
+  padding: 10px 15px;
 }
 
 .Add_DateTime {
@@ -812,7 +816,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  width: 250px;
+  width: calc(100% - 30px);
   height: 10%;
   min-height: 50px;
   border-radius: 30px;
@@ -821,17 +825,35 @@
   box-sizing: border-box;
 }
 
-.Calendar_header svg {
+.Calendar_header h1 {
+  color: var(--Bc-1) !important;
+}
+
+.Calendar_header h1 span {
+  color: var(--Ac-1) !important;
+}
+
+.Calendar_header div {
+  position: absolute;
   font-size: 5rem;
   color: var(--Ac-2);
-  width: 22px;
-  height: 22px;
-  padding: 7px;
+  width: 40px;
+  height: 40px;
+  padding: 10px;
   cursor: pointer;
   transition: background 0.3s ease-in-out;
   border-radius: 30px;
+  background: var(--Ac-4);
+  align-items: center;
+  justify-content: center;
 }
-.Calendar_header svg:hover {
+.Calendar_header div:last-of-type {
+  right: 5px;
+}
+.Calendar_header div:first-of-type {
+  right: 50px;
+}
+.Calendar_header div:hover {
   background: var(--Ac-4);
 }
 .Calendar_header h1 {
@@ -847,20 +869,26 @@
   justify-content: center;
   /* padding: 0 20px; */
   padding-right: 20px;
-  width: 150px;
+  height: 45px;
+  width: max-content !important;
   box-sizing: border-box;
   height: 100%;
-  background: var(--Ac-4);
-  outline: 1px solid var(--Ac-3);
-  border: 1px solid var(--Ac-4);
+  /* background: var(--Ac-4); */
+  /* outline: 1px solid var(--Ac-3);
+  border: 1px solid var(--Ac-4); */
   margin: 0;
 }
 .Calendar_header h1 svg {
-  position: absolute;
-  right: 9px;
-  height: 20px;
-  height: 20px;
-  color: var(--Ac-3);
+  position: relative;
+  right: auto !important;
+  height: 30px;
+  width: 30px;
+  /* color: var(--Ac-2) ; */
+  background: none;
+  font-size: 0.1rem;
+  padding: 0px;
+  /* margin: 0 5px; */
+  padding: 5px;
 }
 .Calendar_header h1 span {
   font-weight: 300;
@@ -871,7 +899,8 @@
   display: flex;
   flex-direction: column;
   width: calc(100% - 30px);
-  margin-top: 10px;
+  margin-top: -15px;
+  margin-bottom: 5px;
   color: var(--Ac-1);
   position: relative;
   font-weight: 300;
@@ -903,23 +932,23 @@
   justify-content: center;
 }
 .day-names {
-  margin-bottom: 10px;
-  background: var(--Bc-4);
-  outline: 1px solid var(--Ac-3);
-  border-radius: 30px;
-  padding: 5px;
+  /* margin-bottom: 5px; */
+  /* background: var(--Bc-4); */
+  /* outline: 1px solid var(--Ac-3); */
+  /* border-radius: 30px; */
+  padding: 0 5px;
 }
 .day-numbers {
-  background: var(--Ac-4);
-  outline: 1px solid var(--Ac-3);
+  /* background: var(--Ac-5);
+  outline: 1px solid var(--Ac-3); */
   border-radius: 30px;
-  padding: 7px 5px;
+  padding: 0px 5px;
   cursor: pointer;
+  margin-top: -5px;
 }
 .day-name {
+  margin-bottom: -2px;
   color: var(--Ac-1);
-  background: var(--Ec-3);
-  /* outline: 1px solid var(--Ec-1); */
   font-weight: 300;
   font-size: 0.75rem;
 }
@@ -928,7 +957,7 @@
   width: calc(100% + 10px);
   bottom: 22px;
   position: absolute;
-  height: 60px;
+  height: 45px;
   display: flex;
   left: -5px;
 }

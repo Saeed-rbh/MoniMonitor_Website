@@ -1,20 +1,21 @@
 import React, { useEffect, useState } from "react";
 
 const DatePicker = ({ minDate, maxDate, setSelectedDate, selectedDate }) => {
-  const [day, setDay] = useState(selectedDate.day);
-  const [month, setMonth] = useState(selectedDate.month);
+  // Default state where day is preselected, year and month are dynamic
   const [year, setYear] = useState(selectedDate.year);
+  const [month, setMonth] = useState(selectedDate.month);
+  const [day, setDay] = useState(selectedDate.day);
 
   const [blur, setBlur] = useState(true);
 
   useEffect(() => {
-    setDay(selectedDate.day);
     setMonth(selectedDate.month);
     setYear(selectedDate.year);
+    setDay(selectedDate.day);
   }, [selectedDate]);
 
   useEffect(() => {
-    if (blur && day.length === 2 && month.length === 2 && year.length === 4) {
+    if (blur && month.length === 2 && year.length === 4) {
       setSelectedDate({
         day: day,
         month: month,
@@ -24,12 +25,10 @@ const DatePicker = ({ minDate, maxDate, setSelectedDate, selectedDate }) => {
         zone: selectedDate.zone,
       });
     }
-  }, [day, month, year, setSelectedDate, blur]);
+  }, [month, year, setSelectedDate, blur]);
 
   const parentStyle = {
-    // border: "1px solid var(--Ac-3)",
     borderRadius: "18px",
-    // padding: "5px",
     textAlign: "center",
     backgroundColor: "transparent",
     outline: "none",
@@ -39,7 +38,6 @@ const DatePicker = ({ minDate, maxDate, setSelectedDate, selectedDate }) => {
     alignItems: "center",
     justifyContent: "center",
     color: "var(--Ac-2)",
-    // height: "100%",
     boxSizing: "border-box",
     aspectRatio: "1/1",
   };
@@ -55,7 +53,6 @@ const DatePicker = ({ minDate, maxDate, setSelectedDate, selectedDate }) => {
     transition: "background-color 0.3s ease",
     caretColor: "transparent", // Hide caret
     border: "none",
-    // padding: "2px 4px",
     fontSize: "0.7rem",
     fontWeight: "400",
   };
@@ -192,15 +189,14 @@ const DatePicker = ({ minDate, maxDate, setSelectedDate, selectedDate }) => {
           contentEditable
           suppressContentEditableWarning
           onFocus={handleFocus}
-          onBlur={(e) => handleBlur(e, setDay, day, 2)}
+          onBlur={(e) => handleBlur(e, setMonth, month, 2)}
           onKeyDown={(e) => handleKeyDown(e)}
-          onInput={(e) => handleInput(e, setDay, "01", "31", 2)}
+          onInput={(e) => handleInput(e, setMonth, "01", "12", 2)}
           style={inputStyle}
         >
           {day}
         </div>
       </div>
-
       <span style={separatorStyle}>/</span>
       <div style={parentStyle} onFocus={parentFocus} onBlur={parentBlur}>
         <div

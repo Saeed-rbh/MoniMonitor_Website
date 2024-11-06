@@ -5,6 +5,8 @@ const TimePicker = ({ setSelectedDate, selectedDate, submit, addStage }) => {
   const [minutes, setMinutes] = useState(selectedDate.minutes);
   const [blur, setBlur] = useState(true);
 
+  console.log(selectedDate);
+
   useEffect(() => {
     setHours(selectedDate.hours);
     setMinutes(selectedDate.minutes);

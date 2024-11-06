@@ -14,7 +14,7 @@ import { MdModeEditOutline } from "react-icons/md";
 const AmountLogo = ({ Animate1, Animate2, style1, style2, fontColor }) => {
   const Style = useSpring({
     position: "absolute",
-    top: 35,
+    top: 50,
   });
   return (
     <animated.div style={Style} className="AddTransactionFeed_AmountLogo">
@@ -44,55 +44,53 @@ const Amount = ({
   addStage,
   setAddStage,
   isAddClicked,
+  index,
+  topAdd,
 }) => {
   const fade = useSpring({
     from: {
-      filter: isLongPress ? "blur(0px)" : "blur(10px)",
-      // opacity: addStage !== 0 ? 0 : 1,
-      top: addStage !== 0 ? "55px" : "35px",
+      filter: !isLongPress ? "blur(10px)" : "blur(0px)",
+      y: addStage > index ? 0 : 0,
       position: "absolute",
-      borderRadius: 0,
     },
     to: {
       filter:
-        addStage < 1 ? "blur(10px)" : isLongPress ? "blur(10px)" : "blur(0px)",
-      // opacity: addStage !== 0 ? 1 : 0,
-      top: addStage > 1 ? "35px" : addStage !== 0 ? "35px" : "55px",
+        addStage === null
+          ? "blur(0px)"
+          : addStage < index || addStage === 3
+          ? "blur(10px)"
+          : !isLongPress
+          ? "blur(0px)"
+          : "blur(10px)",
       position: "absolute",
-      borderRadius: 0,
-      height: 140,
-      zIndex: 1000,
+      top: 43,
+      height: addStage === index ? 150 : 100,
+      zIndex: 100003,
+      y: topAdd,
+      // opacity: addStage === index ? 0.5 : 1,
     },
   });
 
   const textareaStyle = useSpring({
-    padding: addStage === 1 ? "10px 20px" : "0px 20px",
+    padding: addStage === index ? "10px 25px" : "0px 20px",
     outline:
-      addStage === 1
+      addStage === index
         ? !valueError
           ? "1px solid var(--Gc-2)"
           : "1px solid var(--Ac-3)"
         : "1px solid var(--Ec-4)",
     background:
-      addStage === 1
+      addStage === index
         ? "linear-gradient(165deg, var(--Ac-4) -20%, var(--Ec-1) 120%)"
         : "none",
     position: "absolute",
-    top: addStage > 1 ? 13 : 20,
-    left: addStage > 1 ? 90 : 190,
-  });
-
-  const ConfirmStyle = useSpring({
-    left: whichType ? "0%" : "43%",
-    width: whichType ? "40%" : "57%",
-    marginLeft: whichType ? 2 : -2,
-  });
-
-  const ConfirmStyleDay = useSpring({
-    x: whichType ? 0 : 3,
-  });
-  const ConfirmStyleMonth = useSpring({
-    x: whichType ? -4 : 0,
+    width: 150,
+    top: addStage === index ? 35 : 18,
+    justifyItems: "baseline",
+    left:
+      addStage === index
+        ? 200
+        : 290 - Math.max(value.length, defaultValue.toString().length) * 5,
   });
 
   let fornatDefualtValue = new Intl.NumberFormat().format(defaultValue);
@@ -109,10 +107,9 @@ const Amount = ({
   const AnountStyle = useSpring({
     color: valueError ? "var(--Bc-1)" : "var(--Gc-1)",
     fontSize: `0.7rem`,
-    // left: addStage > 1 ? 20 : 25,
     position: "absolute",
-    top: addStage > 1 ? 30 : 35,
-    left: addStage === 1 ? 85 : 40,
+    top: addStage > index ? 35 : 34,
+    left: addStage === index ? 85 : 60,
   });
   const AnountBorderStyle = useSpring({
     height: "auto",
@@ -173,7 +170,7 @@ const Amount = ({
       fontSize: fontSize,
     },
     to: {
-      opacity: addStage > 1 ? 0 : !animate ? 0 : 0.6,
+      opacity: addStage > index ? 0 : !animate ? 0 : 0.6,
       transform: !animate ? "scale(1.5)" : "scale(1)",
       fontSize: fontSize,
     },
@@ -202,38 +199,31 @@ const Amount = ({
     justifyContent: "flex-start",
     flexDirection: "column",
   });
-  const labelDot = useSpring({
-    position: "relative",
-    fontSize: "1.5em",
-    color: "var(--Bc-2)",
-    margin: "5px 10px 0px 17px",
-    lineHeight: `15px`,
-    width: 2,
-    height: addStage > 1 ? 2 : 7,
-    borderRadius: 30,
-    background: "var(--Bc-2)",
-  });
   const label = useSpring({
     position: "relative",
-    fontSize: addStage !== 1 ? "1rem" : "0.7rem",
+    fontSize: addStage !== index ? "1rem" : "0.7rem",
     color: "var(--Bc-2)",
-    // border: "1px solid var(--Bc-2)",
-    borderRadius: "30px",
-    width: addStage !== 1 ? 35 : 70,
-    height: 35,
+    borderRadius: "18px",
+    width: addStage !== index ? 35 : 70,
+    height: 45,
+    width: addStage !== index ? 45 : 65,
     display: "flex",
     position: "absolute",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: addStage !== 1 ? 15 : 20,
-    cursor: addStage !== 1 ? "pointer" : "auto",
+    cursor: addStage !== index ? "pointer" : "auto",
+    top: addStage !== 0 ? 3 : 12,
+    backgroundColor: addStage !== index ? "var(--Ec-2)" : "var(--Ac-5)",
+    left: addStage === index ? 0 : 7,
+    top: 23,
+    margin: 0,
   });
 
   const exampleStyle = useSpring({
-    opacity: addStage === 1 ? 1 : 0,
-    x: addStage === 1 ? 0 : -20,
-    y: addStage === 1 ? 0 : -20,
-    scale: addStage === 1 ? 1 : 0.95,
+    opacity: addStage === index ? 1 : 0,
+    x: addStage === index ? 0 : -20,
+    y: addStage === index ? 0 : -20,
+    scale: addStage === index ? 1 : 0.95,
   });
 
   const [example, setExample] = useState(null);
@@ -264,23 +254,35 @@ const Amount = ({
     setValueError(true);
   };
 
+  const backgroundStyle = useSpring({
+    opacity: addStage !== index ? 1 : 0,
+  });
+
+  const labeledit = useSpring({
+    opacity: addStage === index ? 0 : 0.5,
+    color: "var(--Ac-2)",
+  });
+
   return (
     <animated.li
       className="Add_Amount"
       style={{ ...AnountBorderStyle, ...fade }}
     >
+      <animated.div
+        className="Add_background"
+        style={backgroundStyle}
+      ></animated.div>
       <animated.div style={labelPar}>
-        <animated.h2 style={labelDot}></animated.h2>{" "}
         <animated.h2 style={label}>
-          {addStage === 1 ? "Amount" : <MdModeEditOutline />}
+          {addStage === index ? "Amount" : <MdModeEditOutline />}
         </animated.h2>
       </animated.div>
       <animated.label style={AnountStyle}>
-        {addStage === 1 && `Insert`} Amount:
+        {addStage === index && `Insert`} Amount:
       </animated.label>
-      <div className="Add_edit">
-        <MdModeEditOutline /> Tap fot Edit
-      </div>
+      <animated.div className="Add_edit" style={labeledit}>
+        Enter the monetary value for this transaction.
+      </animated.div>
       <animated.textarea
         type="text"
         defaultValue={fornatDefualtValue}
@@ -291,28 +293,30 @@ const Amount = ({
         onChange={handleChange}
         style={textareaStyle}
       />
-      <AmountLogo
-        Animate1={Animate1}
-        Animate2={Animate2}
-        style1={style1}
-        style2={style2}
-        fontColor={fontColor}
-      />
-
-      <animated.div
-        className="AddTransactionFeed_Examples"
-        style={exampleStyle}
-      >
-        <animated.p>
-          <span>{isAddClicked}</span> <span>Shorcuts :</span>
-        </animated.p>
-        {example &&
-          example.map((value, index) => (
+      {addStage === index && (
+        <AmountLogo
+          Animate1={Animate1}
+          Animate2={Animate2}
+          style1={style1}
+          style2={style2}
+          fontColor={fontColor}
+        />
+      )}
+      {addStage === index && example && (
+        <animated.div
+          className="AddTransactionFeed_Examples"
+          style={exampleStyle}
+        >
+          <animated.p>
+            <span>{isAddClicked}</span> <span>Shorcuts :</span>
+          </animated.p>
+          {example.map((value, index) => (
             <ScalableElement key={index} as="h4" onClick={handleExample(value)}>
               ${value}
             </ScalableElement>
           ))}
-      </animated.div>
+        </animated.div>
+      )}
     </animated.li>
   );
 };

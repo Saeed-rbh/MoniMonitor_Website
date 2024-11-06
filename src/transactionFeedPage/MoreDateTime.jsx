@@ -1,165 +1,287 @@
-import React, { useRef, useState } from "react";
-import { useSpring, animated, easings, useSprings } from "react-spring";
+import React, {
+  useRef,
+  useCallback,
+  useMemo,
+  useReducer,
+  useState,
+} from "react";
+import { useSpring, animated, easings } from "react-spring";
 import useClickOutside from "../Tools/useClickOutside";
 import {
   MdOutlineChevronLeft,
   MdOutlineChevronRight,
   MdKeyboardArrowDown,
+  MdCheck,
 } from "react-icons/md";
 import { ScalableElement } from "../Tools/tools";
+import Calendar from "./Calendar";
+import ScrollableList from "../Tools/scrollableList";
 
-const Calendar = ({ month, year, selectedDay, setSelectedDay }) => {
-  const daysOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
+const monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
 
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const startDay = new Date(year, month, 1).getDay();
-  const calendarDays = [];
-  for (let i = 0; i < startDay; i++) {
-    calendarDays.push(null);
+const generateYearsArray = (currentYear, n, m) => {
+  const yearsArray = [];
+
+  for (let i = currentYear - n; i <= currentYear + m; i++) {
+    yearsArray.push(i);
   }
-  for (let i = 1; i <= daysInMonth; i++) {
-    calendarDays.push(i);
-  }
 
-  const numberStyle = useSprings(
-    calendarDays.length,
-    calendarDays.map((day, index) => ({
-      background:
-        day !== null
-          ? selectedDay === day
-            ? "var(--Bc-3)"
-            : "var(--Ec-3)"
-          : "var(--Ec-4)",
-      outline: day !== null ? "1px solid var(--Ac-3)" : "1px solid var(--Ec-4)",
-    }))
-  );
-
-  console.log(
-    selectedDay,
-    (calendarDays.findIndex((day) => day === selectedDay) + 1) % 7
-  );
-
-  const nameStyle = useSprings(
-    daysOfWeek.length,
-    daysOfWeek.map((name, index) => ({
-      background:
-        selectedDay !== null &&
-        (calendarDays.findIndex((day) => day === selectedDay) + 1) % 7 ===
-          (index + 1) % 7
-          ? "var(--Bc-3)"
-          : "var(--Ec-2)",
-    }))
-  );
-
-  return (
-    <div className="calendar">
-      <div className="day-names">
-        {nameStyle.map((style, index) => (
-          <animated.div key={index} className="day-name" style={style}>
-            {daysOfWeek[index]}
-          </animated.div>
-        ))}
-      </div>
-      <div className="day-numbers">
-        {numberStyle.map((style, index) => (
-          <ScalableElement
-            as="div"
-            key={index}
-            className="day-number"
-            onClick={() => setSelectedDay(calendarDays[index])}
-            style={style}
-          >
-            {calendarDays[index] !== null ? calendarDays[index] : ""}
-          </ScalableElement>
-        ))}
-      </div>
-    </div>
-  );
+  return yearsArray;
 };
 
-const MoreDateTime = ({ isLongPress, setIsLongPress }) => {
-  const [selectedDay, setSelectedDay] = useState(null);
-  const containerRef = useRef(null);
-  useClickOutside(containerRef, () => setIsLongPress(false));
+const initialState = (selectedDate) => ({
+  year: parseInt(selectedDate.year),
+  month: selectedDate.month - 1, // Adjust for zero-indexed month
+  day: selectedDate.day,
+});
 
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+const dateReducer = (state, action) => {
+  switch (action.type) {
+    case "PREVIOUS_MONTH":
+      return state.month === 0
+        ? { ...state, month: 11, year: state.year - 1, day: null }
+        : { ...state, month: state.month - 1, day: null };
+    case "NEXT_MONTH":
+      return state.month === 11
+        ? { ...state, month: 0, year: state.year + 1, day: null }
+        : { ...state, month: state.month + 1, day: null };
+    case "SET_DAY":
+      return { ...state, day: action.payload };
+    case "SET_YEAR":
+      return { ...state, year: action.payload };
+    case "SET_MONTH":
+      return { ...state, month: action.payload };
+    default:
+      return state;
+  }
+};
 
-  const Apear = useSpring({
-    from: {
-      opacity: isLongPress ? 0 : 1,
-    },
-    to: {
-      opacity: !isLongPress ? 0 : 1,
-      position: "absolute",
-      height: "100%",
-      width: "calc(100% - 10px)",
-      margin: "0 5px",
-      zIndex: 100,
-      overflow: "visible",
-      background: "none",
-      outline: "none",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      flexDirection: "column",
-    },
-    config: { duration: 1000, easing: easings.easeOutExpo },
+const MoreDateTime = ({ selectedDate, setSelectedDate }) => {
+  const [state, dispatch] = useReducer(dateReducer, initialState(selectedDate));
+
+  const [moreSelectedDate, setMoreSelectedDate] = useState(false);
+  const calendarRef = useRef(null);
+  useClickOutside(calendarRef, () => setMoreSelectedDate(false));
+
+  const years = generateYearsArray(state.year, 5, 5);
+
+  const Apear = useSpring(
+    useMemo(
+      () => ({
+        opacity: 1,
+        position: "absolute",
+        width: "calc(100% - 10px)",
+        margin: "0 5px",
+        zIndex: 100,
+        overflow: "visible",
+        background: "none",
+        outline: "none",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        flexDirection: "column",
+        top: 85,
+
+        config: { duration: 1000, easing: easings.easeOutExpo },
+      }),
+      []
+    )
+  );
+  const selecterFilterStyle = useSpring({
+    filter: moreSelectedDate ? "blur(5px)" : "blur(0px)",
+    scale: moreSelectedDate ? 0.9 : 1,
+    opacity: moreSelectedDate ? 0.9 : 1,
   });
 
-  const handlePreviousMonth = () => {
-    setSelectedDay(null);
-    if (currentMonth === 0) {
-      setCurrentMonth(11);
-      setCurrentYear(currentYear - 1);
-    } else {
-      setCurrentMonth(currentMonth - 1);
-    }
-  };
+  const handlePreviousMonth = useCallback(() => {
+    dispatch({ type: "PREVIOUS_MONTH" });
+  }, []);
 
-  const handleNextMonth = () => {
-    setSelectedDay(null);
-    if (currentMonth === 11) {
-      setCurrentMonth(0);
-      setCurrentYear(currentYear + 1);
-    } else {
-      setCurrentMonth(currentMonth + 1);
-    }
-  };
+  const handleNextMonth = useCallback(() => {
+    dispatch({ type: "NEXT_MONTH" });
+  }, []);
 
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
+  const handleSetDay = useCallback(
+    (day) => {
+      dispatch({ type: "SET_DAY", payload: day });
+      setSelectedDate((prev) => ({
+        ...prev,
+        year: state.year,
+        month: state.month + 1,
+        day,
+      }));
+    },
+    [state.year, state.month, setSelectedDate]
+  );
+
+  const selectDate = useSpring({
+    top: moreSelectedDate ? 135 : 150,
+    left: 30,
+    position: "absolute",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "row",
+    zIndex: 100,
+    background: "var(--Ac-4)",
+    padding: "10px 7px",
+    borderRadius: "20px",
+    opacity: moreSelectedDate ? 1 : 0,
+  });
+
+  const selectMonth = useSpring({
+    opacity: 1,
+    position: "relative",
+    width: "max-content",
+    margin: "0 3px",
+    zIndex: 100,
+    overflow: "visible",
+    background: "none",
+    outline: "none",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "column",
+    color: "var(--Ac-1)",
+    background: "var(--Ec-2)",
+    width: "100%",
+    height: "100%",
+    borderRadius: "15px",
+  });
+
+  const selectYear = useSpring({
+    opacity: 1,
+    position: "relative",
+    width: "40px",
+    width: "max-content",
+    margin: "0 3px",
+    zIndex: 100,
+    overflow: "visible",
+    background: "none",
+    outline: "none",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    flexDirection: "column",
+    color: "var(--Bc-1)",
+    background: "var(--Ec-2)",
+    width: "100%",
+    height: "100%",
+    borderRadius: "10px",
+  });
+  const selectConfirm = useSpring({
+    width: "55px",
+    height: "55px",
+    position: "absolute",
+    bottom: 0,
+    right: -63,
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: "50%",
+    background: "var(--Bc-3)",
+    color: "var(--Ec-1)",
+    fontSize: "1.8rem",
+    cursor: "pointer",
+    border: "2px solid var(--Bc-4)",
+    opacity: moreSelectedDate ? 1 : 0,
+    scale: moreSelectedDate ? 1 : 0,
+  });
+
+  const handleSetMonth = useCallback(
+    (monthIndex) => {
+      dispatch({ type: "SET_MONTH", payload: monthIndex });
+
+      // Update the selected date with the new month value.
+      setSelectedDate((prev) => ({
+        ...prev,
+        month: monthIndex + 1, // Convert to 1-based month
+      }));
+    },
+    [setSelectedDate]
+  );
+
+  const handleSetYear = useCallback(
+    (year) => {
+      dispatch({ type: "SET_YEAR", payload: years[year] });
+
+      // Update the selected date with the new year value.
+      setSelectedDate((prev) => ({
+        ...prev,
+        year: years[year],
+      }));
+    },
+    [setSelectedDate]
+  );
 
   return (
     <>
-      <animated.li className="MoreDateTime" style={Apear} ref={containerRef}>
+      <animated.li className="MoreDateTime" style={{ ...Apear }}>
         <div className="Calendar_header">
-          <MdOutlineChevronLeft onClick={handlePreviousMonth} />
-          <ScalableElement as="h1">
-            <span>{monthNames[currentMonth]}</span> {currentYear}{" "}
+          <ScalableElement
+            as="h1"
+            onClick={() => !moreSelectedDate && setMoreSelectedDate(true)}
+          >
+            <span>{monthNames[state.month]}</span> {state.year}{" "}
             <MdKeyboardArrowDown />
           </ScalableElement>
-          <MdOutlineChevronRight onClick={handleNextMonth} />
+          <ScalableElement as="div" style={{ display: "flex" }}>
+            <MdOutlineChevronLeft onClick={handlePreviousMonth} />
+          </ScalableElement>
+          <ScalableElement as="div" style={{ display: "flex" }}>
+            <MdOutlineChevronRight onClick={handleNextMonth} />
+          </ScalableElement>
         </div>
-        <Calendar
-          month={currentMonth}
-          year={currentYear}
-          selectedDay={selectedDay}
-          setSelectedDay={setSelectedDay}
-        />
+        <animated.div style={selecterFilterStyle} className="calendar">
+          <Calendar
+            month={state.month}
+            year={state.year}
+            selectedDay={state.day}
+            setSelectedDay={handleSetDay}
+            setSelectedDate={setSelectedDate}
+          />
+        </animated.div>
       </animated.li>
+      {moreSelectedDate && (
+        <>
+          <animated.div style={selectDate} ref={calendarRef}>
+            <animated.div style={selectMonth}>
+              <ScrollableList
+                items={monthNames}
+                item={monthNames[state.month]}
+                onSelect={(month) => handleSetMonth(month)}
+              />
+            </animated.div>
+            <animated.div style={selectYear}>
+              <ScrollableList
+                items={years}
+                item={state.year}
+                onSelect={(year) => handleSetYear(year)}
+              />
+            </animated.div>
+            <ScalableElement
+              as="div"
+              style={selectConfirm}
+              onClick={() => setMoreSelectedDate(false)}
+            >
+              <MdCheck />
+            </ScalableElement>
+          </animated.div>
+        </>
+      )}
     </>
   );
 };

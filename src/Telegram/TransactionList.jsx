@@ -21,7 +21,8 @@ const TransactionList = ({
   const filteredTransactions =
     isMoreClicked === "Balance"
       ? Transactions
-      : Transactions.filter(
+      : Transactions &&
+        Transactions.filter(
           (transaction) => transaction.Category === isMoreClicked
         );
 

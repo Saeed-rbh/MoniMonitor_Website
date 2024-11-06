@@ -4,6 +4,7 @@ import DatePicker from "../Tools/DatePicker";
 import TimePicker from "../Tools/TimePicker";
 import useLongPressHandler from "../Tools/useLongPressHandler";
 import { MdModeEditOutline } from "react-icons/md";
+import MoreDateTime from "./MoreDateTime";
 
 const DateTime = ({
   isLongPress,
@@ -14,13 +15,14 @@ const DateTime = ({
   setIsLongPress,
   isAddClicked,
   addStage,
+  setAddStage,
+  index,
+  topAdd,
+  opacity,
 }) => {
-  const longBind = useLongPressHandler({
-    isLongPress: isLongPress,
-    setIsLongPress: setIsLongPress,
-    component: "DateTime",
-  });
-
+  useEffect(() => {
+    setAddStage(index);
+  }, []);
   useEffect(() => {
     const inputTime = new Date(
       `${selectedDate.year}-${String(selectedDate.month).padStart(
@@ -40,15 +42,31 @@ const DateTime = ({
         zone: String(currentDate.getTimezoneOffset()),
       });
     }
-  }, [selectedDate]);
+  }, []);
+
+  // console.log(selectedDate);
 
   const fade = useSpring({
-    // filter:
-    //   isLongPress[0] && isLongPress[1] === "DateTime"
-    //     ? "blur(10px)"
-    //     : "blur(0px)",
-    top: 149,
-    // height: 500,
+    from: {
+      // filter: !isLongPress ? "blur(10px)" : "blur(0px)",
+      position: "absolute",
+    },
+    to: {
+      filter:
+        addStage === null
+          ? "blur(0px)"
+          : addStage < index || opacity
+          ? "blur(10px)"
+          : !isLongPress
+          ? "blur(0px)"
+          : "blur(0px)",
+      position: "absolute",
+      top: 180,
+      y: topAdd,
+      height: addStage === index ? 200 : 100,
+      zIndex: 100000,
+      opacity: opacity ? 0.5 : 1,
+    },
   });
 
   const labelPar = useSpring({
@@ -63,72 +81,29 @@ const DateTime = ({
     flexDirection: "column",
     margin: 0,
   });
-  const labelDot = useSpring({
-    position: "relative",
-    fontSize: "1.5em",
-    color: "var(--Bc-2)",
-    margin: "5px 10px 0px 17px",
-    lineHeight: `15px`,
-    width: 2,
-    height: addStage > 2 ? 2 : 7,
-    borderRadius: 30,
-    background: "var(--Bc-2)",
-  });
-  // const label = useSpring({
-  //   position: "relative",
-  //   fontSize: addStage !== 2 ? "1rem" : "0.7rem",
-  //   color: "var(--Bc-2)",
-  //   // border: "1px solid var(--Bc-2)",
-  //   borderRadius: "30px",
-  //   width: addStage !== 2 ? 35 : 70,
-  //   height: 35,
-  //   // padding: "10px 5px",
-  //   display: "flex",
-  //   position: "absolute",
-  //   alignItems: "center",
-  //   justifyContent: "center",
-  //   marginTop: addStage !== 2 ? 15 : 20,
-  //   cursor: addStage !== 2 ? "pointer" : "auto",
-  // });
 
   const label = useSpring({
     position: "relative",
-    fontSize: addStage !== 2 ? "1rem" : "0.7rem",
     color: "var(--Bc-2)",
-    // border: "1px solid var(--Bc-2)",
     borderRadius: "18px",
-    width: addStage !== 2 ? 35 : 70,
+    width: addStage !== index ? 35 : 70,
     height: 45,
     width: 45,
-    // padding: "10px 5px",
     display: "flex",
     position: "absolute",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: addStage !== 2 ? 15 : 20,
-    cursor: addStage !== 2 ? "pointer" : "auto",
+    marginTop: addStage !== index ? 15 : 15,
+    cursor: addStage !== index ? "pointer" : "auto",
     backgroundColor: "var(--Ec-2)",
     left: 7,
     top: 7,
     flexDirection: "column",
   });
 
-  // const labelTitle = useSpring({
-  //   top: addStage > 2 ? 27 : 30,
-  //   left: addStage > 2 ? 30 : 75,
-  //   width: "max-content",
-  //   margin: 0,
-  //   position: "absolute",
-  //   fontSize: "0.7em",
-  //   color: "var(--Bc-1)",
-  //   padding: "5px 10px",
-  //   borderRadius: "30px",
-  //   display: "flex",
-  //   alignItems: "center",
-  // });
   const labelTitle = useSpring({
-    top: addStage > 2 ? 33 : 30,
-    left: addStage > 2 ? 48 : 75,
+    top: addStage > index ? 33 : 33,
+    left: addStage > index ? 48 : 48,
     width: "max-content",
     margin: 0,
     position: "absolute",
@@ -139,19 +114,18 @@ const DateTime = ({
     alignItems: "center",
     fontSize: "0.7rem",
   });
-
+  // {...longBind()}
   return (
-    <animated.li className="Add_DateTime" style={fade} {...longBind()}>
+    <animated.li className="Add_DateTime" style={fade}>
       <h1>
         <div className="Add_background"></div>
         <animated.div style={labelPar}>
-          {/* <animated.h4 style={labelDot}></animated.h4>{" "} */}
           <animated.h4 style={label}>
-            {addStage === 2 ? "Reason" : <MdModeEditOutline />}
+            <MdModeEditOutline />
           </animated.h4>
         </animated.div>
         <animated.label style={labelTitle}>
-          {addStage === 2 && `What is the`} Time:{" "}
+          Time:{" "}
           <TimePicker
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
@@ -165,11 +139,11 @@ const DateTime = ({
         <div className="Add_background"></div>
         <animated.div style={labelPar}>
           <animated.h4 style={label}>
-            {addStage === 2 ? "Reason" : <MdModeEditOutline />}
+            <MdModeEditOutline />
           </animated.h4>
         </animated.div>
         <animated.label style={labelTitle}>
-          {addStage === 2 && `What is the`} Date:{" "}
+          Date:{" "}
           <DatePicker
             setSelectedDate={setSelectedDate}
             selectedDate={selectedDate}
@@ -180,6 +154,14 @@ const DateTime = ({
         </animated.label>
         <div className="Add_edit">Transaction Date</div>
       </h1>
+      {addStage === 3 && (
+        <MoreDateTime
+          isLongPress={addStage === index}
+          setIsLongPress={setIsLongPress}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+        />
+      )}
     </animated.li>
   );
 };

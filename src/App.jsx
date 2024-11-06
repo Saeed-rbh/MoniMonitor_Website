@@ -1,5 +1,5 @@
 import "./App.css";
-import React, { lazy, Suspense, useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState, useMemo } from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import {
   useTransactionData,
@@ -31,7 +31,9 @@ const App = () => {
   const [isMoreClicked, setIsMoreClicked] = useState(null);
   const [isAddClicked, setIsAddClicked] = useState(null);
   const [isDateClicked, setIsDateClicked] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
+  // Destructure the transaction data
   const {
     Availability: availabilityData,
     netAmounts: netAmountsData,
@@ -44,18 +46,32 @@ const App = () => {
     userData.userId
   );
 
-  const [dataLoaded, setDataLoaded] = useState(false);
-
   // Check if data is loaded
   useEffect(() => {
     if (
-      Object.keys(mainSelected).length &&
-      availabilityData.length &&
+      Object.keys(mainSelected).length > 0 &&
+      availabilityData.length > 0 &&
       !dataLoaded
     ) {
       setDataLoaded(true);
     }
   }, [mainSelected, availabilityData, dataLoaded]);
+
+  // Memoize the Header component to avoid unnecessary re-renders
+  const MemoizedHeader = useMemo(
+    () => (
+      <Header
+        userData={userData}
+        isDateClicked={isDateClicked}
+        setIsDateClicked={setIsDateClicked}
+        availabilityData={availabilityData}
+        whichMonth={whichMonth}
+        setWhichMonth={setWhichMonth}
+        setMainPageMonth={setMainPageMonth}
+      />
+    ),
+    [userData, isDateClicked, availabilityData, whichMonth, setMainPageMonth]
+  );
 
   // Initialize Telegram WebApp
   useTelegramWebApp(setUserData);
@@ -63,24 +79,15 @@ const App = () => {
   return (
     <ErrorBoundary>
       <Router>
-        {dataLoaded && (
-          <div className="App">
-            <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div>Loading...</div>}>
+          {true ? (
+            <div className="App">
               {/* Header Component */}
-              <Header
-                userData={userData}
-                isDateClicked={isDateClicked}
-                setIsDateClicked={setIsDateClicked}
-                availabilityData={availabilityData}
-                whichMonth={whichMonth}
-                setWhichMonth={setWhichMonth}
-                setMainPageMonth={setMainPageMonth}
-              />
+              {MemoizedHeader}
 
               {/* Main Menu Component */}
-
               <MainMenu
-                isMoreClicked={isMoreClicked}
+                isMoreClicked={isMoreClicked || false}
                 setIsMoreClicked={setIsMoreClicked}
               />
 
@@ -129,9 +136,11 @@ const App = () => {
                   }
                 />
               </Routes>
-            </Suspense>
-          </div>
-        )}
+            </div>
+          ) : (
+            <div>Loading data...</div>
+          )}
+        </Suspense>
       </Router>
     </ErrorBoundary>
   );

@@ -6,6 +6,7 @@ import useLongPressHandler from "../Tools/useLongPressHandler";
 import { MdModeEditOutline } from "react-icons/md";
 import AnimatedGradientText from "@/components/ui/animated-gradient-text";
 import { cn } from "@/lib/utils";
+import MoreCategory from "./MoreCategory";
 
 const Category = ({
   List,
@@ -14,6 +15,8 @@ const Category = ({
   isLongPress,
   setIsLongPress,
   addStage,
+  index,
+  topAdd,
 }) => {
   const containerRef = useRef(null);
 
@@ -76,6 +79,7 @@ const Category = ({
   );
 
   const dragSpring = useSpring({
+    y: -15,
     transform: `translateX(-${draggedX}px)`,
     marginLeft: 15,
   });
@@ -95,12 +99,37 @@ const Category = ({
     component: "Category",
   });
 
+  // const fade = useSpring({
+  //   filter:
+  //     isLongPress[0] && isLongPress[1] === "Category"
+  //       ? "blur(10px)"
+  //       : "blur(0px)",
+  //   top: 193,
+  // });
+
   const fade = useSpring({
-    filter:
-      isLongPress[0] && isLongPress[1] === "Category"
-        ? "blur(10px)"
-        : "blur(0px)",
-    top: 165,
+    from: {
+      filter: !isLongPress ? "blur(10px)" : "blur(0px)",
+      y: addStage > index ? 0 : 0,
+      position: "absolute",
+    },
+    to: {
+      filter:
+        addStage === null
+          ? "blur(0px)"
+          : addStage < index || addStage === 3
+          ? "blur(10px)"
+          : !isLongPress
+          ? "blur(0px)"
+          : "blur(0px)",
+      y: addStage > index ? 0 : 0,
+      position: "absolute",
+      top: 248,
+      height: addStage > index ? 100 : 295,
+      y: topAdd,
+      opacity: addStage === 3 ? 0.5 : 1,
+      zIndex: 100002,
+    },
   });
 
   const labelPar = useSpring({
@@ -115,41 +144,51 @@ const Category = ({
     flexDirection: "column",
     margin: 0,
   });
-  const labelDot = useSpring({
-    position: "relative",
-    fontSize: "1.5em",
-    color: "var(--Bc-2)",
-    margin: "5px 10px 0px 17px",
-    lineHeight: `15px`,
-    width: 2,
-    height: addStage > 2 ? 2 : 7,
-    borderRadius: 30,
-    background: "var(--Bc-2)",
-  });
+
+  // const label = useSpring({
+  //   position: "relative",
+  //   fontSize: addStage !== index ? "1rem" : "0.7rem",
+  //   color: "var(--Bc-2)",
+  //   // border: "1px solid var(--Bc-2)",
+  //   borderRadius: "18px",
+  //   width: addStage !== index ? 35 : 70,
+  //   height: 45,
+  //   width: 45,
+  //   // padding: "10px 5px",
+  //   display: "flex",
+  //   position: "absolute",
+  //   alignItems: "center",
+  //   justifyContent: "center",
+  //   marginTop: addStage !== index ? 15 : 20,
+  //   cursor: addStage !== index ? "pointer" : "auto",
+  //   backgroundColor: "var(--Ec-2)",
+  //   left: 7,
+  //   top: 7,
+  // });
+
   const label = useSpring({
     position: "relative",
-    fontSize: addStage !== 2 ? "1rem" : "0.7rem",
+    fontSize: addStage !== index ? "1rem" : "0.7rem",
     color: "var(--Bc-2)",
-    // border: "1px solid var(--Bc-2)",
     borderRadius: "18px",
-    width: addStage !== 2 ? 35 : 70,
+    width: addStage !== index ? 35 : 70,
     height: 45,
-    width: 45,
-    // padding: "10px 5px",
+    width: addStage !== index ? 45 : 65,
     display: "flex",
     position: "absolute",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: addStage !== 2 ? 15 : 20,
-    cursor: addStage !== 2 ? "pointer" : "auto",
-    backgroundColor: "var(--Ec-2)",
-    left: 7,
-    top: 7,
+    cursor: addStage !== index ? "pointer" : "auto",
+    top: addStage !== 0 ? 3 : 12,
+    backgroundColor: addStage !== index ? "var(--Ec-2)" : "var(--Ac-5)",
+    left: addStage === index ? 0 : 7,
+    top: 23,
+    margin: 0,
   });
 
   const labelTitle = useSpring({
-    top: addStage > 2 ? 30 : 30,
-    left: addStage > 2 ? 50 : 75,
+    top: addStage > index ? 30 : 30,
+    left: addStage > index ? 50 : 75,
     width: "max-content",
     margin: 0,
     position: "absolute",
@@ -160,20 +199,34 @@ const Category = ({
     display: "flex",
     alignItems: "center",
   });
+  const labeledit = useSpring({
+    // opacity: addStage === index ? 0 : 0.5,
+    left: addStage === index ? 62 : 39,
+  });
+  const backgroundStyle = useSpring({
+    opacity: addStage !== index ? 1 : 0,
+  });
+
+  const items_in_h2 = useSpring({
+    right: addStage === index ? 0 : 20,
+  });
 
   return (
     <animated.li className="Add_Category" {...longBind()} style={fade}>
-      <div className="Add_background"></div>
+      <animated.div
+        className="Add_background"
+        style={backgroundStyle}
+      ></animated.div>
       <animated.div style={labelPar}>
         {/* <animated.h4 style={labelDot}></animated.h4>{" "} */}
         <animated.h4 style={label}>
-          {addStage === 2 ? "Reason" : <MdModeEditOutline />}
+          {addStage === index ? "Reason" : <MdModeEditOutline />}
         </animated.h4>
       </animated.div>
       <animated.label style={labelTitle}>
-        {addStage === 2 && `What is the`} Category:{" "}
+        {addStage === index && `What is the`} Category:{" "}
       </animated.label>
-      <div className="Add_edit">
+      <animated.div className="Add_edit" style={labeledit}>
         {" "}
         <AnimatedGradientText>
           {" "}
@@ -186,13 +239,13 @@ const Category = ({
           </span>
         </AnimatedGradientText>{" "}
         uses AI to identify category.
-      </div>
+      </animated.div>
       <div className="Add_Category_items" ref={containerRef} {...bind()}>
         <animated.div className="Add_Category_items_in" style={dragSpring}>
-          <h2>
+          <animated.h2 style={items_in_h2}>
             {selectedCategory[1]}
             {selectedCategory[0]}
-          </h2>
+          </animated.h2>
 
           {/* {listSprings.map((animation, index) => (
             <ScalableElement
@@ -208,6 +261,14 @@ const Category = ({
           ))} */}
         </animated.div>
       </div>
+      <MoreCategory
+        List={List}
+        setSelectedCategory={setSelectedCategory}
+        selectedCategory={selectedCategory}
+        defaultValue={""}
+        isLongPress={addStage === index}
+        setIsLongPress={setIsLongPress}
+      />
     </animated.li>
   );
 };
