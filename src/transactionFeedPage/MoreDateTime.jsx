@@ -4,6 +4,7 @@ import React, {
   useMemo,
   useReducer,
   useState,
+  useEffect,
 } from "react";
 import { useSpring, animated, easings } from "react-spring";
 import useClickOutside from "../Tools/useClickOutside";
@@ -227,6 +228,23 @@ const MoreDateTime = ({ selectedDate, setSelectedDate }) => {
     [setSelectedDate]
   );
 
+  const [onConfirm, setOnConfirm] = useState(false);
+  useEffect(() => {
+    if (moreSelectedDate) {
+      setOnConfirm(false);
+    }
+  }, [moreSelectedDate]);
+
+  const handleClickConfirm = useCallback(async () => {
+    setOnConfirm(true);
+
+    // Wait until React completes the state update (conceptual, since state updates aren't directly awaitable).
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Proceed after `onConfirm` is set to true.
+    setMoreSelectedDate(false);
+  }, []);
+
   return (
     <>
       <animated.li className="MoreDateTime" style={{ ...Apear }}>
@@ -263,6 +281,7 @@ const MoreDateTime = ({ selectedDate, setSelectedDate }) => {
                 items={monthNames}
                 item={monthNames[state.month]}
                 onSelect={(month) => handleSetMonth(month)}
+                onConfirm={onConfirm}
               />
             </animated.div>
             <animated.div style={selectYear}>
@@ -270,12 +289,13 @@ const MoreDateTime = ({ selectedDate, setSelectedDate }) => {
                 items={years}
                 item={state.year}
                 onSelect={(year) => handleSetYear(year)}
+                onConfirm={onConfirm}
               />
             </animated.div>
             <ScalableElement
               as="div"
               style={selectConfirm}
-              onClick={() => setMoreSelectedDate(false)}
+              onClick={handleClickConfirm}
             >
               <MdCheck />
             </ScalableElement>
