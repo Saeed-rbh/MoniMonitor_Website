@@ -56,6 +56,7 @@ const AddTransaction = ({ isAddClicked, setIsClicked, setIsAddClicked }) => {
         height={height}
         zIndex={110}
         toRedirect={"/"}
+        overflow="hidden"
       />
       {/* <Notif
         addTransaction={addTransaction}

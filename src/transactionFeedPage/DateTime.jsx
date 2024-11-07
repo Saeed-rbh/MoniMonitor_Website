@@ -44,8 +44,6 @@ const DateTime = ({
     }
   }, []);
 
-  // console.log(selectedDate);
-
   const fade = useSpring({
     from: {
       // filter: !isLongPress ? "blur(10px)" : "blur(0px)",
@@ -64,7 +62,7 @@ const DateTime = ({
       top: 180,
       y: topAdd,
       height: addStage === index ? 200 : 100,
-      zIndex: 100000,
+      zIndex: 100003,
       opacity: opacity ? 0.5 : 1,
     },
   });
@@ -133,7 +131,9 @@ const DateTime = ({
             addStage={addStage}
           />
         </animated.label>
-        <div className="Add_edit">Transaction Time</div>
+        <div className="Add_edit" style={{ zIndex: "-1" }}>
+          Transaction Time
+        </div>
       </h1>
       <h1>
         <div className="Add_background"></div>
@@ -152,7 +152,9 @@ const DateTime = ({
             addStage={addStage}
           />
         </animated.label>
-        <div className="Add_edit">Transaction Date</div>
+        <div className="Add_edit" style={{ zIndex: "-1" }}>
+          Transaction Date
+        </div>
       </h1>
       {addStage === 3 && (
         <MoreDateTime

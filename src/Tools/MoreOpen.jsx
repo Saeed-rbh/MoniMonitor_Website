@@ -15,6 +15,7 @@ const MoreOpen = ({
   zIndex = 105,
   blur = false,
   toRedirect,
+  overflow,
 }) => {
   const redirect = useNavigate();
 
@@ -143,7 +144,7 @@ const MoreOpen = ({
         >
           <animated.div
             className="MoreOpen_Wall"
-            style={{ background: "var(--Ec-2)" }}
+            style={{ background: "var(--Ec-2)", overflow: overflow }}
           >
             {/* <div
               className="MoreOpen_TopLine"

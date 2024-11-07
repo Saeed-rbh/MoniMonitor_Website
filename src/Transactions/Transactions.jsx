@@ -103,6 +103,7 @@ const Transactions = ({
           handleCloseAddTransaction={handleCloseAddTransaction}
           height={height}
           zIndex={110}
+          overflow={"hidden"}
         />
       )}
       {open && (
