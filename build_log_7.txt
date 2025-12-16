@@ -1,0 +1,62 @@
+[36mvite v5.4.8 [32mbuilding for production...[36m[39m
+transforming...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+[1m[33mwarn[39m[22m - The class `delay-[var(--delay)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `delay-&lsqb;var(--delay)&rsqb;` to silence this warning.
+
+[1m[33mwarn[39m[22m - The class `duration-[var(--transition-length)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `duration-&lsqb;var(--transition-length)&rsqb;` to silence this warning.
+src/components/ui/shine-border.tsx (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/blur-fade.tsx (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+[1m[33m[plugin:vite:esbuild][39m[22m [33m[plugin vite:esbuild] src/transactionFeedPage/MoreTime.jsx: [33mDuplicate key "background" in object literal[33m
+139|      flexDirection: "column",
+140|      color: "var(--Ac-1)",
+141|      background: "var(--Ec-2)",
+   |      ^
+142|      width: "100%",
+143|      height: "100%",
+[39m
+[1m[33m[plugin:vite:esbuild][39m[22m [33m[plugin vite:esbuild] src/transactionFeedPage/MoreTime.jsx: [33mDuplicate key "width" in object literal[33m
+140|      color: "var(--Ac-1)",
+141|      background: "var(--Ec-2)",
+142|      width: "100%",
+   |      ^
+143|      height: "100%",
+144|      borderRadius: "15px",
+[39m
+[1m[33m[plugin:vite:esbuild][39m[22m [33m[plugin vite:esbuild] src/transactionFeedPage/MoreDate.jsx: [33mDuplicate key "background" in object literal[33m
+165|      flexDirection: "column",
+166|      color: "var(--Ac-1)",
+167|      background: "var(--Ec-2)",
+   |      ^
+168|      width: "100%",
+169|      height: "100%",
+[39m
+[1m[33m[plugin:vite:esbuild][39m[22m [33m[plugin vite:esbuild] src/transactionFeedPage/MoreDate.jsx: [33mDuplicate key "width" in object literal[33m
+166|      color: "var(--Ac-1)",
+167|      background: "var(--Ec-2)",
+168|      width: "100%",
+   |      ^
+169|      height: "100%",
+170|      borderRadius: "15px",
+[39m
+[1m[33m[plugin:vite:esbuild][39m[22m [33m[plugin vite:esbuild] src/transactionFeedPage/MoreDate.jsx: [33mDuplicate key "background" in object literal[33m
+184|      flexDirection: "column",
+185|      color: "var(--Bc-1)",
+186|      background: "var(--Ec-2)",
+   |      ^
+187|      width: "100%",
+188|      height: "100%",
+[39m
+[32m✓[39m 399 modules transformed.
+[31mx[39m Build failed in 3.85s
+[31merror during build:
+[31mCould not resolve "../Tools/useClickOutside" from "src/transactionFeedPage/MoreTime.jsx"[31m
+file: [36mC:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/src/transactionFeedPage/MoreTime.jsx[31m
+    at getRollupError (file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/rollup/dist/es/shared/parseAst.js:392:41)
+    at error (file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/rollup/dist/es/shared/parseAst.js:388:42)
+    at ModuleLoader.handleInvalidResolvedId (file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/rollup/dist/es/shared/node-entry.js:19329:24)
+    at file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/rollup/dist/es/shared/node-entry.js:19289:26[39m

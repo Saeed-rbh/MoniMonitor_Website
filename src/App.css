@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap");
+
 :root {
   --Ac-1: rgba(255, 245, 240, 1);
   --Ac-2: rgba(255, 245, 240, 0.6);
@@ -37,7 +39,7 @@
   --Gc-4: rgba(255, 102, 102, 0.03);
 }
 
-@import url("https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap");
+
 
 body {
   overflow: hidden;
@@ -46,18 +48,23 @@ body {
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
-  overflow-y: hidden; /* Hide vertical scrollbar */
-  overflow-x: hidden; /* Hide horizontal scrollbar */
+  overflow-y: hidden;
+  /* Hide vertical scrollbar */
+  overflow-x: hidden;
+  /* Hide horizontal scrollbar */
   margin: 0;
   background-color: var(--Ec-1);
   font-family: "Noto Sans", sans-serif;
 }
+
 #root {
   --safe-area-inset-bottom: env(safe-area-inset-bottom);
 }
+
 #root {
   overflow: hidden;
 }
+
 .App {
   text-align: center;
   height: 100vh;
@@ -112,6 +119,7 @@ body {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
@@ -121,10 +129,12 @@ body {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
   }
 }
+
 .App {
   position: fixed;
   top: 0;
@@ -139,6 +149,7 @@ body {
   width: 100vw;
   height: 100vh;
 }
+
 [data-amplify-container] {
   margin: auto;
   align-self: center;
@@ -154,10 +165,12 @@ body {
   box-sizing: border-box;
   outline: 1px solid var(--Ec-2);
 }
+
 [data-amplify-router] {
   width: 100%;
   height: 100%;
 }
+
 .amplify-tabs {
   width: 100%;
   height: 100%;
@@ -166,6 +179,7 @@ body {
   align-items: center;
   justify-content: center;
 }
+
 .amplify-tabs__list {
   position: relative;
   display: flex;
@@ -177,10 +191,12 @@ body {
   padding: 0;
   list-style-type: none;
 }
+
 [data-amplify-router-content] {
   position: relative;
   font-family: "Noto Sans", sans-serif;
 }
+
 [data-amplify-router-content] fieldset {
   border: none;
   outline: 1px solid var(--Ac-2);
@@ -188,9 +204,11 @@ body {
   padding: 30px;
   box-sizing: border-box;
 }
+
 .amplify-visually-hidden {
   display: none;
 }
+
 .amplify-flex {
   display: flex;
   flex-direction: column;
@@ -199,14 +217,17 @@ body {
   font-size: 0.75rem;
   font-family: "Noto Sans", sans-serif;
 }
+
 .amplify-label {
   margin-left: 5px;
   margin-bottom: 2px;
 }
+
 .amplify-field-group__field-wrapper {
   width: 100%;
   margin-bottom: 10px;
 }
+
 .amplify-field-group__field-wrapper input {
   width: 100%;
   padding: 15px 15px;
@@ -217,17 +238,20 @@ body {
   color: var(--Ac-1);
   box-sizing: border-box;
 }
+
 [data-amplify-router-content] ::placeholder {
   color: var(--Ac-3);
   font-size: 0.7rem;
   font-family: "Noto Sans", sans-serif;
 }
+
 [data-amplify-router-content] input:-internal-autofill-selected {
   background-color: var(--Ec-4) !important;
   color: var(--Ac-1) !important;
   background: var(--Ec-4) !important;
   appearance: none;
 }
+
 .amplify-field__show-password {
   display: none;
   position: absolute;
@@ -240,10 +264,12 @@ body {
   outline: none;
   width: 10px;
 }
+
 .amplify-field__show-password svg {
   width: 15px;
   height: 15px;
 }
+
 [data-amplify-footer] {
   position: absolute;
   top: 180px;
@@ -255,6 +281,7 @@ body {
   box-sizing: border-box;
   /* background-color: var(--Bc-4); */
 }
+
 [data-amplify-footer] button {
   background-color: var(--Ec-4);
   color: var(--Bc-1);
@@ -264,6 +291,7 @@ body {
   cursor: pointer;
   font-size: 0.7rem;
 }
+
 .amplify-button--primary:last-of-type {
   background-color: var(--Bc-2);
   color: var(--Ec-1);
@@ -293,15 +321,18 @@ body {
   position: absolute;
   backdrop-filter: blur(10px);
 }
+
 .amplify-select__wrapper select option {
   background-color: var(--Ec-1);
   color: var(--Ac-1);
   background: var(--Ec-1);
   outline: 1px solid var(--Bc-2);
 }
+
 .amplify-select__wrapper select::-webkit-scrollbar {
   display: none;
 }
+
 .amplify-select__icon {
   display: none;
 }

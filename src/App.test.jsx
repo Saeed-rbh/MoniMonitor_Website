@@ -12,12 +12,12 @@ vi.mock('axios', () => ({
 }));
 
 // Mock scrollableList since it relies on DOM properties not present in JSDOM
-vi.mock('./Tools/scrollableList', () => ({
+vi.mock('./components/ScrollableList', () => ({
   default: () => <div>ScrollableList</div>,
 }));
 
 // Mock hooks to avoid async logic and side effects
-vi.mock('./Tools/hooks', () => ({
+vi.mock('./hooks/useSharedHooks', () => ({
   useTransactionData: () => ({
     Availability: [],
     netAmounts: [],

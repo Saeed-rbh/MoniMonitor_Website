@@ -1,0 +1,33 @@
+[36mvite v5.4.8 [32mbuilding for production...[36m[39m
+transforming...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+[1m[33mwarn[39m[22m - The class `delay-[var(--delay)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `delay-&lsqb;var(--delay)&rsqb;` to silence this warning.
+
+[1m[33mwarn[39m[22m - The class `duration-[var(--transition-length)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `duration-&lsqb;var(--transition-length)&rsqb;` to silence this warning.
+src/components/ui/shine-border.tsx (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/blur-fade.tsx (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+[32m✓[39m 858 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                        [39m[1m[2m  0.48 kB[22m[1m[22m[2m │ gzip:   0.31 kB[22m
+[2mdist/[22m[35massets/header-BQdAZz-q.css        [39m[1m[2m  1.58 kB[22m[1m[22m[2m │ gzip:   0.55 kB[22m
+[2mdist/[22m[35massets/MoneyMonitor-lOsmpBnX.css  [39m[1m[2m 24.23 kB[22m[1m[22m[2m │ gzip:   3.81 kB[22m
+[2mdist/[22m[35massets/index-Deejoi7i.css         [39m[1m[2m 50.84 kB[22m[1m[22m[2m │ gzip:   9.18 kB[22m
+[2mdist/[22m[36massets/Insight-J4yxV3zC.js        [39m[1m[2m  0.25 kB[22m[1m[22m[2m │ gzip:   0.22 kB[22m
+[2mdist/[22m[36massets/Account-BEn5EM9V.js        [39m[1m[2m  0.25 kB[22m[1m[22m[2m │ gzip:   0.22 kB[22m
+[2mdist/[22m[36massets/MainMenu-w-uTJOjT.js       [39m[1m[2m  4.46 kB[22m[1m[22m[2m │ gzip:   1.64 kB[22m
+[2mdist/[22m[36massets/header-Qj5o2Vzw.js         [39m[1m[2m  6.48 kB[22m[1m[22m[2m │ gzip:   2.35 kB[22m
+[2mdist/[22m[36massets/MoneyMonitor-CToOM8tu.js   [39m[1m[2m  8.71 kB[22m[1m[22m[2m │ gzip:   2.94 kB[22m
+[2mdist/[22m[36massets/blur-fade-DxZapJVz.js      [39m[1m[2m114.69 kB[22m[1m[22m[2m │ gzip:  37.79 kB[22m
+[2mdist/[22m[36massets/index-C_oEXcHP.js          [39m[1m[33m537.44 kB[39m[22m[2m │ gzip: 153.99 kB[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 13.96s[39m

@@ -1,7 +1,7 @@
 import React, { useEffect } from "react";
 import { useSpring, animated } from "react-spring";
-import DatePicker from "../Tools/DatePicker";
-import TimePicker from "../Tools/TimePicker";
+import DatePicker from "../components/DatePicker";
+import TimePicker from "../components/TimePicker";
 import { MdModeEditOutline } from "react-icons/md";
 import MoreDate from "./MoreDate";
 import MoreTime from "./MoreTime";
@@ -47,10 +47,10 @@ const DateTime = ({
       addStage === null
         ? "blur(0px)"
         : addStage < index || opacity
-        ? "blur(10px)"
-        : !isLongPress
-        ? "blur(0px)"
-        : "blur(0px)",
+          ? "blur(10px)"
+          : !isLongPress
+            ? "blur(0px)"
+            : "blur(0px)",
     position: "absolute",
     top: 180,
     y: topAdd,
@@ -67,7 +67,7 @@ const DateTime = ({
     height: 100,
     top: 5,
     left: 0,
-    margin: 0,
+
     display: "flex",
     alignItems: "flex-start",
     justifyContent: "flex-start",
@@ -76,10 +76,10 @@ const DateTime = ({
   });
 
   const label = useSpring({
-    position: "relative",
+
     color: "var(--Bc-2)",
     borderRadius: "18px",
-    width: addStage !== index ? 35 : 70,
+
     height: 45,
     width: 45,
     display: "flex",

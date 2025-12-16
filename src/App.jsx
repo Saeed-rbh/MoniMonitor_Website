@@ -5,17 +5,17 @@ import {
   useTransactionData,
   useMainPageMonth,
   useTelegramWebApp,
-} from "./Tools/hooks";
-import ErrorBoundary from "./ErrorBoundary";
-import Transactions from "./Transactions/Transactions";
-import AddTransaction from "./AddTransaction/AddTransaction";
+} from "./hooks/useSharedHooks";
+import ErrorBoundary from "./components/ErrorBoundary";
+import Transactions from "./pages/Transactions/Transactions";
+import AddTransaction from "./pages/AddTransaction/AddTransaction";
 
 // Lazy-loaded components
-const MainMenu = lazy(() => import("./MainMenu/MainMenu"));
-const Header = lazy(() => import("./Header/header"));
-const Telegram = lazy(() => import("./Telegram/MoneyMonitor"));
-const Insight = lazy(() => import("./Insight/Insight"));
-const Account = lazy(() => import("./Account/Account"));
+const MainMenu = lazy(() => import("./components/MainMenu/MainMenu"));
+const Header = lazy(() => import("./components/Header/header"));
+const Telegram = lazy(() => import("./pages/Dashboard/MoneyMonitor"));
+const Insight = lazy(() => import("./pages/Insight/Insight"));
+const Account = lazy(() => import("./pages/Account/Account"));
 
 const App = () => {
   // State management for user data
@@ -148,6 +148,7 @@ const App = () => {
       </Router>
     </ErrorBoundary>
   );
-};
+}; // End App
+
 
 export default App;

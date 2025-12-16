@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { animated, useSpring } from "react-spring";
-import { ScalableElement } from "../Tools/tools";
+import { ScalableElement } from "../utils/tools";
 import { MdModeEditOutline } from "react-icons/md";
 
 const Reason = ({
@@ -27,11 +27,11 @@ const Reason = ({
         addStage === null
           ? "blur(0px)"
           : addStage < index || addStage === 3 || opacity
-          ? "blur(10px)"
-          : !isLongPress
-          ? "blur(0px)"
-          : "blur(10px)",
-      y: addStage > index ? 0 : 0,
+            ? "blur(10px)"
+            : !isLongPress
+              ? "blur(0px)"
+              : "blur(10px)",
+
       position: "absolute",
       cursor: addStage === null ? "pointer" : "auto",
       top: 113,
@@ -67,7 +67,7 @@ const Reason = ({
     height: 100,
     top: 5,
     left: 0,
-    margin: 0,
+
     display: "flex",
     alignItems: "flex-start",
     justifyContent: "flex-start",
@@ -75,11 +75,11 @@ const Reason = ({
     margin: 0,
   });
   const label = useSpring({
-    position: "relative",
+
     fontSize: addStage !== index ? "1rem" : "0.7rem",
     color: "var(--Bc-2)",
     borderRadius: "18px",
-    width: addStage !== index ? 35 : 70,
+
     height: 45,
     width: addStage !== index ? 45 : 65,
     display: "flex",
@@ -87,7 +87,7 @@ const Reason = ({
     alignItems: "center",
     justifyContent: "center",
     cursor: addStage !== index ? "pointer" : "auto",
-    top: addStage !== 0 ? 3 : 12,
+
     backgroundColor: addStage !== index ? "var(--Ec-2)" : "var(--Ac-5)",
     left: addStage === index ? 0 : 7,
     top: 23,

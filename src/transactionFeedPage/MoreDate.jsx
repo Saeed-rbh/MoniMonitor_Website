@@ -7,16 +7,16 @@ import React, {
   useEffect,
 } from "react";
 import { useSpring, animated, easings } from "react-spring";
-import useClickOutside from "../Tools/useClickOutside";
+import useClickOutside from "../hooks/useClickOutside";
 import {
   MdOutlineChevronLeft,
   MdOutlineChevronRight,
   MdKeyboardArrowDown,
   MdCheck,
 } from "react-icons/md";
-import { ScalableElement } from "../Tools/tools";
+import { ScalableElement } from "../utils/tools";
 import Calendar from "./Calendar";
-import ScrollableList from "../Tools/scrollableList";
+import ScrollableList from "../components/ScrollableList";
 
 const monthNames = [
   "January",
@@ -153,11 +153,11 @@ const MoreDate = ({ selectedDate, setSelectedDate }) => {
   const selectMonth = useSpring({
     opacity: 1,
     position: "relative",
-    width: "max-content",
+
     margin: "0 3px",
     zIndex: 100,
     overflow: "visible",
-    background: "none",
+
     outline: "none",
     display: "flex",
     justifyContent: "center",
@@ -176,7 +176,7 @@ const MoreDate = ({ selectedDate, setSelectedDate }) => {
     margin: "0 3px",
     zIndex: 100,
     overflow: "visible",
-    background: "none",
+
     outline: "none",
     display: "flex",
     justifyContent: "center",

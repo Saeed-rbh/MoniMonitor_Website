@@ -1,0 +1,22 @@
+[36mvite v5.4.8 [32mbuilding for production...[36m[39m
+transforming...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+
+[1m[33mwarn[39m[22m - The class `delay-[var(--delay)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `delay-&lsqb;var(--delay)&rsqb;` to silence this warning.
+
+[1m[33mwarn[39m[22m - The class `duration-[var(--transition-length)]` is ambiguous and matches multiple utilities.
+[1m[33mwarn[39m[22m - If this is content and not a class, replace it with `duration-&lsqb;var(--transition-length)&rsqb;` to silence this warning.
+src/components/ui/shine-border.tsx (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+src/components/ui/blur-fade.tsx (1:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+[32m✓[39m 123 modules transformed.
+[31mx[39m Build failed in 2.84s
+[31merror during build:
+[31mCould not resolve "../Tools/DatePicker" from "src/transactionFeedPage/DateTime.jsx"[31m
+file: [36mC:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/src/transactionFeedPage/DateTime.jsx[31m
+    at getRollupError (file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/rollup/dist/es/shared/parseAst.js:392:41)
+    at error (file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/rollup/dist/es/shared/parseAst.js:388:42)
+    at ModuleLoader.handleInvalidResolvedId (file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/rollup/dist/es/shared/node-entry.js:19329:24)
+    at file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/rollup/dist/es/shared/node-entry.js:19289:26[39m

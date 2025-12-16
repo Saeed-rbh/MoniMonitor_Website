@@ -1,0 +1,30 @@
+[36mvite v5.4.8 [32mbuilding for production...[36m[39m
+transforming...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+[33m[vite:css] @import must precede all other statements (besides @charset or empty @layer)
+38 |  }
+39 |  
+40 |  @import url("https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap");
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+41 |  
+42 |  body {[39m
+[32m✓[39m 26 modules transformed.
+[31mx[39m Build failed in 824ms
+[31merror during build:
+[31m[vite:build-import-analysis] [plugin vite:build-import-analysis] src/utils/tools.js (68:24): Failed to parse source for import analysis because the content contains invalid JS syntax. If you are using JSX, make sure to name the file with the .jsx or .tsx extension.[31m
+file: [36mC:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/src/utils/tools.js:68:24[31m
+[33m
+66:     >
+67:       {children}
+68:     </AnimatedComponent>
+                            ^
+69:   );
+70: };
+[31m
+    at getRollupError (file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/rollup/dist/es/shared/parseAst.js:392:41)
+    at error (file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/rollup/dist/es/shared/parseAst.js:388:42)
+    at Object.error (file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/rollup/dist/es/shared/node-entry.js:19807:20)
+    at Object.error (file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/rollup/dist/es/shared/node-entry.js:18927:42)
+    at Object.transform (file:///C:/Users/Saeed/Personal_Files/CodeDevelope/MoniMonitor_Website/node_modules/vite/dist/node/chunks/dep-CDnG8rE7.js:64590:14)[39m

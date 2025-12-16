@@ -15,8 +15,8 @@ import {
   Expense_categories,
   Income_categories,
   SaveInvest_categories,
-} from "../Tools/Categories";
-import { useWindowHeight, ScalableElement } from "../Tools/tools";
+} from "../components/Categories";
+import { useWindowHeight, ScalableElement } from "../utils/tools";
 import "./AddTransactionFeed.css";
 
 function AddTransactionFeed({
@@ -120,8 +120,8 @@ function AddTransactionFeed({
         isAddClicked === "Income"
           ? "var(--Fc-2)"
           : isAddClicked === "Expense"
-          ? "var(--Gc-2)"
-          : "var(--Ac-2)",
+            ? "var(--Gc-2)"
+            : "var(--Ac-2)",
     }),
     [isAddClicked]
   );

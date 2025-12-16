@@ -1,16 +1,20 @@
 {
-    "compilerOptions": {
-        "jsx": "react-jsx",  // or "react" for older versions of React
-        "module": "esnext",  // or "commonjs" depending on your project
-        "target": "es5",
-        "baseUrl": ".",
-        "paths": {
-          "@/*": ["./src/*"]
-        },
-      "forceConsistentCasingInFileNames": true,  // Enforces consistent file name casing
-      "strict": true  // Enables all strict type-checking options
+  "compilerOptions": {
+    "jsx": "react-jsx", // or "react" for older versions of React
+    "module": "esnext", // or "commonjs" depending on your project
+    "target": "es5",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
     },
-    "include": ["src"]
-  }
-  
-  
+    "forceConsistentCasingInFileNames": true, // Enforces consistent file name casing
+    "strict": true, // Enables all strict type-checking options
+    "allowJs": true,
+    "noEmit": true
+  },
+  "include": [
+    "src"
+  ]
+}

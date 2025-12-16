@@ -1,0 +1,7022 @@
+[
+  {
+    "Amount": "95.68",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Sobeys",
+    "Timestamp": "2025-12-31 19:34:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "27.43",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-12-31 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "11.89",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-12-31 05:12:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "41.99",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-12-30 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "3007.20",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Government Pay",
+    "Timestamp": "2025-12-30 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "43.58",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Uber",
+    "Timestamp": "2025-12-29 06:40:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "25.81",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Steam",
+    "Timestamp": "2025-12-28 08:59:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "12.12",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-12-28 02:06:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "51.61",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Enbridge Gas",
+    "Timestamp": "2025-12-28 00:57:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "97.64",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Cineplex",
+    "Timestamp": "2025-12-26 18:28:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "24.51",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-12-25 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "88.54",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Bell Fibe",
+    "Timestamp": "2025-12-25 05:37:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "39.00",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Lyft",
+    "Timestamp": "2025-12-24 15:41:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "37.83",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Uber Eats",
+    "Timestamp": "2025-12-24 09:49:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "29.45",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Spotify",
+    "Timestamp": "2025-12-24 07:00:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "52.60",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Loblaws",
+    "Timestamp": "2025-12-24 06:44:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "48.00",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-12-23 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "30.43",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-12-23 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "24.31",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-12-22 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "47.16",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-12-22 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "5.94",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Tim Hortons",
+    "Timestamp": "2025-12-22 17:31:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "12.81",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-12-22 09:32:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "43.03",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Dollarama",
+    "Timestamp": "2025-12-22 00:08:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "98.74",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "H&M",
+    "Timestamp": "2025-12-21 16:18:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "22.36",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-12-21 14:47:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "30.44",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-12-20 17:37:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "32.56",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Enbridge Gas",
+    "Timestamp": "2025-12-20 16:19:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "56.37",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-12-20 02:41:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "38.10",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-12-19 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "95.87",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2025-12-19 02:10:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "17.56",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-12-19 01:54:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "8.36",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-12-18 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "63.46",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-12-17 20:20:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "46.96",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Subway",
+    "Timestamp": "2025-12-16 14:30:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "96.85",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-12-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "2887.10",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Consulting Fee",
+    "Timestamp": "2025-12-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "86.24",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-12-14 08:40:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "33.83",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-12-13 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "98.35",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "DoorDash",
+    "Timestamp": "2025-12-13 13:29:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "97.34",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-12-13 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "30.16",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-12-13 10:09:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "52.63",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-12-13 03:19:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "39.83",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-12-11 15:37:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "52.54",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-12-10 06:33:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "31.62",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Spotify",
+    "Timestamp": "2025-12-09 08:36:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "27.35",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-12-09 06:11:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "10.07",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-12-08 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "65.87",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-12-08 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "41.74",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-12-08 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "43.34",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-12-07 17:47:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "84.86",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Spotify",
+    "Timestamp": "2025-12-07 09:52:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "72.26",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-12-07 08:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "48.57",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-12-06 13:34:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "63.37",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-12-05 19:14:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "62.04",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-12-05 05:02:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "55.91",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2025-12-05 01:37:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "82.14",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-12-02 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "587.02",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2025-12-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2262.19",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Mortgage Payment",
+    "Timestamp": "2025-12-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "37.28",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Spotify",
+    "Timestamp": "2025-12-01 06:42:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "5.73",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-11-30 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "3117.56",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Consulting Fee",
+    "Timestamp": "2025-11-30 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "30.66",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Uber",
+    "Timestamp": "2025-11-30 01:53:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "24.03",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-11-29 17:23:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "82.53",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-11-29 05:54:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "84.66",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-11-29 04:22:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "94.75",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-11-28 20:25:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "87.16",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Bell Fibe",
+    "Timestamp": "2025-11-28 12:48:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "20.00",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-11-28 09:30:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "118.39",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Loblaws",
+    "Timestamp": "2025-11-27 12:31:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "85.00",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "The Keg",
+    "Timestamp": "2025-11-26 11:55:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "63.88",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Loblaws",
+    "Timestamp": "2025-11-26 07:53:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "93.22",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-11-24 19:16:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "92.23",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Boston Pizza",
+    "Timestamp": "2025-11-22 00:05:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "18.88",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-11-21 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "9.07",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-11-21 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "29.28",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-11-21 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "6.87",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Starbucks",
+    "Timestamp": "2025-11-20 16:03:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "45.89",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-11-19 16:11:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "66.42",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-11-19 09:40:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "148.27",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-11-18 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "75.66",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Enbridge Gas",
+    "Timestamp": "2025-11-18 09:47:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "42.35",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-11-18 02:40:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "30.26",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-11-17 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "46.13",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-11-17 08:07:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "37.05",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-11-17 01:01:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "49.32",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-11-16 13:50:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "16.54",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-11-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "128.46",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "City Tax",
+    "Timestamp": "2025-11-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2923.40",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Tech Corp Payroll",
+    "Timestamp": "2025-11-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "33.07",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Dollarama",
+    "Timestamp": "2025-11-15 04:32:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "45.89",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-11-15 02:19:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "5.41",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Starbucks",
+    "Timestamp": "2025-11-14 21:27:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "49.90",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-11-14 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "8.03",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Tim Hortons",
+    "Timestamp": "2025-11-14 17:16:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "87.55",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Hydro One",
+    "Timestamp": "2025-11-14 16:21:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "31.04",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Farm Boy",
+    "Timestamp": "2025-11-14 01:47:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "23.32",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "H&M",
+    "Timestamp": "2025-11-13 14:56:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "17.32",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-11-12 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "14.97",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-11-12 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "43.01",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-11-11 01:02:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "13.16",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Tim Hortons",
+    "Timestamp": "2025-11-10 20:27:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "46.72",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-11-10 05:59:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "108.34",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-11-09 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "21.44",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Uber Eats",
+    "Timestamp": "2025-11-08 22:38:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "34.01",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-11-08 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "16.71",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-11-08 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "60.01",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Steam",
+    "Timestamp": "2025-11-08 07:59:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "20.77",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-11-08 04:57:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "76.81",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-11-07 09:27:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "111.47",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-11-05 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "102.27",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-11-03 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "94.93",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-11-03 11:58:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "46.39",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2025-11-02 11:45:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "656.94",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2025-11-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "6.23",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Tim Hortons",
+    "Timestamp": "2025-11-02 04:43:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "55.13",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "DoorDash",
+    "Timestamp": "2025-11-02 00:36:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "53.56",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Farm Boy",
+    "Timestamp": "2025-11-01 20:58:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "47.47",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Whole Foods",
+    "Timestamp": "2025-11-01 10:12:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2244.56",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Landlord Transfer",
+    "Timestamp": "2025-11-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "55.51",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "McDonalds",
+    "Timestamp": "2025-10-31 23:28:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "76.69",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2025-10-30 18:36:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "42.90",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-10-30 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "2982.67",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Consulting Fee",
+    "Timestamp": "2025-10-30 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "81.15",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-10-30 05:47:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "47.70",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-10-27 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "26.45",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-10-27 14:23:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "113.11",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-10-27 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "52.91",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2025-10-27 10:52:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "69.90",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Canadian Tire Gas",
+    "Timestamp": "2025-10-27 09:52:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "58.65",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-10-26 13:49:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "56.67",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Subway",
+    "Timestamp": "2025-10-26 06:16:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "10.93",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-10-24 20:38:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "88.65",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Dollarama",
+    "Timestamp": "2025-10-24 16:50:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "80.39",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-10-24 03:55:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "42.94",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-10-22 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "91.62",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-10-22 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "138.61",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-10-22 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "30.45",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-10-21 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "10.21",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Presto Reload",
+    "Timestamp": "2025-10-21 10:28:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "53.46",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-10-20 06:13:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "27.54",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-10-19 14:05:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "29.92",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-10-19 10:15:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "59.82",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Best Buy",
+    "Timestamp": "2025-10-19 04:56:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "33.01",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-10-17 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "48.87",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-10-17 08:32:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "53.36",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-10-16 23:31:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "65.06",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Best Buy",
+    "Timestamp": "2025-10-16 20:18:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "74.89",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Whole Foods",
+    "Timestamp": "2025-10-16 18:12:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "90.73",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-10-16 16:47:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "43.31",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Go Transit",
+    "Timestamp": "2025-10-16 14:29:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "65.24",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-10-16 02:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "97.66",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "Bell Fibe",
+    "Timestamp": "2025-10-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "3154.15",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Tech Corp Payroll",
+    "Timestamp": "2025-10-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "85.72",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Steam",
+    "Timestamp": "2025-10-15 00:52:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "96.32",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Boston Pizza",
+    "Timestamp": "2025-10-14 15:25:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "109.91",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-10-14 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "24.72",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Lyft",
+    "Timestamp": "2025-10-14 09:44:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "74.34",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-10-13 01:22:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "26.22",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Spotify",
+    "Timestamp": "2025-10-12 21:04:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "92.11",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "H&M",
+    "Timestamp": "2025-10-12 10:42:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "77.67",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-10-11 04:52:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "8.10",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-10-09 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "34.67",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-10-09 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "93.39",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Bell Fibe",
+    "Timestamp": "2025-10-07 22:39:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "15.67",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2025-10-07 20:36:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "38.35",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-10-07 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "73.36",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "H&M",
+    "Timestamp": "2025-10-07 10:21:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "72.08",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-10-06 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "41.54",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-10-06 11:48:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "67.46",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Enbridge Gas",
+    "Timestamp": "2025-10-05 17:07:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "33.61",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-10-04 22:38:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "94.11",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Shell",
+    "Timestamp": "2025-10-04 02:59:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "52.55",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-10-03 16:36:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "84.41",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Cineplex",
+    "Timestamp": "2025-10-03 07:56:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "49.11",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Go Transit",
+    "Timestamp": "2025-10-03 06:54:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "8.41",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-10-02 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "45.97",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-10-02 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "770.47",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2025-10-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2367.31",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Property Management",
+    "Timestamp": "2025-10-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "22.46",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-09-30 22:29:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "34.36",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-09-30 18:14:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "70.58",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-09-30 17:33:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "16.78",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-09-30 17:27:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2810.99",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Tech Corp Payroll",
+    "Timestamp": "2025-09-30 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "33.47",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-09-29 10:01:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "44.92",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Uber",
+    "Timestamp": "2025-09-29 00:36:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "14.06",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-09-28 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "26.83",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-09-28 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "84.43",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-09-28 07:37:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "20.69",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-09-27 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "72.69",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Canadian Tire Gas",
+    "Timestamp": "2025-09-26 13:37:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "78.92",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-09-26 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "77.37",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2025-09-25 21:37:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "80.41",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-09-25 15:40:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "24.37",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-09-25 06:14:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "55.56",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-09-24 19:09:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "36.52",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-09-23 03:20:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "22.70",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-09-22 12:10:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "66.39",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-09-21 11:24:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "80.40",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2025-09-21 04:40:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "66.14",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-09-21 00:49:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "36.16",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Uber",
+    "Timestamp": "2025-09-20 01:14:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "74.45",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Hydro One",
+    "Timestamp": "2025-09-19 03:33:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "71.90",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2025-09-17 20:50:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "35.43",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Presto Reload",
+    "Timestamp": "2025-09-17 20:34:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "49.14",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-09-17 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "83.44",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Cineplex",
+    "Timestamp": "2025-09-17 05:37:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "21.99",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-09-16 15:53:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "91.25",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-09-16 10:17:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "48.39",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-09-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "31.99",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-09-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "24.37",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-09-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "117.99",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "City Tax",
+    "Timestamp": "2025-09-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2800.51",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Government Pay",
+    "Timestamp": "2025-09-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "36.29",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-09-13 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "31.89",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-09-13 10:36:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "29.39",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-09-13 07:27:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "22.32",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "No Frills",
+    "Timestamp": "2025-09-12 06:08:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "48.88",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-09-11 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "79.76",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "McDonalds",
+    "Timestamp": "2025-09-11 03:40:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "65.46",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Dollarama",
+    "Timestamp": "2025-09-11 01:30:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "20.89",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-09-10 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "96.31",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-09-10 09:40:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "124.10",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Loblaws",
+    "Timestamp": "2025-09-09 22:20:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "74.28",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Subway",
+    "Timestamp": "2025-09-09 03:08:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "25.21",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-09-08 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "6.68",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Tim Hortons",
+    "Timestamp": "2025-09-08 11:28:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "34.02",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Canadian Tire Gas",
+    "Timestamp": "2025-09-07 17:44:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "57.29",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-09-07 12:41:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "13.76",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-09-06 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "38.68",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-09-06 16:42:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "35.75",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-09-05 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "40.60",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Presto Reload",
+    "Timestamp": "2025-09-05 01:31:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "125.62",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-09-04 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "60.39",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-09-03 01:01:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "77.89",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2025-09-02 23:09:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "559.94",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2025-09-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "80.53",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Cineplex",
+    "Timestamp": "2025-09-02 04:44:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2291.93",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Property Management",
+    "Timestamp": "2025-09-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "42.97",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-08-31 19:26:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "127.04",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-08-31 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "66.37",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-08-30 10:01:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2901.07",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Consulting Fee",
+    "Timestamp": "2025-08-30 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "37.56",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Presto Reload",
+    "Timestamp": "2025-08-29 20:41:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "40.15",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-08-28 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "53.48",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-08-26 08:11:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "11.64",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-08-24 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "90.51",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Petro-Canada",
+    "Timestamp": "2025-08-24 12:53:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "120.04",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-08-23 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "45.13",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-08-22 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "19.71",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-08-22 06:09:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "30.36",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2025-08-21 20:01:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "72.73",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-08-20 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "10.23",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-08-19 04:55:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "24.45",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-08-18 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "39.76",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Whole Foods",
+    "Timestamp": "2025-08-18 09:44:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "83.75",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-08-18 06:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "24.76",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-08-17 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "48.99",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-08-17 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "31.80",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-08-16 05:33:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "6.72",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-08-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "22.68",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-08-15 17:52:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "139.56",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-08-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "3080.09",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Consulting Fee",
+    "Timestamp": "2025-08-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "137.46",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-08-14 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "43.46",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-08-14 04:40:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "41.88",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Lyft",
+    "Timestamp": "2025-08-14 01:12:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "8.77",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-08-13 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "80.92",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-08-13 11:23:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "55.49",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-08-12 22:01:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "55.99",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-08-12 09:47:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "40.00",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-08-12 09:07:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "31.01",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-08-10 21:48:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "47.08",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-08-10 13:14:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "92.56",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2025-08-10 05:18:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "22.85",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-08-10 01:34:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "96.60",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-08-09 21:52:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "79.52",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-08-09 20:37:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "93.08",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Boston Pizza",
+    "Timestamp": "2025-08-09 17:40:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "68.23",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Best Buy",
+    "Timestamp": "2025-08-09 03:12:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "98.68",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-08-08 00:07:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "137.71",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-08-07 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "60.97",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "The Keg",
+    "Timestamp": "2025-08-07 03:41:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "16.77",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Petro-Canada",
+    "Timestamp": "2025-08-06 21:35:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "43.52",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-08-06 19:24:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "86.70",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-08-06 18:37:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "62.71",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Shell",
+    "Timestamp": "2025-08-05 22:57:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "41.52",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-08-05 02:31:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "35.43",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-08-04 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "81.70",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Go Transit",
+    "Timestamp": "2025-08-04 00:29:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "43.67",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-08-03 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "50.13",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Dollarama",
+    "Timestamp": "2025-08-03 16:30:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "884.73",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2025-08-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "15.55",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-08-02 05:49:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "55.98",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Dollarama",
+    "Timestamp": "2025-08-02 00:39:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "35.67",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-08-01 16:02:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "47.91",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Steam",
+    "Timestamp": "2025-08-01 14:47:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2308.53",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Landlord Transfer",
+    "Timestamp": "2025-08-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "77.04",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Petro-Canada",
+    "Timestamp": "2025-08-01 01:15:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "18.69",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-07-30 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "49.70",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-07-30 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "2984.18",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Tech Corp Payroll",
+    "Timestamp": "2025-07-30 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "45.82",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-07-29 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "14.74",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-07-29 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "58.39",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-07-29 17:01:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "114.71",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-07-29 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "91.13",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-07-27 18:30:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "76.89",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-07-26 22:12:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "72.15",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-07-26 21:48:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "22.88",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-07-25 06:48:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "10.30",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Dollarama",
+    "Timestamp": "2025-07-24 20:34:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "58.12",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Whole Foods",
+    "Timestamp": "2025-07-24 09:39:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "57.84",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Farm Boy",
+    "Timestamp": "2025-07-24 03:43:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "97.58",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-07-23 22:07:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "13.98",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Sobeys",
+    "Timestamp": "2025-07-23 15:56:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "125.79",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-07-23 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "77.48",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-07-23 07:46:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "27.65",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Lyft",
+    "Timestamp": "2025-07-22 19:33:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "52.96",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Best Buy",
+    "Timestamp": "2025-07-22 17:08:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "22.39",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-07-22 15:26:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "64.38",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-07-21 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "52.26",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Petro-Canada",
+    "Timestamp": "2025-07-21 03:26:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "77.69",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Canadian Tire Gas",
+    "Timestamp": "2025-07-21 02:42:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "57.78",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "No Frills",
+    "Timestamp": "2025-07-21 01:29:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "65.82",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "McDonalds",
+    "Timestamp": "2025-07-20 20:33:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "88.31",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Subway",
+    "Timestamp": "2025-07-20 01:07:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "32.65",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-07-19 12:43:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "28.57",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Go Transit",
+    "Timestamp": "2025-07-18 22:14:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "11.42",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-07-18 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "42.36",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-07-16 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "29.20",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-07-16 14:43:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "80.80",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-07-16 13:11:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "77.95",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-07-15 11:03:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "105.93",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "City Tax",
+    "Timestamp": "2025-07-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2968.43",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Consulting Fee",
+    "Timestamp": "2025-07-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "21.60",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2025-07-14 23:05:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "31.48",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-07-14 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "54.68",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-07-13 23:18:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "96.67",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "The Keg",
+    "Timestamp": "2025-07-13 05:08:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "24.56",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-07-12 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "51.57",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Best Buy",
+    "Timestamp": "2025-07-12 03:13:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "35.83",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Shell",
+    "Timestamp": "2025-07-10 10:18:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "87.78",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-07-09 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "29.66",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Steam",
+    "Timestamp": "2025-07-08 20:46:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "38.50",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-07-08 18:28:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "55.96",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-07-07 09:03:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "12.24",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Tim Hortons",
+    "Timestamp": "2025-07-06 21:45:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "31.30",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-07-06 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "13.60",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-07-06 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "12.33",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-07-06 10:49:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "59.73",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2025-07-06 02:48:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "15.07",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-07-05 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "46.94",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-07-05 01:07:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "4.23",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Starbucks",
+    "Timestamp": "2025-07-04 12:20:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "972.01",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2025-07-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "26.14",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Spotify",
+    "Timestamp": "2025-07-02 06:33:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "87.89",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-07-01 22:34:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2387.52",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Mortgage Payment",
+    "Timestamp": "2025-07-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "11.60",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-07-01 04:18:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "107.68",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-06-30 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2974.75",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Consulting Fee",
+    "Timestamp": "2025-06-30 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "33.62",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-06-27 08:36:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "90.83",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-06-27 05:59:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "54.66",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-06-25 15:33:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "74.10",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Steam",
+    "Timestamp": "2025-06-25 06:45:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "70.94",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Cineplex",
+    "Timestamp": "2025-06-24 21:19:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "25.85",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-06-24 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "87.02",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Presto Reload",
+    "Timestamp": "2025-06-24 10:34:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "39.56",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Go Transit",
+    "Timestamp": "2025-06-24 09:36:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "86.80",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-06-24 05:21:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "40.84",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-06-23 05:40:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "45.49",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-06-21 22:11:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "26.82",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "H&M",
+    "Timestamp": "2025-06-21 20:50:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "23.41",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-06-21 15:14:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "62.27",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Whole Foods",
+    "Timestamp": "2025-06-21 06:31:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "130.45",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-06-20 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "32.12",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-06-20 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "17.84",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Go Transit",
+    "Timestamp": "2025-06-19 09:03:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "89.51",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Petro-Canada",
+    "Timestamp": "2025-06-19 01:14:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "11.32",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-06-18 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "16.56",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-06-18 08:30:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "16.69",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Enbridge Gas",
+    "Timestamp": "2025-06-18 00:48:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "34.66",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Petro-Canada",
+    "Timestamp": "2025-06-17 21:52:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "61.31",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-06-17 06:09:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "36.72",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Hydro One",
+    "Timestamp": "2025-06-16 13:13:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "15.23",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-06-16 07:26:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "11.49",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "McDonalds",
+    "Timestamp": "2025-06-16 03:12:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "93.12",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Best Buy",
+    "Timestamp": "2025-06-15 20:44:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "20.69",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "No Frills",
+    "Timestamp": "2025-06-15 20:21:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "86.15",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Enbridge Gas",
+    "Timestamp": "2025-06-15 18:05:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "41.57",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-06-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "21.79",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-06-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "136.65",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "City Tax",
+    "Timestamp": "2025-06-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "3175.73",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Government Pay",
+    "Timestamp": "2025-06-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "62.26",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "The Keg",
+    "Timestamp": "2025-06-15 05:50:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "21.24",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Presto Reload",
+    "Timestamp": "2025-06-15 02:10:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "44.80",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Cineplex",
+    "Timestamp": "2025-06-14 07:25:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "66.87",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Steam",
+    "Timestamp": "2025-06-14 05:57:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "100.20",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-06-12 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "20.44",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-06-12 07:28:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "7.98",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-06-11 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "37.60",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-06-11 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "8.32",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-06-11 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "47.07",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2025-06-11 15:56:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "57.54",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-06-10 19:31:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "39.34",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Presto Reload",
+    "Timestamp": "2025-06-10 11:15:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "146.40",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-06-09 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "54.70",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-06-09 11:50:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "15.43",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Shell",
+    "Timestamp": "2025-06-07 22:36:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "19.64",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-06-07 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "23.85",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-06-06 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "13.84",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Best Buy",
+    "Timestamp": "2025-06-05 13:24:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "68.43",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2025-06-05 09:32:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "38.04",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Uber Eats",
+    "Timestamp": "2025-06-04 13:41:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "504.82",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2025-06-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "11.07",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "H&M",
+    "Timestamp": "2025-06-02 07:52:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "47.74",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-06-01 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "79.53",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Dollarama",
+    "Timestamp": "2025-06-01 11:16:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2320.24",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Property Management",
+    "Timestamp": "2025-06-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "33.79",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Farm Boy",
+    "Timestamp": "2025-05-31 21:13:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "48.06",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Steam",
+    "Timestamp": "2025-05-30 14:43:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "40.90",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-05-30 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2900.48",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Consulting Fee",
+    "Timestamp": "2025-05-30 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "94.87",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-05-29 20:22:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "70.24",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Whole Foods",
+    "Timestamp": "2025-05-29 07:38:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "26.11",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Boston Pizza",
+    "Timestamp": "2025-05-29 07:18:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "46.56",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-05-28 21:51:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "68.11",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-05-28 09:18:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "23.08",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-05-27 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "89.58",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-05-26 22:35:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "52.38",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Spotify",
+    "Timestamp": "2025-05-25 22:58:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "226.90",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Metro",
+    "Timestamp": "2025-05-25 17:40:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "97.29",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-05-25 01:09:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "79.21",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Best Buy",
+    "Timestamp": "2025-05-24 16:16:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "30.04",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "The Keg",
+    "Timestamp": "2025-05-22 14:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "15.05",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Lyft",
+    "Timestamp": "2025-05-22 01:14:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "52.16",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2025-05-21 09:56:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "43.58",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Shell",
+    "Timestamp": "2025-05-21 06:48:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "14.18",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-05-21 02:56:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "10.23",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Shell",
+    "Timestamp": "2025-05-20 15:01:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "62.39",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-05-19 10:14:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "114.46",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Loblaws",
+    "Timestamp": "2025-05-19 06:06:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "54.36",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-05-19 03:16:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "73.64",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-05-18 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "24.37",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-05-17 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "18.17",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-05-17 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "20.73",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Canadian Tire Gas",
+    "Timestamp": "2025-05-17 13:34:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "20.46",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "The Keg",
+    "Timestamp": "2025-05-17 09:25:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "119.97",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-05-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "3198.01",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Tech Corp Payroll",
+    "Timestamp": "2025-05-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "29.11",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Whole Foods",
+    "Timestamp": "2025-05-14 21:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "101.33",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-05-14 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "60.46",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-05-14 07:02:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "83.45",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-05-14 06:09:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "75.93",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Canadian Tire Gas",
+    "Timestamp": "2025-05-14 05:07:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "32.74",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-05-13 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "27.11",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Petro-Canada",
+    "Timestamp": "2025-05-12 00:58:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "27.19",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-05-11 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "22.60",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-05-11 05:19:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "5.80",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-05-09 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "99.17",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Farm Boy",
+    "Timestamp": "2025-05-09 15:47:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "32.30",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Presto Reload",
+    "Timestamp": "2025-05-09 05:41:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "81.62",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-05-08 00:54:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "24.59",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Steam",
+    "Timestamp": "2025-05-07 04:02:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "73.34",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-05-06 02:15:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "47.69",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-05-05 21:54:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "14.16",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-05-05 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "143.98",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-05-05 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "5.20",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-05-04 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "66.33",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-05-04 01:41:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "60.59",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-05-03 21:26:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "26.25",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-05-03 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "19.70",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-05-03 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "84.50",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-05-03 08:30:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "89.42",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Hydro One",
+    "Timestamp": "2025-05-02 12:59:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "684.19",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2025-05-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "97.28",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-05-01 23:16:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "9.13",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-05-01 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "2335.23",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Landlord Transfer",
+    "Timestamp": "2025-05-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "57.08",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Hydro One",
+    "Timestamp": "2025-04-30 20:58:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "21.79",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-04-30 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "52.42",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-04-30 13:09:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "3071.87",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Tech Corp Payroll",
+    "Timestamp": "2025-04-30 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "29.15",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Steam",
+    "Timestamp": "2025-04-30 00:22:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "37.89",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-04-28 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "67.16",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Cineplex",
+    "Timestamp": "2025-04-28 12:19:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "77.26",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-04-28 04:42:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "82.35",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-04-28 02:57:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "37.50",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-04-27 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "96.29",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-04-27 00:16:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "30.20",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-04-26 20:43:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "55.05",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Shell",
+    "Timestamp": "2025-04-26 16:32:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "17.44",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-04-26 03:29:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "28.81",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-04-25 15:19:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "63.97",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-04-25 08:49:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "69.17",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-04-24 22:11:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "46.40",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-04-24 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "31.38",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Shell",
+    "Timestamp": "2025-04-24 04:33:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "66.65",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Whole Foods",
+    "Timestamp": "2025-04-24 02:42:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "95.44",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Best Buy",
+    "Timestamp": "2025-04-23 21:04:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "43.91",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Whole Foods",
+    "Timestamp": "2025-04-23 05:29:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "63.74",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-04-22 21:59:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "79.94",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-04-20 07:02:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "21.02",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-04-19 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "69.28",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-04-19 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "118.43",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-04-19 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "78.14",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-04-19 09:15:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "88.11",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-04-19 00:55:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "60.14",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Loblaws",
+    "Timestamp": "2025-04-17 14:47:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "91.71",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-04-16 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "77.44",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Boston Pizza",
+    "Timestamp": "2025-04-16 11:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "15.24",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-04-16 08:36:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "7.91",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-04-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "139.86",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-04-15 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "62.07",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-04-15 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "65.90",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-04-15 11:42:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "128.18",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "City Tax",
+    "Timestamp": "2025-04-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "3041.06",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Tech Corp Payroll",
+    "Timestamp": "2025-04-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "27.74",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Dollarama",
+    "Timestamp": "2025-04-14 19:02:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "15.95",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-04-12 10:07:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "3.62",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Starbucks",
+    "Timestamp": "2025-04-12 09:17:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "19.43",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-04-11 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "43.09",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-04-10 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "13.35",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-04-10 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "88.61",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2025-04-10 12:25:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "91.23",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Whole Foods",
+    "Timestamp": "2025-04-10 11:32:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "42.61",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Go Transit",
+    "Timestamp": "2025-04-10 09:02:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "97.17",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-04-08 20:35:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "39.33",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Best Buy",
+    "Timestamp": "2025-04-08 09:01:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "94.69",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-04-08 02:48:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "80.39",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Petro-Canada",
+    "Timestamp": "2025-04-06 23:30:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "94.33",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Boston Pizza",
+    "Timestamp": "2025-04-05 21:47:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "17.04",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-04-05 14:57:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "95.36",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Spotify",
+    "Timestamp": "2025-04-02 19:42:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "854.78",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2025-04-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "39.99",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-04-01 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "24.00",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-04-01 15:25:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "80.28",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-04-01 11:30:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2333.92",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Landlord Transfer",
+    "Timestamp": "2025-04-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "20.90",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-03-31 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "61.55",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-03-30 17:56:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2982.24",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Tech Corp Payroll",
+    "Timestamp": "2025-03-30 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "97.98",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-03-29 15:25:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "78.18",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-03-29 15:13:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "67.13",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-03-29 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "44.16",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-03-28 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "10.70",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-03-28 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "73.65",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-03-28 14:25:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "35.22",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Lyft",
+    "Timestamp": "2025-03-28 04:55:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "44.50",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Shell",
+    "Timestamp": "2025-03-27 23:43:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "68.20",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-03-27 03:52:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "40.57",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-03-26 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "18.70",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-03-26 14:20:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "67.15",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-03-26 10:20:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "35.42",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-03-26 08:19:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "31.58",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-03-26 07:03:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "198.94",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Metro",
+    "Timestamp": "2025-03-26 03:02:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "28.84",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Enbridge Gas",
+    "Timestamp": "2025-03-24 22:23:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "96.01",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-03-24 15:31:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "118.71",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-03-24 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "37.15",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-03-24 07:08:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "96.86",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2025-03-23 14:18:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "76.00",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Metro",
+    "Timestamp": "2025-03-22 23:45:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "14.82",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-03-22 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "66.96",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-03-21 16:58:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "45.73",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-03-21 08:46:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "20.76",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-03-20 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "53.40",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "DoorDash",
+    "Timestamp": "2025-03-20 08:27:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "27.72",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Uber",
+    "Timestamp": "2025-03-19 18:19:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "19.33",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-03-16 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "36.57",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-03-16 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "52.68",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-03-16 06:53:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "29.29",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Uber",
+    "Timestamp": "2025-03-16 05:32:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "48.23",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-03-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "37.96",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Uber",
+    "Timestamp": "2025-03-15 16:36:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "119.58",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "Bell Fibe",
+    "Timestamp": "2025-03-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "3151.75",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Government Pay",
+    "Timestamp": "2025-03-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "74.75",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-03-15 08:35:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "30.52",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-03-15 07:49:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "72.23",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-03-15 04:24:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "75.83",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-03-14 21:38:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "92.09",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-03-14 16:20:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "8.52",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Tim Hortons",
+    "Timestamp": "2025-03-13 14:07:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "13.65",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "No Frills",
+    "Timestamp": "2025-03-12 03:40:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "90.14",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-03-11 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "31.05",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Spotify",
+    "Timestamp": "2025-03-11 06:40:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "128.57",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-03-10 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "55.97",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Presto Reload",
+    "Timestamp": "2025-03-10 08:39:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "37.45",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Enbridge Gas",
+    "Timestamp": "2025-03-07 10:11:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "73.27",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "No Frills",
+    "Timestamp": "2025-03-05 17:22:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "99.75",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-03-05 13:50:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "54.33",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Sobeys",
+    "Timestamp": "2025-03-05 10:02:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "40.49",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Lyft",
+    "Timestamp": "2025-03-04 19:56:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "86.28",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-03-04 03:44:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "46.09",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-03-03 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "31.23",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-03-03 12:16:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "602.96",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2025-03-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "22.88",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-03-01 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "2299.11",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Property Management",
+    "Timestamp": "2025-03-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2866.71",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Consulting Fee",
+    "Timestamp": "2025-02-28 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "20.65",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2025-02-28 06:09:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "44.42",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-02-27 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "53.11",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-02-27 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "55.35",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Bell Fibe",
+    "Timestamp": "2025-02-27 04:02:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "67.71",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-02-26 11:51:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "10.89",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-02-26 09:50:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "27.79",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-02-25 23:10:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "98.18",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-02-25 02:20:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "60.93",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-02-25 01:24:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "86.49",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-02-23 22:02:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "59.77",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Spotify",
+    "Timestamp": "2025-02-23 13:37:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "92.36",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-02-23 07:09:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "84.13",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2025-02-23 03:30:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "85.71",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "DoorDash",
+    "Timestamp": "2025-02-22 22:45:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "90.15",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-02-22 03:34:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "11.10",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Farm Boy",
+    "Timestamp": "2025-02-21 21:34:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "71.08",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Boston Pizza",
+    "Timestamp": "2025-02-21 20:44:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "30.73",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-02-21 14:30:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "125.86",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-02-21 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "28.73",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Lyft",
+    "Timestamp": "2025-02-19 14:43:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "9.29",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-02-18 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "189.64",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Loblaws",
+    "Timestamp": "2025-02-18 16:36:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "27.75",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-02-17 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "26.30",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Bell Fibe",
+    "Timestamp": "2025-02-17 09:29:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "17.36",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-02-16 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "52.02",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-02-16 14:57:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "47.83",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-02-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "40.55",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-02-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "72.80",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Sobeys",
+    "Timestamp": "2025-02-15 14:49:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "137.52",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "Bell Fibe",
+    "Timestamp": "2025-02-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "2801.63",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Consulting Fee",
+    "Timestamp": "2025-02-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "73.31",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Bell Fibe",
+    "Timestamp": "2025-02-14 23:44:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "102.41",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-02-13 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "41.43",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Uber",
+    "Timestamp": "2025-02-13 09:50:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "41.35",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Subway",
+    "Timestamp": "2025-02-12 20:09:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "98.05",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-02-12 14:23:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "97.25",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2025-02-10 23:49:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "116.31",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-02-10 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "18.85",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Bell Fibe",
+    "Timestamp": "2025-02-09 16:25:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "13.60",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Sobeys",
+    "Timestamp": "2025-02-09 09:07:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "19.13",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Steam",
+    "Timestamp": "2025-02-09 01:26:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "10.15",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-02-08 20:02:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "39.12",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-02-07 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "53.47",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Dollarama",
+    "Timestamp": "2025-02-07 08:25:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "22.60",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Uber",
+    "Timestamp": "2025-02-07 00:29:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "92.85",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2025-02-06 10:13:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "42.34",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Dollarama",
+    "Timestamp": "2025-02-05 18:38:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "85.50",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-02-05 17:20:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "62.42",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-02-05 02:43:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "13.90",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-02-04 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "43.10",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Petro-Canada",
+    "Timestamp": "2025-02-03 18:51:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "63.81",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Loblaws",
+    "Timestamp": "2025-02-03 16:25:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "33.85",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-02-02 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "77.18",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2025-02-02 16:27:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "89.20",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-02-02 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "801.65",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2025-02-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "41.78",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-02-01 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "2205.98",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Mortgage Payment",
+    "Timestamp": "2025-02-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "95.27",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Best Buy",
+    "Timestamp": "2025-02-01 03:49:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "38.86",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Uber Eats",
+    "Timestamp": "2025-01-31 19:18:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "86.03",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2025-01-31 02:35:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "36.86",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-01-30 22:38:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "3094.07",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Government Pay",
+    "Timestamp": "2025-01-30 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "10.69",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2025-01-30 05:32:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "53.23",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Condo Fees",
+    "Timestamp": "2025-01-29 13:49:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "99.63",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Enbridge Gas",
+    "Timestamp": "2025-01-28 23:29:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "63.70",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Shell",
+    "Timestamp": "2025-01-28 22:53:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "55.95",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "McDonalds",
+    "Timestamp": "2025-01-28 20:01:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "117.61",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-01-28 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "77.72",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "No Frills",
+    "Timestamp": "2025-01-28 09:59:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "98.70",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-01-27 17:23:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "59.82",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-01-26 11:05:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "79.25",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-01-25 14:05:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "50.70",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Boston Pizza",
+    "Timestamp": "2025-01-25 00:51:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "44.47",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2025-01-24 17:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "60.60",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2025-01-24 15:27:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "118.42",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-01-24 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "59.97",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Hydro One",
+    "Timestamp": "2025-01-22 03:26:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "61.13",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Presto Reload",
+    "Timestamp": "2025-01-20 15:30:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "15.12",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Hydro One",
+    "Timestamp": "2025-01-20 10:42:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "15.34",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-01-19 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "15.21",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-01-19 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "51.27",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Dollarama",
+    "Timestamp": "2025-01-19 12:24:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "79.98",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-01-19 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "78.14",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2025-01-18 16:38:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "19.50",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2025-01-16 23:17:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "27.59",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-01-16 19:38:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "25.63",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-01-16 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "29.47",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-01-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "36.24",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-01-15 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "133.11",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-01-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "2853.31",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Consulting Fee",
+    "Timestamp": "2025-01-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "22.11",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-01-14 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "63.77",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Subway",
+    "Timestamp": "2025-01-14 08:30:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "65.31",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Bell Fibe",
+    "Timestamp": "2025-01-13 17:29:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "21.68",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-01-12 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "50.23",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Steam",
+    "Timestamp": "2025-01-12 17:52:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "16.16",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Rexall",
+    "Timestamp": "2025-01-12 04:26:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "26.23",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Shoppers Drug Mart",
+    "Timestamp": "2025-01-11 08:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "13.93",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-01-10 19:35:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "52.40",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-01-10 17:02:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "145.10",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-01-10 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "85.30",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Petro-Canada",
+    "Timestamp": "2025-01-10 09:02:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "28.99",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-01-10 06:30:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "23.89",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Lyft",
+    "Timestamp": "2025-01-10 03:28:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "38.60",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-01-09 20:38:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "60.67",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Presto Reload",
+    "Timestamp": "2025-01-09 19:39:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "58.49",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2025-01-09 15:29:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "63.22",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2025-01-09 11:47:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "22.75",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2025-01-08 05:02:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "76.73",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2025-01-07 19:52:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "18.75",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2025-01-06 15:45:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "45.92",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-01-05 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "15.95",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-01-05 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "10.50",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2025-01-05 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "844.34",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2025-01-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "27.29",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2025-01-01 16:23:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "103.81",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2025-01-01 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2287.63",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Property Management",
+    "Timestamp": "2025-01-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "63.69",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2024-12-31 17:38:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "88.48",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2024-12-31 17:08:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "96.10",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2024-12-31 00:52:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "20.13",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2024-12-30 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "41.71",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2024-12-30 14:04:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "3076.54",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Government Pay",
+    "Timestamp": "2024-12-30 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "5.60",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2024-12-29 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "89.20",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2024-12-29 12:34:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "85.99",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2024-12-29 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "70.05",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "PlayStation Store",
+    "Timestamp": "2024-12-29 00:37:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "41.97",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Uber",
+    "Timestamp": "2024-12-28 20:46:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "56.48",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "DoorDash",
+    "Timestamp": "2024-12-28 16:10:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "21.55",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "LCBO",
+    "Timestamp": "2024-12-28 13:36:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "71.87",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Presto Reload",
+    "Timestamp": "2024-12-28 07:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "48.51",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Rogers Bill",
+    "Timestamp": "2024-12-27 00:36:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "19.82",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2024-12-26 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "46.92",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2024-12-26 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "18.84",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2024-12-25 12:58:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "79.42",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Best Buy",
+    "Timestamp": "2024-12-25 06:18:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "31.23",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "City Tax",
+    "Timestamp": "2024-12-24 17:53:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "46.88",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2024-12-24 14:49:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "118.49",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2024-12-24 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "79.57",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Pharmacy",
+    "Timestamp": "2024-12-24 09:50:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "6.95",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Starbucks",
+    "Timestamp": "2024-12-24 03:30:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "86.92",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Esso",
+    "Timestamp": "2024-12-21 01:36:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "73.18",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2024-12-21 00:39:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "20.52",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2024-12-20 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "63.91",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Spotify",
+    "Timestamp": "2024-12-19 15:55:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "70.96",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2024-12-19 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "33.77",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2024-12-19 03:41:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "44.10",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Apple Store",
+    "Timestamp": "2024-12-18 11:21:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "148.02",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Metro",
+    "Timestamp": "2024-12-16 16:54:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "77.95",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "Dentist",
+    "Timestamp": "2024-12-16 16:48:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "70.34",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2024-12-16 05:22:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "12.74",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Starbucks",
+    "Timestamp": "2024-12-15 19:23:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "130.53",
+    "Category": "Housing & Utilities",
+    "Label": "Bills",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2024-12-15 10:00:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "2977.37",
+    "Category": "Income",
+    "Label": "Employment Income",
+    "Reason": "Tech Corp Payroll",
+    "Timestamp": "2024-12-15 09:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "8.72",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Starbucks",
+    "Timestamp": "2024-12-14 05:42:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "12.65",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2024-12-13 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "64.96",
+    "Category": "Expense",
+    "Label": "Transportation",
+    "Reason": "Petro-Canada",
+    "Timestamp": "2024-12-13 11:43:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "62.18",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Loblaws",
+    "Timestamp": "2024-12-13 08:31:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "21.15",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Uniqlo",
+    "Timestamp": "2024-12-12 22:20:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "42.67",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2024-12-12 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "18.09",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2024-12-12 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "97.64",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Boston Pizza",
+    "Timestamp": "2024-12-11 20:48:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "111.29",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2024-12-11 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "74.98",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Tenant Insurance",
+    "Timestamp": "2024-12-11 11:54:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "48.02",
+    "Category": "Expense",
+    "Label": "Medical & Health",
+    "Reason": "GoodLife Fitness",
+    "Timestamp": "2024-12-09 10:18:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "26.65",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Netflix",
+    "Timestamp": "2024-12-09 07:48:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "72.93",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Hydro One",
+    "Timestamp": "2024-12-08 21:04:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "8.68",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2024-12-06 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "17.76",
+    "Category": "Expense",
+    "Label": "Leisure & Recreation",
+    "Reason": "Amazon.ca",
+    "Timestamp": "2024-12-06 13:27:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "70.67",
+    "Category": "Expense",
+    "Label": "Other",
+    "Reason": "Winners",
+    "Timestamp": "2024-12-05 09:03:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "19.28",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Uber Eats",
+    "Timestamp": "2024-12-05 04:10:00",
+    "Type": "Expense",
+    "Frequency": "Daily"
+  },
+  {
+    "Amount": "91.38",
+    "Category": "Expense",
+    "Label": "Groceries & Dining",
+    "Reason": "Farm Boy",
+    "Timestamp": "2024-12-03 19:19:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "60.20",
+    "Category": "Expense",
+    "Label": "Housing & Utilities",
+    "Reason": "Bell Fibe",
+    "Timestamp": "2024-12-02 23:46:00",
+    "Type": "Expense",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "704.79",
+    "Category": "Save&Invest",
+    "Label": "Savings Account",
+    "Reason": "Monthly Savings Transfer",
+    "Timestamp": "2024-12-02 11:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "24.51",
+    "Category": "Save&Invest",
+    "Label": "Stocks",
+    "Reason": "WealthSimple Auto-Invest",
+    "Timestamp": "2024-12-01 18:00:00",
+    "Type": "Save&Invest",
+    "Frequency": "Monthly"
+  },
+  {
+    "Amount": "129.36",
+    "Category": "Income",
+    "Label": "Other",
+    "Reason": "E-Transfer / Refund",
+    "Timestamp": "2024-12-01 12:00:00",
+    "Type": "Income",
+    "Frequency": "OneTime"
+  },
+  {
+    "Amount": "2304.81",
+    "Category": "Housing & Utilities",
+    "Label": "Rent/Mortgage",
+    "Reason": "Property Management",
+    "Timestamp": "2024-12-01 10:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  }
+]

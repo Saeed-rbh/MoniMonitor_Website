@@ -8,7 +8,7 @@ import React, {
 import { useSpring, animated } from "react-spring";
 import { FaCheck } from "react-icons/fa";
 import { FaXmark } from "react-icons/fa6";
-import { ScalableElement } from "../Tools/tools";
+import { ScalableElement } from "../utils/tools";
 import { MdModeEditOutline } from "react-icons/md";
 
 const AmountLogo = ({ Animate1, Animate2, style1, style2, fontColor }) => {
@@ -186,11 +186,11 @@ const Amount = ({
     flexDirection: "column",
   });
   const label = useSpring({
-    position: "relative",
+
     fontSize: addStage !== index ? "1rem" : "0.7rem",
     color: "var(--Bc-2)",
     borderRadius: "18px",
-    width: addStage !== index ? 35 : 70,
+
     height: 45,
     width: addStage !== index ? 45 : 65,
     display: "flex",
@@ -198,7 +198,7 @@ const Amount = ({
     alignItems: "center",
     justifyContent: "center",
     cursor: addStage !== index ? "pointer" : "auto",
-    top: addStage !== 0 ? 3 : 12,
+
     backgroundColor: addStage !== index ? "var(--Ec-2)" : "var(--Ac-5)",
     left: addStage === index ? 0 : 7,
     top: 23,

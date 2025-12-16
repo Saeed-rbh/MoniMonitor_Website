@@ -6,8 +6,8 @@ import React, {
   useMemo,
 } from "react";
 import { useSprings, useSpring, animated, easings } from "react-spring";
-import { ScalableElement } from "../Tools/tools";
-import useClickOutside from "../Tools/useClickOutside";
+import { ScalableElement } from "../utils/tools";
+import useClickOutside from "../hooks/useClickOutside";
 import { useLongPress } from "use-long-press";
 import { filter } from "framer-motion/client";
 
