@@ -41,11 +41,11 @@ const fillMissingMonths = (data) => {
   return filledData;
 };
 
-const LabelDistribution = (Amount, labels) => {
+const LabelDistribution = (amount, labels) => {
   const labelPercentages = Object.keys(labels).map((label) => {
     return {
       label: label,
-      percentage: (labels[label] / Amount) * 100, // Convert to string with 2 decimal places
+      percentage: (labels[label] / amount) * 100,
     };
   });
 
@@ -56,14 +56,13 @@ const LabelDistribution = (Amount, labels) => {
       return a.label.localeCompare(b.label); // Maintain stability by label name
     }
   });
-  const sortedLabelDistributionExpense = {};
-  labelPercentages?.forEach((item) => {
-    sortedLabelDistributionExpense[item.label] = Number(
-      item.percentage.toFixed(2)
-    );
+
+  const sortedDistribution = {};
+  labelPercentages.forEach((item) => {
+    sortedDistribution[item.label] = Number(item.percentage.toFixed(2));
   });
 
-  return sortedLabelDistributionExpense;
+  return sortedDistribution;
 };
 
 const groupTransactionsByMonth = (transactions) => {
@@ -115,67 +114,49 @@ const groupTransactionsByMonth = (transactions) => {
       groupedTransactions[key].totalExpense += Number(transaction.Amount);
       groupedTransactions[key].netTotal -= Number(transaction.Amount);
       if (label) {
-        if (groupedTransactions[key].labelDistributionExpense[label]) {
-          groupedTransactions[key].labelDistributionExpense[label] += Number(
-            transaction.Amount
-          );
-        } else {
-          groupedTransactions[key].labelDistributionExpense[label] = Number(
-            transaction.Amount
-          );
-        }
+        groupedTransactions[key].labelDistributionExpense[label] =
+          (groupedTransactions[key].labelDistributionExpense[label] || 0) +
+          Number(transaction.Amount);
       }
     } else if (transaction.Category === "Income") {
       groupedTransactions[key].totalIncome += Number(transaction.Amount);
       groupedTransactions[key].netTotal += Number(transaction.Amount);
       if (label) {
-        if (groupedTransactions[key].labelDistributionIncome[label]) {
-          groupedTransactions[key].labelDistributionIncome[label] += Number(
-            transaction.Amount
-          );
-        } else {
-          groupedTransactions[key].labelDistributionIncome[label] = Number(
-            transaction.Amount
-          );
-        }
+        groupedTransactions[key].labelDistributionIncome[label] =
+          (groupedTransactions[key].labelDistributionIncome[label] || 0) +
+          Number(transaction.Amount);
       }
     } else if (transaction.Category === "Save&Invest") {
       groupedTransactions[key].totalSaving += Number(transaction.Amount);
       if (label) {
-        if (groupedTransactions[key].labelDistributionSaving[label]) {
-          groupedTransactions[key].labelDistributionSaving[label] += Number(
-            transaction.Amount
-          );
-        } else {
-          groupedTransactions[key].labelDistributionSaving[label] = Number(
-            transaction.Amount
-          );
-        }
+        groupedTransactions[key].labelDistributionSaving[label] =
+          (groupedTransactions[key].labelDistributionSaving[label] || 0) +
+          Number(transaction.Amount);
       }
     }
   });
 
   // Determine top labels and sort by percentage (with stability)
   Object.keys(groupedTransactions)?.forEach((key) => {
-    const ExpenseAmount = groupedTransactions[key].totalExpense;
+    const expenseAmount = groupedTransactions[key].totalExpense;
     const labelExpense = groupedTransactions[key].labelDistributionExpense;
 
     groupedTransactions[key].labelDistributionExpense = LabelDistribution(
-      ExpenseAmount,
+      expenseAmount,
       labelExpense
     );
 
-    const IncomeAmount = groupedTransactions[key].totalIncome;
+    const incomeAmount = groupedTransactions[key].totalIncome;
     const labelIncome = groupedTransactions[key].labelDistributionIncome;
     groupedTransactions[key].labelDistributionIncome = LabelDistribution(
-      IncomeAmount,
+      incomeAmount,
       labelIncome
     );
 
-    const SavingAmount = groupedTransactions[key].totalSaving;
+    const savingAmount = groupedTransactions[key].totalSaving;
     const labelSaving = groupedTransactions[key].labelDistributionSaving;
     groupedTransactions[key].labelDistributionSaving = LabelDistribution(
-      SavingAmount,
+      savingAmount,
       labelSaving
     );
 
@@ -285,14 +266,14 @@ const getNetAmounts = (Transactions) => {
   const result = months.reduce((acc, month) => {
     const incomeTotal =
       Number(Transactions[month]?.totalIncome?.toFixed(2)) || 0;
-    const ExpenseTotal =
+    const expenseTotal =
       Number(Transactions[month]?.totalExpense?.toFixed(2)) || 0;
     const savingTotal =
       Number(Transactions[month]?.totalSaving?.toFixed(2)) || 0;
     const netTotal = Number(Transactions[month]?.netTotal?.toFixed(2)) || 0;
     acc[month] = {
       income: incomeTotal,
-      Expense: ExpenseTotal,
+      Expense: expenseTotal,
       saving: savingTotal,
       net: netTotal,
       month: monthsNames[Number(month.split("-")[1]) - 1],
@@ -303,15 +284,13 @@ const getNetAmounts = (Transactions) => {
   return result;
 };
 
-const getSelectedMonthData = (transactionsByMonth, whichMonth) => {
-  const entries = Object.entries(transactionsByMonth);
-  return !!entries[entries.length - whichMonth - 1]
-    ? entries[entries.length - whichMonth - 1][1]
-    : null;
-};
+import mockTransactions from "./mockTransactions.json";
 
-export const fetchTransactions = async ({ whichMonth, userId = 90260003 }) => {
-  const allTransactions = await GetDataFromDB((userId = 90260003));
+export const fetchAllTransactionData = async (userId = 90260003) => {
+  let allTransactions = await GetDataFromDB(userId);
+  if (!Array.isArray(allTransactions)) allTransactions = [];
+
+  allTransactions = [...allTransactions, ...mockTransactions];
 
   const totalTransactions = groupTransactionsByMonth(allTransactions);
 
@@ -319,12 +298,35 @@ export const fetchTransactions = async ({ whichMonth, userId = 90260003 }) => {
     getMonthDataAvailability(totalTransactions)
   ).reverse();
 
-  const { transactions, ...selected } = getSelectedMonthData(
+  const netAmounts = getNetAmounts(totalTransactions);
+
+  return {
+    totalTransactions,
+    Availability,
+    netAmounts,
+  };
+};
+
+export const getSelectedMonthData = (transactionsByMonth, whichMonth) => {
+  const entries = Object.entries(transactionsByMonth);
+  const targetIndex = entries.length - whichMonth - 1;
+  const result = entries[targetIndex] ? entries[targetIndex][1] : null;
+
+  if (result) {
+    const { transactions, ...rest } = result;
+    return { transactions, selected: rest };
+  }
+  return { transactions: [], selected: {} };
+};
+
+export const fetchTransactions = async ({ whichMonth, userId = 90260003 }) => {
+  const { totalTransactions, Availability, netAmounts } =
+    await fetchAllTransactionData(userId);
+
+  const { transactions, selected } = getSelectedMonthData(
     totalTransactions,
     whichMonth
   );
-
-  const netAmounts = getNetAmounts(totalTransactions);
 
   return {
     selected,

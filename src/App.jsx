@@ -14,6 +14,8 @@ import AddTransaction from "./AddTransaction/AddTransaction";
 const MainMenu = lazy(() => import("./MainMenu/MainMenu"));
 const Header = lazy(() => import("./Header/header"));
 const Telegram = lazy(() => import("./Telegram/MoneyMonitor"));
+const Insight = lazy(() => import("./Insight/Insight"));
+const Account = lazy(() => import("./Account/Account"));
 
 const App = () => {
   // State management for user data
@@ -87,7 +89,7 @@ const App = () => {
 
               {/* Main Menu Component */}
               <MainMenu
-                isMoreClicked={isMoreClicked || false}
+                isMoreClicked={isMoreClicked}
                 setIsMoreClicked={setIsMoreClicked}
               />
 
@@ -135,6 +137,8 @@ const App = () => {
                     />
                   }
                 />
+                <Route path="/Insight" element={<Insight />} />
+                <Route path="/Account" element={<Account />} />
               </Routes>
             </div>
           ) : (

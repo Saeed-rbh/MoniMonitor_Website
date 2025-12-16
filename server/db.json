@@ -1,0 +1,2058 @@
+[
+  {
+    "Amount": "3041.55",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2024-10-01T13:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "82.67",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2024-10-01T16:09:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "1000.20",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2024-10-02T14:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "23.15",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2024-10-04T17:58:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "219.17",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2024-10-05T16:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "112.43",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2024-10-14T21:49:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "32.25",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2024-10-14T22:18:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "14.53",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2024-10-16T22:48:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "73.54",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2024-10-21T23:37:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "10.99",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2024-10-22T17:51:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "21.20",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2024-10-23T19:13:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "91.63",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2024-10-26T15:23:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "57.51",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2024-10-30T21:05:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3230.42",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2024-11-01T13:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "1015.79",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2024-11-02T14:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "35.36",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2024-11-04T15:28:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "310.56",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2024-11-05T17:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "30.51",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2024-11-06T21:09:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "142.63",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2024-11-08T00:59:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "59.09",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2024-11-09T01:52:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "24.59",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2024-11-13T16:58:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "23.38",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2024-11-13T18:13:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "31.54",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2024-11-13T23:57:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "29.87",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2024-11-14T19:50:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "39.50",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2024-11-18T21:38:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "11.84",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2024-11-20T23:04:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "54.32",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2024-11-20T23:42:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "33.89",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2024-11-23T13:10:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "44.62",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2024-11-23T18:40:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "75.03",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2024-11-25T00:09:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "61.01",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2024-11-25T17:28:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "39.55",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2024-11-26T17:42:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "174.54",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2024-11-30T19:31:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "14.23",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2024-12-01T03:13:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3351.85",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2024-12-01T14:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "1087.68",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2024-12-02T15:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "26.94",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2024-12-03T00:52:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "13.95",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2024-12-05T14:53:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "268.89",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2024-12-05T17:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "73.14",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2024-12-09T22:07:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "54.75",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2024-12-13T16:40:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "53.61",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2024-12-14T15:46:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "63.89",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2024-12-16T13:22:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "24.99",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2024-12-17T13:29:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "148.69",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2024-12-22T21:27:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "28.83",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2024-12-25T00:14:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "136.73",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2024-12-30T15:27:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3397.07",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2025-01-01T14:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "1084.09",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2025-01-02T15:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "398.60",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2025-01-05T17:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "76.49",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-01-08T01:02:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "128.20",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-01-11T15:19:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "117.58",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-01-11T22:29:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "84.01",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-01-12T01:08:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "14.45",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-01-12T19:55:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "76.72",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-01-14T03:43:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "88.55",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-01-17T01:35:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "84.93",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-01-17T17:46:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "44.83",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-01-20T18:15:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "43.02",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-01-22T21:09:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "23.51",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-01-26T17:22:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "25.13",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-01-29T21:29:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "46.25",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-01-30T20:45:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "81.71",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-01-31T20:31:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3399.62",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2025-02-01T14:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "67.72",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-02-01T14:18:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "1032.45",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2025-02-02T15:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "32.93",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-02-03T02:05:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "185.77",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-02-03T14:18:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "23.61",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-02-04T15:57:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "459.57",
+    "Category": "Income",
+    "Label": "Freelance",
+    "Reason": "Side Project",
+    "Timestamp": "2025-02-04T19:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "303.72",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2025-02-05T17:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "35.88",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-02-06T19:24:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "110.48",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-02-07T02:45:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "67.50",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-02-08T02:26:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "11.24",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-02-12T03:46:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "14.39",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-02-13T22:47:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "11.55",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-02-14T17:59:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "99.84",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-02-15T14:58:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "20.80",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-02-16T22:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "96.29",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-02-17T20:26:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "7.89",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-02-24T15:14:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "49.07",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-02-28T02:03:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "45.58",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-03-01T00:44:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3191.45",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2025-03-01T14:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "1041.57",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2025-03-02T15:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "69.38",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-03-02T15:15:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "469.81",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2025-03-05T17:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "81.72",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-03-05T20:36:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "17.53",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-03-06T22:13:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "73.21",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-03-10T12:46:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "61.56",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-03-12T23:53:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "49.11",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-03-15T14:49:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "12.01",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-03-16T18:28:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "9.03",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-03-17T21:09:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "71.88",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-03-26T20:23:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "144.23",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-03-27T17:30:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "367.29",
+    "Category": "Income",
+    "Label": "Freelance",
+    "Reason": "Side Project",
+    "Timestamp": "2025-03-27T18:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "76.30",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-03-27T23:50:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "85.69",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-03-31T01:23:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "74.42",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-03-31T02:38:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3491.58",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2025-04-01T13:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "41.91",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-04-01T18:47:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "93.86",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-04-01T22:39:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "1064.30",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2025-04-02T14:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "24.18",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-04-04T14:33:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "48.29",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-04-04T22:20:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "363.60",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2025-04-05T16:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "77.49",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-04-06T16:52:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "162.43",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-04-06T23:45:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "76.31",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-04-07T18:04:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "37.01",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-04-07T21:01:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "5.30",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-04-10T15:13:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "43.20",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-04-13T17:56:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "77.45",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-04-14T15:38:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "23.07",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-04-19T01:42:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "22.96",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-04-20T00:16:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "14.15",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-04-25T21:13:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "43.00",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-04-27T00:07:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "52.68",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-04-30T12:25:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "31.54",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-04-30T15:22:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "46.39",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-04-30T23:06:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "17.50",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-05-01T00:38:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3141.00",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2025-05-01T13:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "1092.81",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2025-05-02T14:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "426.65",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2025-05-05T16:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "76.54",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-05-08T15:55:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "47.92",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-05-08T17:51:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "130.83",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-05-09T16:13:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "100.09",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-05-10T12:44:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "22.30",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-05-11T13:43:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "33.94",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-05-14T14:50:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "12.43",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-05-15T00:53:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "38.81",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-05-17T14:25:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "29.15",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-05-19T19:07:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "117.62",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-05-20T15:21:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "185.99",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-05-21T00:20:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "61.19",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-05-21T18:32:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "26.86",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-05-23T02:32:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "23.62",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-05-24T00:37:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "93.85",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-05-24T23:32:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "103.05",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-05-26T02:15:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "53.40",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-05-27T00:17:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3368.06",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2025-06-01T13:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "1005.01",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2025-06-02T14:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "46.16",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-06-02T18:04:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "24.67",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-06-03T13:16:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "398.97",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2025-06-05T16:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "73.59",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-06-07T00:37:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "32.32",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-06-10T22:40:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "25.18",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-06-12T01:13:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "194.56",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-06-12T14:07:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "25.99",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-06-12T15:43:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "51.72",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-06-12T17:39:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "11.41",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-06-12T18:16:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "194.94",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-06-13T01:31:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "10.34",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-06-13T02:41:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "51.40",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-06-15T21:42:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "62.42",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-06-18T13:41:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "67.74",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-06-18T17:21:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "62.54",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-06-20T22:23:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "19.16",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-06-30T02:10:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3378.03",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2025-07-01T13:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "1087.49",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2025-07-02T14:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "40.33",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-07-03T02:46:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "430.13",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2025-07-05T16:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "25.14",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-07-05T20:30:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "64.13",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-07-06T00:16:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "26.47",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-07-07T02:15:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "168.65",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-07-07T20:34:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "53.33",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-07-09T20:52:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "9.94",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-07-16T17:09:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "40.93",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-07-18T21:01:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "73.81",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-07-21T01:04:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "110.66",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-07-25T00:36:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "15.84",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-07-27T14:26:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "54.96",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-07-28T01:36:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "64.15",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-07-29T13:38:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "71.83",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-07-31T22:38:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3430.66",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2025-08-01T13:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "1090.06",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2025-08-02T14:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "28.32",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-08-03T20:51:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "40.60",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-08-05T00:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "241.79",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2025-08-05T16:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "69.59",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-08-05T16:42:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "29.90",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-08-11T01:16:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "26.52",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-08-16T16:39:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "39.10",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-08-20T13:39:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "92.31",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-08-20T22:52:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "58.09",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-08-24T00:20:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "112.37",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-08-25T21:22:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "49.49",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-08-27T12:12:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "43.51",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-08-30T22:03:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3428.70",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2025-09-01T13:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "70.62",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-09-01T14:53:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "1076.57",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2025-09-02T14:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "185.25",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-09-02T21:14:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "137.38",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-09-04T15:44:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "305.76",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2025-09-05T16:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "44.08",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-09-05T18:42:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "39.95",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-09-07T16:51:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "44.67",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-09-09T12:05:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "79.60",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-09-10T14:14:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "104.13",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-09-12T20:01:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "73.00",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-09-18T13:39:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "44.21",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-09-18T21:17:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "23.24",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-09-20T22:14:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "12.99",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-09-26T02:31:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "58.14",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-09-27T02:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "34.85",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-09-30T23:14:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3011.04",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2025-10-01T13:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "142.11",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-10-01T13:16:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "1035.30",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2025-10-02T14:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "30.79",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-10-03T18:58:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "211.89",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2025-10-05T16:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "127.45",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-10-08T14:15:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "38.79",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-10-09T14:06:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "73.35",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-10-09T15:01:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "92.33",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-10-12T14:11:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "29.71",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-10-12T14:58:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "82.33",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-10-14T19:15:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "64.51",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-10-16T12:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "29.20",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-10-19T21:47:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "39.27",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-10-24T17:55:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "48.01",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-10-27T01:12:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "49.03",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-10-28T01:53:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "76.44",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-10-28T15:34:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3372.05",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2025-11-01T13:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "24.19",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-11-02T14:25:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "1071.33",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2025-11-02T15:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "68.87",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-11-04T23:48:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "462.39",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2025-11-05T17:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "178.15",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-11-10T00:18:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "38.81",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-11-13T01:24:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "154.09",
+    "Category": "Expense",
+    "Label": "Shopping",
+    "Reason": "Shopping purchase",
+    "Timestamp": "2025-11-18T13:23:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "18.72",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-11-21T13:53:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "90.23",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-11-22T19:47:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "44.32",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-11-28T16:57:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "35.38",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-11-29T02:07:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "57.08",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-11-29T21:33:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "3212.25",
+    "Category": "Income",
+    "Label": "Salary",
+    "Reason": "Monthly Salary",
+    "Timestamp": "2025-12-01T14:00:00.000Z",
+    "Type": "Credit"
+  },
+  {
+    "Amount": "148.06",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-12-01T18:47:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "1071.06",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Apartment Rent",
+    "Timestamp": "2025-12-02T15:00:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "25.15",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-12-04T15:26:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "279.39",
+    "Category": "Save&Invest",
+    "Label": "Savings",
+    "Reason": "Monthly Savings",
+    "Timestamp": "2025-12-05T17:00:00.000Z",
+    "Type": "Transfer"
+  },
+  {
+    "Amount": "58.57",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-12-06T19:40:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "58.30",
+    "Category": "Expense",
+    "Label": "Food",
+    "Reason": "Food purchase",
+    "Timestamp": "2025-12-10T03:41:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "52.81",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-12-13T18:37:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "71.17",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-12-15T02:44:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "47.40",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-12-17T00:07:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "27.02",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-12-17T02:18:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "48.12",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-12-18T23:51:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "26.11",
+    "Category": "Expense",
+    "Label": "Transport",
+    "Reason": "Transport purchase",
+    "Timestamp": "2025-12-20T13:30:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "116.07",
+    "Category": "Expense",
+    "Label": "Utilities",
+    "Reason": "Utilities purchase",
+    "Timestamp": "2025-12-22T01:46:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "76.31",
+    "Category": "Expense",
+    "Label": "Rent",
+    "Reason": "Rent purchase",
+    "Timestamp": "2025-12-22T20:21:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "67.16",
+    "Category": "Expense",
+    "Label": "Health",
+    "Reason": "Health purchase",
+    "Timestamp": "2025-12-26T16:30:00.000Z",
+    "Type": "Debit"
+  },
+  {
+    "Amount": "19.93",
+    "Category": "Expense",
+    "Label": "Entertainment",
+    "Reason": "Entertainment purchase",
+    "Timestamp": "2025-12-29T20:19:00.000Z",
+    "Type": "Debit"
+  }
+]

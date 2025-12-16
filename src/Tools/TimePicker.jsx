@@ -24,9 +24,7 @@ const TimePicker = ({ setSelectedDate, selectedDate, submit, addStage }) => {
   }, [hours, minutes, setSelectedDate, blur]);
 
   const parentStyle = {
-    // border: "1px solid var(--Ac-3)",
     borderRadius: "18px",
-    // padding: "5px",
     textAlign: "center",
     backgroundColor: "transparent",
     outline: "none",
@@ -36,7 +34,6 @@ const TimePicker = ({ setSelectedDate, selectedDate, submit, addStage }) => {
     alignItems: "center",
     justifyContent: "center",
     color: "var(--Ac-2)",
-    // height: "100%",
     boxSizing: "border-box",
     aspectRatio: "1/1",
   };
@@ -52,9 +49,10 @@ const TimePicker = ({ setSelectedDate, selectedDate, submit, addStage }) => {
     transition: "background-color 0.3s ease",
     caretColor: "transparent", // Hide caret
     border: "none",
-    // padding: "2px 4px",
     fontSize: "0.7rem",
     fontWeight: "400",
+    padding: "5px",
+    margin: "0 -2px",
   };
 
   const inputFocusStyle = {
@@ -73,7 +71,7 @@ const TimePicker = ({ setSelectedDate, selectedDate, submit, addStage }) => {
   };
 
   const parentFocus = (e) => {
-    e.currentTarget.style.backgroundColor = "var(--Ac-4)";
+    // e.currentTarget.style.backgroundColor = "var(--Ac-4)";
   };
 
   const parentBlur = (e) => {

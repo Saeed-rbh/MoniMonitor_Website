@@ -312,6 +312,7 @@ const MainMenu = ({ isMoreClicked, setIsMoreClicked }) => {
     {
       icon: RiDonutChartFill,
       label: "Insight",
+      route: "/Insight",
       active: location === "/Insight",
     },
   ];
@@ -327,6 +328,7 @@ const MainMenu = ({ isMoreClicked, setIsMoreClicked }) => {
     {
       icon: IoWalletOutline,
       label: "Account",
+      route: "/Account",
       active: location === "/Account",
     },
   ];

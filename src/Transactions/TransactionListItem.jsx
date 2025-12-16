@@ -2,11 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useSpring, animated, config } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
 import { ScalableElement } from "../Tools/tools";
-import {
-  Expense_categories,
-  Income_categories,
-  SaveInvest_categories,
-} from "../Tools/Categories";
+import { getTransactionIcon } from "../Tools/Categories";
 
 const TransactionListItem = ({
   description,
@@ -21,16 +17,7 @@ const TransactionListItem = ({
   setOpen,
   setShowTransaction,
 }) => {
-  const OriginalList =
-    category === "Income"
-      ? Income_categories
-      : category === "Expense"
-      ? Expense_categories
-      : SaveInvest_categories;
-
-  const ModifyLabel = OriginalList.find(
-    (icon) => icon[0].toLowerCase() === label.toLowerCase()
-  )[1];
+  const ModifyLabel = getTransactionIcon(category, label);
 
   const [visibleButton, setVisibleButton] = useState("M");
   const [showLeftActions, setLeftShowActions] = useState(false);
@@ -94,14 +81,14 @@ const TransactionListItem = ({
       visibleButton === "L"
         ? "translateX(90px)"
         : visibleButton === "LL"
-        ? "translateX(380px)"
-        : "translateX(90px)",
+          ? "translateX(380px)"
+          : "translateX(90px)",
     width: visibleButton === "LL" ? "340px" : "80px",
     opacity: finalDel
       ? 0
       : visibleButton === "L" || visibleButton === "LL"
-      ? 1
-      : 0,
+        ? 1
+        : 0,
     config: visibleButton === "LL" ? config.default : config.slow,
     onRest: () => handleDelRest(),
   });
@@ -124,14 +111,14 @@ const TransactionListItem = ({
       visibleButton === "R"
         ? "translateX(-90px)"
         : visibleButton === "RR"
-        ? "translateX(-385px)"
-        : "translateX(-100px)",
+          ? "translateX(-385px)"
+          : "translateX(-100px)",
     width: visibleButton === "RR" ? "350px" : "80px",
     opacity: finalMod
       ? 0
       : visibleButton === "R" || visibleButton === "RR"
-      ? 1
-      : 0,
+        ? 1
+        : 0,
     config: visibleButton === "RR" ? config.default : config.slow,
     onRest: () => handleModRest(),
   });
@@ -163,12 +150,12 @@ const TransactionListItem = ({
       visibleButton === "L" && !resetMod
         ? "translateX(-90px)"
         : visibleButton === "LL" && !resetMod
-        ? "translateX(-380px)"
-        : visibleButton === "R" && !resetMod
-        ? "translateX(90px)"
-        : visibleButton === "RR" && !resetMod
-        ? "translateX(380px)"
-        : "translateX(0px)",
+          ? "translateX(-380px)"
+          : visibleButton === "R" && !resetMod
+            ? "translateX(90px)"
+            : visibleButton === "RR" && !resetMod
+              ? "translateX(380px)"
+              : "translateX(0px)",
     touchAction: "none",
     marginTop: finalDel || finalMod ? -55 : 0,
     opacity: finalDel || finalMod ? 0 : 1,
@@ -202,8 +189,8 @@ const TransactionListItem = ({
     category === "Income"
       ? "var(--Fc-2)"
       : category === "Expense"
-      ? "var(--Gc-2)"
-      : "var(--Ac-2)";
+        ? "var(--Gc-2)"
+        : "var(--Ac-2)";
 
   return (
     <>

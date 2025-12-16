@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo, useCallback, useReducer } from "react";
 import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { FaCheck } from "react-icons/fa";
 import { MdOutlineAutoAwesome } from "react-icons/md";
@@ -10,8 +10,7 @@ import Reason from "./Reason";
 import DateTime from "./DateTime";
 import Category from "./Category";
 import Type from "./Type";
-import MoreCategory from "./MoreCategory";
-import MoreDateTime from "./MoreDateTime";
+
 import {
   Expense_categories,
   Income_categories,
@@ -31,22 +30,39 @@ function AddTransactionFeed({
   /**
    * State Management
    */
-
-  const [addStage, setAddStage] = useState(null);
   const [value, setValue] = useState("");
   const [valueError, setValueError] = useState(true);
   const [reason, setReason] = useState("");
   const [whichType, setWhichType] = useState(addTransaction.Type !== "Monthly");
   const [isLongPress, setIsLongPress] = useState([false, null]);
 
+  const initialStageState = null;
+  const stageReducer = (state, action) => {
+    switch (action.type) {
+      case "NEXT_STAGE":
+        return state + 1 > 4 ? null : state + 1;
+      case "PREV_STAGE":
+        return state - 1;
+      case "SET_STAGE":
+        return action.stage;
+      default:
+        return state;
+    }
+  };
+  const [addStage, dispatch] = useReducer(stageReducer, initialStageState);
+
   /**
    * Date Management
    */
   const currentDate = new Date();
-  const transactionDate = addTransaction?.Timestamp
-    ? new Date(addTransaction.Timestamp)
-    : currentDate;
-  // console.log(addTransaction.Timestamp, transactionDate);
+  const transactionDate = useMemo(
+    () =>
+      addTransaction?.Timestamp
+        ? new Date(addTransaction.Timestamp)
+        : currentDate,
+    [addTransaction]
+  );
+
   const [selectedDate, setSelectedDate] = useState({
     year: String(transactionDate.getFullYear()),
     month: String(transactionDate.getMonth() + 1).padStart(2, "0"),
@@ -79,8 +95,10 @@ function AddTransactionFeed({
     }
   }, [isAddClicked]);
 
-  const AutoDetect = ["Auto Detect", <MdOutlineAutoAwesome key="auto-icon" />];
-
+  const AutoDetect = useMemo(
+    () => ["Auto Detect", <MdOutlineAutoAwesome key="auto-icon" />],
+    []
+  );
   const List = useMemo(
     () => [AutoDetect, ...OriginalList],
     [AutoDetect, OriginalList]
@@ -128,51 +146,86 @@ function AddTransactionFeed({
   });
 
   /**
+   * Derived State
+   */
+  const topAdd = useMemo(() => {
+    switch (addStage) {
+      case 0:
+      case 1:
+        return 0;
+      case 2:
+        return -70;
+      case 3:
+        return -205;
+      case 4:
+        return -270;
+      default:
+        return 0;
+    }
+  }, [addStage]);
+
+  /**
    * Handlers
    */
-  const handleAddClick = () => {
+  const newTransactionMemo = useMemo(() => {
+    const selectedReason = reason.length !== 0 ? reason : addTransaction.Reason;
+    return {
+      Amount:
+        Number(value.replace(/[^0-9]/g, "")) !== 0
+          ? Number(value.replace(/[^0-9]/g, ""))
+          : addTransaction.Amount,
+      Reason: selectedReason,
+      Label: selectedCategory[0],
+      Timestamp: `${selectedDate.year}-${selectedDate.month}-${selectedDate.day} ${selectedDate.hours}:${selectedDate.minutes}`,
+      Type: whichType ? "Daily" : "Monthly",
+      Category: isAddClicked,
+    };
+  }, [
+    value,
+    reason,
+    addTransaction,
+    selectedCategory,
+    selectedDate,
+    whichType,
+    isAddClicked,
+  ]);
+
+  const handleAddClick = useCallback(() => {
     if (value.length < 1 && !Modify) {
       setValueError(false);
     } else {
       setValueError(true);
-      const selectedReason =
-        reason.length !== 0 ? reason : addTransaction.Reason;
-      const newTransaction = {
-        Amount:
-          Number(value.replace(/[^0-9]/g, "")) !== 0
-            ? Number(value.replace(/[^0-9]/g, ""))
-            : addTransaction.Amount,
-        Reason: selectedReason,
-        Label: selectedCategory[0],
-        Timestamp: `${selectedDate.year}-${selectedDate.month}-${selectedDate.day} ${selectedDate.hours}:${selectedDate.minutes}`,
-        Type: whichType ? "Daily" : "Monthly",
-        Category: isAddClicked,
-      };
-
-      // Set new transaction details and close add transaction modal
-      setAddTransaction(newTransaction);
+      setAddTransaction(newTransactionMemo);
       setIsClicked(null);
       setModify(false);
       setOpen(true);
     }
-  };
+  }, [
+    value,
+    Modify,
+    newTransactionMemo,
+    setAddTransaction,
+    setIsClicked,
+    setModify,
+    setOpen,
+  ]);
 
-  const handleNext = () => {
-    setAddStage((prev) => {
-      const nextValue = null; //prev + 1;
-      return nextValue > 4 ? null : nextValue;
-    });
-  };
-  const handleLast = () => setAddStage((prev) => prev - 1);
+  const handleNext = useCallback(() => {
+    dispatch({ type: "NEXT_STAGE" });
+  }, []);
 
-  const [topAdd, setTopAdd] = useState(0);
-  useEffect(() => {
-    if (addStage === 0) setTopAdd(0);
-    else if (addStage === 1 || addStage === null) setTopAdd(0);
-    else if (addStage === 2) setTopAdd(-70);
-    else if (addStage === 3) setTopAdd(-205);
-    else if (addStage === 4) setTopAdd(-270);
-  }, [addStage]);
+  const handleLast = useCallback(() => {
+    dispatch({ type: "PREV_STAGE" });
+  }, []);
+
+  const handleStage = useCallback(
+    (stage) => {
+      if (addStage === null) {
+        dispatch({ type: "SET_STAGE", stage });
+      }
+    },
+    [addStage]
+  );
 
   /**
    * Render Component
@@ -183,25 +236,6 @@ function AddTransactionFeed({
         <span style={DotStyle}>•</span>Add New{" "}
         <span>{isAddClicked?.replace("&", " & ")}</span>
       </h3>
-
-      {/* Conditional rendering for MoreCategory and MoreDateTime components */}
-      {isLongPress[0] && isLongPress[1] === "Category" && (
-        <MoreCategory
-          List={List}
-          setSelectedCategory={setSelectedCategory}
-          selectedCategory={selectedCategory}
-          defaultValue={Modify ? addTransaction.Label : ""}
-          isLongPress={isLongPress}
-          setIsLongPress={setIsLongPress}
-        />
-      )}
-      {isLongPress[0] && isLongPress[1] === "DateTime" && (
-        <MoreDateTime
-          isLongPress={isLongPress}
-          setIsLongPress={setIsLongPress}
-        />
-      )}
-
       {/* Main form elements */}
       <animated.ul style={moreBlurStyle}>
         <Type
@@ -213,10 +247,11 @@ function AddTransactionFeed({
           whichType={isAddClicked}
           setWhichType={setIsClicked}
           addStage={addStage}
-          setAddStage={setAddStage}
+          setAddStage={(stage) => dispatch({ type: "SET_STAGE", stage })}
           index={0}
           topAdd={topAdd}
           opacity={addStage > 1 && addStage !== null}
+          handleStage={handleStage}
         />
         {(addStage >= 1 || addStage === null) && (
           <Amount
@@ -224,7 +259,7 @@ function AddTransactionFeed({
             defaultValue={Modify ? addTransaction.Amount : ""}
             setValue={setValue}
             valueError={valueError}
-            setAddStage={setAddStage}
+            setAddStage={(stage) => dispatch({ type: "SET_STAGE", stage })}
             setValueError={setValueError}
             whichType={whichType}
             setWhichType={setWhichType}
@@ -232,6 +267,7 @@ function AddTransactionFeed({
             isAddClicked={isAddClicked}
             index={1}
             topAdd={topAdd}
+            handleStage={handleStage}
           />
         )}
         {(addStage >= 2 || addStage === null) && (
@@ -241,10 +277,11 @@ function AddTransactionFeed({
             addStage={addStage}
             defaultValue={Modify ? addTransaction.Reason : ""}
             isAddClicked={isAddClicked}
-            setAddStage={setAddStage}
+            setAddStage={(stage) => dispatch({ type: "SET_STAGE", stage })}
             index={2}
             topAdd={topAdd}
             opacity={addStage > 2 && addStage !== null}
+            handleStage={handleStage}
           />
         )}
         {(addStage >= 3 || addStage === null) && (
@@ -255,13 +292,14 @@ function AddTransactionFeed({
             isLongPress={isLongPress}
             setIsLongPress={setIsLongPress}
             addStage={addStage}
-            setAddStage={setAddStage}
+            setAddStage={(stage) => dispatch({ type: "SET_STAGE", stage })}
             index={3}
             topAdd={topAdd}
             opacity={addStage > 3 && addStage !== null}
+            handleStage={handleStage}
           />
         )}
-        {/*{(addStage >= 4 || addStage === null) && (
+        {(addStage >= 4 || addStage === null) && (
           <Category
             List={List}
             setSelectedCategory={setSelectedCategory}
@@ -272,8 +310,10 @@ function AddTransactionFeed({
             addStage={addStage}
             index={4}
             topAdd={topAdd}
+            setAddStage={(stage) => dispatch({ type: "SET_STAGE", stage })}
+            handleStage={handleStage}
           />
-        )} */}
+        )}
 
         {addStage !== 0 && (
           <animated.div

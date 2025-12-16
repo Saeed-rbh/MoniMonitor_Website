@@ -38,37 +38,23 @@ const Amount = ({
   valueError,
   setValueError,
   defaultValue,
-  whichType,
-  setWhichType,
-  isLongPress,
   addStage,
-  setAddStage,
   isAddClicked,
   index,
   topAdd,
+  handleStage,
 }) => {
   const fade = useSpring({
-    from: {
-      filter: !isLongPress ? "blur(10px)" : "blur(0px)",
-      y: addStage > index ? 0 : 0,
-      position: "absolute",
-    },
-    to: {
-      filter:
-        addStage === null
-          ? "blur(0px)"
-          : addStage < index || addStage === 3
-          ? "blur(10px)"
-          : !isLongPress
-          ? "blur(0px)"
-          : "blur(10px)",
-      position: "absolute",
-      top: 43,
-      height: addStage === index ? 150 : 100,
-      zIndex: 100003,
-      y: topAdd,
-      // opacity: addStage === index ? 0.5 : 1,
-    },
+    filter:
+      addStage === index || addStage === 2 || addStage === null
+        ? "blur(0px)"
+        : "blur(10px)",
+    position: "absolute",
+    top: 43,
+    cursor: addStage === null ? "pointer" : "auto",
+    height: addStage === index ? 150 : 100,
+    zIndex: 100003,
+    y: topAdd,
   });
 
   const textareaStyle = useSpring({
@@ -267,6 +253,7 @@ const Amount = ({
     <animated.li
       className="Add_Amount"
       style={{ ...AnountBorderStyle, ...fade }}
+      onClick={() => handleStage(index)}
     >
       <animated.div
         className="Add_background"

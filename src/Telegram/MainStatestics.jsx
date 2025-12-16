@@ -77,9 +77,9 @@ const MainStatestics = ({
   useEffect(() => {
     processedData.length > 0 &&
       processedData[mainPageMonth].income +
-        processedData[mainPageMonth].Expense +
-        processedData[mainPageMonth].saving ===
-        0 &&
+      processedData[mainPageMonth].Expense +
+      processedData[mainPageMonth].saving ===
+      0 &&
       setMainPageMonth(mainPageMonth + 1);
   }, [processedData]);
 
@@ -100,13 +100,11 @@ const MainStatestics = ({
         netTop: d.netPercentage < 0 ? "calc(50% + 10px)" : "none",
         netHeight:
           d.netPercentage > 0 ? `${d.netPercentage}%` : `${-d.netPercentage}%`,
-        ExpenseHeight: `${
-          d.ExpensePercentage === 0 ? MIN_PERCENTAGE : d.ExpensePercentage
-        }%`,
+        ExpenseHeight: `${d.ExpensePercentage === 0 ? MIN_PERCENTAGE : d.ExpensePercentage
+          }%`,
         ExpenseBg: d.ExpensePercentage === 0 ? FALLBACK_COLOR : null,
-        incomeHeight: `${
-          d.incomePercentage === 0 ? MIN_PERCENTAGE : d.incomePercentage
-        }%`,
+        incomeHeight: `${d.incomePercentage === 0 ? MIN_PERCENTAGE : d.incomePercentage
+          }%`,
         incomeBg: d.incomePercentage === 0 ? FALLBACK_COLOR : null,
         opacity: index + 1 === mainPageMonth ? 0.9 : 0.5,
         filter: index === mainPageMonth ? "grayscale(0)" : "grayscale(0.4)",
@@ -124,17 +122,17 @@ const MainStatestics = ({
     y: Math.min(
       0,
       processedData[mainPageMonth] &&
-        -1 *
-          heightFactor *
-          0.01 *
-          processedData[mainPageMonth].incomePercentage -
-          25,
+      -1 *
+      heightFactor *
+      0.01 *
+      processedData[mainPageMonth].incomePercentage -
+      25,
       processedData[mainPageMonth] &&
-        -1 *
-          heightFactor *
-          0.01 *
-          processedData[mainPageMonth].savingPercentage -
-          25
+      -1 *
+      heightFactor *
+      0.01 *
+      processedData[mainPageMonth].savingPercentage -
+      25
     ),
   });
 
@@ -143,17 +141,17 @@ const MainStatestics = ({
       Math.min(
         0,
         processedData[mainPageMonth] &&
-          -1 *
-            heightFactor *
-            0.01 *
-            processedData[mainPageMonth].incomePercentage -
-            25,
+        -1 *
+        heightFactor *
+        0.01 *
+        processedData[mainPageMonth].incomePercentage -
+        25,
         processedData[mainPageMonth] &&
-          -1 *
-            heightFactor *
-            0.01 *
-            processedData[mainPageMonth].savingPercentage -
-            25
+        -1 *
+        heightFactor *
+        0.01 *
+        processedData[mainPageMonth].savingPercentage -
+        25
       ) < -60
         ? 0
         : 40,
@@ -163,16 +161,16 @@ const MainStatestics = ({
     position: "absolute",
     y: processedData[mainPageMonth]
       ? heightFactor *
-          0.01 *
-          1.1 *
-          processedData[mainPageMonth].ExpensePercentage +
-        15
+      0.01 *
+      1.1 *
+      processedData[mainPageMonth].ExpensePercentage +
+      15
       : 0,
   });
   const valueSpringSpText = useSpring({
     marginTop:
       processedData[mainPageMonth] &&
-      heightFactor *
+        heightFactor *
         0.01 *
         1.1 *
         processedData[mainPageMonth].ExpensePercentage +
@@ -359,7 +357,7 @@ const MainStatestics = ({
                     processedData[index].income +
                       processedData[index].Expense +
                       processedData[index].saving !==
-                    0
+                      0
                       ? "pointer"
                       : "default",
                 }}

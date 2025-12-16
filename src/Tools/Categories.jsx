@@ -40,3 +40,18 @@ export const SaveInvest_categories = [
   ["Real Estate", <TbHomeDollar />],
   ["Other", <BiQuestionMark />],
 ];
+
+export const getTransactionIcon = (category, label) => {
+  const OriginalList =
+    category === "Income"
+      ? Income_categories
+      : category === "Expense"
+        ? Expense_categories
+        : SaveInvest_categories;
+
+  const foundIcon = OriginalList.find(
+    (icon) => icon[0].toLowerCase() === label.toLowerCase()
+  );
+
+  return foundIcon ? foundIcon[1] : null;
+};

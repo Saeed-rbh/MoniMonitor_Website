@@ -79,12 +79,20 @@ const MoneyMonitor = ({
             mainPageMonth={mainPageMonth}
             setMainPageMonth={setMainPageMonth}
           />
-          {Object.keys(mainSelected).length > 0 && (
-            <MoneyEntry
-              setIsMoreClicked={setIsMoreClicked}
-              Transactions={mainSelected}
-            />
-          )}
+          <MoneyEntry
+            setIsMoreClicked={setIsMoreClicked}
+            Transactions={
+              Object.keys(mainSelected).length > 0
+                ? mainSelected
+                : {
+                  totalIncome: 0,
+                  totalExpense: 0,
+                  totalSaving: 0,
+                  netTotal: 0,
+                  month: "Month",
+                }
+            }
+          />
         </animated.div>
       </div>
     </>

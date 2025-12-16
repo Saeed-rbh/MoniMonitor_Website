@@ -1,27 +1,40 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import App from './App';
+import React from 'react';
+import { vi } from 'vitest';
 
-test('renders counter button', () => {
-  render(<App />);
-  const buttonElement = screen.getByText(/count is 0/i);
-  expect(buttonElement).toBeInTheDocument();
-});
+// Mock axios to avoid network errors
+vi.mock('axios', () => ({
+  default: {
+    post: vi.fn(() => Promise.resolve({ data: [] })),
+    get: vi.fn(() => Promise.resolve({ data: [] })),
+  },
+}));
 
-test('count increases on button click', () => {
-  render(<App />);
-  const buttonElement = screen.getByText(/count is 0/i);
-  fireEvent.click(buttonElement);
-  expect(buttonElement).toHaveTextContent(/count is 1/i);
-});
+// Mock scrollableList since it relies on DOM properties not present in JSDOM
+vi.mock('./Tools/scrollableList', () => ({
+  default: () => <div>ScrollableList</div>,
+}));
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
-});
+// Mock hooks to avoid async logic and side effects
+vi.mock('./Tools/hooks', () => ({
+  useTransactionData: () => ({
+    Availability: [],
+    netAmounts: [],
+    transactions: [],
+    selected: {},
+  }),
+  useMainPageMonth: () => ({
+    mainPageMonth: 0,
+    setMainPageMonth: vi.fn(),
+  }),
+  useTelegramWebApp: vi.fn(),
+}));
 
-test('renders vite docs link', () => {
+
+test('renders MoniMonitor app without crashing', async () => {
   render(<App />);
-  const linkElement = screen.getByText(/vite docs/i);
-  expect(linkElement).toBeInTheDocument();
+  // Check for Loading state first
+  const loadingElement = screen.getByText(/Loading.../i);
+  expect(loadingElement).toBeInTheDocument();
 });

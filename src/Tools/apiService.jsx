@@ -10,7 +10,7 @@ export const sendDataToDB = async ({ record_entry }) => {
   };
   try {
     await axios.post(
-      "https://2h8gfybwsd.execute-api.us-east-1.amazonaws.com/MoniMonitor_ToDB",
+      "http://localhost:3001/MoniMonitor_ToDB",
       data,
       {
         headers: {
@@ -30,7 +30,7 @@ export const GetLabel = async ({ record_entry }) => {
   };
   try {
     const response = await axios.post(
-      "https://rxpr0qyikg.execute-api.us-east-1.amazonaws.com/MoniMonitor_Openai",
+      "http://localhost:3001/MoniMonitor_Openai",
       data,
       {
         headers: {
@@ -51,7 +51,7 @@ export const GetDataFromDB = async ({ userId = 90260003 }) => {
   };
   try {
     const response = await axios.post(
-      "https://2h8gfybwsd.execute-api.us-east-1.amazonaws.com/MoniMonitor_ToDB",
+      "http://localhost:3001/MoniMonitor_ToDB",
       data,
       {
         headers: {
@@ -64,3 +64,4 @@ export const GetDataFromDB = async ({ userId = 90260003 }) => {
     console.error("Error GetDataFromDB:", error);
   }
 };
+

@@ -2,9 +2,9 @@ import React, { useEffect } from "react";
 import { useSpring, animated } from "react-spring";
 import DatePicker from "../Tools/DatePicker";
 import TimePicker from "../Tools/TimePicker";
-import useLongPressHandler from "../Tools/useLongPressHandler";
 import { MdModeEditOutline } from "react-icons/md";
-import MoreDateTime from "./MoreDateTime";
+import MoreDate from "./MoreDate";
+import MoreTime from "./MoreTime";
 
 const DateTime = ({
   isLongPress,
@@ -19,10 +19,8 @@ const DateTime = ({
   index,
   topAdd,
   opacity,
+  handleStage,
 }) => {
-  useEffect(() => {
-    setAddStage(index);
-  }, []);
   useEffect(() => {
     const inputTime = new Date(
       `${selectedDate.year}-${String(selectedDate.month).padStart(
@@ -45,26 +43,23 @@ const DateTime = ({
   }, []);
 
   const fade = useSpring({
-    from: {
-      // filter: !isLongPress ? "blur(10px)" : "blur(0px)",
-      position: "absolute",
-    },
-    to: {
-      filter:
-        addStage === null
-          ? "blur(0px)"
-          : addStage < index || opacity
-          ? "blur(10px)"
-          : !isLongPress
-          ? "blur(0px)"
-          : "blur(0px)",
-      position: "absolute",
-      top: 180,
-      y: topAdd,
-      height: addStage === index ? 200 : 100,
-      zIndex: 100003,
-      opacity: opacity ? 0.5 : 1,
-    },
+    filter:
+      addStage === null
+        ? "blur(0px)"
+        : addStage < index || opacity
+        ? "blur(10px)"
+        : !isLongPress
+        ? "blur(0px)"
+        : "blur(0px)",
+    position: "absolute",
+    top: 180,
+    y: topAdd,
+    display: "flex",
+    cursor: addStage === null ? "pointer" : "auto",
+    justifyContent: "center",
+    height: addStage === index ? 200 : 100,
+    zIndex: 100003,
+    opacity: opacity ? 0.5 : 1,
   });
 
   const labelPar = useSpring({
@@ -115,7 +110,7 @@ const DateTime = ({
   // {...longBind()}
   return (
     <animated.li className="Add_DateTime" style={fade}>
-      <h1>
+      <h1 onClick={() => handleStage(index)}>
         <div className="Add_background"></div>
         <animated.div style={labelPar}>
           <animated.h4 style={label}>
@@ -135,7 +130,7 @@ const DateTime = ({
           Transaction Time
         </div>
       </h1>
-      <h1>
+      <h1 onClick={() => handleStage(index)}>
         <div className="Add_background"></div>
         <animated.div style={labelPar}>
           <animated.h4 style={label}>
@@ -156,13 +151,17 @@ const DateTime = ({
           Transaction Date
         </div>
       </h1>
-      {addStage === 3 && (
-        <MoreDateTime
-          isLongPress={addStage === index}
-          setIsLongPress={setIsLongPress}
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
-        />
+      {addStage === index && (
+        <>
+          <MoreDate
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+          />
+          {/* <MoreTime
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+          /> */}
+        </>
       )}
     </animated.li>
   );

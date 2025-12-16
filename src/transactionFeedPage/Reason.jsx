@@ -14,6 +14,7 @@ const Reason = ({
   index,
   topAdd,
   opacity,
+  handleStage,
 }) => {
   const fade = useSpring({
     from: {
@@ -32,6 +33,7 @@ const Reason = ({
           : "blur(10px)",
       y: addStage > index ? 0 : 0,
       position: "absolute",
+      cursor: addStage === null ? "pointer" : "auto",
       top: 113,
       height: addStage > index ? 100 : 295,
       y: topAdd,
@@ -198,7 +200,11 @@ const Reason = ({
   });
 
   return (
-    <animated.li className="Add_Reason" style={fade}>
+    <animated.li
+      className="Add_Reason"
+      style={fade}
+      onClick={() => handleStage(index)}
+    >
       <animated.div
         className="Add_background"
         style={backgroundStyle}

@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import { fetchTransactions } from "./transactionService";
+import {
+  fetchTransactions,
+  fetchAllTransactionData,
+  getSelectedMonthData,
+} from "./transactionService";
 
 export const fetchUserAttributes = async () => {
   try {
@@ -17,27 +21,40 @@ export const fetchUserAttributes = async () => {
 
 // Custom hook for fetching transaction data based on the month and userId
 export const useTransactionData = (whichMonth, userId) => {
-  const [data, setData] = useState({
-    selected: [],
+  const [fullData, setFullData] = useState(null);
+  const [displayData, setDisplayData] = useState({
+    selected: {},
     Availability: [],
-    netAmounts: [],
+    netAmounts: {},
     transactions: [],
   });
 
+  // 1. Fetch ALL data only when userId changes (or on mount)
   useEffect(() => {
-    const fetchData = async () => {
-      const result = await fetchTransactions({ whichMonth, userId });
-      setData({
-        selected: result.selected,
-        Availability: result.Availability,
-        netAmounts: result.netAmounts,
-        transactions: result.transactions,
-      });
+    const loadAllData = async () => {
+      const data = await fetchAllTransactionData(userId);
+      setFullData(data);
     };
-    fetchData();
-  }, [whichMonth, userId]);
+    loadAllData();
+  }, [userId]);
 
-  return data;
+  // 2. When whichMonth or fullData changes, just slice the data (instant)
+  useEffect(() => {
+    if (fullData) {
+      const { transactions, selected } = getSelectedMonthData(
+        fullData.totalTransactions,
+        whichMonth
+      );
+      setDisplayData({
+        selected: selected,
+        Availability: fullData.Availability,
+        netAmounts: fullData.netAmounts,
+        transactions: transactions,
+      });
+    }
+  }, [whichMonth, fullData]);
+
+  return displayData;
 };
 
 // Custom hook for managing the selected month on the main page

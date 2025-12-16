@@ -21,23 +21,30 @@ const containerStyleWithScrollbarHidden = {
   },
 };
 
-const itemStyle = (opacity, scale) => ({
+const itemStyle = (opacity, scale, margin, fontSize) => ({
   opacity,
   transform: `scale(${scale})`,
   transition: "opacity 0.5s, transform 0.5s",
   fontWeight: "400",
-  fontSize: "0.8rem",
-  margin: "10px",
+  fontSize: fontSize,
+  margin: `${margin}px 10px`,
 });
 
-const ScrollableList = ({ item, items, onSelect, onConfirm }) => {
+const ScrollableList = ({
+  item,
+  items,
+  onSelect,
+  onConfirm,
+  margin = 5,
+  fontSize = "0.8rem",
+}) => {
   const [currentIndex, setCurrentIndex] = useState(
     items.indexOf(item) !== -1 ? items.indexOf(item) : items.length
   );
   const containerRef = useRef(null);
   const scrollTimeoutRef = useRef(null);
   const [dynamicItems, setDynamicItems] = useState(
-    items.concat(items, items, items, items, items, items, items, items, items)
+    items.concat(items, items, items)
   );
   const isDragging = useRef(false);
   const dragStartY = useRef(0);
@@ -232,7 +239,7 @@ const ScrollableList = ({ item, items, onSelect, onConfirm }) => {
           return (
             <div
               key={index}
-              style={itemStyle(opacity, scale)}
+              style={itemStyle(opacity, scale, margin, fontSize)}
               onClick={() => handleItemClick(effectiveIndex)}
             >
               {item}

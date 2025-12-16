@@ -25,64 +25,61 @@ const TransactionList = ({
     isMoreClicked === "Balance"
       ? Transactions
       : Transactions.filter(
-          (transaction) => transaction.Category === isMoreClicked
-        );
+        (transaction) => transaction.Category === isMoreClicked
+      );
 
   const WindowHeight = useWindowHeight(100);
 
   const [sortby, setSortby] = useState("All");
   const [isCalendarClicked, setIsCalendarClicked] = useState(false);
 
-  const [totalAmount, setTotalAmount] = useState(0);
-  const [currentMonth, setCurrentMonth] = useState("");
-  const [currentYear, setCurrentYear] = useState("");
-  const [labelDistribution, setLabelDistribution] = useState([]);
+  const { totalAmount, currentMonth, currentYear, labelDistribution } =
+    React.useMemo(() => {
+      if (!selectedData || Object.keys(selectedData).length === 0) {
+        return {
+          totalAmount: 0,
+          currentMonth: "",
+          currentYear: "",
+          labelDistribution: [],
+        };
+      }
 
-  useEffect(() => {
-    if (selectedData.length !== 0) {
-      setTotalAmount(
+      const calculatedTotal =
         isMoreClicked === "Balance"
           ? selectedData.totalExpense +
-              selectedData.totalIncome +
-              selectedData.totalSaving
+          selectedData.totalIncome +
+          selectedData.totalSaving
           : isMoreClicked === "Income"
-          ? selectedData.totalIncome
-          : isMoreClicked === "Expense"
-          ? selectedData.totalExpense
-          : selectedData.totalSaving
-      );
-      setCurrentMonth(selectedData.month);
-      setCurrentYear(selectedData.year);
+            ? selectedData.totalIncome
+            : isMoreClicked === "Expense"
+              ? selectedData.totalExpense
+              : selectedData.totalSaving;
 
-      const distribution =
+      const rawDistribution =
         isMoreClicked === "Balance"
           ? selectedData.labelDistribution
           : isMoreClicked === "Income"
-          ? selectedData.labelDistributionIncome
-          : isMoreClicked === "Expense"
-          ? selectedData.labelDistributionExpense
-          : selectedData.labelDistributionSaving;
+            ? selectedData.labelDistributionIncome
+            : isMoreClicked === "Expense"
+              ? selectedData.labelDistributionExpense
+              : selectedData.labelDistributionSaving;
+
+      let sortedData = [];
+      if (rawDistribution) {
+        if (Array.isArray(rawDistribution)) {
+          sortedData = [...rawDistribution];
+        } else if (typeof rawDistribution === "object") {
+          sortedData = Object.entries(rawDistribution).map(
+            ([label, percentage]) => ({
+              category: label,
+              percentage: percentage,
+            })
+          );
+        }
+      }
+      sortedData.sort((a, b) => b.percentage - a.percentage);
 
       let other = 0;
-      let sortedData = Object.entries(distribution)
-        .map(([category, percentage]) => {
-          const percentageValue = percentage;
-          if (
-            category !== "Other" &&
-            (Object.entries(distribution).length < 4 || percentageValue > 5)
-          ) {
-            return {
-              category,
-              percentage: percentageValue,
-            };
-          } else {
-            other += percentageValue;
-            return null;
-          }
-        })
-        .filter((item) => item !== null)
-        .sort((a, b) => b.percentage - a.percentage);
-
       if (sortedData.length === 1) {
         sortedData.push(null, null);
       } else if (sortedData.length === 2) {
@@ -91,13 +88,17 @@ const TransactionList = ({
         for (let index = 3; index < sortedData.length; index++) {
           other += sortedData[index].percentage;
         }
-
         sortedData = sortedData.slice(0, 3);
       }
       sortedData.push({ category: "Other", percentage: other });
-      setLabelDistribution(sortedData);
-    }
-  }, [selectedData, whichMonth, isMoreClicked]);
+
+      return {
+        totalAmount: calculatedTotal,
+        currentMonth: selectedData.month,
+        currentYear: selectedData.year,
+        labelDistribution: sortedData,
+      };
+    }, [selectedData, isMoreClicked]);
 
   const monthlyMainRef = useRef(null);
 
@@ -126,129 +127,9 @@ const TransactionList = ({
     });
   };
 
-  const handleTransactionUnClick = () => {};
+  const handleTransactionUnClick = () => { };
 
-  const SummaryWidth = [
-    labelDistribution.length > 0 && !!labelDistribution[0]
-      ? labelDistribution[0].percentage
-      : 0,
-    labelDistribution.length > 0 && !!labelDistribution[1]
-      ? labelDistribution[1].percentage
-      : 0,
-    labelDistribution.length > 0 && !!labelDistribution[2]
-      ? labelDistribution[2].percentage
-      : 0,
-    labelDistribution.length > 0 && !!labelDistribution[3]
-      ? labelDistribution[3].percentage
-      : 0,
-  ];
 
-  const summaryStiles = [
-    useSpring({
-      width:
-        labelDistribution.length > 0
-          ? Math.max(SummaryWidth[0], 8) + "%"
-          : 0 + "%",
-      color:
-        isMoreClicked === "Balance" && labelDistribution.length > 0
-          ? labelDistribution[0].category === "Income"
-            ? "var(--Fc-2)"
-            : labelDistribution[0].category === "Expense"
-            ? "var(--Gc-2)"
-            : "var(--Ac-2)"
-          : "var(--Cc-2)",
-      backgroundColor:
-        isMoreClicked === "Balance" && labelDistribution.length > 0
-          ? labelDistribution[0].category === "Income"
-            ? "var(--Fc-2)"
-            : labelDistribution[0].category === "Expense"
-            ? "var(--Gc-2)"
-            : "var(--Ac-2)"
-          : "var(--Cc-2)",
-      outline: `3px solid ${
-        isMoreClicked === "Balance" && labelDistribution.length > 0
-          ? labelDistribution[0].category === "Income"
-            ? "var(--Fc-4)"
-            : labelDistribution[0].category === "Expense"
-            ? "var(--Gc-4)"
-            : "var(--Ac-4)"
-          : "var(--Cc-4)"
-      }`,
-    }),
-    useSpring({
-      width:
-        labelDistribution.length > 0
-          ? Math.max(SummaryWidth[1], 8) + "%"
-          : 0 + "%",
-      color:
-        isMoreClicked === "Balance" && labelDistribution.length > 0
-          ? labelDistribution[1].category === "Income"
-            ? "var(--Fc-2)"
-            : labelDistribution[1].category === "Expense"
-            ? "var(--Gc-2)"
-            : "var(--Ac-2)"
-          : "var(--Dc-2)",
-      backgroundColor:
-        isMoreClicked === "Balance" && labelDistribution.length > 0
-          ? labelDistribution[1].category === "Income"
-            ? "var(--Fc-2)"
-            : labelDistribution[1].category === "Expense"
-            ? "var(--Gc-2)"
-            : "var(--Ac-2)"
-          : "var(--Dc-2)",
-      outline: `3px solid ${
-        isMoreClicked === "Balance" && labelDistribution.length > 0
-          ? labelDistribution[1].category === "Income"
-            ? "var(--Fc-4)"
-            : labelDistribution[1].category === "Expense"
-            ? "var(--Gc-4)"
-            : "var(--Ac-4)"
-          : "var(--Cc-4)"
-      }`,
-    }),
-    useSpring({
-      width:
-        labelDistribution.length > 0
-          ? Math.max(SummaryWidth[2], 8) + "%"
-          : 0 + "%",
-      justifyContent: "flex-end",
-      color:
-        isMoreClicked === "Balance" && labelDistribution.length > 0
-          ? labelDistribution[2].category === "Income"
-            ? "var(--Fc-2)"
-            : labelDistribution[2].category === "Expense"
-            ? "var(--Gc-2)"
-            : "var(--Ac-2)"
-          : "var(--Bc-2)",
-      backgroundColor:
-        isMoreClicked === "Balance" && labelDistribution.length > 0
-          ? labelDistribution[2].category === "Income"
-            ? "var(--Fc-2)"
-            : labelDistribution[2].category === "Expense"
-            ? "var(--Gc-2)"
-            : "var(--Ac-2)"
-          : "var(--Bc-2)",
-      outline: `3px solid ${
-        isMoreClicked === "Balance" && labelDistribution.length > 0
-          ? labelDistribution[2].category === "Income"
-            ? "var(--Fc-4)"
-            : labelDistribution[2].category === "Expense"
-            ? "var(--Gc-4)"
-            : "var(--Ac-4)"
-          : "var(--Cc-4)"
-      }`,
-    }),
-    useSpring({
-      width:
-        labelDistribution.length > 0
-          ? Math.max(SummaryWidth[3], 8) + "%"
-          : 0 + "%",
-      color: "var(--Ac-1)",
-      backgroundColor: "var(--Ac-2)",
-      justifyContent: "flex-end",
-      outline: `3px solid var(--Ac-4)`,
-    }),
-  ];
 
   const [isAnimationEnds, setIsAnimationEnds] = useState(false);
   useEffect(() => {
@@ -296,12 +177,12 @@ const TransactionList = ({
       isMoreClicked === "Income"
         ? "var(--Fc-2)"
         : isMoreClicked === "Expense"
-        ? "var(--Gc-2)"
-        : isMoreClicked === "Save&Invest"
-        ? "var(--Bc-2)"
-        : selectedData.netTotal > 0
-        ? "var(--Fc-2)"
-        : "var(--Gc-2)",
+          ? "var(--Gc-2)"
+          : isMoreClicked === "Save&Invest"
+            ? "var(--Bc-2)"
+            : selectedData.netTotal > 0
+              ? "var(--Fc-2)"
+              : "var(--Gc-2)",
   };
 
   const springProps4 = useSpring({
@@ -336,18 +217,17 @@ const TransactionList = ({
   useEffect(() => {
     let totalElementLength = 0;
 
-    for (let index = 0; index < dataAvailabilityLength; index++) {
-      const entries = Object.entries(dataAvailability);
-      if (entries[index]) {
-        const innerEntries = Object.entries(entries[index][1]);
-        if (innerEntries[1]) {
-          totalElementLength += Object.entries(innerEntries[1][1]).length;
+    if (Array.isArray(dataAvailability)) {
+      dataAvailability.forEach((entry) => {
+        // entry is [year, monthData]
+        if (entry && entry[1]) {
+          totalElementLength += Object.keys(entry[1]).length;
         }
-      }
+      });
     }
 
     setElementLength(totalElementLength);
-  }, [dataAvailability, dataAvailabilityLength]);
+  }, [dataAvailability]);
 
   const MoreOpenHeight =
     WindowHeight - 80 * Math.ceil(elementLength / 6) > 100
@@ -377,8 +257,8 @@ const TransactionList = ({
       isMoreClicked === "Expense"
         ? `25px`
         : isMoreClicked === "Income" || isMoreClicked === "Balance"
-        ? `15px`
-        : `65px`,
+          ? `15px`
+          : `65px`,
     position: `absolute`,
     height: `1px`,
     background: `var(--Ac-3)`,
@@ -392,12 +272,12 @@ const TransactionList = ({
         isMoreClicked === "Balance"
           ? selectedData.netTotal
           : isMoreClicked === "Income"
-          ? selectedData.totalIncome
-          : isMoreClicked === "Expense"
-          ? selectedData.totalExpense
-          : selectedData.totalSaving
+            ? selectedData.totalIncome
+            : isMoreClicked === "Expense"
+              ? selectedData.totalExpense
+              : selectedData.totalSaving
       ).toFixed(2).length *
-        8 +
+      8 +
       5,
     position: `absolute`,
     height: `1px`,
@@ -414,7 +294,7 @@ const TransactionList = ({
         feed={calendarFeed}
         MoreOpenHeight={MoreOpenHeight}
       />
-      {isAnimationEnds && filteredTransactions.length !== 0 && (
+      {isAnimationEnds && (
         <animated.div
           className="TransactionList_Main"
           style={Open_TransactionList}
@@ -442,210 +322,22 @@ const TransactionList = ({
                 <animated.div style={TransactionList_Line2}></animated.div>
                 <span style={colorStyle}>
                   $
-                  {Math.abs(
-                    isMoreClicked === "Balance"
-                      ? selectedData.netTotal
-                      : isMoreClicked === "Income"
-                      ? selectedData.totalIncome
-                      : isMoreClicked === "Expense"
-                      ? selectedData.totalExpense
-                      : selectedData.totalSaving
-                  ).toFixed(2)}
+                  {Math.abs(totalAmount).toFixed(2)}
                 </span>
               </h1>
+              <TransactionFilter
+                sortby={sortby}
+                setSortby={setSortby}
+                loaded={filteredTransactions.length !== 0}
+              />
             </animated.div>
-            <div
-              style={{
-                width: "calc(100% + 10px)",
-                position: "relative",
-                margin: "0 0 0 10px",
-              }}
-            >
-              <animated.div
-                className="TransactionList_SummaryAmount"
-                // style={springProps2}
-              >
-                {SummaryWidth[0] > 0 && (
-                  <animated.li
-                    style={{
-                      ...summaryStiles[0],
-                      backgroundColor: "transparent",
-                      outline: "none",
-                    }}
-                  >
-                    $
-                    {labelDistribution.length > 0
-                      ? Math.max(
-                          Math.abs(
-                            (SummaryWidth[0] * totalAmount) / 100
-                          ).toFixed(0),
-                          8
-                        )
-                      : 0}
-                  </animated.li>
-                )}
-                {SummaryWidth[1] > 0 && (
-                  <animated.li
-                    style={{
-                      ...summaryStiles[1],
-                      backgroundColor: "transparent",
-                      outline: "none",
-                    }}
-                  >
-                    $
-                    {labelDistribution.length > 0
-                      ? Math.max(
-                          Math.abs(
-                            (SummaryWidth[1] * totalAmount) / 100
-                          ).toFixed(0),
-                          8
-                        )
-                      : 0}
-                  </animated.li>
-                )}
-                {SummaryWidth[2] > 0 && (
-                  <animated.li
-                    style={{
-                      ...summaryStiles[2],
-                      backgroundColor: "transparent",
-                      outline: "none",
-                    }}
-                  >
-                    $
-                    {labelDistribution.length > 0
-                      ? Math.max(
-                          Math.abs(
-                            (SummaryWidth[2] * totalAmount) / 100
-                          ).toFixed(0),
-                          8
-                        )
-                      : 0}
-                  </animated.li>
-                )}
-                {SummaryWidth[3] > 0 && (
-                  <animated.li
-                    style={{
-                      ...summaryStiles[3],
-                      backgroundColor: "transparent",
-                      outline: "none",
-                    }}
-                  >
-                    $
-                    {labelDistribution.length > 0
-                      ? Math.max(
-                          Math.abs(
-                            (SummaryWidth[3] * totalAmount) / 100
-                          ).toFixed(0),
-                          8
-                        )
-                      : 0}
-                  </animated.li>
-                )}
-              </animated.div>
-              <animated.div
-                className="TransactionList_SummaryLines"
-                // style={springProps2}
-              >
-                {SummaryWidth[0] > 0 && (
-                  <animated.li style={summaryStiles[0]}></animated.li>
-                )}
-                {SummaryWidth[1] > 0 && (
-                  <animated.li style={summaryStiles[1]}></animated.li>
-                )}
-                {SummaryWidth[2] > 0 && (
-                  <animated.li style={summaryStiles[2]}></animated.li>
-                )}
-                {SummaryWidth[3] > 0 && (
-                  <animated.li style={summaryStiles[3]}></animated.li>
-                )}
-              </animated.div>
-              <animated.div
-                className="TransactionList_SummaryNames"
-                // style={springProps2}
-              >
-                {SummaryWidth[0] > 0 && (
-                  <animated.li>
-                    <animated.span
-                      style={{
-                        ...summaryStiles[0],
-                        width: "fit-content",
-                        backgroundColor: "transparent",
-                        outline: "none",
-                      }}
-                    >
-                      •
-                    </animated.span>
-                    {labelDistribution.length > 0
-                      ? labelDistribution[0].category.split(" ")[0]
-                      : ""}
-                  </animated.li>
-                )}
-                {SummaryWidth[1] > 0 && (
-                  <animated.li>
-                    <animated.span
-                      style={{
-                        ...summaryStiles[1],
-                        width: "fit-content",
-                        backgroundColor: "transparent",
-                        outline: "none",
-                      }}
-                    >
-                      •
-                    </animated.span>
-                    {labelDistribution.length > 0
-                      ? labelDistribution[1].category.split(" ")[0]
-                      : ""}
-                  </animated.li>
-                )}
-                {SummaryWidth[2] > 0 && (
-                  <animated.li>
-                    <animated.span
-                      style={{
-                        ...summaryStiles[2],
-                        width: "fit-content",
-                        backgroundColor: "transparent",
-                        outline: "none",
-                      }}
-                    >
-                      •
-                    </animated.span>
-                    {labelDistribution.length > 0
-                      ? labelDistribution[2].category.split(" ")[0]
-                      : ""}
-                  </animated.li>
-                )}
-                {SummaryWidth[3] > 0 && (
-                  <animated.li>
-                    <animated.span
-                      style={{
-                        ...summaryStiles[3],
-                        width: "fit-content",
-                        backgroundColor: "transparent",
-                        outline: "none",
-                      }}
-                    >
-                      •
-                    </animated.span>
-                    Other
-                  </animated.li>
-                )}
-              </animated.div>
-            </div>
-            <TransactionFilter
-              sortby={sortby}
-              setSortby={setSortby}
-              isMoreClicked={isMoreClicked}
-              setIsCalendarClicked={setIsCalendarClicked}
-              isCalendarClicked={isCalendarClicked}
-              loaded={filteredTransactions.length !== 0}
-            />
 
             <animated.div
               className="TransactionList_MonthlyMain"
               ref={monthlyMainRef}
               style={springProps4}
             >
-              {selectedData.length !== 0 && (
+              {selectedData && Object.keys(selectedData).length !== 0 && (
                 <TransactionListMonthly
                   swipedIndex={swipedIndex}
                   handleUnSwipe={handleUnSwipe}

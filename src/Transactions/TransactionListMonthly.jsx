@@ -21,8 +21,8 @@ const TransactionListMonthly = ({
       sortby === "All"
         ? [...transactions].reverse()
         : transactions
-            .filter((transaction) => transaction.Type === sortby)
-            .reverse();
+          .filter((transaction) => transaction.Type === sortby)
+          .reverse();
     return filtered;
   }, [transactions, sortby]);
 
@@ -53,7 +53,11 @@ const TransactionListMonthly = ({
           amount={transaction.Amount}
           category={transaction.Category}
           label={transaction.Label}
-          isSwiped={swipedIndex[1] === index && swipedIndex[0] === MainIndex}
+          isSwiped={
+            swipedIndex &&
+            swipedIndex[1] === index &&
+            swipedIndex[0] === MainIndex
+          }
           onSwipe={() => memoizedHandleSwipe(index)}
           onUnSwipe={memoizedHandleUnSwipe}
           onClick={() => memoizedHandleTransactionClick(transaction)}

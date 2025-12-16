@@ -52,6 +52,7 @@ const Type = ({
   index,
   topAdd,
   opacity,
+  handleStage,
 }) => {
   const [selectedType, setSelectedType] = useState(0);
   useEffect(() => {
@@ -64,7 +65,7 @@ const Type = ({
   const handleClick = useCallback(
     (label, selected) => {
       setWhichType(label);
-      setAddStage(null);
+      setAddStage(index + 1);
       setSelectedType(selected);
       setSelectedChar(label.length);
     },
@@ -94,6 +95,7 @@ const Type = ({
     height: "max-content",
     alignItems: "flex-start",
     zIndex: 100004,
+    cursor: addStage === null ? "pointer" : "auto",
     y: topAdd,
     opacity: opacity || addStage === 3 ? 0.5 : 1,
   });
@@ -130,7 +132,11 @@ const Type = ({
   });
 
   return (
-    <animated.div className="Add_Type" style={fadeStyle}>
+    <animated.div
+      className="Add_Type"
+      style={fadeStyle}
+      onClick={() => handleStage(index)}
+    >
       <div
         className="Add_background"
         style={{ top: 0, opacity: addStage !== index ? 1 : 0 }}

@@ -12,19 +12,14 @@ const Category = ({
   List,
   selectedCategory,
   setSelectedCategory,
-  isLongPress,
-  setIsLongPress,
   addStage,
   index,
   topAdd,
+  handleStage,
 }) => {
   const containerRef = useRef(null);
 
   const [isDragging, setIsDragging] = useState(false);
-
-  const handleMouseDown = () => {
-    setIsDragging(true);
-  };
 
   const [draggedX, setDraggedX] = useState(0);
 
@@ -49,13 +44,6 @@ const Category = ({
     setCumulatedValues(cumulatedValuesIni);
   }, [characterCountsIni, cumulatedValuesIni, List, setSelectedCategory]);
 
-  const handleClick = (item) => {
-    if (isDragging) {
-      setIsLongPress([false, null]);
-      setSelectedCategory(List[item]);
-    }
-  };
-
   useEffect(() => {
     const index = List.findIndex((item) => selectedCategory[0] === item[0]);
     if (index === 0) {
@@ -69,14 +57,6 @@ const Category = ({
       setDraggedX(containerRef.current.scrollWidth - 265);
     }
   }, [selectedCategory]);
-
-  const listSprings = useSprings(
-    List.length,
-    List.map((item) => ({
-      backgroundColor:
-        item[0] === selectedCategory[0] ? `var(--Bc-3)` : `var(--Ec-4)`,
-    }))
-  );
 
   const dragSpring = useSpring({
     y: -15,
@@ -93,43 +73,16 @@ const Category = ({
     isDragging && setIsDragging(mx !== 0 ? false : true);
   });
 
-  const longBind = useLongPressHandler({
-    isLongPress: isLongPress,
-    setIsLongPress: setIsLongPress,
-    component: "Category",
-  });
-
-  // const fade = useSpring({
-  //   filter:
-  //     isLongPress[0] && isLongPress[1] === "Category"
-  //       ? "blur(10px)"
-  //       : "blur(0px)",
-  //   top: 193,
-  // });
-
   const fade = useSpring({
-    from: {
-      filter: !isLongPress ? "blur(10px)" : "blur(0px)",
-      y: addStage > index ? 0 : 0,
-      position: "absolute",
-    },
-    to: {
-      filter:
-        addStage === null
-          ? "blur(0px)"
-          : addStage < index || addStage === 3
-          ? "blur(10px)"
-          : !isLongPress
-          ? "blur(0px)"
-          : "blur(0px)",
-      y: addStage > index ? 0 : 0,
-      position: "absolute",
-      top: 248,
-      height: addStage > index ? 100 : 295,
-      y: topAdd,
-      opacity: addStage === 3 ? 0.5 : 1,
-      zIndex: 100002,
-    },
+    filter:
+      addStage === index || addStage === null ? "blur(0px)" : "blur(10px)",
+    cursor: addStage === null ? "pointer" : "auto",
+    position: "absolute",
+    top: 248,
+    height: addStage > index ? 100 : 295,
+    y: topAdd,
+    opacity: addStage === 3 ? 0.5 : 1,
+    zIndex: 100002,
   });
 
   const labelPar = useSpring({
@@ -144,28 +97,6 @@ const Category = ({
     flexDirection: "column",
     margin: 0,
   });
-
-  // const label = useSpring({
-  //   position: "relative",
-  //   fontSize: addStage !== index ? "1rem" : "0.7rem",
-  //   color: "var(--Bc-2)",
-  //   // border: "1px solid var(--Bc-2)",
-  //   borderRadius: "18px",
-  //   width: addStage !== index ? 35 : 70,
-  //   height: 45,
-  //   width: 45,
-  //   // padding: "10px 5px",
-  //   display: "flex",
-  //   position: "absolute",
-  //   alignItems: "center",
-  //   justifyContent: "center",
-  //   marginTop: addStage !== index ? 15 : 20,
-  //   cursor: addStage !== index ? "pointer" : "auto",
-  //   backgroundColor: "var(--Ec-2)",
-  //   left: 7,
-  //   top: 7,
-  // });
-
   const label = useSpring({
     position: "relative",
     fontSize: addStage !== index ? "1rem" : "0.7rem",
@@ -188,7 +119,7 @@ const Category = ({
 
   const labelTitle = useSpring({
     top: addStage > index ? 30 : 30,
-    left: addStage > index ? 50 : 75,
+    left: addStage === index ? 70 : 51,
     width: "max-content",
     margin: 0,
     position: "absolute",
@@ -201,7 +132,7 @@ const Category = ({
   });
   const labeledit = useSpring({
     // opacity: addStage === index ? 0 : 0.5,
-    left: addStage === index ? 62 : 39,
+    left: addStage === index ? 55 : 39,
   });
   const backgroundStyle = useSpring({
     opacity: addStage !== index ? 1 : 0,
@@ -212,7 +143,11 @@ const Category = ({
   });
 
   return (
-    <animated.li className="Add_Category" {...longBind()} style={fade}>
+    <animated.li
+      className="Add_Category"
+      style={fade}
+      onClick={() => handleStage(index)}
+    >
       <animated.div
         className="Add_background"
         style={backgroundStyle}
@@ -246,19 +181,6 @@ const Category = ({
             {selectedCategory[1]}
             {selectedCategory[0]}
           </animated.h2>
-
-          {/* {listSprings.map((animation, index) => (
-            <ScalableElement
-              style={{ ...animation, width: `${characterCounts[index]}px` }}
-              as="h2"
-              key={index}
-              onMouseDown={() => handleMouseDown(index)}
-              onClick={() => handleClick(index)}
-            >
-              {List[index][1]}
-              {List[index][0]}
-            </ScalableElement>
-          ))} */}
         </animated.div>
       </div>
       <MoreCategory
@@ -267,7 +189,6 @@ const Category = ({
         selectedCategory={selectedCategory}
         defaultValue={""}
         isLongPress={addStage === index}
-        setIsLongPress={setIsLongPress}
       />
     </animated.li>
   );
