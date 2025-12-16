@@ -2,17 +2,17 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: calc(100% - 180px);
-  width: 380px;
-  max-width: 100vw;
-  margin: 0 0 20px 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  position: absolute;
-  bottom: 95px;
-  z-index: 11;
+  justify-content: space-evenly;
+  height: 100%;
+  flex: 1;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  position: relative;
+  padding-bottom: 90px;
+  /* Space for footer */
+  padding-top: 0;
+  box-sizing: border-box;
 }
 
 .MoneyMonitor_Gradient1 {
@@ -65,6 +65,7 @@
   font-family: "Noto Sans", sans-serif;
   margin: 0;
 }
+
 .MoneyMonitor_title span:first-of-type {
   font-size: 1.8rem;
   font-weight: 500;
@@ -73,6 +74,7 @@
   align-items: center;
   justify-content: center;
 }
+
 .MoneyMonitor_title img {
   height: 40px;
   width: 40px;
@@ -98,6 +100,7 @@
   flex-direction: row;
   align-items: flex-end;
 }
+
 .MoneyMonitor_Balance span:first-child h2 {
   font-size: 1rem;
   font-weight: 200;
@@ -109,6 +112,7 @@
   align-items: flex-end;
   margin: 0 3px;
 }
+
 .MoneyMonitor_Balance span:last-child {
   font-size: 1.5rem;
   font-weight: 200;
@@ -122,7 +126,8 @@
   align-items: flex-start;
   width: 100%;
   z-index: 10;
-  margin-top: -5px;
+  margin: 0;
+  /* Reset margins */
 }
 
 .MoneyEntry_Title {
@@ -133,6 +138,7 @@
   margin: 0px 0;
   padding: 0 5px;
 }
+
 .MoneyEntry_total {
   font-size: 1rem;
   font-weight: 400;
@@ -146,6 +152,7 @@
   font-family: "Noto Sans", sans-serif;
   margin-right: 6px;
 }
+
 .MoneyEntry_totalTitleMonth {
   color: var(--Ac-1);
   font-size: 1rem;
@@ -153,6 +160,7 @@
   font-family: "Noto Sans", sans-serif;
   margin-right: 3px;
 }
+
 .MoneyEntry h1 {
   font-size: 1rem;
   font-weight: 100;
@@ -169,6 +177,7 @@
   margin-right: 5px;
   width: min-content;
 }
+
 .MoneyEntry_Dot {
   margin-right: 2px;
 }
@@ -181,6 +190,7 @@
   cursor: pointer;
   position: relative;
 }
+
 .MoneyEntry_Add {
   position: relative;
   font-size: 1.5rem;
@@ -199,6 +209,7 @@
   margin-right: 10px;
   background: linear-gradient(165deg, var(--Ac-4) 30%, var(--Ec-4) 100%);
 }
+
 .MoneyEntry_More {
   position: relative;
   font-size: 1.5rem;
@@ -251,6 +262,7 @@
   justify-content: flex-start;
   height: 25px;
 }
+
 .MoneyEntry_Amount p:nth-of-type(2) {
   position: relative;
   width: 120px;
@@ -263,6 +275,7 @@
   flex-direction: row;
   align-items: center;
 }
+
 .MoneyEntry_type_Open {
   background: linear-gradient(-160deg, var(--Ec-1) 30%, var(--Ec-4) 100%);
   width: 50px;
@@ -276,6 +289,7 @@
   justify-content: center;
   font-size: 1.4rem;
 }
+
 .MoneyEntry_Amount span {
   position: relative;
   background-color: var(--Ec-1);
@@ -304,6 +318,7 @@
   font-family: "Noto Sans", sans-serif;
   color: var(--Ec-1);
 }
+
 .MoneyEntry_Detail {
   position: relative;
   display: flex;
@@ -329,6 +344,7 @@
   margin: 13px 0 0 20px;
   background-color: none;
 }
+
 .MoneyEntry_Detail h1:last-of-type {
   display: flex;
   flex-direction: row;
@@ -340,6 +356,7 @@
   width: calc(100% - 20px);
   align-items: center;
 }
+
 .MoneyEntry_Detail h1:last-of-type span {
   width: 100%;
   height: 2px;
@@ -360,6 +377,7 @@
   height: 55px;
   z-index: 10;
 }
+
 .MoneyMonitor_Menu h1 {
   position: relative;
   font-size: 0.7rem;
@@ -379,6 +397,7 @@
   overflow: hidden;
   background: var(--Ec-2);
 }
+
 .MoneyMonitor_Menu h1 svg {
   font-size: 1.2rem;
   margin-right: 8px;
@@ -388,12 +407,15 @@
   color: var(--Ac-2);
   z-index: 10;
 }
+
 .MoneyMonitor_Menu h1 span {
   font-weight: 400;
 }
+
 .MoneyMonitor_Menu h1:first-of-type {
   margin-left: 0;
 }
+
 .MoneyMonitor_Menu h1:last-of-type {
   margin-right: 0;
 }
@@ -415,14 +437,13 @@
   text-wrap: nowrap;
   align-items: center;
 }
+
 .MoneyMonitor_Menu p span {
   background: var(--Ac-1);
-  background: linear-gradient(
-    90deg,
-    var(--Ec-1) 0%,
-    var(--Ac-4) 49%,
-    var(--Ec-1) 100%
-  );
+  background: linear-gradient(90deg,
+      var(--Ec-1) 0%,
+      var(--Ac-4) 49%,
+      var(--Ec-1) 100%);
   height: 1px;
   width: -webkit-fill-available;
   margin: 2px 10px 0 10px;
@@ -456,6 +477,7 @@
 .MoneyEntry_More svg {
   font-size: 18px;
 }
+
 .HomePage-M-T-R {
   right: 0;
   top: 15px;
@@ -464,16 +486,20 @@
 .MoneyEntry_Amount:first-of-type {
   margin-left: 0;
 }
+
 .MoneyEntry_Amount:last-of-type {
   margin-right: 0;
 }
+
 .MoneyEntry_AmountBase {
   position: relative;
   display: flex;
   flex-direction: row;
   overflow: visible;
-  -ms-overflow-style: none; /* Internet Explorer 10+ */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+  /* Internet Explorer 10+ */
+  scrollbar-width: none;
+  /* Firefox */
   width: -webkit-fill-available;
   white-space: nowrap;
   user-select: none;
@@ -485,6 +511,7 @@
 .MoneyEntry_AmountBase div:last-of-type {
   margin-left: 3px;
 }
+
 .MoneyEntry_AmountBase div:first-of-type {
   margin-right: 3px;
 }
@@ -523,6 +550,7 @@
 .TransactionModification li {
   background: linear-gradient(165deg, var(--Ec-1) 30%, var(--Ec-3) 100%);
 }
+
 .TransactionModification li svg {
   background: linear-gradient(165deg, var(--Ec-1) 30%, var(--Ec-3) 100%);
 }
@@ -676,7 +704,8 @@
 .TransactionModification_ModifyR1 input:focus {
   text-decoration: none;
   border: none;
-  outline: none; /* Ensures the outline is removed when focused */
+  outline: none;
+  /* Ensures the outline is removed when focused */
 }
 
 .TransactionModification_Close {
@@ -748,6 +777,7 @@
 
   padding: 0 5px;
 }
+
 .scroll-container::-webkit-scrollbar {
   height: 4px;
   background-color: var(--Ac-4);
@@ -775,6 +805,7 @@
   border-radius: 100%;
   filter: blur(25px);
 }
+
 .MoneyEntry_Savings {
   margin-top: 5px;
   position: relative;
@@ -845,6 +876,7 @@
   margin: 0;
   margin-top: 5px;
 }
+
 .MoneyEntry_percentage {
   position: absolute;
   font-weight: 600;
@@ -860,6 +892,7 @@
   width: 41%;
   justify-content: center;
 }
+
 .MoneyEntry_percentage h3 {
   font-size: 0.7rem;
   color: var(--Ac-1);
@@ -900,6 +933,7 @@
   align-items: center;
   justify-content: flex-start;
 }
+
 .MainStatestics {
   position: relative;
   display: flex;
@@ -907,15 +941,15 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  /* height: -webkit-fill-available;
-  min-width: -webkit-fill-available; */
   z-index: 10;
   border-radius: 30px;
   overflow: hidden;
-  margin: -7px 0 -15px 0;
-  touch-action: none;
+  margin: 0;
+  /* Reset margins */
+  touch-action: pan-y;
   /* background: linear-gradient(165deg, var(--Ac-4) 30%, var(--Ac-4) 100%); */
 }
+
 .MainStatestics-Graph {
   position: relative;
   display: flex;
@@ -926,7 +960,7 @@
   z-index: 10;
   border-radius: 30px;
   overflow: hidden;
-  touch-action: none;
+  touch-action: pan-y;
   height: 90%;
   /* background: linear-gradient(165deg, var(--Ac-4) 30%, var(--Ac-4) 100%); */
   padding: 5px 5px 5px;
@@ -954,10 +988,12 @@
   top: 3px;
   left: 5px;
 }
+
 .MainStatestics h3 span {
   font-weight: 300;
   margin-right: 5px;
 }
+
 .MainStatestics-arrowN {
   position: absolute;
   border-radius: 50px;
@@ -976,6 +1012,7 @@
   overflow: hidden;
   border: 1px solid var(--Ac-3);
 }
+
 .MainStatestics-arrowL {
   position: absolute;
   border-radius: 50px;
@@ -1031,6 +1068,7 @@
   display: flex;
   align-items: center;
 }
+
 .MainStatestics-guid {
   position: absolute;
   color: var(--Ac-1);
@@ -1069,9 +1107,11 @@
   border-radius: 30px;
   opacity: 0.7;
 }
+
 .MainStatestics-dash:nth-last-of-type(1) {
   background-size: 7px 0.5px;
 }
+
 .MainStatestics-dash:nth-last-of-type(1) h1 {
   width: max-content;
   margin-top: -25px;
@@ -1086,6 +1126,7 @@
 .MainStatestics-dash:nth-last-of-type(2) {
   background-size: 7px 0.5px;
 }
+
 .MainStatestics-dash:nth-last-of-type(2) h1 {
   width: max-content;
   margin-bottom: 0;
@@ -1123,6 +1164,7 @@
   backdrop-filter: blur(10px);
   opacity: 0;
 }
+
 .CirleColor {
   position: absolute;
   width: 100%;
@@ -1169,6 +1211,7 @@
   margin-top: -1px;
   font-size: 0.6rem;
 }
+
 .MainStatestics-batch li:nth-last-of-type(2) {
   position: absolute;
   background-color: var(--Fc-1);
@@ -1179,6 +1222,7 @@
   width: 4px;
   border-radius: 20px;
 }
+
 .MainStatestics-batch li:nth-last-of-type(3) {
   position: absolute;
   background-color: var(--Gc-1);
@@ -1189,6 +1233,7 @@
   width: 4px;
   border-radius: 20px;
 }
+
 .MainStatestics-batch li:nth-last-of-type(4) {
   position: absolute;
   background-color: var(--Bc-1);
@@ -1201,6 +1246,7 @@
   border-radius: 20px;
   z-index: 10000;
 }
+
 .MainStatestics-batch li:nth-last-of-type(5) {
   position: absolute;
   background-color: var(--Ac-1);
@@ -1262,6 +1308,7 @@
   height: max-content;
   width: max-content;
 }
+
 .Notif_Type h1 {
   display: flex;
   flex-direction: column;
@@ -1306,6 +1353,7 @@
   left: 67px;
   height: 35px;
 }
+
 .Notif_Amount h1 {
   font-size: 0.7rem;
   font-weight: 400;
@@ -1314,6 +1362,7 @@
   line-height: 13px;
   text-transform: capitalize;
 }
+
 .Notif_Amount h2 {
   font-size: 1.4rem;
   font-weight: 300;
@@ -1334,6 +1383,7 @@
   right: 40px;
   height: 35px;
 }
+
 .Notif_Time h1 {
   font-size: 0.7rem;
   font-weight: 400;
@@ -1342,6 +1392,7 @@
   line-height: 18px;
   text-transform: capitalize;
 }
+
 .Notif_Time h2 {
   font-size: 0.8rem;
   font-weight: 400;
@@ -1367,6 +1418,7 @@
   left: 67px;
   height: 35px;
 }
+
 .Notif_Reason h1 {
   font-size: 0.7rem;
   font-weight: 400;
@@ -1375,6 +1427,7 @@
   line-height: 15px;
   text-transform: capitalize;
 }
+
 .Notif_Reason h2 {
   font-size: 0.8rem;
   font-weight: 400;
@@ -1383,6 +1436,7 @@
   line-height: 15px;
   margin-top: -2px;
 }
+
 .Notif_counter {
   position: absolute;
   display: flex;
@@ -1398,6 +1452,7 @@
   bottom: 13px;
   left: 14px;
 }
+
 .CircularProgressbar {
   position: absolute;
   display: flex;
@@ -1424,11 +1479,13 @@
   text-wrap: nowrap;
   cursor: pointer;
 }
+
 .Notif_Delete svg {
   font-size: 0.9rem;
   margin-right: 5px;
   margin-left: -3px;
 }
+
 .Notif_Modify {
   position: absolute;
   display: flex;
@@ -1448,11 +1505,13 @@
   text-wrap: nowrap;
   cursor: pointer;
 }
+
 .Notif_Modify svg {
   font-size: 0.9rem;
   margin-right: 3px;
   margin-left: -3px;
 }
+
 .Notif_Deleted {
   position: absolute;
   display: flex;
@@ -1469,6 +1528,7 @@
   left: 0;
   box-sizing: border-box;
 }
+
 .Notif_Deleted svg {
   font-size: 1rem;
 }

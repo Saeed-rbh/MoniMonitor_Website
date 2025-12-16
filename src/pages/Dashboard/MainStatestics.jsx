@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSprings, animated, useSpring } from "react-spring";
-import { useDrag } from "@use-gesture/react";
+import { useDrag, useWheel } from "@use-gesture/react";
 import BlurFade from "@/components/ui/blur-fade";
 
 // Constants
@@ -83,6 +83,8 @@ const MainStatestics = ({
       setMainPageMonth(mainPageMonth + 1);
   }, [processedData]);
 
+  /* useEffect moved down */
+
   const springs = useSprings(
     processedData.length,
     processedData.map((d, index) => ({
@@ -115,7 +117,18 @@ const MainStatestics = ({
 
   const buttunsHeight =
     ((390 - 20) / 2 / 1.6) * Math.min(height / 675, 1) * 2 + 10;
-  const heightFactor = height - buttunsHeight - height / 3.7;
+  const baseHeightFactor = height - buttunsHeight - height / 3.7;
+
+  // Calculate dynamic scaling based on combined bar length
+  const currentData = processedData[mainPageMonth];
+  const combinedPct = currentData
+    ? currentData.incomePercentage + currentData.ExpensePercentage
+    : 50;
+  // Scale between 0.6 and 1.0 based on usage (max roughly 80%)
+  // Adding buffer (20) to ensure text fits
+  const dynamicScale = Math.min(1, Math.max(0.65, (combinedPct + 20) / 80));
+
+  const heightFactor = baseHeightFactor * dynamicScale;
 
   const valueSpringIn = useSpring({
     position: "absolute",
@@ -230,24 +243,128 @@ const MainStatestics = ({
   const [{ x }, api] = useSpring(() => ({ x: 0 }));
   const [currentX, setCurrentX] = useState(0);
 
-  const bind = useDrag(({ down, movement: [mx], cancel, memo = false }) => {
-    springs.length < 5 && cancel();
-    const newX = currentX + mx;
-    if (newX > 0) return setCurrentX(0) && setMainPageMonth(1);
-    if (-1 * newX > 31.5 * springs.length)
-      return setCurrentX(-31.5 * springs.length);
+  // Sync animation X position when mainPageMonth changes
+  useEffect(() => {
+    // 50 is the assumed width per item used in existing logic
+    const targetX = -50 * mainPageMonth;
+    api.start({ x: targetX });
+    setCurrentX(targetX);
+  }, [mainPageMonth, api]);
 
-    if (!down) {
-      setCurrentX(newX);
-    }
-    api.start({ x: down ? newX : newX });
+  /* Ref to measure container width for dynamic bounds */
+  const containerRef = React.useRef(null);
+
+  /* Ref to track continuous visual position independent of mainPageMonth state */
+  const visualX = React.useRef(0);
+
+  // Update visualX when mainPageMonth changes programmatically
+  useEffect(() => {
+    visualX.current = -50 * mainPageMonth;
+  }, [mainPageMonth]);
+
+  /* Bounds Calculation */
+  /* Bounds Calculation: Strict Center-to-Center */
+  const minX = -(processedData.length - 1) * 50;
+  const maxX = 0;
+
+  const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
+
+  const bindDrag = useDrag(({ down, movement: [mx, my], memo = visualX.current }) => {
+    // Dynamic Bounds: Stop when Last Item matches Right Edge + Margin
+    const containerWidth = containerRef.current ? containerRef.current.offsetWidth : 0;
+    const contentWidth = processedData.length * 50;
+    // Add 100px buffer to ensure last items are fully visible/not cut off
+    const dynamicMinX = Math.min(0, containerWidth - contentWidth - 100);
+
+    let newX = memo + mx;
+    newX = clamp(newX, dynamicMinX, maxX);
+
+    api.start({ x: newX });
+
+    if (!down) visualX.current = newX;
+
+    return memo;
+  }, {
+    filterTaps: true,
+    axis: 'x'
+  });
+
+  /* bindWheel: Map Vertical/Horizontal Scroll to Visual Pan. Does NOT change Month state. */
+  const bindWheel = useWheel(({ active, movement: [mx, my], memo = 0 }) => {
+    // Map Vertical (my = Scroll Down/Up) or Horizontal (mx) to Pan
+    // Scroll Down (Positive my) -> Pan Left (Negative X in standard scroll)
+    // But natural feel: Scroll Down -> Move View Right (Show next)
+
+    // Let's use simple addition first.
+    // If vertical is dominant, use it. Else use horizontal.
+    const isVertical = Math.abs(my) > Math.abs(mx);
+    const delta = isVertical ? my : mx;
+
+    // Scale delta for sensitivity?
+    const panX = delta * 1.5;
+
+    const initialX = -50 * mainPageMonth;
+    api.start({ x: initialX - panX }); // Subtracting delta to match natural scrolling direction? or Adding?
+    // Let's try subtracting. (Scroll Down -> Move content Up/Right?)
+    // Actually, usually Scroll Down = mx < 0 (Next). So if my > 0, we want mx style < 0.
+    // So if my > 0 (Scroll Down), we want X to decrease (Next).
+    // So x: initialX - my.
+
+    return memo;
+  });
+
+  /* bindWheelNew: Pan with Bounds, Reduced Sensitivity */
+  const bindWheelNew = useWheel(({ active, delta: [dx, dy], memo = visualX.current }) => {
+    // Determine delta based on dominant axis
+    const isVertical = Math.abs(dy) > Math.abs(dx);
+    let delta = isVertical ? dy : dx;
+
+    // Sensitivity Reduction: 0.5 factor
+    const scrollStep = delta * 0.5;
+
+    let newX = visualX.current - scrollStep;
+    newX = clamp(newX, minX, maxX);
+
+    api.start({ x: newX });
+    visualX.current = newX;
+
+    return memo;
+  }, {
+    modal: false
+  });
+
+  /* bindWheelDynamic: Pan with Dynamic Bounds (Viewport Aware) */
+  const bindWheelDynamic = useWheel(({ active, delta: [dx, dy], memo = visualX.current }) => {
+    // Dynamic Bounds for Wheel: Stop when Last Item matches Right Edge + Margin
+    const containerWidth = containerRef.current ? containerRef.current.offsetWidth : 0;
+    const contentWidth = processedData.length * 50;
+    // Add 100px buffer to ensure last items are fully visible/not cut off
+    const dynamicMinX = Math.min(0, containerWidth - contentWidth - 100);
+
+    // Determine delta based on dominant axis
+    const isVertical = Math.abs(dy) > Math.abs(dx);
+    let delta = isVertical ? dy : dx;
+
+    // Sensitivity Reduction: 0.5 factor
+    const scrollStep = delta * 0.5;
+
+    let newX = visualX.current - scrollStep;
+    newX = clamp(newX, dynamicMinX, maxX);
+
+    api.start({ x: newX });
+    visualX.current = newX;
+
+    return memo;
+  }, {
+    modal: false
   });
 
   return (
     <div
       style={{ height: `${heightFactor + 60}px` }}
       className="MainStatestics"
-      {...bind()}
+      {...bindDrag()}
+      {...bindWheelDynamic()}
     >
       <BlurFade
         delay={0.3 + 0.05 * 5}
@@ -261,6 +378,7 @@ const MainStatestics = ({
           <span>Insight</span> Dashboard
         </h3>
         <div
+          ref={containerRef}
           className="MainStatestics-Graph"
           style={{ marginTop: `${marginTop}px` }}
         >
@@ -404,7 +522,7 @@ const MainStatestics = ({
           </animated.ul>
         </div>
       </BlurFade>
-    </div>
+    </div >
   );
 };
 

@@ -68,13 +68,24 @@ body {
 .App {
   text-align: center;
   height: 100vh;
+  /* Fixed viewport height */
+  height: 100dvh;
+  /* Dynamic viewport height for mobile */
   width: 100vw;
   overflow: hidden;
   display: flex;
-  justify-content: center;
-  padding: 10px;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 0;
+  padding-top: 20px;
+  /* Top breathing room */
+  gap: 20px;
+  /* Space between Header and MoneyMonitor */
   box-sizing: border-box;
+  background-color: var(--Ec-1);
   font-family: "Noto Sans", sans-serif;
+  position: relative;
 }
 
 .MainBackground {
@@ -135,11 +146,7 @@ body {
   }
 }
 
-.App {
-  position: fixed;
-  top: 0;
-  left: 0;
-}
+/* .App redeclaration removed */
 
 [data-amplify-authenticator] {
   position: absolute;
