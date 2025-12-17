@@ -3,37 +3,26 @@ import "./MoneyMonitor.css";
 import MoneyEntry from "./MoneyEntry";
 import { animated, useSpring } from "react-spring";
 import { fetchTransactions } from "../../services/transactionService";
-import MainStatestics from "./MainStatestics";
+import MainStatistics from "./MainStatistics";
 import { useWindowHeight } from "../../utils/tools";
 import AddTransaction from "./AddTransaction";
 
-const MoneyMonitor = ({
-  isDateClicked,
-  isMoreClicked,
-  setIsMoreClicked,
-  isAddClicked,
-  setIsAddClicked,
-  mainPageMonth,
-  setMainPageMonth,
-  netAmountsData,
-  mainSelected,
-  setWhichMonth,
-}) => {
+import { useTransactions } from "../../context/TransactionContext";
+
+const MoneyMonitor = () => {
+  const {
+    isDateClicked,
+    isMoreClicked,
+    setIsMoreClicked,
+    isAddClicked,
+    setIsAddClicked,
+    mainPageMonth,
+    setMainPageMonth,
+    netAmountsData,
+    mainSelected,
+    setWhichMonth,
+  } = useTransactions();
   const height = useWindowHeight(100);
-  // const [whichMonth, setWhichMonth] = useState(0);
-
-  // const {
-  //   selected: selectedData,
-  //   Availability: availabilityData,
-  //   netAmounts: netAmountsData,
-  //   transactions: transactionsData,
-  // } = useTransactionData(whichMonth);
-
-  // const { mainPageMonth, setMainPageMonth } = useMainPageMonth();
-  // const { selected: mainSelected } = useTransactionData(mainPageMonth);
-
-  // console.log(mainSelected);
-
   useEffect(() => {
     !isMoreClicked && setWhichMonth(mainPageMonth);
   }, [isMoreClicked, mainPageMonth]);
@@ -72,8 +61,7 @@ const MoneyMonitor = ({
     <>
       <div className="MoneyMonitor_Parent">
         <animated.div style={scaleStyle}>
-          {/* <AddTransaction setIsAddClicked={setIsAddClicked} /> */}
-          <MainStatestics
+          <MainStatistics
             height={height}
             netAmounts={netAmountsData}
             mainPageMonth={mainPageMonth}

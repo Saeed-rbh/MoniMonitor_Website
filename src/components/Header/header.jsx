@@ -2,17 +2,20 @@ import React from "react";
 import "./header.css";
 import ChooseMonth from "../ChooseMonth/ChooseMonth";
 import BlurFade from "@/components/ui/blur-fade";
+import { useTransactions } from "../../context/TransactionContext";
 
-function Header({
-  userData,
-  isDateClicked,
-  setIsDateClicked,
-  availabilityData,
-  whichMonth,
-  setWhichMonth,
-  setMainPageMonth,
-}) {
-  const { userId, userName } = userData;
+function Header() {
+  const {
+    userData,
+    isDateClicked,
+    setIsDateClicked,
+    availabilityData,
+    whichMonth,
+    setWhichMonth,
+    setMainPageMonth,
+  } = useTransactions();
+
+  const { userId, userName } = userData || {};
 
   return (
     <header className="MoneyMonitor_header" style={{ zIndex: 1000000 }}>

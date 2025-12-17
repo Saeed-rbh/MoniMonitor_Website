@@ -283,17 +283,23 @@ const styles = {
   },
 };
 
-const MainMenu = ({ isMoreClicked, setIsMoreClicked }) => {
+import { useTransactions } from "../../context/TransactionContext";
+
+const MainMenu = () => {
+  const { isMoreClicked, setIsMoreClicked } = useTransactions();
   const location = useLocation().pathname;
   const [isFade, setIsFade] = React.useState(false);
   const navigate = useNavigate();
 
   const mainMenuAnim = useSpring({
-    position: "fixed",
-    width: "385px",
-    height: "60px",
+    // position: "fixed", // Changed to flow layout
+    width: "100%",
+    maxWidth: "420px",
+    // left: "0",
+    // right: "0",
+    margin: "0 auto",
     zIndex: 10000,
-    bottom: isMoreClicked === null ? 10 : 40,
+    // bottom: isMoreClicked === null ? 10 : 40, // Handling via flex/margin if needed
     opacity: isMoreClicked === null ? 1 : 0,
     scale: isMoreClicked === null ? 1 : 0.95,
     filter: isMoreClicked === null ? "blur(0px)" : "blur(2px)",

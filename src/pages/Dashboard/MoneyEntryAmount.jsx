@@ -91,8 +91,8 @@ const MoneyEntryAmount = ({
 
   const scaleStyle = useSpring({
     scale: isScaled ? 0.9 : 1,
-    width: ((390 - 10) / 2) * widthFactor,
-    height: ((390 - 20) / 2 / 1.6) * heightFactor,
+    // width: ((390 - 10) / 2) * widthFactor, // Removed to allow flex
+    height: ((420 - 20) / 2 / 1.8) * heightFactor, // Updated to 1.8 divisor for compactness
   });
 
   const handleClick = () => {
@@ -102,7 +102,7 @@ const MoneyEntryAmount = ({
 
   return (
     <animated.div
-      style={{ ...scaleStyle }}
+      style={{ ...scaleStyle, flex: widthFactor, minWidth: 0 }}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}

@@ -11,7 +11,7 @@ const FALLBACK_COLOR = "var(--Ac-2)";
 // Utility function to calculate percentage
 const calculatePercentage = (value, max) => (value / max) * PERCENTAGE_FACTOR;
 
-const MainStatestics = ({
+const MainStatistics = ({
   height,
   netAmounts,
   mainPageMonth,
@@ -116,7 +116,7 @@ const MainStatestics = ({
   );
 
   const buttunsHeight =
-    ((390 - 20) / 2 / 1.6) * Math.min(height / 675, 1) * 2 + 10;
+    ((420 - 20) / 2 / 1.8) * Math.min(height / 675, 1) * 2 + 10;
   const baseHeightFactor = height - buttunsHeight - height / 3.7;
 
   // Use fixed height factor to prevent UI jitter on month change
@@ -354,7 +354,7 @@ const MainStatestics = ({
   return (
     <div
       style={{ height: `${heightFactor + 60}px` }}
-      className="MainStatestics"
+      className="MainStatistics"
       {...bindDrag()}
       {...bindWheelDynamic()}
     >
@@ -371,14 +371,14 @@ const MainStatestics = ({
         </h3>
         <div
           ref={containerRef}
-          className="MainStatestics-Graph"
+          className="MainStatistics-Graph"
           style={{ marginTop: `${marginTop}px` }}
         >
           <div
-            className="MainStatestics-dash"
+            className="MainStatistics-dash"
             style={{ marginLeft: "20px", width: "calc(100%)" }}
           ></div>
-          <animated.div style={valueSpringIn} className="MainStatestics-dash">
+          <animated.div style={valueSpringIn} className="MainStatistics-dash">
             <animated.h1 style={valueSpringInText}>
               + $
               {processedData[mainPageMonth]
@@ -387,7 +387,7 @@ const MainStatestics = ({
             </animated.h1>
           </animated.div>
 
-          <animated.div style={valueSpringSp} className="MainStatestics-dash">
+          <animated.div style={valueSpringSp} className="MainStatistics-dash">
             <animated.h1 style={valueSpringSpText}>
               - $
               {processedData[mainPageMonth]
@@ -397,7 +397,7 @@ const MainStatestics = ({
             </animated.h1>
           </animated.div>
 
-          {/* <div className="MainStatestics-guid">
+          {/* <div className="MainStatistics-guid">
           <p>
             Income
             <animated.span
@@ -444,7 +444,7 @@ const MainStatestics = ({
             {springs.map((style, index) => (
               <animated.div
                 key={index}
-                className="MainStatestics-batch"
+                className="MainStatistics-batch"
                 style={{
                   opacity: x.to((x) => {
                     const threshold = 50 * (index + 1) - 30;
@@ -530,4 +530,4 @@ const MainStatestics = ({
   );
 };
 
-export default MainStatestics;
+export default MainStatistics;

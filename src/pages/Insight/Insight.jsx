@@ -51,6 +51,8 @@ const Insight = () => {
                 color: "var(--Ac-1)",
                 overflowY: "auto",
                 boxSizing: "border-box",
+                maxWidth: "var(--app-max-width)",
+                margin: "0 auto",
             }}
         >
             <h2 style={{ marginBottom: "20px", textAlign: "center" }}>

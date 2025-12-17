@@ -4,15 +4,20 @@
   align-items: center;
   justify-content: space-evenly;
   height: 100%;
+  /* Will be overriden (or complement) flex: 1 in parent context */
   flex: 1;
+  /* Grow to fill space */
   width: 100%;
-  max-width: 420px;
+  max-width: var(--app-max-width);
   margin: 0 auto;
   position: relative;
-  padding-bottom: 90px;
-  /* Space for footer */
+  padding-bottom: 0;
+  /* No longer needed for fixed footer */
   padding-top: 0;
   box-sizing: border-box;
+  overflow-y: hidden;
+  /* Requested overflow hidden */
+  overflow-x: hidden;
 }
 
 .MoneyMonitor_Gradient1 {
@@ -236,11 +241,18 @@
 
 .MoneyEntry_Amount {
   position: relative;
-  height: 100px;
-  width: calc((390px - 10px) / 2);
-  height: calc((390px - 20px) / 2 / 1.6);
+  /* Maintain aspect ratio based on new max-width if desired, or just fixed/fluid height */
+  /* Previously: width: calc((390px - 10px) / 2); */
+  /* Now let flex handle it */
+  width: 100%;
+  flex: 1;
+  /* height: calc((390px - 20px) / 2 / 1.6); */
+  /* Recalculate height based on 420px or keep dynamic aspect ratio? 
+     Let's keep the formula but using 420 for now to be safe, or just utilize aspect-ratio CSS property if supported.
+     (420 - 20) / 2 / 1.6 = 200 / 1.6 = 125px */
+  height: calc((var(--app-max-width, 420px) - 20px) / 2 / 1.8);
   border-radius: 30px;
-  margin-left: 5px;
+  /* margin-left: 5px; removed for gap */
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -500,7 +512,8 @@
   /* Internet Explorer 10+ */
   scrollbar-width: none;
   /* Firefox */
-  width: -webkit-fill-available;
+  gap: 6px;
+  width: 100%;
   white-space: nowrap;
   user-select: none;
   -webkit-user-select: none;
@@ -508,13 +521,7 @@
   margin-bottom: 5px;
 }
 
-.MoneyEntry_AmountBase div:last-of-type {
-  margin-left: 3px;
-}
 
-.MoneyEntry_AmountBase div:first-of-type {
-  margin-right: 3px;
-}
 
 .MoneyEntry_AmountBase::-webkit-scrollbar {
   display: none;
@@ -934,7 +941,7 @@
   justify-content: flex-start;
 }
 
-.MainStatestics {
+.MainStatistics {
   position: relative;
   display: flex;
   flex-direction: row;
@@ -950,7 +957,7 @@
   /* background: linear-gradient(165deg, var(--Ac-4) 30%, var(--Ac-4) 100%); */
 }
 
-.MainStatestics-Graph {
+.MainStatistics-Graph {
   position: relative;
   display: flex;
   flex-direction: row;
@@ -969,7 +976,7 @@
   /* outline: 1px solid var(--Bc-3); */
 }
 
-.MainStatestics h3 {
+.MainStatistics h3 {
   position: absolute;
   display: flex;
   flex-direction: row;
@@ -989,12 +996,12 @@
   left: 5px;
 }
 
-.MainStatestics h3 span {
+.MainStatistics h3 span {
   font-weight: 300;
   margin-right: 5px;
 }
 
-.MainStatestics-arrowN {
+.MainStatistics-arrowN {
   position: absolute;
   border-radius: 50px;
   height: 50px;
@@ -1013,7 +1020,7 @@
   border: 1px solid var(--Ac-3);
 }
 
-.MainStatestics-arrowL {
+.MainStatistics-arrowL {
   position: absolute;
   border-radius: 50px;
   height: 50px;
@@ -1032,7 +1039,7 @@
   border: 1px solid var(--Ac-3);
 }
 
-.MainStatestics-arrowC {
+.MainStatistics-arrowC {
   position: absolute;
   border-radius: 50px;
   height: 50px;
@@ -1053,7 +1060,7 @@
   border: 1px solid var(--Ac-3);
 }
 
-.MainStatestics-dash {
+.MainStatistics-dash {
   position: absolute;
   width: calc(100%);
   height: 2px;
@@ -1069,7 +1076,7 @@
   align-items: center;
 }
 
-.MainStatestics-guid {
+.MainStatistics-guid {
   position: absolute;
   color: var(--Ac-1);
   display: flex;
@@ -1084,7 +1091,7 @@
   margin-bottom: 5px;
 }
 
-.MainStatestics-guid p {
+.MainStatistics-guid p {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1098,7 +1105,7 @@
   height: fit-content;
 }
 
-.MainStatestics-guid span {
+.MainStatistics-guid span {
   font-size: 2rem;
   margin-top: 5px;
   width: 15px;
@@ -1108,11 +1115,11 @@
   opacity: 0.7;
 }
 
-.MainStatestics-dash:nth-last-of-type(1) {
+.MainStatistics-dash:nth-last-of-type(1) {
   background-size: 7px 0.5px;
 }
 
-.MainStatestics-dash:nth-last-of-type(1) h1 {
+.MainStatistics-dash:nth-last-of-type(1) h1 {
   width: max-content;
   margin-top: -25px;
   font-size: 0.7rem;
@@ -1123,11 +1130,11 @@
   margin-left: 5px;
 }
 
-.MainStatestics-dash:nth-last-of-type(2) {
+.MainStatistics-dash:nth-last-of-type(2) {
   background-size: 7px 0.5px;
 }
 
-.MainStatestics-dash:nth-last-of-type(2) h1 {
+.MainStatistics-dash:nth-last-of-type(2) h1 {
   width: max-content;
   margin-bottom: 0;
   font-size: 0.7rem;
@@ -1138,7 +1145,7 @@
   margin-left: 5px;
 }
 
-.MainStatestics ul {
+.MainStatistics ul {
   position: relative;
   display: flex;
   flex-direction: row;
@@ -1177,7 +1184,7 @@
   opacity: 0.5;
 }
 
-.MainStatestics-batch {
+.MainStatistics-batch {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1189,7 +1196,7 @@
   cursor: pointer;
 }
 
-.MainStatestics-batch li:nth-last-of-type(1) {
+.MainStatistics-batch li:nth-last-of-type(1) {
   position: absolute;
   color: var(--Ac-1);
   font-size: 0.7rem;
@@ -1205,14 +1212,14 @@
   flex-direction: column;
 }
 
-.MainStatestics-batch li:nth-last-of-type(1) span {
+.MainStatistics-batch li:nth-last-of-type(1) span {
   color: var(--Bc-1);
   font-weight: 600;
   margin-top: -1px;
   font-size: 0.6rem;
 }
 
-.MainStatestics-batch li:nth-last-of-type(2) {
+.MainStatistics-batch li:nth-last-of-type(2) {
   position: absolute;
   background-color: var(--Fc-1);
   background: linear-gradient(180deg, var(--Fc-1) 50%, var(--Fc-2) 100%);
@@ -1223,7 +1230,7 @@
   border-radius: 20px;
 }
 
-.MainStatestics-batch li:nth-last-of-type(3) {
+.MainStatistics-batch li:nth-last-of-type(3) {
   position: absolute;
   background-color: var(--Gc-1);
   background: linear-gradient(0deg, var(--Gc-1) 50%, var(--Gc-2) 100%);
@@ -1234,7 +1241,7 @@
   border-radius: 20px;
 }
 
-.MainStatestics-batch li:nth-last-of-type(4) {
+.MainStatistics-batch li:nth-last-of-type(4) {
   position: absolute;
   background-color: var(--Bc-1);
   background: linear-gradient(180deg, var(--Bc-1) 50%, var(--Bc-2) 100%);
@@ -1247,7 +1254,7 @@
   z-index: 10000;
 }
 
-.MainStatestics-batch li:nth-last-of-type(5) {
+.MainStatistics-batch li:nth-last-of-type(5) {
   position: absolute;
   background-color: var(--Ac-1);
   background: linear-gradient(180deg, var(--Ac-1) 50%, var(--Ac-2) 100%);
@@ -1260,7 +1267,7 @@
   z-index: 10000;
 }
 
-.MainStatestics-batch li:nth-last-of-type(6) {
+.MainStatistics-batch li:nth-last-of-type(6) {
   position: absolute;
   background-color: var(--Ac-1);
   height: 5px;

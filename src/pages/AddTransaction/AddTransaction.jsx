@@ -4,7 +4,12 @@ import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import AddTransactionFeed from "../../transactionFeedPage/AddTransactionFeed";
 import Notif from "./Notif/Notif";
 
-const AddTransaction = ({ isAddClicked, setIsClicked, setIsAddClicked }) => {
+import { useTransactions } from "../../context/TransactionContext";
+
+const AddTransaction = () => {
+  const { isAddClicked, setIsAddClicked } = useTransactions();
+  // Alias for backward compatibility if needed, though mostly used as setIsClicked inside
+  const setIsClicked = setIsAddClicked;
   useEffect(() => {
     !isAddClicked && setIsClicked("Income");
   }, []);

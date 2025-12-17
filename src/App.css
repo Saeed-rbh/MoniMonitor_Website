@@ -37,6 +37,8 @@
   --Gc-2: rgba(255, 102, 102, 0.7);
   --Gc-3: rgba(255, 102, 102, 0.3);
   --Gc-4: rgba(255, 102, 102, 0.03);
+
+  --app-max-width: 420px;
 }
 
 
@@ -77,11 +79,13 @@ body {
   flex-direction: column;
   justify-content: flex-start;
   align-items: center;
-  padding: 0;
-  padding-top: 20px;
-  /* Top breathing room */
-  gap: 20px;
-  /* Space between Header and MoneyMonitor */
+  align-items: center;
+  padding: 10px 0;
+  /* Reduced vertical padding to half */
+  gap: 0;
+  /* Removed gap to handle spacing via flex distribution if needed, or keep 20px if desired. 
+     User said "header main and footer should be in same div that share height". 
+     Let's start with 0 gap and control spacing via components. */
   box-sizing: border-box;
   background-color: var(--Ec-1);
   font-family: "Noto Sans", sans-serif;

@@ -6,14 +6,17 @@ import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import "./Transactions.css";
 import Notification from "../../components/Notification/Notification";
 
-const Transactions = ({
-  monthData,
-  isMoreClicked,
-  setIsMoreClicked,
-  whichMonth,
-  setWhichMonth,
-  isDateClicked,
-}) => {
+import { useTransactions } from "../../context/TransactionContext";
+
+const Transactions = () => {
+  const {
+    monthData,
+    isMoreClicked,
+    setIsMoreClicked,
+    whichMonth,
+    setWhichMonth,
+    isDateClicked,
+  } = useTransactions();
   const selectedData = monthData.selected;
   const availabilityData = monthData.Availability;
   const transactionsData = monthData.transactions;
