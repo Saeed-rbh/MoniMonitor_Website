@@ -39,12 +39,12 @@ const MoneyEntryAmount = ({
 
     border:
       type === "Income"
-        ? `1px solid var(--Fc-3)`
+        ? `2px solid color-mix(in srgb, var(--Fc-3), transparent 50%)`
         : type === "Expense"
-          ? `1px solid var(--Gc-3)`
+          ? `2px solid color-mix(in srgb, var(--Gc-3), transparent 50%)`
           : type === "Save&Invest"
-            ? `1px solid var(--Ac-3)`
-            : `1px solid var(--Bc-3)`,
+            ? `2px solid color-mix(in srgb, var(--Ac-3), transparent 50%)`
+            : `2px solid color-mix(in srgb, var(--Bc-3), transparent 50%)`,
   };
 
   const gradientStyle = {

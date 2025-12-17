@@ -229,7 +229,7 @@
 // export default MainMenu;
 
 import React from "react";
-import { useSpring, animated } from "react-spring";
+import { useSpring, animated, easings } from "react-spring";
 import { TbHomeStats } from "react-icons/tb";
 import { HiOutlinePlusSm } from "react-icons/hi";
 import { LuLayoutList } from "react-icons/lu";
@@ -256,7 +256,7 @@ const styles = {
     border: "2px solid var(--Ac-4)",
     height: "100%",
     width: "100%",
-    padding: "15px",
+    padding: "10px 15px",
   },
   mainMenuItem: {
     display: "flex",
@@ -283,12 +283,18 @@ const styles = {
   },
 };
 
+
+
 import { useTransactions } from "../../context/TransactionContext";
 
 const MainMenu = () => {
   const { isMoreClicked, setIsMoreClicked } = useTransactions();
   const location = useLocation().pathname;
-  const [isFade, setIsFade] = React.useState(false);
+  /* MainMenu.jsx Fix:
+     Prevent unmounting to keep layout space.
+     Use pointerEvents to disable interaction when hidden.
+  */
+
   const navigate = useNavigate();
 
   const mainMenuAnim = useSpring({
@@ -298,13 +304,15 @@ const MainMenu = () => {
     // left: "0",
     // right: "0",
     margin: "0 auto",
-    zIndex: 10000,
-    // bottom: isMoreClicked === null ? 10 : 40, // Handling via flex/margin if needed
+    zIndex: 100, // Lowered zIndex so overlay can cover it
     opacity: isMoreClicked === null ? 1 : 0,
     scale: isMoreClicked === null ? 1 : 0.95,
     filter: isMoreClicked === null ? "blur(0px)" : "blur(2px)",
-    onRest: () => isMoreClicked !== null && setIsFade(true),
-    onStart: () => isMoreClicked === null && setIsFade(false),
+    pointerEvents: isMoreClicked === null ? "auto" : "none", // Disable clicks when hidden
+    config: {
+      duration: isMoreClicked !== null ? 500 : 300,
+      easing: easings.easeInOutQuad,
+    },
   });
 
   // Menu Items Array to avoid repetition
@@ -353,91 +361,89 @@ const MainMenu = () => {
 
   return (
     <>
-      {!isFade && (
-        <animated.div style={mainMenuAnim}>
-          <BlurFade delay={0.2} style={styles.mainMenu} duration={0.3}>
-            {menuItemsL.map((item, index) => (
-              <ScalableElement
-                as="p"
-                key={index}
-                style={{
-                  ...styles.mainMenuItem,
-                  opacity: item.active ? 1 : 0.6,
-                }}
-                onClick={() => handleClick(item)}
-              >
-                <div
-                  style={{
-                    ...styles.mainMenuIcon,
-                    background: item.active ? "var(--Bc-4)" : "var(--Ec-4)",
-                  }}
-                >
-                  <item.icon />
-                </div>
-                <span
-                  style={{
-                    marginTop: item.active ? 0 : -4,
-                    transition: "all 0.3s ease",
-                  }}
-                >
-                  {item.label}
-                </span>
-              </ScalableElement>
-            ))}
-
-            <ScalableElement as="p" onClick={() => navigate("/AddTransaction")}>
+      <animated.div style={mainMenuAnim}>
+        <BlurFade delay={0.2} style={styles.mainMenu} duration={0.3}>
+          {menuItemsL.map((item, index) => (
+            <ScalableElement
+              as="p"
+              key={index}
+              style={{
+                ...styles.mainMenuItem,
+                opacity: item.active ? 1 : 0.6,
+              }}
+              onClick={() => handleClick(item)}
+            >
               <div
                 style={{
                   ...styles.mainMenuIcon,
-                  fontSize: "1.5rem",
-                  padding: "0px",
-                  background:
-                    "linear-gradient(165deg, var(--Bc-3) -50%, var(--Ec-1) 110%)",
-                  borderRadius: "17px",
+                  background: item.active ? "var(--Bc-4)" : "var(--Ec-4)",
                 }}
               >
-                <ShineBorder
-                  color={["var(--Bc-3)", "var(--Ac-4)", "var(--Bc-4)"]}
-                  borderRadius={17}
-                  padding={9}
-                  cursor="pointer"
-                >
-                  <HiOutlinePlusSm />
-                </ShineBorder>
+                <item.icon />
               </div>
-            </ScalableElement>
-
-            {menuItemsR.map((item, index) => (
-              <ScalableElement
-                as="p"
-                key={index}
+              <span
                 style={{
-                  ...styles.mainMenuItem,
-                  opacity: item.active ? 1 : 0.6,
+                  marginTop: 0,
+                  transition: "all 0.3s ease",
                 }}
-                onClick={() => handleClick(item)}
               >
-                <div
-                  style={{
-                    ...styles.mainMenuIcon,
-                    background: item.active ? "var(--Bc-4)" : "var(--Ec-4)",
-                  }}
-                >
-                  <item.icon />
-                </div>
-                <span
-                  style={{
-                    marginTop: item.active ? 0 : -4,
-                    transition: "all 0.3s ease",
-                  }}
-                >
-                  {item.label}
-                </span>
-              </ScalableElement>
-            ))}
-          </BlurFade>
-        </animated.div>
-      )}
+                {item.label}
+              </span>
+            </ScalableElement>
+          ))}
+
+          <ScalableElement as="p" onClick={() => navigate("/AddTransaction")}>
+            <div
+              style={{
+                ...styles.mainMenuIcon,
+                fontSize: "1.5rem",
+                padding: "0px",
+                background:
+                  "linear-gradient(165deg, var(--Bc-3) -50%, var(--Ec-1) 110%)",
+                borderRadius: "17px",
+              }}
+            >
+              <ShineBorder
+                color={["var(--Bc-3)", "var(--Ac-4)", "var(--Bc-4)"]}
+                borderRadius={17}
+                padding={9}
+                cursor="pointer"
+              >
+                <HiOutlinePlusSm />
+              </ShineBorder>
+            </div>
+          </ScalableElement>
+
+          {menuItemsR.map((item, index) => (
+            <ScalableElement
+              as="p"
+              key={index}
+              style={{
+                ...styles.mainMenuItem,
+                opacity: item.active ? 1 : 0.6,
+              }}
+              onClick={() => handleClick(item)}
+            >
+              <div
+                style={{
+                  ...styles.mainMenuIcon,
+                  background: item.active ? "var(--Bc-4)" : "var(--Ec-4)",
+                }}
+              >
+                <item.icon />
+              </div>
+              <span
+                style={{
+                  marginTop: 0,
+                  transition: "all 0.3s ease",
+                }}
+              >
+                {item.label}
+              </span>
+            </ScalableElement>
+          ))}
+        </BlurFade>
+      </animated.div>
     </>
   );
 };

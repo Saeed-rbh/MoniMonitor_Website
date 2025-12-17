@@ -17,6 +17,7 @@ const Transactions = () => {
     setWhichMonth,
     isDateClicked,
   } = useTransactions();
+  console.log('[Transactions] Render. isMoreClicked:', isMoreClicked);
   const selectedData = monthData.selected;
   const availabilityData = monthData.Availability;
   const transactionsData = monthData.transactions;

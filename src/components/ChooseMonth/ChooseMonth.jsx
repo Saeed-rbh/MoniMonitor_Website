@@ -16,7 +16,7 @@ const MainStyle = {
   cursor: "pointer",
   fontSize: "0.65rem",
   width: "max-content",
-  height: "35px",
+  height: "45px",
   overflow: "visible",
   right: 0,
   top: 8,
@@ -140,8 +140,8 @@ const ChooseMonth = ({
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    width: "35px",
-    height: "35px",
+    width: "45px",
+    height: "45px",
     fontSize: "1rem",
     borderRadius: "50px",
     backgroundColor: "var(--Ec-3)",
@@ -152,8 +152,8 @@ const ChooseMonth = ({
   };
 
   const MonthStyle = {
-    width: "75px",
-    height: "35px",
+    width: "85px",
+    height: "48px",
     borderRadius: "50px",
     margin: "0 0px",
     display: "flex",

@@ -9,13 +9,14 @@ const MIN_PERCENTAGE = 10;
 const FALLBACK_COLOR = "var(--Ac-2)";
 
 // Utility function to calculate percentage
-const calculatePercentage = (value, max) => (value / max) * PERCENTAGE_FACTOR;
+const calculatePercentage = (value, max) => (max === 0 ? 0 : (value / max) * PERCENTAGE_FACTOR);
 
 const MainStatistics = ({
   height,
   netAmounts,
   mainPageMonth,
   setMainPageMonth,
+  verticalShift = 0, // Accept verticalShift prop
 }) => {
   const netSeries = useMemo(
     () => Object.entries(netAmounts).reverse(),
@@ -56,7 +57,7 @@ const MainStatistics = ({
     else if (maxOfAll === allValues.maxSaving) highestCategory = "Saving";
     else if (maxOfAll === allValues.maxExpense) highestCategory = "Expense";
 
-    return { maxOfAll, highestCategory };
+    return { ...allValues, maxOfAll, highestCategory };
   }, [last6MonthsData]);
 
   const marginTop = maxValues.highestCategory === "Expense" ? 20 : 30;
@@ -363,41 +364,42 @@ const MainStatistics = ({
         style={{ height: `${heightFactor + 60}px` }}
         duration={0.3}
       >
-        <h3>
-          <span className="MoneyEntry_Dot" style={{ color: "var(--Bc-1)" }}>
-            •
-          </span>
-          <span>Insight</span> Dashboard
-        </h3>
-        <div
-          ref={containerRef}
-          className="MainStatistics-Graph"
-          style={{ marginTop: `${marginTop}px` }}
-        >
+        <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", transform: `translateY(${verticalShift * 0.5}%)` }}>
+          <h3>
+            <span className="MoneyEntry_Dot" style={{ color: "var(--Bc-1)" }}>
+              •
+            </span>
+            <span>Insight</span> Dashboard
+          </h3>
           <div
-            className="MainStatistics-dash"
-            style={{ marginLeft: "20px", width: "calc(100%)" }}
-          ></div>
-          <animated.div style={valueSpringIn} className="MainStatistics-dash">
-            <animated.h1 style={valueSpringInText}>
-              + $
-              {processedData[mainPageMonth]
-                ? Number(processedData[mainPageMonth].income.toFixed(0))
-                : 0}
-            </animated.h1>
-          </animated.div>
+            ref={containerRef}
+            className="MainStatistics-Graph"
+            style={{ marginTop: `${marginTop}px`, flex: 1 }}
+          >
+            <div
+              className="MainStatistics-dash"
+              style={{ marginLeft: "20px", width: "calc(100%)" }}
+            ></div>
+            <animated.div style={valueSpringIn} className="MainStatistics-dash">
+              <animated.h1 style={valueSpringInText}>
+                + $
+                {processedData[mainPageMonth]
+                  ? Number(processedData[mainPageMonth].income.toFixed(0))
+                  : 0}
+              </animated.h1>
+            </animated.div>
 
-          <animated.div style={valueSpringSp} className="MainStatistics-dash">
-            <animated.h1 style={valueSpringSpText}>
-              - $
-              {processedData[mainPageMonth]
-                ? Number(processedData[mainPageMonth].Expense.toFixed(0))
-                : 0}
-              $
-            </animated.h1>
-          </animated.div>
+            <animated.div style={valueSpringSp} className="MainStatistics-dash">
+              <animated.h1 style={valueSpringSpText}>
+                - $
+                {processedData[mainPageMonth]
+                  ? Number(processedData[mainPageMonth].Expense.toFixed(0))
+                  : 0}
+                $
+              </animated.h1>
+            </animated.div>
 
-          {/* <div className="MainStatistics-guid">
+            {/* <div className="MainStatistics-guid">
           <p>
             Income
             <animated.span
@@ -440,93 +442,94 @@ const MainStatistics = ({
           </p>
         </div> */}
 
-          <animated.ul>
-            {springs.map((style, index) => (
-              <animated.div
-                key={index}
-                className="MainStatistics-batch"
-                style={{
-                  opacity: x.to((x) => {
-                    const threshold = 50 * (index + 1) - 30;
-                    const distance = -x - threshold;
+            <animated.ul>
+              {springs.map((style, index) => (
+                <animated.div
+                  key={index}
+                  className="MainStatistics-batch"
+                  style={{
+                    opacity: x.to((x) => {
+                      const threshold = 50 * (index + 1) - 30;
+                      const distance = -x - threshold;
 
-                    const hasData =
+                      const hasData =
+                        Math.round(processedData[index].income) +
+                        Math.round(processedData[index].Expense) +
+                        Math.round(processedData[index].saving) !==
+                        0;
+
+                      const minOpacity = 0.0;
+                      // If empty, maxOpacity is low (0.2). If selected 0.8, else 0.4
+                      const maxOpacity = hasData
+                        ? index === mainPageMonth
+                          ? 0.8
+                          : 0.4
+                        : 0.2;
+
+                      const fadeDistance = 5;
+
+                      const sigmoid = (x) => 1 / (1 + Math.exp(-x));
+                      const transition = sigmoid(distance / fadeDistance);
+
+                      const opacity =
+                        maxOpacity * (1 - transition) + minOpacity * transition;
+                      return opacity;
+                    }),
+                    filter: style.filter,
+                    transform: x.to((x) => `translate3d(${x}px,0,0)`),
+                    cursor:
                       Math.round(processedData[index].income) +
-                      Math.round(processedData[index].Expense) +
-                      Math.round(processedData[index].saving) !==
-                      0;
-
-                    const minOpacity = 0.0;
-                    // If empty, maxOpacity is low (0.2). If selected 0.8, else 0.4
-                    const maxOpacity = hasData
-                      ? index === mainPageMonth
-                        ? 0.8
-                        : 0.4
-                      : 0.2;
-
-                    const fadeDistance = 5;
-
-                    const sigmoid = (x) => 1 / (1 + Math.exp(-x));
-                    const transition = sigmoid(distance / fadeDistance);
-
-                    const opacity =
-                      maxOpacity * (1 - transition) + minOpacity * transition;
-                    return opacity;
-                  }),
-                  filter: style.filter,
-                  transform: x.to((x) => `translate3d(${x}px,0,0)`),
-                  cursor:
+                        Math.round(processedData[index].Expense) +
+                        Math.round(processedData[index].saving) !==
+                        0
+                        ? "pointer"
+                        : "default",
+                  }}
+                  onClick={() => {
                     Math.round(processedData[index].income) +
                       Math.round(processedData[index].Expense) +
                       Math.round(processedData[index].saving) !==
-                      0
-                      ? "pointer"
-                      : "default",
-                }}
-                onClick={() => {
-                  Math.round(processedData[index].income) +
-                    Math.round(processedData[index].Expense) +
-                    Math.round(processedData[index].saving) !==
-                    0 && setMainPageMonth(index);
-                }}
-              >
-                <li></li>
-                <animated.li
-                  style={{
-                    height: style.savingHeight,
-                    display: style.savingDesplay,
+                      0 && setMainPageMonth(index);
                   }}
-                ></animated.li>
-                <animated.li
-                  style={{
-                    height: style.netHeight,
-                    display: style.netDesplay,
-                    bottom: style.netBottom,
-                    top: style.netTop,
-                  }}
-                ></animated.li>
-                <animated.li
-                  style={{
-                    height: style.ExpenseHeight,
-                    background: style.ExpenseBg,
-                  }}
-                ></animated.li>
-                <animated.li
-                  style={{
-                    height: style.incomeHeight,
-                    background: style.incomeBg,
-                  }}
-                ></animated.li>
-                <li>
-                  {processedData[index].month}{" "}
-                  <span>{processedData[index].year}</span>
-                </li>
-              </animated.div>
-            ))}
-          </animated.ul>
+                >
+                  <li></li>
+                  <animated.li
+                    style={{
+                      height: style.savingHeight,
+                      display: style.savingDesplay,
+                    }}
+                  ></animated.li>
+                  <animated.li
+                    style={{
+                      height: style.netHeight,
+                      display: style.netDesplay,
+                      bottom: style.netBottom,
+                      top: style.netTop,
+                    }}
+                  ></animated.li>
+                  <animated.li
+                    style={{
+                      height: style.ExpenseHeight,
+                      background: style.ExpenseBg,
+                    }}
+                  ></animated.li>
+                  <animated.li
+                    style={{
+                      height: style.incomeHeight,
+                      background: style.incomeBg,
+                    }}
+                  ></animated.li>
+                  <li>
+                    {processedData[index].month}{" "}
+                    <span>{processedData[index].year}</span>
+                  </li>
+                </animated.div>
+              ))}
+            </animated.ul>
+          </div>
         </div>
       </BlurFade>
-    </div >
+    </div>
   );
 };
 

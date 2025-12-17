@@ -34,10 +34,6 @@ const TransactionList = ({
   const [sortby, setSortby] = useState("All");
   const [isCalendarClicked, setIsCalendarClicked] = useState(false);
 
-  // Sync sortby with isMoreClicked
-  // Sync effect removed to allow filtering within Balance context
-
-
   const { totalAmount, currentMonth, currentYear, labelDistribution } =
     React.useMemo(() => {
       if (!selectedData || Object.keys(selectedData).length === 0) {
@@ -135,48 +131,6 @@ const TransactionList = ({
   const handleTransactionUnClick = () => { };
 
 
-
-  const [isAnimationEnds, setIsAnimationEnds] = useState(false);
-  useEffect(() => {
-    isMoreClicked && setIsAnimationEnds(true);
-  }, [isMoreClicked]);
-
-  const [Open_TransactionList, api] = useSpring(() => ({
-    scale: isCalendarClicked ? 0.9 : 1,
-    opacity: 0,
-    height: "calc(10vh - 100px)",
-  }));
-
-  const isOpenRef = useRef(isMoreClicked);
-
-  useEffect(() => {
-    isOpenRef.current = isMoreClicked;
-  }, [isMoreClicked]);
-
-  const handleOnRest = () => {
-    !isOpenRef.current && setIsAnimationEnds(false);
-    !isOpenRef.current && setIsCalendarClicked(false);
-  };
-
-  useEffect(() => {
-    isAnimationEnds &&
-      api.start({
-        scale: isCalendarClicked ? 0.9 : !!isMoreClicked ? 1 : 0.9,
-        opacity: !isMoreClicked ? 0 : 1,
-        height: !!isMoreClicked ? "calc(100vh - 100px)" : "calc(10vh - 100px)",
-        filter: isCalendarClicked ? "blur(10px)" : "blur(0px)",
-        onRest: () => {
-          handleOnRest();
-        },
-      });
-  }, [
-    isMoreClicked,
-    isAnimationEnds,
-    api,
-    setIsCalendarClicked,
-    isCalendarClicked,
-  ]);
-
   const colorStyle = {
     color:
       isMoreClicked === "Income"
@@ -252,10 +206,10 @@ const TransactionList = ({
   };
 
   useEffect(() => {
-    if (!(!isCalendarClicked && isAnimationEnds)) {
+    if (!isCalendarClicked) {
       handleUnSwipe();
     }
-  }, [isCalendarClicked, isAnimationEnds]);
+  }, [isCalendarClicked]);
 
   const TransactionList_Line = useSpring({
     width:
@@ -299,10 +253,11 @@ const TransactionList = ({
         feed={calendarFeed}
         MoreOpenHeight={MoreOpenHeight}
       />
-      {isAnimationEnds && (
-        <animated.div
+      {
+        <div
           className="TransactionList_Main"
-          style={Open_TransactionList}
+          // Removed redundant spring style `Open_TransactionList`
+          style={{ width: '100%', height: '100%', position: 'relative' }}
         >
           {transactionClick[0] !== null && (
             <TransactionModification
@@ -390,8 +345,8 @@ const TransactionList = ({
               )}
             </animated.div>
           </animated.div>
-        </animated.div>
-      )}
+        </div>
+      }
     </>
   );
 };
