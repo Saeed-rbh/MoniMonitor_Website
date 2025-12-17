@@ -417,9 +417,21 @@ const ChooseMonth = ({
             {/* Month Navigation */}
             <div style={openMonthStyle}>
               {monthNames.map((month, index) => {
+                // Find data for the selected year
+                const currentYearData = availabilityData.find(
+                  (y) => parseInt(y[0]) === parseInt(selectedYear)
+                );
+                const monthArgs = currentYearData
+                  ? currentYearData[1][month]
+                  : null;
+
+                // Check if month has valid data (count/amount > 0)
+                // Assuming format: [availableBool, count]
+                const hasTransactions = monthArgs && monthArgs[1] !== 0;
+
                 const isDisabled =
                   (selectedYear === currentYear && index > currentMonthIndex) ||
-                  !availableMonths[month]; // Disable if not available or future month in current year
+                  !hasTransactions;
 
                 return (
                   <p

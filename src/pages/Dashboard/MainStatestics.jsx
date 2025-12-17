@@ -119,16 +119,8 @@ const MainStatestics = ({
     ((390 - 20) / 2 / 1.6) * Math.min(height / 675, 1) * 2 + 10;
   const baseHeightFactor = height - buttunsHeight - height / 3.7;
 
-  // Calculate dynamic scaling based on combined bar length
-  const currentData = processedData[mainPageMonth];
-  const combinedPct = currentData
-    ? currentData.incomePercentage + currentData.ExpensePercentage
-    : 50;
-  // Scale between 0.6 and 1.0 based on usage (max roughly 80%)
-  // Adding buffer (20) to ensure text fits
-  const dynamicScale = Math.min(1, Math.max(0.65, (combinedPct + 20) / 80));
-
-  const heightFactor = baseHeightFactor * dynamicScale;
+  // Use fixed height factor to prevent UI jitter on month change
+  const heightFactor = baseHeightFactor;
 
   const valueSpringIn = useSpring({
     position: "absolute",
@@ -458,8 +450,20 @@ const MainStatestics = ({
                     const threshold = 50 * (index + 1) - 30;
                     const distance = -x - threshold;
 
+                    const hasData =
+                      Math.round(processedData[index].income) +
+                      Math.round(processedData[index].Expense) +
+                      Math.round(processedData[index].saving) !==
+                      0;
+
                     const minOpacity = 0.0;
-                    const maxOpacity = index === mainPageMonth ? 0.8 : 0.4;
+                    // If empty, maxOpacity is low (0.2). If selected 0.8, else 0.4
+                    const maxOpacity = hasData
+                      ? index === mainPageMonth
+                        ? 0.8
+                        : 0.4
+                      : 0.2;
+
                     const fadeDistance = 5;
 
                     const sigmoid = (x) => 1 / (1 + Math.exp(-x));
@@ -472,17 +476,17 @@ const MainStatestics = ({
                   filter: style.filter,
                   transform: x.to((x) => `translate3d(${x}px,0,0)`),
                   cursor:
-                    processedData[index].income +
-                      processedData[index].Expense +
-                      processedData[index].saving !==
+                    Math.round(processedData[index].income) +
+                      Math.round(processedData[index].Expense) +
+                      Math.round(processedData[index].saving) !==
                       0
                       ? "pointer"
                       : "default",
                 }}
                 onClick={() => {
-                  processedData[index].income +
-                    processedData[index].Expense +
-                    processedData[index].saving !==
+                  Math.round(processedData[index].income) +
+                    Math.round(processedData[index].Expense) +
+                    Math.round(processedData[index].saving) !==
                     0 && setMainPageMonth(index);
                 }}
               >
