@@ -1,0 +1,229 @@
+/* Auth.css */
+.auth-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: var(--Ec-1);
+  color: var(--Ac-1);
+  font-family: "Noto Sans", sans-serif;
+}
+
+.auth-box {
+  background: var(--Ec-4);
+  /* Transparent/Darker background */
+  padding: 2.5rem;
+  border-radius: 35px;
+  /* Matching rounded corners */
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  /* Glassmorphism effect */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  width: 100%;
+  max-width: 400px;
+  border: 1px solid var(--Bc-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.form-group input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px var(--Ec-2) inset !important;
+  -webkit-text-fill-color: var(--Ac-1) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.auth-button {
+  width: 100%;
+  padding: 1rem;
+  background-color: var(--Bc-2);
+  /* Primary brand color */
+  color: var(--Ec-1);
+  /* Dark text on light button */
+  border: none;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 1rem;
+}
+
+.auth-button:hover {
+  background-color: var(--Bc-1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(212, 157, 129, 0.3);
+}
+
+.error-message {
+  color: var(--Gc-1);
+  /* Red/Error color */
+  background-color: var(--Gc-4);
+  padding: 0.75rem;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  text-align: center;
+  width: 100%;
+  border: 1px solid var(--Gc-2);
+}
+
+.auth-footer {
+  text-align: center;
+  margin-top: 1.5rem;
+  color: var(--Ac-2);
+  font-size: 0.9rem;
+}
+
+.auth-footer a {
+  color: var(--Bc-1);
+  text-decoration: none;
+  font-weight: 600;
+  margin-left: 5px;
+}
+
+.auth-footer a:hover {
+  text-decoration: underline;
+  color: var(--Bc-2);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(50px) scale(0.9);
+  }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.modal-overlay.closing {
+  animation: fadeOut 0.3s ease-in forwards;
+}
+
+.modal-content-ios {
+  background-color: var(--Ec-1);
+  padding: 2rem;
+  border-radius: 20px;
+  max-width: 90%;
+  width: 400px;
+  border: 1px solid var(--Ac-4);
+  color: var(--Ac-1);
+  position: relative;
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+.modal-content-ios.closing {
+  animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Labeled Toggle (Side-by-Side Labels) - Restored */
+.labeled-toggle-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  /* Whole container triggers click */
+}
+
+.toggle-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--Ac-2);
+  /* Default text color (inactive) */
+  transition: color 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  user-select: none;
+}
+
+.toggle-label.active {
+  color: var(--Bc-2);
+  /* Active text color (highlight) */
+}
+
+/* Refined Toggle Switch (Smooth Animation) */
+.toggle-switch {
+  width: 50px;
+  height: 28px;
+  background-color: var(--Ac-3);
+  /* Dark inactive bg */
+  border-radius: 15px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.4s ease-in-out;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.toggle-switch.active {
+  background-color: var(--Ec-2);
+  /* Active bg */
+}
+
+.toggle-slider {
+  width: 24px;
+  height: 24px;
+  background-color: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  /* Smooth ease-in-out animation (Material Standard Easing for buttery smoothness) */
+  transition: transform 0.4s cubic-bezier(0.4, 0.0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  will-change: transform;
+}
+
+.toggle-switch.active .toggle-slider {
+  transform: translateX(22px);
+}
