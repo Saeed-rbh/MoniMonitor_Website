@@ -59,7 +59,7 @@ const MoreOpen = ({
         zIndex: zIndex,
         height: `calc(100vh - ${MoreOpenHeight}px)`,
         bottom: 0,
-        position: "absolute",
+        position: "fixed",
         width: "100%",
         maxHeight: "100vh",
         display: "flex",

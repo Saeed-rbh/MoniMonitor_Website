@@ -37,13 +37,15 @@ const AuthenticatedLayout = () => {
   return dataLoaded ? (
     <div className="App">
       <Header />
-      <Routes>
-        <Route path="/" element={<Telegram />} />
-        <Route path="/Transactions" element={<Transactions />} />
-        <Route path="/AddTransaction" element={<AddTransaction />} />
-        <Route path="/Insight" element={<Insight />} />
-        <Route path="/Account" element={<Account />} />
-      </Routes>
+      <div style={{ flex: 1, width: '100%', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <Routes>
+          <Route path="/" element={<Telegram />} />
+          <Route path="/Transactions" element={<><Telegram /><Transactions /></>} />
+          <Route path="/AddTransaction" element={<AddTransaction />} />
+          <Route path="/Insight" element={<Insight />} />
+          <Route path="/Account" element={<Account />} />
+        </Routes>
+      </div>
       <MainMenu />
     </div>
   ) : (

@@ -124,12 +124,13 @@ const Account = () => {
             minHeight: 0,
             overflow: "hidden",
             width: "100%",
+            height: "100%", // Override 100vh from CSS class
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             background: "transparent",
-            paddingTop: "10px",    // Explicit top padding
-            paddingBottom: "10px"  // Explicit bottom padding
+            paddingTop: "10px",
+            paddingBottom: "10px"
         }} ref={dropdownRef}>
             <BlurFade delay={0.2} duration={0.3} style={{
                 width: '100%',

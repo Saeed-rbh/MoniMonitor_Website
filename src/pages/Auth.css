@@ -5,31 +5,94 @@
   align-items: center;
   height: 100vh;
   background-color: var(--Ec-1);
+  background: radial-gradient(circle at 50% 30%, #2f323d, var(--Ec-1));
   color: var(--Ac-1);
   font-family: "Noto Sans", sans-serif;
 }
 
 .auth-box {
-  background: var(--Ec-4);
-  /* Transparent/Darker background */
-  padding: 2.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 3rem 2.5rem;
+  /* Increased top/bottom padding */
   border-radius: 35px;
-  /* Matching rounded corners */
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-  /* Glassmorphism effect */
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   width: 100%;
   max-width: 400px;
-  border: 1px solid var(--Bc-2);
+  border: 1px solid rgba(255, 245, 240, 0.1);
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
+.auth-logo {
+  margin-bottom: 1.5rem;
+}
+
+.auth-logo img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  object-fit: cover;
+}
+
+.auth-box h2 {
+  color: var(--Ac-1);
+  margin-bottom: 2rem;
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.form-group {
+  width: 100%;
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--Ac-2);
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-left: 0.5rem;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 15px;
+  background-color: var(--Ac-4);
+  border: 1px solid var(--Ac-4);
+  color: var(--Ac-1);
+  font-size: 1rem;
+  outline: none;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+  /* Ensure padding doesn't affect width */
+}
+
+.form-group input:focus {
+  border-color: var(--Bc-2);
+  background-color: rgba(255, 245, 240, 0.08);
+  /* Slightly lighter on focus */
+  box-shadow: 0 0 0 4px rgba(212, 157, 129, 0.1);
+}
+
+.form-group input::placeholder {
+  color: var(--Ac-3);
+}
+
+.form-group input:-webkit-autofill,
+.form-group input:-webkit-autofill:hover,
+.form-group input:-webkit-autofill:focus,
 .form-group input:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 30px var(--Ec-2) inset !important;
   -webkit-text-fill-color: var(--Ac-1) !important;
+  background-clip: content-box !important;
   transition: background-color 5000s ease-in-out 0s;
 }
 

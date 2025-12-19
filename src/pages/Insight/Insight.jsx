@@ -43,7 +43,7 @@ const Insight = () => {
         <div
             style={{
                 width: "100%",
-                height: "100%",
+                flex: 1, // Ensure it fills available space
                 display: "flex",
                 flexDirection: "column",
                 padding: "20px",
