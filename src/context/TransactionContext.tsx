@@ -17,6 +17,7 @@ interface TransactionContextType {
     mainPageMonth: number;
     setMainPageMonth: React.Dispatch<React.SetStateAction<number>>;
     transactionsData: any[];
+    allTransactions: any[];
     netAmountsData: any;
     availabilityData: any[];
     mainSelected: any;
@@ -64,6 +65,7 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
         Availability: availabilityData,
         netAmounts: netAmountsData,
         transactions: transactionsData,
+        allTransactions: allTransactionsData,
     } = useTransactionData(whichMonth, userData.userId);
 
     const { selected: mainSelected } = useTransactionData(
@@ -101,6 +103,7 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
         mainPageMonth,
         setMainPageMonth,
         transactionsData,
+        allTransactions: allTransactionsData,
         netAmountsData,
         availabilityData,
         mainSelected,
@@ -118,6 +121,7 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
         whichMonth,
         mainPageMonth,
         transactionsData,
+        allTransactionsData,
         netAmountsData,
         availabilityData,
         mainSelected,

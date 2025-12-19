@@ -1,5 +1,14 @@
 [
   {
+    "Amount": "5432.10",
+    "Category": "Expense",
+    "Label": "Unusual Suspicious Item",
+    "Reason": "Luxury Purchase",
+    "Timestamp": "2025-12-15 12:00:00",
+    "Type": "Expense",
+    "Frequency": "OneTime"
+  },
+  {
     "Amount": "95.68",
     "Category": "Expense",
     "Label": "Groceries & Dining",

@@ -28,6 +28,7 @@ export const useTransactionData = (whichMonth, userId) => {
     Availability: [],
     netAmounts: {},
     transactions: [],
+    allTransactions: {},
   });
 
   // 1. Fetch ALL data only when userId changes (or on mount)
@@ -51,6 +52,7 @@ export const useTransactionData = (whichMonth, userId) => {
         Availability: fullData.Availability,
         netAmounts: fullData.netAmounts,
         transactions: transactions,
+        allTransactions: fullData.totalTransactions || [],
       });
     }
   }, [whichMonth, fullData]);
