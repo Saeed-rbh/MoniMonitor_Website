@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { useTransactions } from "../../context/TransactionContext";
+import "./Insight.css"; // Import animation styles
 
 const Insight = () => {
     // Access global transaction data from context
@@ -7,11 +8,6 @@ const Insight = () => {
 
     const { dailyIncome, dailyExpense, dailyInvest, daysInMonth, paddingDays } = useMemo(() => {
         // Determine the Target Month/Year
-        // Strategy: 
-        // 1. If we have transactions, use the date from the first transaction as the "Anchor".
-        //    (This handles cases where "Month 0" might be Nov even if today is Dec, depending on backend sorting).
-        // 2. If no transactions, fallback to 'Today - whichMonth'.
-
         let year, month;
 
         if (transactions && transactions.length > 0) {
@@ -19,19 +15,13 @@ const Insight = () => {
             year = firstTxDate.getFullYear();
             month = firstTxDate.getMonth();
         } else {
-            // Fallback: Assume 'whichMonth' means 'Months Ago' from Today
-            // e.g. 0 = This Month, 1 = Last Month
             const today = new Date();
-            // Subtract whichMonth to go back in time
             const targetDate = new Date(today.getFullYear(), today.getMonth() - whichMonth, 1);
             year = targetDate.getFullYear();
             month = targetDate.getMonth();
         }
 
-        // Days in Month
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        // First Day of Week for alignment (Monday Start)
         const firstDayParams = new Date(year, month, 1).getDay();
         const paddingDays = (firstDayParams + 6) % 7;
 
@@ -45,7 +35,6 @@ const Insight = () => {
             };
         }
 
-        // 0-indexed arrays for days 1..daysInMonth
         const incomeArr = Array(daysInMonth).fill(0);
         const expenseArr = Array(daysInMonth).fill(0);
         const investArr = Array(daysInMonth).fill(0);
@@ -57,7 +46,6 @@ const Insight = () => {
             const day = date.getDate();
             const amount = Number(t.Amount);
 
-            // Filter for matching month/year (Safe check)
             if (tYear === year && tMonth === month && day >= 1 && day <= daysInMonth) {
                 const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
                 const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
@@ -88,17 +76,14 @@ const Insight = () => {
     const maxExpense = useMemo(() => Math.max(...dailyExpense.filter(v => v !== null), 1), [dailyExpense]);
     const maxInvest = useMemo(() => Math.max(...dailyInvest.filter(v => v !== null), 1), [dailyInvest]);
 
-    // Calculate Totals
     const totalIncome = useMemo(() => dailyIncome.reduce((a, b) => a + (b || 0), 0), [dailyIncome]);
     const totalExpense = useMemo(() => dailyExpense.reduce((a, b) => a + (b || 0), 0), [dailyExpense]);
     const totalInvest = useMemo(() => dailyInvest.reduce((a, b) => a + (b || 0), 0), [dailyInvest]);
 
-    // Format Full Currency
     const formatCurrency = (val) => {
         return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
-    // Reusable Grid Component 
     const renderGrid = (title, color, data, maxVal, totalVal) => (
         <div style={{
             display: "grid",
@@ -108,7 +93,6 @@ const Insight = () => {
             alignItems: "end"
         }}>
 
-            {/* Title */}
             <div style={{
                 gridColumn: "1",
                 gridRow: "1",
@@ -127,7 +111,6 @@ const Insight = () => {
                 {title}
             </div>
 
-            {/* Dots Grid */}
             <div style={{
                 gridColumn: "2",
                 gridRow: "1",
@@ -142,18 +125,27 @@ const Insight = () => {
                         );
                     }
 
-                    let opacity = 0.1;
-                    if (amount > 0) opacity = 0.3 + (0.7 * (amount / maxVal));
+                    // Calculate Final "True" Opacity
+                    // Base opacity 0.3 + 0.7 * ratio
+                    let finalOpacity = 0.3;
+                    if (amount > 0) finalOpacity = 0.3 + (0.7 * (amount / maxVal));
+                    else finalOpacity = 0.1; // "Off" dots stay dim
+
+                    // Random Delay 0s - 1.2s
+                    // Using deterministic random for stability
+                    const delay = ((index * 137.5) % 1.2).toFixed(2);
 
                     return (
                         <div key={index} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "12px", height: "12px" }} title={`Day ${index - paddingDays + 1}: $${amount}`}>
                             <div
+                                className="reveal-dot"
                                 style={{
                                     width: "4px",
                                     height: "4px",
                                     borderRadius: "50%",
                                     backgroundColor: color,
-                                    opacity: opacity,
+                                    "--to-opacity": finalOpacity, // Pass to CSS
+                                    animationDelay: `${delay}s`,
                                 }}
                             />
                         </div>
@@ -161,7 +153,6 @@ const Insight = () => {
                 })}
             </div>
 
-            {/* Total Value */}
             <div style={{
                 gridColumn: "2",
                 gridRow: "2",
@@ -180,6 +171,8 @@ const Insight = () => {
 
     return (
         <div
+            // Key forces remount on month change = Restart Animations
+            key={whichMonth}
             style={{
                 width: "100%",
                 flex: 1,

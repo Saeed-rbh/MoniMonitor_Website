@@ -1,0 +1,21 @@
+/* Insight.css */
+
+@keyframes revealItem {
+    0% {
+        opacity: 0.1;
+        transform: scale(0.5);
+        /* Start smaller */
+    }
+
+    100% {
+        opacity: var(--to-opacity);
+        transform: scale(1);
+    }
+}
+
+.reveal-dot {
+    opacity: 0.1;
+    /* Initial State: No Shine */
+    will-change: opacity, transform;
+    animation: revealItem 0.6s ease-out forwards;
+}
