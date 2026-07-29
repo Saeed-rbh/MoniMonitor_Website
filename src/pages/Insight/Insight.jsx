@@ -2,15 +2,28 @@ import React, { useMemo } from "react";
 import { useTransactions } from "../../context/TransactionContext";
 import "./Insight.css"; // Import animation styles
 import InsightTrendChart from "./InsightTrendChart";
-import { animated, useSpring, easings } from "react-spring";
+import InsightMonthlyTrendChart from "./InsightMonthlyTrendChart";
+import { animated, useSpring, easings } from "@react-spring/web";
 import { ScalableElement } from "../../utils/tools";
 import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
 import InsightFacts from './InsightFacts';
+import { GetSummary } from "../../services/apiService";
 
 const Insight = () => {
     // Access global transaction data from context
     const { transactionsData: transactions, allTransactions, whichMonth, isDateClicked, isMoreClicked } = useTransactions();
     const [viewMode, setViewMode] = React.useState('monthly'); // 'monthly' or 'yearly'
+    const [summaryData, setSummaryData] = React.useState(null);
+
+    React.useEffect(() => {
+        let isMounted = true;
+        GetSummary().then(data => {
+            if (isMounted && data) {
+                setSummaryData(data);
+            }
+        });
+        return () => { isMounted = false; };
+    }, [whichMonth]);
 
     const scaleStyle = useSpring({
         position: "relative",
@@ -547,6 +560,22 @@ const Insight = () => {
                 </div>
                 <InsightTrendChart data={chartData} />
             </div>
+
+            {summaryData && summaryData.byMonth && summaryData.byMonth.length > 0 && (
+                <div style={{ width: "100%", flexShrink: 0, marginTop: "10px" }}>
+                    <div style={{
+                        width: "100%",
+                        paddingLeft: "10px",
+                        fontSize: "0.8rem",
+                        fontWeight: "bold",
+                        color: "var(--Ac-3)",
+                        marginBottom: "5px"
+                    }}>
+                        Month-over-Month Spending Trend
+                    </div>
+                    <InsightMonthlyTrendChart data={summaryData.byMonth} />
+                </div>
+            )}
 
             {/* Expense Warning */}
             {anomalies.length > 0 && (

@@ -5,7 +5,7 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-import { useSprings, useSpring, animated, easings } from "react-spring";
+import { useSprings, useSpring, animated, easings } from "@react-spring/web";
 import { ScalableElement } from "../utils/tools";
 import useClickOutside from "../hooks/useClickOutside";
 import { useLongPress } from "use-long-press";

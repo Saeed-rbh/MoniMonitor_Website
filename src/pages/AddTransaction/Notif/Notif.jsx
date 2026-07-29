@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { animated, useSpring } from "react-spring";
+import { animated, useSpring } from "@react-spring/web";
 import { GoArrowUpRight, GoArrowDownLeft, GoPlus } from "react-icons/go";
 import CircularProgressBar from "./CircularProgressBar";
 import { ScalableElement } from "../../../utils/tools";

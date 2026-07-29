@@ -4,16 +4,28 @@
     "description": "Local API server for MoniMonitor",
     "main": "index.js",
     "scripts": {
-        "start": "node index.js"
+        "start": "node index.js",
+        "agent": "node email_agent.js",
+        "dev": "concurrently --names \"API,AGENT\" --prefix-colors \"cyan,yellow\" \"node index.js\" \"node email_agent.js\""
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "@google/genai": "^2.13.0",
         "bcryptjs": "^3.0.3",
         "body-parser": "^1.20.2",
         "cors": "^2.8.5",
+        "dotenv": "^17.4.2",
         "express": "^4.18.2",
-        "jsonwebtoken": "^9.0.3"
+        "imapflow": "^1.6.1",
+        "jsonwebtoken": "^9.0.3",
+        "mailparser": "^3.9.14",
+        "sqlite": "^5.1.1",
+        "sqlite3": "^6.0.1",
+        "zod": "^4.4.3"
+    },
+    "devDependencies": {
+        "concurrently": "^10.0.4"
     }
 }

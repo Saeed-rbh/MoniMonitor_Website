@@ -1,41 +1,38 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext(null);
+const getStorage = () => typeof window !== "undefined" ? window.localStorage : null;
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    // Load token/user from localStorage on startup
     useEffect(() => {
-        const token = localStorage.getItem("token");
-        const username = localStorage.getItem("username");
-        const userId = localStorage.getItem("userId");
-        if (token && username) {
-            setUser({ username, userId, token });
-        }
+        const storage = getStorage();
+        const token = storage?.getItem("token");
+        const username = storage?.getItem("username");
+        const userId = storage?.getItem("userId");
+        if (token && username) setUser({ username, userId, token });
         setLoading(false);
     }, []);
 
     const login = (userData, token) => {
-        localStorage.setItem("token", token);
-        localStorage.setItem("username", userData.username);
-        if (userData.id) localStorage.setItem("userId", userData.id);
-
+        const storage = getStorage();
+        storage?.setItem("token", token);
+        storage?.setItem("username", userData.username);
+        if (userData.id) storage?.setItem("userId", userData.id);
         setUser({ username: userData.username, userId: userData.id, token });
     };
 
     const logout = () => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("username");
+        const storage = getStorage();
+        storage?.removeItem("token");
+        storage?.removeItem("username");
+        storage?.removeItem("userId");
         setUser(null);
     };
 
-    return (
-        <AuthContext.Provider value={{ user, login, logout, loading }}>
-            {!loading && children}
-        </AuthContext.Provider>
-    );
+    return <AuthContext.Provider value={{ user, login, logout, loading }}>{!loading && children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);

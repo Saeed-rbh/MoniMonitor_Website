@@ -1,6 +1,6 @@
 import React from "react";
 import { ScalableElement } from "../utils/tools";
-import { animated } from "react-spring";
+import { animated } from "@react-spring/web";
 
 const Confirm = ({ handleAddClick }) => {
   return (

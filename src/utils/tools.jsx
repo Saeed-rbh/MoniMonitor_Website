@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useSpring, animated } from "react-spring";
+import { useSpring, animated } from "@react-spring/web";
 import { fetchTransactions } from "../services/transactionService";
 
 export const formatNetTotal = (netTotal) => {

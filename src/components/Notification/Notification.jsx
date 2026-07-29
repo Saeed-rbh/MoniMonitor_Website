@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { animated, useSpring } from "react-spring";
+import { animated, useSpring } from "@react-spring/web";
 import { GoArrowUpRight, GoArrowDownLeft, GoPlus } from "react-icons/go";
 import CircularProgressBar from "../../pages/AddTransaction/Notif/CircularProgressBar";
 import { ScalableElement } from "../../utils/tools";
@@ -8,7 +8,7 @@ import { FaXmark } from "react-icons/fa6";
 import { FaCheck } from "react-icons/fa";
 import { CgUndo } from "react-icons/cg";
 
-import { sendDataToDB, GetLabel, GetDataFromDB } from "../../services/apiService";
+import { sendDataToDB, GetLabel, GetDataFromDB, updateTransactionAPI, deleteTransactionAPI } from "../../services/apiService";
 
 const Notification = ({
   addTransaction,
@@ -85,14 +85,42 @@ const Notification = ({
   }, [open, setAddTransaction, deleted]);
 
   async function processTransaction(addTransaction) {
-    // let Label = addTransaction.Label;
-    // if (addTransaction.Reason.length > 0 && Label === "Auto Detect") {
-    //   Label = await GetLabel({ record_entry: addTransaction });
-    // } else {
-    //   Label = "other";
-    // }
-    // addTransaction.Label = Label;
-    // await sendDataToDB({ record_entry: addTransaction });
+    try {
+      if (open === "delete") {
+        if (addTransaction.id) {
+          console.log("Deleting transaction:", addTransaction.id);
+          await deleteTransactionAPI(addTransaction.id);
+        }
+      } else {
+        let Label = addTransaction.Label;
+        if (addTransaction.Reason && addTransaction.Reason.length > 0 && Label === "Auto Detect") {
+          Label = await GetLabel({ record_entry: addTransaction });
+        }
+        
+        const record = {
+          Amount: parseFloat(addTransaction.Amount),
+          Category: addTransaction.Category,
+          Label: Label,
+          Reason: addTransaction.Reason,
+          Timestamp: addTransaction.Timestamp,
+          Type: addTransaction.Type
+        };
+
+        if (addTransaction.id) {
+          console.log("Updating transaction:", addTransaction.id, record);
+          await updateTransactionAPI(addTransaction.id, record);
+        } else {
+          console.log("Creating transaction:", record);
+          await sendDataToDB({ record_entry: record, record_type: addTransaction.Type });
+        }
+      }
+      
+      // Reload page to force context refresh and show changes instantly
+      window.location.reload();
+    } catch (e) {
+      console.error("Failed to process transaction API call:", e);
+    }
+
     setAddTransaction({
       Amount: 0,
       Category: "",
@@ -101,7 +129,6 @@ const Notification = ({
       Timestamp: "",
       Type: "",
     });
-    // const NewData = await GetDataFromDB();
   }
 
   const handleFinish = () => {

@@ -1,0 +1,68 @@
+[
+  {
+    "Amount": "4.90",
+    "Category": "Expense",
+    "Label": "Coffee",
+    "Reason": "TIM HORTONS #0538",
+    "Timestamp": "2026-07-26T13:06:00.000Z",
+    "Type": "Credit Card",
+    "Account": "************2379",
+    "BankName": "RBC Royal Bank",
+    "userId": "1"
+  },
+  {
+    "Amount": "11.27",
+    "Category": "Expense",
+    "Label": "Groceries",
+    "Reason": "ISTANBUL FINE FOODS",
+    "Timestamp": "2026-07-25T17:13:00.000Z",
+    "Type": "Credit Card",
+    "Account": "************2379",
+    "BankName": "RBC Royal Bank",
+    "userId": "1"
+  },
+  {
+    "Amount": "160.00",
+    "Category": "Expense",
+    "Label": "e-Transfer",
+    "Reason": "BEHNAM NAYEBI",
+    "Timestamp": "2026-07-13T20:30:00.000Z",
+    "Type": "e-Transfer",
+    "Account": "********6554",
+    "BankName": "RBC Royal Bank",
+    "userId": "1"
+  },
+  {
+    "Amount": "7.00",
+    "Category": "Expense",
+    "Label": "Interac e-Transfer",
+    "Reason": "Transfer to Akram Khalaji",
+    "Timestamp": "2026-07-12T18:40:00.000Z",
+    "Type": "e-Transfer",
+    "Account": "********6554",
+    "BankName": "RBC Royal Bank",
+    "userId": "1"
+  },
+  {
+    "Amount": "3000.00",
+    "Category": "Income",
+    "Label": "Interac e-Transfer",
+    "Reason": "MAHDIYE KHALAJIOLYAIE",
+    "Timestamp": "2026-07-10T20:04:00.000Z",
+    "Type": "e-Transfer",
+    "Account": "********6554",
+    "BankName": "RBC Royal Bank",
+    "userId": "1"
+  },
+  {
+    "Amount": "8.74",
+    "Category": "Expense",
+    "Label": "Coffee",
+    "Reason": "PAPA CAFE & PASTRY",
+    "Timestamp": "2026-07-20T22:30:00.000Z",
+    "Type": "Credit Card",
+    "Account": "************2379",
+    "BankName": "RBC Royal Bank",
+    "userId": "1"
+  }
+]

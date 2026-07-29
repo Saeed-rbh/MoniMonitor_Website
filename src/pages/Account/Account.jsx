@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import "../../pages/Auth.css"; // Reuse Auth styles
 import BlurFade from "../../components/ui/blur-fade"; // Use relative path
+import { GetDataFromDB, getSettingsAPI, saveSettingsAPI } from "../../services/apiService";
 
 const Account = () => {
     const { user, logout } = useAuth();
@@ -26,6 +27,24 @@ const Account = () => {
 
     const dropdownRef = useRef(null);
 
+    useEffect(() => {
+        let active = true;
+        getSettingsAPI().then((settings) => {
+            if (!active || !settings) return;
+            setCurrency(settings.currency || "USD");
+            setNotifications(Boolean(settings.notificationsEnabled));
+        });
+        return () => { active = false; };
+    }, []);
+
+    const persistSettings = (nextCurrency = currency, nextNotifications = notifications) => {
+        saveSettingsAPI({
+            currency: nextCurrency,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
+            notificationsEnabled: nextNotifications,
+        });
+    };
+
     // Close dropdowns
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -42,8 +61,18 @@ const Account = () => {
         navigate("/login");
     };
 
-    const handleExport = () => {
-        alert("Exporting transactions to CSV... (Simulated)");
+    const handleExport = async () => {
+        const transactions = await GetDataFromDB();
+        if (!transactions.length) return alert("There are no transactions to export yet.");
+        const columns = ["id", "Amount", "Category", "Label", "Reason", "Timestamp", "Type", "Account", "BankName", "ReferenceNumber", "Frequency"];
+        const quote = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+        const csv = [columns.join(","), ...transactions.map((transaction) => columns.map((column) => quote(transaction[column])).join(","))].join("\r\n");
+        const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `monimonitor-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
     };
 
     const handleBackup = () => {
@@ -180,7 +209,7 @@ const Account = () => {
 
                         <div className="settings-item" style={itemStyle}>
                             <span>Notifications</span>
-                            <div className="labeled-toggle-container" onClick={() => setNotifications(!notifications)}>
+                            <div className="labeled-toggle-container" onClick={() => { const next = !notifications; setNotifications(next); persistSettings(currency, next); }}>
                                 <span className={`toggle-label ${!notifications ? 'active' : ''}`} style={{ fontSize: '0.75rem' }}>Off</span>
                                 <div className={`toggle-switch ${notifications ? 'active' : ''}`} style={{ width: '40px', height: '22px' }}>
                                     <div className="toggle-slider" style={{ width: '18px', height: '18px', top: '2px', left: '2px' }}></div>
@@ -193,6 +222,11 @@ const Account = () => {
                     {/* Data Management */}
                     <div className="settings-section" style={{ width: '100%', marginBottom: '0.4rem' }}>
                         <h4 style={{ color: "var(--Ac-2)", marginBottom: "0.2rem", marginLeft: "5px", fontSize: "0.7rem", fontWeight: "bold", textTransform: 'uppercase' }}>Data</h4>
+                        <div className="settings-item" style={itemStyle} onClick={() => navigate("/Finance")}>
+                            <span>Budgets & Goals</span>
+                            <span style={{ fontSize: "1rem" }}>🎯</span>
+                        </div>
+
                         <div className="settings-item" style={itemStyle} onClick={handleExport}>
                             <span>Export CSV</span>
                             <span style={{ fontSize: "1rem", cursor: "pointer" }}>⬇️</span>

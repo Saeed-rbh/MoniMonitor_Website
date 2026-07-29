@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useSprings, animated, useSpring } from "react-spring";
+import { useSprings, animated, useSpring } from "@react-spring/web";
 import { useDrag, useWheel } from "@use-gesture/react";
 import BlurFade from "@/components/ui/blur-fade";
 

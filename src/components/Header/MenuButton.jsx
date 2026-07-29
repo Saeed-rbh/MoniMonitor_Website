@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { animated, useSpring, easings } from "react-spring";
+import { animated, useSpring, easings } from "@react-spring/web";
 
 const useMenuAnimation = (isMenuOpen, isMenuIconHovered, TB) => {
   return useSpring({

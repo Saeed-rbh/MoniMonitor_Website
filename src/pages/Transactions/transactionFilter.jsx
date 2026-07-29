@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useSprings, animated, useSpring } from "react-spring";
+import { useSprings, animated, useSpring } from "@react-spring/web";
 import { ScalableElement } from "../../utils/tools";
 import { useDrag } from "@use-gesture/react";
 

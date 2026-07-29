@@ -17,6 +17,8 @@ const monthsNames = [
 ];
 
 const fillMissingMonths = (data) => {
+  if (!data || data.length === 0) return [];
+
   const startDate = parse(data[0][0], "yyyy-MM", new Date());
   const endDate = new Date(); // Current date
   let currentDate = startDate;
@@ -68,9 +70,11 @@ const LabelDistribution = (amount, labels) => {
 const groupTransactionsByMonth = (transactions) => {
   const groupedTransactions = {};
 
-  transactions?.sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
+  const sortedTransactions = [...(transactions || [])].sort(
+    (a, b) => new Date(a.Timestamp) - new Date(b.Timestamp)
+  );
 
-  transactions.forEach((transaction) => {
+  sortedTransactions.forEach((transaction) => {
     const months = [
       "Jan",
       "Feb",
@@ -126,8 +130,9 @@ const groupTransactionsByMonth = (transactions) => {
           (groupedTransactions[key].labelDistributionIncome[label] || 0) +
           Number(transaction.Amount);
       }
-    } else if (transaction.Category === "Save&Invest") {
+    } else if (transaction.Category === "Saving" || transaction.Category === "Save&Invest") {
       groupedTransactions[key].totalSaving += Number(transaction.Amount);
+      groupedTransactions[key].netTotal -= Number(transaction.Amount);
       if (label) {
         groupedTransactions[key].labelDistributionSaving[label] =
           (groupedTransactions[key].labelDistributionSaving[label] || 0) +
@@ -232,7 +237,7 @@ const getNetAmounts = (Transactions) => {
   const allMonths = [...TransObject];
 
   const latestMonth = allMonths.reduce((latest, month) => {
-    if (!latest || new Date(month) < new Date(latest)) {
+    if (!latest || new Date(month) > new Date(latest)) {
       return month;
     }
     return latest;
@@ -243,6 +248,8 @@ const getNetAmounts = (Transactions) => {
   const currentMonth = currentDate.getMonth() + 1;
 
   const months = [];
+  if (!latestMonth) return {};
+
   const [latestYear, latestMonthNum] = latestMonth.split("-").map(Number);
   let tempDate = new Date(latestYear, latestMonthNum - 1);
 
@@ -284,13 +291,10 @@ const getNetAmounts = (Transactions) => {
   return result;
 };
 
-import mockTransactions from "./mockTransactions.json";
-
-export const fetchAllTransactionData = async (userId = 90260003) => {
-  let allTransactions = await GetDataFromDB(userId);
+export const fetchAllTransactionData = async () => {
+  let allTransactions = await GetDataFromDB();
   if (!Array.isArray(allTransactions)) allTransactions = [];
 
-  allTransactions = [...allTransactions, ...mockTransactions];
 
   const totalTransactions = groupTransactionsByMonth(allTransactions);
 
@@ -319,9 +323,9 @@ export const getSelectedMonthData = (transactionsByMonth, whichMonth) => {
   return { transactions: [], selected: {} };
 };
 
-export const fetchTransactions = async ({ whichMonth, userId = 90260003 }) => {
+export const fetchTransactions = async ({ whichMonth }) => {
   const { totalTransactions, Availability, netAmounts } =
-    await fetchAllTransactionData(userId);
+    await fetchAllTransactionData();
 
   const { transactions, selected } = getSelectedMonthData(
     totalTransactions,

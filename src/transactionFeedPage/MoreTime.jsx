@@ -6,7 +6,7 @@ import React, {
   useState,
   useEffect,
 } from "react";
-import { useSpring, animated, easings } from "react-spring";
+import { useSpring, animated, easings } from "@react-spring/web";
 import useClickOutside from "../hooks/useClickOutside";
 import {
   MdOutlineChevronLeft,

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import "./MoneyMonitor.css";
 import MoneyEntry from "./MoneyEntry";
-import { animated, useSpring, easings } from "react-spring";
+import { animated, useSpring, easings } from "@react-spring/web";
 import { fetchTransactions } from "../../services/transactionService";
 import MainStatistics from "./MainStatistics";
 import { useWindowHeight } from "../../utils/tools";

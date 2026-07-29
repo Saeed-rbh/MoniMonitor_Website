@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { apiUrl } from "../config/api";
 import "./Auth.css";
 
 const LoginPage = () => {
@@ -15,7 +16,7 @@ const LoginPage = () => {
         setError("");
 
         try {
-            const response = await fetch("http://localhost:3001/login", {
+            const response = await fetch(apiUrl("/login"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password }),

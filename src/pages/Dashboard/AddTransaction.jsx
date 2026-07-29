@@ -1,5 +1,5 @@
 import React from "react";
-import { animated } from "react-spring";
+import { animated } from "@react-spring/web";
 import { GoArrowUpRight, GoArrowDownLeft, GoPlus } from "react-icons/go";
 import { ScalableElement } from "../../utils/tools";
 import { useNavigate } from "react-router-dom";

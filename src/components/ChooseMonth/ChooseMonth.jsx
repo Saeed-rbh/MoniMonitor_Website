@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
-import { animated, useSpring } from "react-spring";
+import { animated, useSpring } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
 import useClickOutside from "../../hooks/useClickOutside";
 import { IoClose } from "react-icons/io5";

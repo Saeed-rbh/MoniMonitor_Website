@@ -33,6 +33,33 @@ const TransactionList = ({
 
   const [sortby, setSortby] = useState("All");
   const [isCalendarClicked, setIsCalendarClicked] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(0);
+  const ITEMS_PER_PAGE = 30;
+
+  // Reset page when settings or search change
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [whichMonth, isMoreClicked, sortby, searchQuery]);
+
+  // Apply search query filter
+  const searchedTransactions = React.useMemo(() => {
+    if (!searchQuery.trim()) return filteredTransactions;
+    const q = searchQuery.toLowerCase().trim();
+    return filteredTransactions.filter(t => 
+      (t.Reason && t.Reason.toLowerCase().includes(q)) ||
+      (t.Label && t.Label.toLowerCase().includes(q)) ||
+      (t.Amount && String(t.Amount).includes(q)) ||
+      (t.BankName && t.BankName.toLowerCase().includes(q))
+    );
+  }, [filteredTransactions, searchQuery]);
+
+  // Calculate paginated subset
+  const pageCount = Math.ceil(searchedTransactions.length / ITEMS_PER_PAGE);
+  const paginatedTransactions = React.useMemo(() => {
+    const start = currentPage * ITEMS_PER_PAGE;
+    return searchedTransactions.slice(start, start + ITEMS_PER_PAGE);
+  }, [searchedTransactions, currentPage]);
 
   const { totalAmount, currentMonth, currentYear, labelDistribution } =
     React.useMemo(() => {
@@ -119,6 +146,7 @@ const TransactionList = ({
     setIsAddClicked(transaction.Category);
 
     setAddTransaction({
+      id: transaction.id,
       Amount: transaction.Amount,
       Category: transaction.Category,
       Label: transaction.Label,
@@ -145,7 +173,7 @@ const TransactionList = ({
   };
 
   const springProps4 = useSpring({
-    height: WindowHeight - 180,
+    height: WindowHeight - 230,
   });
 
   const ClickBlurStyle = useSpring({
@@ -316,6 +344,33 @@ const TransactionList = ({
               />
             </animated.div>
 
+            {/* Search Input Bar */}
+            <div style={{
+              padding: "0 20px",
+              marginBottom: "10px",
+              width: "100%",
+              boxSizing: "border-box"
+            }}>
+              <input
+                type="text"
+                placeholder="Search transactions..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 16px",
+                  borderRadius: "30px",
+                  border: "1px solid var(--Bc-3)",
+                  background: "rgba(255, 255, 255, 0.03)",
+                  color: "var(--Ac-1)",
+                  fontSize: "0.85rem",
+                  outline: "none",
+                  boxSizing: "border-box",
+                  backdropFilter: "blur(10px)"
+                }}
+              />
+            </div>
+
             <animated.div
               className="TransactionList_MonthlyMain"
               ref={monthlyMainRef}
@@ -328,7 +383,7 @@ const TransactionList = ({
                   handleSwipe={handleSwipe}
                   handleTransactionClick={handleTransactionClick}
                   useCustomSpring={useCustomSpring}
-                  transactions={filteredTransactions}
+                  transactions={paginatedTransactions}
                   netTotal={selectedData.netTotal}
                   percentageChange={selectedData.percentageChange}
                   month={selectedData.month}
@@ -340,10 +395,57 @@ const TransactionList = ({
                   isAddClicked={isAddClicked}
                   setOpen={setOpen}
                   setShowTransaction={setShowTransaction}
-                  height={WindowHeight - 180}
+                  height={WindowHeight - 230}
                 />
               )}
             </animated.div>
+
+            {/* Pagination Controls */}
+            {pageCount > 1 && (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "8px 20px",
+                borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+                background: "rgba(0, 0, 0, 0.2)",
+                borderRadius: "0 0 20px 20px"
+              }}>
+                <button
+                  disabled={currentPage === 0}
+                  onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                  style={{
+                    border: "1px solid var(--Bc-3)",
+                    background: "rgba(255, 255, 255, 0.02)",
+                    color: currentPage === 0 ? "rgba(255, 255, 255, 0.2)" : "var(--Ac-1)",
+                    borderRadius: "20px",
+                    padding: "4px 12px",
+                    fontSize: "0.75rem",
+                    cursor: currentPage === 0 ? "default" : "pointer"
+                  }}
+                >
+                  Previous
+                </button>
+                <span style={{ fontSize: "0.75rem", color: "var(--Ac-3)" }}>
+                  Page {currentPage + 1} of {pageCount}
+                </span>
+                <button
+                  disabled={currentPage >= pageCount - 1}
+                  onClick={() => setCurrentPage(prev => Math.min(pageCount - 1, prev + 1))}
+                  style={{
+                    border: "1px solid var(--Bc-3)",
+                    background: "rgba(255, 255, 255, 0.02)",
+                    color: currentPage >= pageCount - 1 ? "rgba(255, 255, 255, 0.2)" : "var(--Ac-1)",
+                    borderRadius: "20px",
+                    padding: "4px 12px",
+                    fontSize: "0.75rem",
+                    cursor: currentPage >= pageCount - 1 ? "default" : "pointer"
+                  }}
+                >
+                  Next
+                </button>
+              </div>
+            )}
           </animated.div>
         </div>
       }

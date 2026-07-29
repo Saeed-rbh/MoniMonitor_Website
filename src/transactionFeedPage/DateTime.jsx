@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { useSpring, animated } from "react-spring";
+import { useSpring, animated } from "@react-spring/web";
 import DatePicker from "../components/DatePicker";
 import TimePicker from "../components/TimePicker";
 import { MdModeEditOutline } from "react-icons/md";

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useCallback, useReducer } from "react";
 import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { FaCheck } from "react-icons/fa";
 import { MdOutlineAutoAwesome } from "react-icons/md";
-import { animated, useSpring } from "react-spring";
+import { animated, useSpring } from "@react-spring/web";
 
 // Importing other components
 import Amount from "./Amount";
@@ -170,6 +170,7 @@ function AddTransactionFeed({
   const newTransactionMemo = useMemo(() => {
     const selectedReason = reason.length !== 0 ? reason : addTransaction.Reason;
     return {
+      id: addTransaction.id,
       Amount:
         Number(value.replace(/[^0-9]/g, "")) !== 0
           ? Number(value.replace(/[^0-9]/g, ""))

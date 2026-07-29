@@ -5,7 +5,7 @@ import React, {
   useRef,
   useEffect,
 } from "react";
-import { useSpring, animated } from "react-spring";
+import { useSpring, animated } from "@react-spring/web";
 import { FaCheck } from "react-icons/fa";
 import { FaXmark } from "react-icons/fa6";
 import { ScalableElement } from "../utils/tools";

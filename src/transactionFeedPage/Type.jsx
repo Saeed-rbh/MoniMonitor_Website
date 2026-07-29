@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useSprings, useSpring, animated } from "react-spring";
+import { useSprings, useSpring, animated } from "@react-spring/web";
 import { GoArrowUpRight, GoArrowDownLeft, GoPlus } from "react-icons/go";
 import { ScalableElement } from "../utils/tools";
 import { MdModeEditOutline } from "react-icons/md";

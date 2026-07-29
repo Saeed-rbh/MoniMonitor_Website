@@ -1,6 +1,6 @@
 import React from "react";
 import TransactionListItem from "./TransactionListItem";
-import { animated } from "react-spring";
+import { animated } from "@react-spring/web";
 
 const TransactionListMonthly = ({
   MainIndex,

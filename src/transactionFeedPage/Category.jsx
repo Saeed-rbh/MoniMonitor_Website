@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
-import { useSprings, useSpring, animated } from "react-spring";
+import { useSprings, useSpring, animated } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
 import { ScalableElement } from "../utils/tools";
 import useLongPressHandler from "../hooks/useLongPressHandler";

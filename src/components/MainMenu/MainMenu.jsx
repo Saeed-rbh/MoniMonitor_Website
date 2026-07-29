@@ -1,5 +1,5 @@
 // import React from "react";
-// import { useSpring, animated } from "react-spring";
+// import { useSpring, animated } from "@react-spring/web";
 // import { TbHomeStats } from "react-icons/tb";
 // import { HiOutlinePlusSm } from "react-icons/hi";
 // import { LuLayoutList } from "react-icons/lu";
@@ -229,7 +229,7 @@
 // export default MainMenu;
 
 import React from "react";
-import { useSpring, animated, easings } from "react-spring";
+import { useSpring, animated, easings } from "@react-spring/web";
 import { TbHomeStats } from "react-icons/tb";
 import { HiOutlinePlusSm } from "react-icons/hi";
 import { LuLayoutList } from "react-icons/lu";

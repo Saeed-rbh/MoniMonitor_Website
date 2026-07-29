@@ -40,14 +40,18 @@ const TransactionListItem = ({
     { axis: "x" }
   );
 
-  console.log("time", time);
-
-  const clockTime = time.split(" ")[1];
-  const dateArray = time.split(" ")[0].split("-");
-  const date = new Date(dateArray[0], dateArray[1] - 1, dateArray[2]);
-  const weekdayName = new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-  }).format(date);
+  const [datePart = "", timePart = ""] = String(time || "").split(/[T ]/);
+  const dateArray = datePart.split("-");
+  const date = new Date(
+    Number(dateArray[0]),
+    Number(dateArray[1]) - 1,
+    Number(dateArray[2])
+  );
+  const hasValidDate = dateArray.length === 3 && !Number.isNaN(date.getTime());
+  const weekdayName = hasValidDate
+    ? new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(date)
+    : "Unknown date";
+  const clockTime = timePart ? timePart.slice(0, 5) : "--:--";
 
   const swipeAction = useSpring({
     transform: isSwiped ? "translateX(120px)" : "translateX(200px)",
@@ -94,7 +98,7 @@ const TransactionListItem = ({
         <div className="transaction-Description">
           {truncateDescription(description)}
           <h3>
-            {dateArray[2]} | <span>{weekdayName}</span> - {clockTime}
+            {hasValidDate ? dateArray[2] : "--"} | <span>{weekdayName}</span> - {clockTime}
           </h3>
         </div>
       </animated.p>

@@ -1,140 +1,307 @@
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const fs = require('fs');
-const path = require('path');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
+require("dotenv").config();
+const crypto = require("crypto");
+const express = require("express");
+const cors = require("cors");
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcryptjs");
+const { ZodError } = require("zod");
+const dbService = require("./src/database/dbService");
+const { createRateLimit } = require("./src/middleware/rateLimit");
+const { parseTransaction, transactionUpdateSchema } = require("./src/validation/transaction");
 
 const app = express();
-const PORT = 3001;
-const DB_FILE = path.join(__dirname, 'db.json');
-const USERS_FILE = path.join(__dirname, 'users.json');
-const JWT_SECRET = 'your_super_secret_key_change_in_production'; // Simple secret for local dev
+const PORT = Number(process.env.PORT || 3001);
+const isProduction = process.env.NODE_ENV === "production";
 
-app.use(cors());
-app.use(bodyParser.json());
+if (!process.env.JWT_SECRET && isProduction) {
+    throw new Error("JWT_SECRET must be configured in production");
+}
 
-// --- Helpers ---
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(48).toString("hex");
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "8h";
+const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:3000,http://localhost:5173")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
 
-const readJSON = (file) => {
-    try {
-        if (!fs.existsSync(file)) {
-            return [];
-        }
-        const data = fs.readFileSync(file, 'utf8');
-        return JSON.parse(data);
-    } catch (err) {
-        console.error(`Error reading ${file}:`, err);
-        return [];
-    }
-};
+app.disable("x-powered-by");
+app.use((req, res, next) => {
+    res.set({
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+    });
+    next();
+});
+app.use(cors({
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+        return callback(new Error("Origin is not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+}));
+app.use(express.json({ limit: "100kb" }));
 
-const writeJSON = (file, data) => {
-    try {
-        fs.writeFileSync(file, JSON.stringify(data, null, 2));
-        return true;
-    } catch (err) {
-        console.error(`Error writing ${file}:`, err);
-        return false;
-    }
-};
-
-// --- Middleware ---
+const authRateLimit = createRateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 
 const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) return res.status(401).json({ error: "Authentication required" });
 
-    if (!token) return res.sendStatus(401);
-
-    jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
-        req.user = user;
-        next();
-    });
+    try {
+        req.user = jwt.verify(token, JWT_SECRET);
+        return next();
+    } catch {
+        return res.status(401).json({ error: "Invalid or expired session" });
+    }
 };
 
-// --- Auth Endpoints ---
+const credentialsAreValid = (username, password) => (
+    typeof username === "string" && username.trim().length >= 3 && username.trim().length <= 64 &&
+    typeof password === "string" && password.length >= 12 && password.length <= 256
+);
 
-app.post('/register', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) {
-        return res.status(400).json({ error: "Username and password required" });
-    }
+const sendValidationError = (res, error) => {
+    if (error instanceof ZodError) return res.status(400).json({ error: "Invalid request data" });
+    console.error("Request error:", error);
+    return res.status(500).json({ error: "Unable to process this request" });
+};
 
-    const users = readJSON(USERS_FILE);
-    if (users.find(u => u.username === username)) {
-        return res.status(400).json({ error: "User already exists" });
-    }
+app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
-    try {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = { id: Date.now().toString(), username, password: hashedPassword };
-        users.push(newUser);
-        writeJSON(USERS_FILE, users);
-        res.status(201).json({ message: "User registered successfully" });
-    } catch (error) {
-        res.status(500).json({ error: "Error registering user" });
-    }
-});
-
-app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
-    const users = readJSON(USERS_FILE);
-    const user = users.find(u => u.username === username);
-
-    if (!user) {
-        return res.status(400).json({ error: "User not found" });
+app.post("/register", authRateLimit, async (req, res) => {
+    const username = typeof req.body?.username === "string" ? req.body.username.trim().toLowerCase() : "";
+    const { password } = req.body || {};
+    if (!credentialsAreValid(username, password)) {
+        return res.status(400).json({ error: "Use a username of 3-64 characters and a password of at least 12 characters" });
     }
 
     try {
-        if (await bcrypt.compare(password, user.password)) {
-            const accessToken = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
-            res.json({ accessToken, user: { id: user.id, username: user.username } });
-        } else {
-            res.status(401).json({ error: "Invalid credentials" });
-        }
+        const existingUser = await dbService.getUserByUsername(username);
+        if (existingUser) return res.status(409).json({ error: "Unable to create account with those credentials" });
+
+        const hashedPassword = await bcrypt.hash(password, 12);
+        await dbService.createUser(crypto.randomUUID(), username, hashedPassword);
+        return res.status(201).json({ message: "Account created" });
     } catch (error) {
-        res.status(500).json({ error: "Error logging in" });
+        console.error("Register error:", error);
+        return res.status(500).json({ error: "Unable to create account" });
     }
 });
 
-// --- Data Endpoints ---
+app.post("/login", authRateLimit, async (req, res) => {
+    const username = typeof req.body?.username === "string" ? req.body.username.trim().toLowerCase() : "";
+    const { password } = req.body || {};
+    if (typeof password !== "string" || !username) return res.status(401).json({ error: "Invalid username or password" });
 
-// Main endpoint - Protected
-app.post('/MoniMonitor_ToDB', authenticateToken, (req, res) => {
-    const { status, record_entry, record_type } = req.body;
-    const userId = req.user.userId;
+    try {
+        const user = await dbService.getUserByUsername(username);
+        const valid = user && await bcrypt.compare(password, user.password);
+        if (!valid) return res.status(401).json({ error: "Invalid username or password" });
 
-    if (status === 'read') {
-        const allData = readJSON(DB_FILE);
-        // Filter by authenticated user's ID
-        const userData = allData.filter(t => t.userId === userId);
-        res.json(userData);
-    } else if (status === 'record') {
-        const currentData = readJSON(DB_FILE);
+        const accessToken = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+        return res.json({ accessToken, user: { id: user.id, username: user.username } });
+    } catch (error) {
+        console.error("Login error:", error);
+        return res.status(500).json({ error: "Unable to sign in" });
+    }
+});
 
-        const newTransaction = {
-            ...record_entry,
-            Type: record_type,
-            userId: userId, // Enforce server-side user ID assignment
-            Timestamp: record_entry.Timestamp || new Date().toISOString()
+app.get("/transactions", authenticateToken, async (req, res) => {
+    try {
+        const filters = {
+            category: req.query.category,
+            label: req.query.label,
+            account: req.query.account,
+            from: req.query.from,
+            to: req.query.to,
+            search: req.query.search,
+            page: req.query.page,
+            limit: req.query.limit,
         };
-
-        currentData.push(newTransaction);
-        writeJSON(DB_FILE, currentData);
-        res.json({ message: "Success", data: newTransaction });
-    } else {
-        res.status(400).json({ error: "Invalid status" });
+        return res.json(await dbService.getAllTransactionsForUser(req.user.userId, filters));
+    } catch (error) {
+        return sendValidationError(res, error);
     }
 });
 
-// OpenAI Mock Endpoint (optional)
-app.post('/MoniMonitor_Openai', (req, res) => {
-    res.json("groceries"); // Mock label
+app.post("/transactions", authenticateToken, async (req, res) => {
+    try {
+        const transaction = parseTransaction(req.body || {});
+        const id = await dbService.addTransaction({ ...transaction, userId: req.user.userId });
+        await dbService.detectAndMarkRecurring(req.user.userId, id).catch((error) => console.error("Recurrence detection error:", error.message));
+        return res.status(201).json({ message: "Created", data: { ...transaction, id } });
+    } catch (error) {
+        return sendValidationError(res, error);
+    }
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+app.put("/transactions/:id", authenticateToken, async (req, res) => {
+    try {
+        const existing = await dbService.getTransactionById(req.params.id, req.user.userId);
+        if (!existing) return res.status(404).json({ error: "Transaction not found" });
+
+        const updates = transactionUpdateSchema.parse(req.body || {});
+        await dbService.updateTransactionForUser(req.params.id, req.user.userId, updates);
+        const finalTx = await dbService.getTransactionById(req.params.id, req.user.userId);
+
+        if (updates.Category || updates.Label) {
+            const genericLabels = ["withdrawal", "deposit", "bank withdrawal", "bank deposit", "other"];
+            const cleanLabel = finalTx.Label?.toLowerCase().trim();
+            if (finalTx.Reason && cleanLabel && !genericLabels.includes(cleanLabel)) {
+                await dbService.saveMerchantRule(req.user.userId, finalTx.Reason, finalTx.Category, finalTx.Label);
+            }
+        }
+
+        await dbService.detectAndMarkRecurring(req.user.userId, req.params.id).catch((error) => console.error("Recurrence detection error:", error.message));
+        return res.json({ message: "Updated", data: finalTx });
+    } catch (error) {
+        return sendValidationError(res, error);
+    }
 });
+
+app.delete("/transactions/:id", authenticateToken, async (req, res) => {
+    try {
+        const deleted = await dbService.deleteTransaction(req.params.id, req.user.userId);
+        if (!deleted) return res.status(404).json({ error: "Transaction not found" });
+        return res.json({ message: "Deleted" });
+    } catch (error) {
+        return sendValidationError(res, error);
+    }
+});
+
+const validCurrency = (value) => typeof value === "string" && /^[A-Z]{3}$/.test(value);
+const validMonth = (value) => typeof value === "string" && /^\d{4}-\d{2}$/.test(value);
+
+app.get("/settings", authenticateToken, async (req, res) => {
+    try {
+        return res.json(await dbService.getUserSettings(req.user.userId) || {
+            currency: "USD", timezone: null, notificationsEnabled: 1,
+        });
+    } catch (error) { return sendValidationError(res, error); }
+});
+
+app.put("/settings", authenticateToken, async (req, res) => {
+    const { currency, timezone = null, notificationsEnabled = true } = req.body || {};
+    if (!validCurrency(currency) || (timezone !== null && (typeof timezone !== "string" || timezone.length > 64)) || typeof notificationsEnabled !== "boolean") {
+        return res.status(400).json({ error: "Invalid settings" });
+    }
+    try {
+        return res.json(await dbService.saveUserSettings(req.user.userId, { currency, timezone, notificationsEnabled }));
+    } catch (error) { return sendValidationError(res, error); }
+});
+
+app.get("/budgets", authenticateToken, async (req, res) => {
+    if (!validMonth(req.query.month)) return res.status(400).json({ error: "month must be YYYY-MM" });
+    try { return res.json(await dbService.getBudgetsForUser(req.user.userId, req.query.month)); }
+    catch (error) { return sendValidationError(res, error); }
+});
+
+app.put("/budgets", authenticateToken, async (req, res) => {
+    const { category, month, amountMinor, currency = "USD" } = req.body || {};
+    if (typeof category !== "string" || category.trim().length < 1 || category.length > 100 || !validMonth(month) || !Number.isSafeInteger(amountMinor) || amountMinor < 0 || !validCurrency(currency)) {
+        return res.status(400).json({ error: "Invalid budget" });
+    }
+    try { return res.json(await dbService.saveBudget(req.user.userId, { category: category.trim(), month, amountMinor, currency })); }
+    catch (error) { return sendValidationError(res, error); }
+});
+
+app.get("/goals", authenticateToken, async (req, res) => {
+    try { return res.json(await dbService.getGoalsForUser(req.user.userId)); }
+    catch (error) { return sendValidationError(res, error); }
+});
+
+app.post("/goals", authenticateToken, async (req, res) => {
+    const { name, targetMinor, currentMinor = 0, currency = "USD", targetDate = null } = req.body || {};
+    if (typeof name !== "string" || name.trim().length < 1 || name.length > 120 || !Number.isSafeInteger(targetMinor) || targetMinor <= 0 || !Number.isSafeInteger(currentMinor) || currentMinor < 0 || !validCurrency(currency) || (targetDate !== null && (typeof targetDate !== "string" || targetDate.length > 32))) {
+        return res.status(400).json({ error: "Invalid goal" });
+    }
+    try { return res.status(201).json(await dbService.createGoal(req.user.userId, { name: name.trim(), targetMinor, currentMinor, currency, targetDate })); }
+    catch (error) { return sendValidationError(res, error); }
+});
+
+app.put("/goals/:id", authenticateToken, async (req, res) => {
+    const { name, targetMinor, currentMinor, currency, targetDate } = req.body || {};
+    const updates = {};
+    if (name !== undefined) {
+        if (typeof name !== "string" || name.trim().length < 1 || name.length > 120) return res.status(400).json({ error: "Invalid goal" });
+        updates.name = name.trim();
+    }
+    if (targetMinor !== undefined) {
+        if (!Number.isSafeInteger(targetMinor) || targetMinor <= 0) return res.status(400).json({ error: "Invalid goal" });
+        updates.targetMinor = targetMinor;
+    }
+    if (currentMinor !== undefined) {
+        if (!Number.isSafeInteger(currentMinor) || currentMinor < 0) return res.status(400).json({ error: "Invalid goal" });
+        updates.currentMinor = currentMinor;
+    }
+    if (currency !== undefined) {
+        if (!validCurrency(currency)) return res.status(400).json({ error: "Invalid goal" });
+        updates.currency = currency;
+    }
+    if (targetDate !== undefined) {
+        if (targetDate !== null && (typeof targetDate !== "string" || targetDate.length > 32)) return res.status(400).json({ error: "Invalid goal" });
+        updates.targetDate = targetDate;
+    }
+    if (Object.keys(updates).length === 0) return res.status(400).json({ error: "No goal changes supplied" });
+    try {
+        const goal = await dbService.updateGoal(req.user.userId, req.params.id, updates);
+        if (!goal) return res.status(404).json({ error: "Goal not found" });
+        return res.json(goal);
+    } catch (error) { return sendValidationError(res, error); }
+});
+
+app.delete("/goals/:id", authenticateToken, async (req, res) => {
+    try {
+        if (!await dbService.deleteGoal(req.user.userId, req.params.id)) return res.status(404).json({ error: "Goal not found" });
+        return res.json({ message: "Goal deleted" });
+    } catch (error) { return sendValidationError(res, error); }
+});
+app.get("/summary", authenticateToken, async (req, res) => {
+    try {
+        return res.json(await dbService.getSummaryForUser(req.user.userId));
+    } catch (error) {
+        return sendValidationError(res, error);
+    }
+});
+
+app.get("/accounts", authenticateToken, async (req, res) => {
+    try {
+        return res.json(await dbService.getAccountsForUser(req.user.userId));
+    } catch (error) {
+        return sendValidationError(res, error);
+    }
+});
+
+// Compatibility endpoint for the current frontend. New integrations should use /transactions.
+app.post("/MoniMonitor_ToDB", authenticateToken, async (req, res) => {
+    const { status, record_entry, record_type, ...filters } = req.body || {};
+    try {
+        if (status === "read") return res.json(await dbService.getAllTransactionsForUser(req.user.userId, filters));
+        if (status !== "record") return res.status(400).json({ error: "Invalid status" });
+
+        const transaction = parseTransaction({ ...record_entry, Type: record_type || record_entry?.Type });
+        const id = await dbService.addTransaction({ ...transaction, userId: req.user.userId });
+        await dbService.detectAndMarkRecurring(req.user.userId, id).catch((error) => console.error("Recurrence detection error:", error.message));
+        return res.status(201).json({ message: "Created", data: { ...transaction, id } });
+    } catch (error) {
+        return sendValidationError(res, error);
+    }
+});
+
+app.use((error, _req, res, _next) => {
+    if (error.message === "Origin is not allowed by CORS") return res.status(403).json({ error: "Origin is not allowed" });
+    console.error("Unhandled API error:", error);
+    return res.status(500).json({ error: "Unexpected server error" });
+});
+
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`API server listening on http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;

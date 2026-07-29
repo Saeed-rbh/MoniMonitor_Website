@@ -32,9 +32,7 @@ vi.mock('./hooks/useSharedHooks', () => ({
 }));
 
 
-test('renders MoniMonitor app without crashing', async () => {
+test('renders the unauthenticated app without crashing', async () => {
   render(<App />);
-  // Check for Loading state first
-  const loadingElement = screen.getByText(/Loading.../i);
-  expect(loadingElement).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: /login to monimonitor/i })).toBeInTheDocument();
 });
