@@ -2,12 +2,14 @@
 setlocal
 cd /d "%~dp0"
 
-echo Starting MoniMonitor...
+set "PUBLIC_URL=https://monimonitor.saeedarabha.com"
+set "TAILSCALE_EXE=C:\Program Files\Tailscale\tailscale.exe"
 
-if not exist "node_modules\.bin\vite.cmd" (
-  echo Installing website dependencies...
-  call npm install
-  if errorlevel 1 goto :error
+echo Starting MoniMonitor public services...
+
+if not exist "%TAILSCALE_EXE%" (
+  echo Tailscale is not installed in the expected location.
+  goto :error
 )
 
 if not exist "server\node_modules\.bin\concurrently.cmd" (
@@ -21,14 +23,36 @@ if not exist "server\node_modules\.bin\concurrently.cmd" (
   popd
 )
 
-start "MoniMonitor API + Email + Telegram" /D "%~dp0server" cmd /k "set AI_INGESTION_ENABLED=true && npm run dev"
-timeout /t 2 /nobreak >nul
-start "MoniMonitor Website" /D "%~dp0" cmd /k "npm run dev"
+echo Ensuring the secure public tunnel is active...
+"%TAILSCALE_EXE%" funnel --bg 3001
+if errorlevel 1 goto :error
+
+powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/health' -TimeoutSec 2 | Out-Null; exit 0 } catch { exit 1 }"
+if not errorlevel 1 (
+  powershell -NoProfile -Command "$agent = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' | Where-Object { $_.CommandLine -match 'email_agent\.js' }; if ($agent) { exit 0 } else { exit 1 }"
+  if errorlevel 1 (
+    echo The API is running without the email and Telegram agent. Close the existing backend window, then run this launcher again.
+    goto :error
+  )
+  echo MoniMonitor is already fully running.
+  start "" "%PUBLIC_URL%"
+  powershell -NoProfile -Command "Start-Sleep -Seconds 3"
+  exit /b 0
+)
+
+start "MoniMonitor API + Email + Telegram" /D "%~dp0server" cmd /k "set AI_INGESTION_ENABLED=true&& npm run dev"
+
+echo Waiting for the backend to become ready...
+powershell -NoProfile -Command "$deadline = (Get-Date).AddSeconds(20); do { try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/health' -TimeoutSec 2 | Out-Null; exit 0 } catch { Start-Sleep -Seconds 1 } } while ((Get-Date) -lt $deadline); exit 1"
+if errorlevel 1 goto :error
+powershell -NoProfile -Command "$agent = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' | Where-Object { $_.CommandLine -match 'email_agent\.js' }; if ($agent) { exit 0 } else { exit 1 }"
+if errorlevel 1 goto :error
 
 echo.
-echo MoniMonitor services launched.
-echo Website: http://localhost:3000
-timeout /t 3 /nobreak >nul
+echo Website, API, email analyzer, Telegram connector, and tunnel are running.
+echo Website: %PUBLIC_URL%
+start "" "%PUBLIC_URL%"
+powershell -NoProfile -Command "Start-Sleep -Seconds 3"
 exit /b 0
 
 :error

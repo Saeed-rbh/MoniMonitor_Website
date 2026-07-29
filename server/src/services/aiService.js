@@ -65,6 +65,7 @@ function minimizeEmailForAI(emailBody) {
 // ─── AI Parser ─────────────────────────────────────────────────────────────
 // knownAccounts: optional array of { Account, BankName, Type }
 async function parseEmailWithGemini(emailBody, knownAccounts = []) {
+    const minimizedEmail = minimizeEmailForAI(emailBody);
     const accountContext = knownAccounts.length > 0
         ? `\nKnown accounts for this user (use these to correctly classify Type):\n` +
           knownAccounts.map(a => `- ${a.Account} → ${a.BankName} ${a.Type}`).join('\n') + '\n'

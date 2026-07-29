@@ -11,6 +11,9 @@ const IMAP_PASSWORD = process.env.IMAP_PASSWORD;
 const USER_ID = process.env.USER_ID;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const AI_INGESTION_ENABLED = process.env.AI_INGESTION_ENABLED === "true";
+const WEB_APP_URL = process.env.PUBLIC_APP_URL ||
+    (process.env.FRONTEND_URL || "").split(",").map((url) => url.trim()).find((url) => url.startsWith("https://")) ||
+    "http://localhost:3000";
 
 if (AI_INGESTION_ENABLED && !USER_ID) throw new Error("USER_ID must be configured before starting the email agent");
 
@@ -51,7 +54,7 @@ const isGeneric = (l = "", r = "") => {
  * Sends a Telegram notification and saves the message_id back to the transaction row.
  */
 async function notifyAndSave(tx) {
-    const webAppUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const webAppUrl = WEB_APP_URL;
     const isHttps = webAppUrl.startsWith('https');
     
     const replyMarkup = {
@@ -262,7 +265,7 @@ async function onTelegramUpdate(update) {
                 results = txs.map(tx => {
                     const isIncome = tx.Category === 'Income';
                     const sign = isIncome ? '+' : '-';
-                    const webAppUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+                    const webAppUrl = WEB_APP_URL;
                     const isHttps = webAppUrl.startsWith('https');
                     const replyMarkup = {
                         inline_keyboard: [
@@ -353,7 +356,7 @@ async function onTelegramUpdate(update) {
                 const tx = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [txId, USER_ID]);
                 if (tx) {
                     const newText = formatTransactionMessage(tx);
-                    const webAppUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+                    const webAppUrl = WEB_APP_URL;
                     const isHttps = webAppUrl.startsWith('https');
                     const dashboardButton = isHttps ? { text: "📊 Open Dashboard", web_app: { url: webAppUrl } } : { text: "📊 Open Dashboard", url: webAppUrl };
                     
@@ -377,7 +380,7 @@ async function onTelegramUpdate(update) {
             
             if (text.startsWith('/summary') || text.startsWith('/recent')) {
                 await setTelegramReaction(messageId, "👀");
-                const webAppUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+                const webAppUrl = WEB_APP_URL;
                 const isHttps = webAppUrl.startsWith('https');
                 const dashboardButton = isHttps ? { text: "📊 Open Dashboard", web_app: { url: webAppUrl } } : { text: "📊 Open Dashboard", url: webAppUrl };
                 await sendTelegramMessage(`Open the 📊 Dashboard to view insights and recent transactions\\!`, {
