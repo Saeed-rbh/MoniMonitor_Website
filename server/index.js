@@ -8,6 +8,7 @@ const { ZodError } = require("zod");
 const dbService = require("./src/database/dbService");
 const { createRateLimit } = require("./src/middleware/rateLimit");
 const { parseTransaction, transactionUpdateSchema } = require("./src/validation/transaction");
+const { validateTelegramInitData } = require("./src/services/telegramAuthService");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3001);
@@ -19,6 +20,9 @@ if (!process.env.JWT_SECRET && isProduction) {
 
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(48).toString("hex");
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "8h";
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_USER_ID = process.env.TELEGRAM_USER_ID || process.env.TELEGRAM_CHAT_ID;
+const TELEGRAM_APP_USER_ID = process.env.USER_ID;
 const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:3000,http://localhost:5173")
     .split(",")
     .map((origin) => origin.trim())
@@ -110,6 +114,30 @@ app.post("/login", authRateLimit, async (req, res) => {
     }
 });
 
+app.post("/telegram-auth", authRateLimit, async (req, res) => {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_USER_ID || !TELEGRAM_APP_USER_ID) {
+        return res.status(503).json({ error: "Telegram authentication is not configured" });
+    }
+
+    try {
+        const telegramUser = validateTelegramInitData(req.body?.initData, TELEGRAM_BOT_TOKEN);
+        if (String(telegramUser.id) !== String(TELEGRAM_USER_ID)) {
+            return res.status(403).json({ error: "This Telegram account is not authorized" });
+        }
+
+        const user = await dbService.getUserById(TELEGRAM_APP_USER_ID);
+        if (!user) return res.status(403).json({ error: "Telegram account is not linked" });
+
+        const accessToken = jwt.sign(
+            { userId: user.id, username: user.username, telegramUserId: String(telegramUser.id) },
+            JWT_SECRET,
+            { expiresIn: JWT_EXPIRES_IN }
+        );
+        return res.json({ accessToken, user: { id: user.id, username: user.username } });
+    } catch {
+        return res.status(401).json({ error: "Unable to verify Telegram identity" });
+    }
+});
 app.get("/transactions", authenticateToken, async (req, res) => {
     try {
         const filters = {

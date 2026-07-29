@@ -31,6 +31,11 @@ async function getUserByUsername(username) {
     return await db.get('SELECT * FROM users WHERE username = ?', [username]);
 }
 
+async function getUserById(id) {
+    const db = await getDb();
+    return await db.get('SELECT * FROM users WHERE id = ?', [id]);
+}
+
 async function getAllTransactionsForUser(userId, filters = {}) {
     const db = await getDb();
     let query = 'SELECT * FROM transactions WHERE userId = ?';
@@ -418,6 +423,7 @@ module.exports = {
     getDb,
     createUser,
     getUserByUsername,
+    getUserById,
     getAllTransactionsForUser,
     addTransaction,
     getTransactionById,

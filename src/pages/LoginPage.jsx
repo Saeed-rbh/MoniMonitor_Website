@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { apiUrl } from "../config/api";
@@ -8,8 +8,44 @@ const LoginPage = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [telegramLogin, setTelegramLogin] = useState(() =>
+        Boolean(window.Telegram?.WebApp?.initData)
+    );
     const { login } = useAuth();
     const navigate = useNavigate();
+    useEffect(() => {
+        const webApp = window.Telegram?.WebApp;
+        const initData = webApp?.initData;
+        if (!initData) return;
+
+        let cancelled = false;
+        webApp.ready();
+        webApp.expand();
+
+        const authenticate = async () => {
+            try {
+                const response = await fetch(apiUrl("/telegram-auth"), {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ initData }),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || "Telegram login failed");
+                if (!cancelled) {
+                    login(data.user, data.accessToken);
+                    navigate("/", { replace: true });
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    setError(err.message || "Telegram login failed");
+                    setTelegramLogin(false);
+                }
+            }
+        };
+
+        authenticate();
+        return () => { cancelled = true; };
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -42,9 +78,11 @@ const LoginPage = () => {
                 <div className="auth-logo">
                     <img src="/MoneyMonitor.jpg" alt="MoneyMonitor Logo" />
                 </div>
-                <h2>Login to MoniMonitor</h2>
+                <h2>{telegramLogin ? "Signing in with Telegram" : "Login to MoniMonitor"}</h2>
                 {error && <p className="error-message">{error}</p>}
-                <form onSubmit={handleSubmit} style={{ width: '100%' }}>
+                {telegramLogin ? (
+                    <p className="auth-footer">Verifying your Telegram account…</p>
+                ) : <form onSubmit={handleSubmit} style={{ width: '100%' }}>
                     <div className="form-group">
                         <label>Username</label>
                         <input
@@ -64,10 +102,10 @@ const LoginPage = () => {
                         />
                     </div>
                     <button type="submit" className="auth-button">Login</button>
-                </form>
-                <p className="auth-footer">
+                </form>}
+                {!telegramLogin && <p className="auth-footer">
                     Don't have an account? <Link to="/register">Register here</Link>
-                </p>
+                </p>}
             </div>
         </div>
     );
