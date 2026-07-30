@@ -17,7 +17,7 @@ const Insight = lazy(() => import("./pages/Insight/Insight"));
 const Account = lazy(() => import("./pages/Account/Account"));
 const Finance = lazy(() => import("./pages/Finance/Finance"));
 const SaveInvestAccounts = lazy(() => import("./pages/SaveInvest/SaveInvest"));
-const SaveInvestTransactions = lazy(() => import("./pages/SaveInvest/SaveInvestTransactions"));
+const SaveInvestInsights = lazy(() => import("./pages/SaveInvest/SaveInvestInsights"));
 
 // Private Route Component
 const PrivateRoute = ({ children }) => {
@@ -48,7 +48,7 @@ const AuthenticatedLayout = () => {
           <Route path="/Insight" element={<Insight />} />
           <Route path="/Account" element={<Account />} />
           <Route path="/Finance" element={<Finance />} />
-          <Route path="/SaveInvest" element={<SaveInvestTransactions />} />
+          <Route path="/SaveInvest" element={<SaveInvestInsights />} />
           <Route path="/SaveInvest/Accounts" element={<SaveInvestAccounts />} />
         </Routes>
       </div>

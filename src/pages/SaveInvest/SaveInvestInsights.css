@@ -1,0 +1,282 @@
+.SaveInvestInsights {
+  width: 100%;
+  max-width: var(--app-max-width);
+  height: 100%;
+  margin: 0 auto;
+  padding: 12px 10px 28px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  color: var(--Ac-1);
+  text-align: left;
+}
+
+.SaveInvestInsights::-webkit-scrollbar {
+  width: 2px;
+}
+
+.SaveInvestInsights::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+  background: var(--Bc-4);
+}
+
+.SaveInvestInsights_Header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 4px 14px;
+}
+
+.SaveInvestInsights_Header h1 {
+  margin: 1px 0 2px;
+  font-size: 1.55rem;
+  font-weight: 350;
+}
+
+.SaveInvestInsights_Header p,
+.SaveInvestInsights_CardHeader p {
+  margin: 0;
+  color: var(--Ac-2);
+  font-size: 0.72rem;
+}
+
+.SaveInvestInsights_Eyebrow {
+  color: var(--Bc-1);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.SaveInvestInsights_Actions {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.SaveInvestInsights button {
+  border: 1px solid var(--Bc-3);
+  border-radius: 24px;
+  padding: 8px 11px;
+  background: radial-gradient(circle at 30% -20%, var(--Bc-3) -100%, var(--Ec-4) 65%);
+  color: var(--Ac-1);
+  font: inherit;
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.SaveInvestInsights_Hero,
+.SaveInvestInsights_Card,
+.SaveInvestInsights_MetricGrid article {
+  border: 1px solid var(--Bc-3);
+  background: linear-gradient(150deg, var(--Ac-4), var(--Ec-4));
+  box-sizing: border-box;
+  backdrop-filter: blur(12px);
+}
+
+.SaveInvestInsights_Hero {
+  padding: 17px 18px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 90% 10%, var(--Bc-3), transparent 48%),
+    linear-gradient(145deg, var(--Bc-4), var(--Ac-4));
+}
+
+.SaveInvestInsights_Hero > span,
+.SaveInvestInsights_MetricGrid article > span {
+  color: var(--Ac-2);
+  font-size: 0.7rem;
+}
+
+.SaveInvestInsights_Hero h2 {
+  margin: 3px 0 12px;
+  font-size: 2rem;
+  font-weight: 300;
+}
+
+.SaveInvestInsights_HeroMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--Ac-2);
+  font-size: 0.7rem;
+}
+
+.SaveInvestInsights .positive {
+  color: var(--Fc-1);
+}
+
+.SaveInvestInsights .negative {
+  color: var(--Gc-1);
+}
+
+.SaveInvestInsights_MetricGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.SaveInvestInsights_MetricGrid article {
+  min-height: 105px;
+  padding: 13px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.SaveInvestInsights_MetricGrid strong {
+  display: block;
+  margin: 6px 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.SaveInvestInsights_MetricGrid small {
+  color: var(--Ac-2);
+  font-size: 0.63rem;
+  line-height: 1.35;
+}
+
+.SaveInvestInsights_Card {
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px;
+  border-radius: 22px;
+}
+
+.SaveInvestInsights_CardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.SaveInvestInsights_CardHeader h2 {
+  margin: 0 0 2px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.SaveInvestInsights_Range {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 20px;
+  background: var(--Ec-3);
+}
+
+.SaveInvestInsights_Range button {
+  min-width: 30px;
+  padding: 5px 7px;
+  border: none;
+  background: transparent;
+  color: var(--Ac-2);
+}
+
+.SaveInvestInsights_Range button.active {
+  background: var(--Bc-4);
+  color: var(--Bc-1);
+}
+
+.SaveInvestInsights_Chart {
+  width: 100%;
+  height: 175px;
+  margin-top: 10px;
+}
+
+.SaveInvestInsights_Allocation {
+  display: grid;
+  gap: 7px;
+  margin-top: 13px;
+}
+
+.SaveInvestInsights_Allocation > div:not(.SaveInvestInsights_AllocationBar) {
+  display: flex;
+  justify-content: space-between;
+  color: var(--Ac-2);
+  font-size: 0.72rem;
+}
+
+.SaveInvestInsights_AllocationBar {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--Ac-4);
+}
+
+.SaveInvestInsights_AllocationBar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--Bc-1);
+}
+
+.SaveInvestInsights_AllocationBar.investments span {
+  background: var(--Cc-1);
+}
+
+.SaveInvestInsights_Rows {
+  margin-top: 8px;
+}
+
+.SaveInvestInsights_Rows > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 42px;
+  border-top: 1px solid var(--Ac-4);
+  color: var(--Ac-1);
+  font-size: 0.76rem;
+}
+
+.SaveInvestInsights_Rows > div:first-child {
+  border-top: none;
+}
+
+.SaveInvestInsights_Rows span {
+  min-width: 0;
+}
+
+.SaveInvestInsights_Rows small {
+  display: block;
+  margin-top: 2px;
+  color: var(--Ac-2);
+  font-size: 0.62rem;
+}
+
+.SaveInvestInsights_Rows strong {
+  flex-shrink: 0;
+  color: var(--Bc-1);
+  font-size: 0.76rem;
+}
+
+.SaveInvestInsights_TextButton {
+  padding: 5px 9px !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--Bc-1) !important;
+}
+
+.SaveInvestInsights_Empty {
+  min-height: 60px !important;
+  justify-content: center !important;
+  color: var(--Ac-2) !important;
+  font-size: 0.72rem !important;
+}
+
+@media (max-width: 350px) {
+  .SaveInvestInsights_Header {
+    flex-wrap: wrap;
+  }
+
+  .SaveInvestInsights_Actions {
+    margin-left: auto;
+  }
+
+  .SaveInvestInsights_Hero h2 {
+    font-size: 1.65rem;
+  }
+}

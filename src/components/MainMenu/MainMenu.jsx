@@ -289,7 +289,7 @@ const styles = {
 import { useTransactions } from "../../context/TransactionContext";
 
 const MainMenu = () => {
-  const { isMoreClicked, setIsMoreClicked } = useTransactions();
+  const { isMoreClicked } = useTransactions();
   const location = useLocation().pathname;
   /* MainMenu.jsx Fix:
      Prevent unmounting to keep layout space.
@@ -336,9 +336,8 @@ const MainMenu = () => {
     {
       icon: LuPiggyBank,
       label: "Save/Invest",
-      route: "/Transactions",
-      active: location === "/Transactions" && isMoreClicked === "Save&Invest",
-      onClick: () => setIsMoreClicked("Save&Invest"),
+      route: "/SaveInvest",
+      active: location.startsWith("/SaveInvest"),
     },
     {
       icon: IoWalletOutline,

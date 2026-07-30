@@ -161,7 +161,7 @@ const SaveInvest = () => {
         <div style={{ ...styles.row, alignItems: 'start', flexWrap: 'wrap', marginBottom: '14px' }}>
             <div><h1 style={{ fontSize: '1.35rem', margin: '4px 0' }}>Save & Invest</h1><p style={{ ...styles.secondary, margin: 0 }}>Current account value, separate from contributions.</p></div>
             <div style={{ ...styles.row, gap: '6px', marginLeft: 'auto' }}>
-                <button type='button' onClick={() => navigate('/SaveInvest')} style={styles.button}>Activity</button>
+                <button type='button' onClick={() => navigate('/SaveInvest')} style={styles.button}>Insights</button>
                 <button type='button' onClick={() => setShowForm((value) => !value)} style={styles.button}>{showForm ? 'Cancel' : '+ Account'}</button>
             </div>
         </div>
