@@ -8,6 +8,9 @@ import ChooseTransactionMonth from "./ChooseTransactionMonth";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import "./Transactions.css";
 
+const isSaveInvestTransaction = (transaction) =>
+  ["Saving", "Save&Invest", "Investment"].includes(transaction?.Category);
+
 const TransactionList = ({
   isMoreClicked,
   selectedData,
@@ -20,13 +23,16 @@ const TransactionList = ({
   setAddTransaction,
   isAddClicked,
   setOpen,
+  onManageAccounts,
   setShowTransaction,
 }) => {
   const filteredTransactions =
     isMoreClicked === "Balance"
       ? Transactions
-      : Transactions.filter(
-        (transaction) => transaction.Category === isMoreClicked
+      : Transactions.filter((transaction) =>
+        isMoreClicked === "Save&Invest"
+          ? isSaveInvestTransaction(transaction)
+          : transaction.Category === isMoreClicked
       );
 
   const WindowHeight = useWindowHeight(100);
@@ -340,14 +346,13 @@ const TransactionList = ({
               <TransactionFilter
                 sortby={sortby}
                 setSortby={setSortby}
-                loaded={filteredTransactions.length !== 0}
+                loaded={Boolean(onManageAccounts) || filteredTransactions.length !== 0}
                 isMoreClicked={isMoreClicked}
+                onManageAccounts={onManageAccounts}
                 availabilityMap={{
                   Income: Transactions.some((t) => t.Category === "Income"),
                   Expense: Transactions.some((t) => t.Category === "Expense"),
-                  "Save&Invest": Transactions.some(
-                    (t) => t.Category === "Save&Invest"
-                  ),
+                  "Save&Invest": Transactions.some(isSaveInvestTransaction),
                   Today: filteredTransactions.some((t) => {
                     const d = new Date(t.Timestamp);
                     const now = new Date();

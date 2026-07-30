@@ -16,7 +16,8 @@ const Telegram = lazy(() => import("./pages/Dashboard/MoneyMonitor"));
 const Insight = lazy(() => import("./pages/Insight/Insight"));
 const Account = lazy(() => import("./pages/Account/Account"));
 const Finance = lazy(() => import("./pages/Finance/Finance"));
-const SaveInvest = lazy(() => import('./pages/SaveInvest/SaveInvest'));
+const SaveInvestAccounts = lazy(() => import("./pages/SaveInvest/SaveInvest"));
+const SaveInvestTransactions = lazy(() => import("./pages/SaveInvest/SaveInvestTransactions"));
 
 // Private Route Component
 const PrivateRoute = ({ children }) => {
@@ -47,7 +48,8 @@ const AuthenticatedLayout = () => {
           <Route path="/Insight" element={<Insight />} />
           <Route path="/Account" element={<Account />} />
           <Route path="/Finance" element={<Finance />} />
-          <Route path='/SaveInvest' element={<SaveInvest />} />
+          <Route path="/SaveInvest" element={<><Telegram /><SaveInvestTransactions /></>} />
+          <Route path="/SaveInvest/Accounts" element={<SaveInvestAccounts />} />
         </Routes>
       </div>
       <MainMenu />

@@ -3,15 +3,25 @@ import { useSprings, animated, useSpring } from "@react-spring/web";
 import { ScalableElement } from "../../utils/tools";
 import { useDrag } from "@use-gesture/react";
 
-const TransactionFilter = ({ sortby, setSortby, loaded, isMoreClicked, availabilityMap }) => {
+const TransactionFilter = ({
+  sortby,
+  setSortby,
+  loaded,
+  isMoreClicked,
+  availabilityMap,
+  onManageAccounts,
+}) => {
   const sortItems = React.useMemo(() => {
+    let items;
     // If in a specific Category Context (Income, Expense, Save&Invest), show only Time filters
     if (["Income", "Expense", "Save&Invest"].includes(isMoreClicked)) {
-      return ["All", "daily", "monthly", "Today"];
+      items = ["All", "daily", "monthly", "Today"];
+    } else {
+      // If in Balance (Main) Context, show Categories + Time filters
+      items = ["All", "Income", "Expense", "Save&Invest", "daily", "monthly", "Today"];
     }
-    // If in Balance (Main) Context, show Categories + Time filters
-    return ["All", "Income", "Expense", "Save&Invest", "daily", "monthly", "Today"];
-  }, [isMoreClicked]);
+    return onManageAccounts ? ["Accounts", ...items] : items;
+  }, [isMoreClicked, onManageAccounts]);
 
   const [scrollWidth, setScrollWidth] = useState(0);
   const [{ x }, api] = useSpring(() => ({ x: 0 }));
@@ -75,7 +85,12 @@ const TransactionFilter = ({ sortby, setSortby, loaded, isMoreClicked, availabil
 
   const handleClick = (index) => {
     if (!isScrolling.current) {
-      setSortby(sortItems[index]);
+      const item = sortItems[index];
+      if (item === "Accounts" && onManageAccounts) {
+        onManageAccounts();
+        return;
+      }
+      setSortby(item);
     }
   };
 

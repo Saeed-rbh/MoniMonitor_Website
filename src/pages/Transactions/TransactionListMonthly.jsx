@@ -2,6 +2,9 @@ import React, { useMemo, useCallback } from "react";
 import TransactionListItem from "./TransactionListItem";
 import { FixedSizeList as List } from "react-window"; // For virtualization
 
+const isSaveInvestTransaction = (transaction) =>
+  ["Saving", "Save&Invest", "Investment"].includes(transaction?.Category);
+
 const TransactionListMonthly = ({
   MainIndex,
   swipedIndex,
@@ -23,7 +26,9 @@ const TransactionListMonthly = ({
 
         // Strict Category Matching
         if (["Income", "Expense", "Save&Invest"].includes(sortby)) {
-          return transaction.Category === sortby;
+          return sortby === "Save&Invest"
+            ? isSaveInvestTransaction(transaction)
+            : transaction.Category === sortby;
         }
 
         // Date Matching

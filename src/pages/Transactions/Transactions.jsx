@@ -8,7 +8,7 @@ import Notification from "../../components/Notification/Notification";
 
 import { useTransactions } from "../../context/TransactionContext";
 
-const Transactions = () => {
+const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
   const {
     monthData,
     isMoreClicked,
@@ -17,12 +17,20 @@ const Transactions = () => {
     setWhichMonth,
     isDateClicked,
   } = useTransactions();
-  console.log('[Transactions] Render. isMoreClicked:', isMoreClicked);
   const selectedData = monthData.selected;
   const availabilityData = monthData.Availability;
   const transactionsData = monthData.transactions;
 
   const [modify, setModify] = useState(false);
+  const [standaloneOpen, setStandaloneOpen] = useState(Boolean(categoryOverride));
+  const activeCategory = categoryOverride || isMoreClicked;
+  const setActiveCategory = useCallback((value) => {
+    if (categoryOverride) {
+      setStandaloneOpen(Boolean(value));
+      return;
+    }
+    setIsMoreClicked(value);
+  }, [categoryOverride, setIsMoreClicked]);
   const [open, setOpen] = useState(false);
 
   const [isAddClicked, setIsAddClicked] = useState(null);
@@ -52,8 +60,8 @@ const Transactions = () => {
       <TransactionList
         Transactions={transactionsData}
         selectedData={selectedData}
-        isMoreClicked={isMoreClicked}
-        setIsMoreClicked={setIsMoreClicked}
+        isMoreClicked={activeCategory}
+        setIsMoreClicked={setActiveCategory}
         setWhichMonth={setWhichMonth}
         whichMonth={whichMonth}
         dataAvailability={availabilityData}
@@ -62,15 +70,17 @@ const Transactions = () => {
         isAddClicked={isAddClicked}
         setOpen={setOpen}
         setShowTransaction={setAddTransaction}
+        onManageAccounts={onManageAccounts}
       />
     );
   }, [
     transactionsData,
     selectedData,
-    isMoreClicked,
+    activeCategory,
     whichMonth,
     availabilityData,
     isAddClicked,
+    onManageAccounts,
   ]);
 
   const AddFeed = () => {
@@ -89,8 +99,8 @@ const Transactions = () => {
   return (
     <>
       <MoreOpen
-        isClicked={isMoreClicked}
-        setIsClicked={setIsMoreClicked}
+        isClicked={categoryOverride ? standaloneOpen : isMoreClicked}
+        setIsClicked={categoryOverride ? setStandaloneOpen : setIsMoreClicked}
         feed={TransactionFeed}
         MoreOpenHeight={75}
         handleCloseAddTransaction={handleCloseAddTransaction}

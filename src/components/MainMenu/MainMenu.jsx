@@ -232,7 +232,7 @@ import React from "react";
 import { useSpring, animated, easings } from "@react-spring/web";
 import { TbHomeStats } from "react-icons/tb";
 import { HiOutlinePlusSm } from "react-icons/hi";
-import { LuLayoutList } from "react-icons/lu";
+import { LuPiggyBank } from "react-icons/lu";
 import { IoWalletOutline } from "react-icons/io5";
 import { RiDonutChartFill } from "react-icons/ri";
 import { ScalableElement } from "../../utils/tools";
@@ -257,6 +257,7 @@ const styles = {
     height: "100%",
     width: "100%",
     padding: "10px 15px",
+    boxSizing: "border-box",
   },
   mainMenuItem: {
     display: "flex",
@@ -288,7 +289,7 @@ const styles = {
 import { useTransactions } from "../../context/TransactionContext";
 
 const MainMenu = () => {
-  const { isMoreClicked, setIsMoreClicked } = useTransactions();
+  const { isMoreClicked } = useTransactions();
   const location = useLocation().pathname;
   /* MainMenu.jsx Fix:
      Prevent unmounting to keep layout space.
@@ -333,11 +334,10 @@ const MainMenu = () => {
 
   const menuItemsR = [
     {
-      icon: LuLayoutList,
-      label: "Transactions",
-      route: "/Transactions",
-      active: location === "/Transactions",
-      onClick: () => setIsMoreClicked("Balance"),
+      icon: LuPiggyBank,
+      label: "Save/Invest",
+      route: "/SaveInvest",
+      active: location.startsWith("/SaveInvest"),
     },
     {
       icon: IoWalletOutline,

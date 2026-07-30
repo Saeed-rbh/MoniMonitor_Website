@@ -60,6 +60,9 @@ const MoreOpen = ({
         height: `calc(100vh - ${MoreOpenHeight}px)`,
         bottom: 0,
         position: "fixed",
+        left: 0,
+        right: 0,
+        margin: "0 auto",
         width: "100%",
         maxHeight: "100vh",
         display: "flex",
@@ -81,8 +84,9 @@ const MoreOpen = ({
         style={{
           background: "var(--Ec-2)",
           overflow: overflow,
-          width: "380px",
-          maxWidth: "100vw",
+          width: "100%",
+          maxWidth: "var(--app-max-width)",
+          boxSizing: "border-box",
           height: "100%",
         }}
       >

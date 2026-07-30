@@ -73,7 +73,9 @@ body {
   /* Fixed viewport height */
   height: 100dvh;
   /* Dynamic viewport height for mobile */
-  width: 100vw;
+  width: 100%;
+  max-width: var(--app-max-width);
+  margin: 0 auto;
   overflow: hidden;
   display: flex;
   flex-direction: column;

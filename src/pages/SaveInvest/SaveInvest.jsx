@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTransactions } from '../../context/TransactionContext';
+import { useNavigate } from 'react-router-dom';
 import {
     createInvestmentAccountAPI,
     deleteInvestmentAccountAPI,
@@ -18,7 +19,7 @@ const money = (minor, currency = 'USD') => new Intl.NumberFormat(undefined, {
 }).format(Number(minor || 0) / 100);
 
 const styles = {
-    page: { width: '100%', maxWidth: '720px', margin: '0 auto', padding: '16px', overflowY: 'auto', color: 'var(--Ac-1)', boxSizing: 'border-box' },
+    page: { width: '100%', maxWidth: 'var(--app-max-width)', margin: '0 auto', padding: '16px', overflowY: 'auto', color: 'var(--Ac-1)', boxSizing: 'border-box' },
     card: { background: 'linear-gradient(150deg, var(--Ac-4), var(--Ec-4))', border: '1px solid var(--Bc-3)', borderRadius: '18px', padding: '16px', marginBottom: '14px' },
     field: { width: '100%', boxSizing: 'border-box', padding: '10px', borderRadius: '10px', border: '1px solid var(--Bc-3)', background: 'var(--Ec-4)', color: 'var(--Ac-1)' },
     grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '8px' },
@@ -133,6 +134,7 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
 
 const SaveInvest = () => {
     const { mainSelected } = useTransactions();
+    const navigate = useNavigate();
     const [portfolio, setPortfolio] = useState(null);
     const [account, setAccount] = useState(emptyAccount);
     const [showForm, setShowForm] = useState(false);
@@ -156,9 +158,12 @@ const SaveInvest = () => {
     if (!portfolio) return <main style={styles.page}>Loading portfolio…</main>;
 
     return <main style={styles.page}>
-        <div style={{ ...styles.row, alignItems: 'start', marginBottom: '14px' }}>
+        <div style={{ ...styles.row, alignItems: 'start', flexWrap: 'wrap', marginBottom: '14px' }}>
             <div><h1 style={{ fontSize: '1.35rem', margin: '4px 0' }}>Save & Invest</h1><p style={{ ...styles.secondary, margin: 0 }}>Current account value, separate from contributions.</p></div>
-            <button type='button' onClick={() => setShowForm((value) => !value)} style={styles.button}>{showForm ? 'Cancel' : '+ Account'}</button>
+            <div style={{ ...styles.row, gap: '6px', marginLeft: 'auto' }}>
+                <button type='button' onClick={() => navigate('/SaveInvest')} style={styles.button}>Activity</button>
+                <button type='button' onClick={() => setShowForm((value) => !value)} style={styles.button}>{showForm ? 'Cancel' : '+ Account'}</button>
+            </div>
         </div>
         {status && <p role='status' style={{ color: 'var(--Fc-1)' }}>{status}</p>}
 
