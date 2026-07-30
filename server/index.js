@@ -354,17 +354,22 @@ app.delete('/portfolio/accounts/:id', authenticateToken, async (req, res) => {
 
 app.put('/portfolio/accounts/:id/holdings', authenticateToken, async (req, res) => {
     const {
-        symbol, name = null, quantity, averageCostMinor = 0, priceMinor = 0, currency = 'USD',
+        symbol, name = null, quantity, averageCostMinor = 0, priceMinor = 0,
+        averageCostMicros = averageCostMinor * 10000,
+        priceMicros = priceMinor * 10000,
+        currency = 'USD',
     } = req.body || {};
     const normalizedSymbol = typeof symbol === 'string' ? symbol.trim().toUpperCase() : '';
     if (!/^[A-Z0-9.\-]{1,15}$/.test(normalizedSymbol) || !validQuantity(quantity) ||
-        !validMinorAmount(averageCostMinor) || !validMinorAmount(priceMinor) || !validCurrency(currency) ||
+        !validMinorAmount(averageCostMinor) || !validMinorAmount(priceMinor) ||
+        !validMinorAmount(averageCostMicros) || !validMinorAmount(priceMicros) || !validCurrency(currency) ||
         (name !== null && (typeof name !== 'string' || name.length > 120))) {
         return res.status(400).json({ error: 'Invalid holding' });
     }
     try {
         const holding = await dbService.upsertInvestmentHolding(req.user.userId, req.params.id, {
-            symbol: normalizedSymbol, name: name?.trim() || null, quantity, averageCostMinor, priceMinor, currency,
+            symbol: normalizedSymbol, name: name?.trim() || null, quantity,
+            averageCostMinor, averageCostMicros, priceMinor, priceMicros, currency,
         });
         if (!holding) return res.status(404).json({ error: 'Investment account not found' });
         return res.json(holding);

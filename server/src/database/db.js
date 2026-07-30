@@ -123,7 +123,9 @@ async function getDb() {
                     name TEXT,
                     quantity REAL NOT NULL CHECK(quantity >= 0),
                     averageCostMinor INTEGER NOT NULL DEFAULT 0 CHECK(averageCostMinor >= 0),
+                    averageCostMicros INTEGER NOT NULL DEFAULT 0 CHECK(averageCostMicros >= 0),
                     priceMinor INTEGER NOT NULL DEFAULT 0 CHECK(priceMinor >= 0),
+                    priceMicros INTEGER NOT NULL DEFAULT 0 CHECK(priceMicros >= 0),
                     currency TEXT NOT NULL DEFAULT 'USD',
                     updatedAt TEXT NOT NULL,
                     UNIQUE(accountId, symbol),
@@ -142,6 +144,7 @@ async function getDb() {
                     quantity REAL,
                     priceMinor INTEGER,
                     relatedAccountId INTEGER,
+                    priceMicros INTEGER,
                     occurredAt TEXT NOT NULL,
                     note TEXT,
                     FOREIGN KEY (userId) REFERENCES users(id),
@@ -162,6 +165,19 @@ async function getDb() {
             if (!portfolioTransactionColumns.some((column) => column.name === 'sourceTransactionId')) {
                 await db.exec('ALTER TABLE portfolio_transactions ADD COLUMN sourceTransactionId INTEGER');
             }
+            if (!portfolioTransactionColumns.some((column) => column.name === 'priceMicros')) {
+                await db.exec('ALTER TABLE portfolio_transactions ADD COLUMN priceMicros INTEGER');
+            }
+
+            const holdingColumns = await db.all('PRAGMA table_info(investment_holdings)');
+            if (!holdingColumns.some((column) => column.name === 'averageCostMicros')) {
+                await db.exec('ALTER TABLE investment_holdings ADD COLUMN averageCostMicros INTEGER');
+            }
+            if (!holdingColumns.some((column) => column.name === 'priceMicros')) {
+                await db.exec('ALTER TABLE investment_holdings ADD COLUMN priceMicros INTEGER');
+            }
+            await db.run('UPDATE investment_holdings SET averageCostMicros = averageCostMinor * 10000 WHERE averageCostMicros IS NULL');
+            await db.run('UPDATE investment_holdings SET priceMicros = priceMinor * 10000 WHERE priceMicros IS NULL');
 
             await db.exec(`
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_timestamp ON transactions(userId, Timestamp DESC);

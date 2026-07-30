@@ -53,7 +53,10 @@ const ExpenseSchema = z.object({
     ReferenceNumber: z.string().nullable().optional(),
     PortfolioAction: z.enum(['DEPOSIT', 'CONTRIBUTION', 'WITHDRAWAL', 'INTEREST', 'DIVIDEND', 'BUY', 'SELL', 'TRANSFER']).nullable().optional().default(null),
     PortfolioAccountId: z.coerce.number().int().positive().nullable().optional().default(null),
-    PortfolioConfidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).nullable().optional().default(null)
+    PortfolioConfidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).nullable().optional().default(null),
+    PortfolioSymbol: z.string().trim().regex(/^[A-Z0-9.\-]{1,15}$/).nullable().optional().default(null),
+    PortfolioQuantity: z.coerce.number().finite().positive().nullable().optional().default(null),
+    PortfolioPrice: z.coerce.number().finite().positive().nullable().optional().default(null)
 });
 
 const ErrorSchema = z.object({ error: z.string() });
@@ -131,11 +134,23 @@ Fields to extract:
 - "PortfolioConfidence": Return "HIGH" only when both the action and destination portfolio account are explicit.
   Return "MEDIUM" for a likely but incomplete match, "LOW" for a guess, or null when not applicable.
 
+- "PortfolioSymbol": For a BUY or SELL, return the uppercase ticker symbol exactly as shown
+  (for example "XEQT"). Otherwise return null.
+- "PortfolioQuantity": For a BUY or SELL, return the exact number of shares filled, including
+  fractional shares (for example 0.2243). Otherwise return null.
+- "PortfolioPrice": For a BUY or SELL, return the execution price per share as a number without
+  a currency symbol (for example 44.5699). Otherwise return null.
+  "Amount" must be the order's total cost for a BUY or total proceeds for a SELL.
+- A filled order confirmation from a brokerage is a valid financial transaction notification.
+
 Portfolio safety rules:
 - Never infer an account id merely because there is only one account in the list.
 - A debt or credit-card payment is Saving for reporting but is not a portfolio action; return null portfolio fields.
 - Do not treat a BUY, SELL, or internal TRANSFER as a new contribution.
 
+- For BUY or SELL, PortfolioSymbol, PortfolioQuantity, and PortfolioPrice must all come directly
+  from the filled-order email. Never estimate missing trade details.
+- A BUY reduces account cash; a SELL increases account cash.
 If the email is NOT a bank transaction notification, return exactly: {"error": "Not a bank email"}
 
 Email Text:

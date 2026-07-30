@@ -23,6 +23,14 @@ const money = (value, currency = "USD") =>
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
 
+const unitPrice = (value, currency = "USD") =>
+  new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 4,
+  }).format(Number(value || 0));
+
 const SaveInvestInsights = () => {
   const navigate = useNavigate();
   const { allTransactions, monthData, setIsMoreClicked } = useTransactions();
@@ -326,10 +334,14 @@ const SaveInvestInsights = () => {
               {account.holdings?.length ? (
                 <div className="SaveInvestInsights_Holdings">
                   {account.holdings.map((holding) => {
+                    const pricePerShare = Number.isSafeInteger(holding.priceMicros)
+                      ? holding.priceMicros / 1000000
+                      : Number(holding.priceMinor || 0) / 100;
+                    const averageCost = Number.isSafeInteger(holding.averageCostMicros)
+                      ? holding.averageCostMicros / 1000000
+                      : Number(holding.averageCostMinor || 0) / 100;
                     const positionValue =
-                      Number(holding.quantity || 0) *
-                      Number(holding.priceMinor || 0) /
-                      100;
+                      Number(holding.quantity || 0) * pricePerShare;
                     return (
                       <div className="SaveInvestInsights_Holding" key={holding.id}>
                         <div>
@@ -339,8 +351,8 @@ const SaveInvestInsights = () => {
                             {Number(holding.quantity || 0).toLocaleString(
                               undefined,
                               { maximumFractionDigits: 6 }
-                            )} shares × {money(
-                              Number(holding.priceMinor || 0) / 100,
+                            )} shares × {unitPrice(
+                              pricePerShare,
                               holding.currency || account.currency
                             )} each
                           </small>
@@ -353,8 +365,8 @@ const SaveInvestInsights = () => {
                             )}
                           </strong>
                           <small>
-                            Avg. cost {money(
-                              Number(holding.averageCostMinor || 0) / 100,
+                            Avg. cost {unitPrice(
+                              averageCost,
                               holding.currency || account.currency
                             )}
                           </small>

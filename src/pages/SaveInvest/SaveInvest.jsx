@@ -18,6 +18,11 @@ const money = (minor, currency = 'USD') => new Intl.NumberFormat(undefined, {
     style: 'currency', currency, maximumFractionDigits: 2,
 }).format(Number(minor || 0) / 100);
 
+const unitMoney = (micros, currency = 'USD') => new Intl.NumberFormat(undefined, {
+    style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 4,
+}).format(Number(micros || 0) / 1000000);
+const decimalInput = (micros, minor) =>
+    ((Number.isSafeInteger(micros) ? micros / 1000000 : Number(minor || 0) / 100).toFixed(4)).replace(/0+$/, '').replace(/\.$/, '');
 const styles = {
     page: { width: '100%', maxWidth: 'var(--app-max-width)', margin: '0 auto', padding: '16px', overflowY: 'auto', color: 'var(--Ac-1)', boxSizing: 'border-box' },
     card: { background: 'linear-gradient(150deg, var(--Ac-4), var(--Ec-4))', border: '1px solid var(--Bc-3)', borderRadius: '18px', padding: '16px', marginBottom: '14px' },
@@ -47,9 +52,13 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
         const quantity = Number(holding.quantity);
         const averageCostMinor = toMinor(holding.averageCost);
         const priceMinor = toMinor(holding.price);
+        const averageCostMicros = Math.round(Number(holding.averageCost || 0) * 1000000);
+        const priceMicros = Math.round(Number(holding.price || 0) * 1000000);
         if (!holding.symbol.trim() || !Number.isFinite(quantity) || quantity < 0 ||
             !Number.isSafeInteger(averageCostMinor) || averageCostMinor < 0 ||
-            !Number.isSafeInteger(priceMinor) || priceMinor < 0) {
+            !Number.isSafeInteger(priceMinor) || priceMinor < 0 ||
+            !Number.isSafeInteger(averageCostMicros) || averageCostMicros < 0 ||
+            !Number.isSafeInteger(priceMicros) || priceMicros < 0) {
             return setStatus('Enter a symbol, quantity, cost, and current price.');
         }
         const saved = await saveInvestmentHoldingAPI(account.id, {
@@ -58,6 +67,8 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
             quantity,
             averageCostMinor,
             priceMinor,
+            averageCostMicros,
+            priceMicros,
             currency: account.currency,
         });
         if (!saved) return setStatus('Could not save the holding.');
@@ -70,8 +81,8 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
         symbol: item.symbol,
         name: item.name || '',
         quantity: String(item.quantity),
-        averageCost: (item.averageCostMinor / 100).toFixed(2),
-        price: (item.priceMinor / 100).toFixed(2),
+        averageCost: decimalInput(item.averageCostMicros, item.averageCostMinor),
+        price: decimalInput(item.priceMicros, item.priceMinor),
     });
 
     return <section style={styles.card}>
@@ -97,10 +108,11 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
         <div style={{ marginTop: '16px' }}>
             <h3 style={{ fontSize: '.95rem', marginBottom: '8px' }}>Holdings</h3>
             {account.holdings.length ? account.holdings.map((item) => {
-                const value = Math.round(item.quantity * item.priceMinor);
+                const itemPriceMicros = Number.isSafeInteger(item.priceMicros) ? item.priceMicros : item.priceMinor * 10000;
+                const value = Math.round(item.quantity * itemPriceMicros / 10000);
                 const updated = new Date(item.updatedAt).toLocaleDateString();
                 return <div key={item.id} style={{ ...styles.row, borderTop: '1px solid var(--Bc-4)', padding: '10px 0' }}>
-                    <div style={{ minWidth: 0 }}><strong>{item.symbol}</strong>{item.name && <span style={styles.secondary}> · {item.name}</span>}<div style={styles.secondary}>{item.quantity} shares × {money(item.priceMinor, item.currency)} · Updated {updated}</div></div>
+                    <div style={{ minWidth: 0 }}><strong>{item.symbol}</strong>{item.name && <span style={styles.secondary}> · {item.name}</span>}<div style={styles.secondary}>{item.quantity} shares × {unitMoney(itemPriceMicros, item.currency)} · Updated {updated}</div></div>
                     <div style={{ textAlign: 'right' }}><strong>{money(value, item.currency)}</strong><div><button type='button' onClick={() => editHolding(item)} style={{ ...styles.button, padding: '4px 7px' }}>Edit</button> <button type='button' onClick={async () => {
                         if (window.confirm(`Remove ${item.symbol} from ${account.name}?`) && await deleteInvestmentHoldingAPI(account.id, item.id)) {
                             setStatus('Holding removed.'); onRefresh();
@@ -115,8 +127,8 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
                 <input aria-label='Stock symbol' placeholder='Symbol (XEQT)' value={holding.symbol} onChange={(event) => setHolding({ ...holding, symbol: event.target.value })} style={styles.field} maxLength='15' required />
                 <input aria-label='Holding name' placeholder='Name (optional)' value={holding.name} onChange={(event) => setHolding({ ...holding, name: event.target.value })} style={styles.field} maxLength='120' />
                 <input aria-label='Share quantity' type='number' min='0' step='any' placeholder='Shares' value={holding.quantity} onChange={(event) => setHolding({ ...holding, quantity: event.target.value })} style={styles.field} required />
-                <input aria-label='Average cost per share' type='number' min='0' step='0.01' placeholder='Avg cost/share' value={holding.averageCost} onChange={(event) => setHolding({ ...holding, averageCost: event.target.value })} style={styles.field} required />
-                <input aria-label='Current price per share' type='number' min='0' step='0.01' placeholder='Current price/share' value={holding.price} onChange={(event) => setHolding({ ...holding, price: event.target.value })} style={styles.field} required />
+                <input aria-label='Average cost per share' type='number' min='0' step='0.0001' placeholder='Avg cost/share' value={holding.averageCost} onChange={(event) => setHolding({ ...holding, averageCost: event.target.value })} style={styles.field} required />
+                <input aria-label='Current price per share' type='number' min='0' step='0.0001' placeholder='Current price/share' value={holding.price} onChange={(event) => setHolding({ ...holding, price: event.target.value })} style={styles.field} required />
             </div>
             <div style={{ ...styles.row, marginTop: '8px' }}>
                 <span style={styles.secondary}>Prices are manual and show when they were last updated.</span>

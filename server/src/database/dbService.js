@@ -186,8 +186,8 @@ async function trackAccount(userId, account, bankName, type, firstSeen) {
 
 const portfolioAccountSelect = `
     SELECT a.*,
-           COALESCE(SUM(ROUND(h.quantity * h.priceMinor)), 0) AS holdingsValueMinor,
-           COALESCE(SUM(ROUND(h.quantity * h.averageCostMinor)), 0) AS holdingsCostMinor,
+           COALESCE(SUM(ROUND(h.quantity * COALESCE(h.priceMicros, h.priceMinor * 10000) / 10000.0)), 0) AS holdingsValueMinor,
+           COALESCE(SUM(ROUND(h.quantity * COALESCE(h.averageCostMicros, h.averageCostMinor * 10000) / 10000.0)), 0) AS holdingsCostMinor,
            COUNT(h.id) AS holdingCount
     FROM investment_accounts a
     LEFT JOIN investment_holdings h ON h.accountId = a.id AND h.userId = a.userId
@@ -217,7 +217,7 @@ async function getPortfolioSummary(userId) {
         `SELECT t.id AS sourceTransactionId, t.AmountMinor AS amountMinor, t.Currency AS currency,
                 t.Timestamp AS occurredAt, t.Label AS label, t.Reason AS reason,
                 t.Account AS sourceAccount, t.BankName AS bankName, t.ReferenceNumber AS referenceNumber,
-                p.kind, p.accountId, a.name AS accountName
+                p.kind, p.accountId, p.symbol, p.quantity, p.priceMinor, p.priceMicros, a.name AS accountName
          FROM transactions t
          LEFT JOIN portfolio_transactions p
                 ON p.sourceTransactionId = t.id AND p.userId = t.userId
@@ -288,13 +288,21 @@ async function upsertInvestmentHolding(userId, accountId, holding) {
     const account = await db.get('SELECT id FROM investment_accounts WHERE id = ? AND userId = ?', [accountId, userId]);
     if (!account) return null;
     const now = new Date().toISOString();
+    const averageCostMicros = Number.isSafeInteger(holding.averageCostMicros)
+        ? holding.averageCostMicros
+        : holding.averageCostMinor * 10000;
+    const priceMicros = Number.isSafeInteger(holding.priceMicros)
+        ? holding.priceMicros
+        : holding.priceMinor * 10000;
     await db.run(
-        `INSERT INTO investment_holdings (userId, accountId, symbol, name, quantity, averageCostMinor, priceMinor, currency, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO investment_holdings (userId, accountId, symbol, name, quantity, averageCostMinor, averageCostMicros, priceMinor, priceMicros, currency, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(accountId, symbol) DO UPDATE SET
             name = excluded.name, quantity = excluded.quantity, averageCostMinor = excluded.averageCostMinor,
-            priceMinor = excluded.priceMinor, currency = excluded.currency, updatedAt = excluded.updatedAt`,
-        [userId, accountId, holding.symbol, holding.name || null, holding.quantity, holding.averageCostMinor, holding.priceMinor, holding.currency, now]
+            averageCostMicros = excluded.averageCostMicros, priceMinor = excluded.priceMinor,
+            priceMicros = excluded.priceMicros, currency = excluded.currency, updatedAt = excluded.updatedAt`,
+        [userId, accountId, holding.symbol, holding.name || null, holding.quantity, holding.averageCostMinor,
+            averageCostMicros, holding.priceMinor, priceMicros, holding.currency, now]
     );
     return await db.get('SELECT * FROM investment_holdings WHERE accountId = ? AND symbol = ? AND userId = ?', [accountId, holding.symbol, userId]);
 }
@@ -315,10 +323,22 @@ const emailCashActions = Object.freeze({
 });
 
 async function applyEmailPortfolioActivity(userId, transactionId, activity = {}) {
-    const { accountId, action, confidence } = activity;
+    const { accountId, action, confidence, symbol, quantity, price } = activity;
     if (confidence !== 'HIGH' || !accountId || !action) return { status: 'ignored' };
-    if (!Object.hasOwn(emailCashActions, action)) {
-        return { status: 'review_required', reason: 'Holdings and internal transfers require explicit position details' };
+    const isTrade = action === 'BUY' || action === 'SELL';
+    if (!Object.hasOwn(emailCashActions, action) && !isTrade) {
+        return { status: 'review_required', reason: 'Internal transfers require explicit destination details' };
+    }
+
+    const normalizedSymbol = typeof symbol === 'string' ? symbol.trim().toUpperCase() : '';
+    const tradeQuantity = Number(quantity);
+    const tradePrice = Number(price);
+    if (isTrade && (
+        !/^[A-Z0-9.\-]{1,15}$/.test(normalizedSymbol) ||
+        !Number.isFinite(tradeQuantity) || tradeQuantity <= 0 ||
+        !Number.isFinite(tradePrice) || tradePrice <= 0
+    )) {
+        return { status: 'review_required', reason: 'Trade is missing a valid symbol, share quantity, or execution price' };
     }
 
     const db = await getDb();
@@ -352,20 +372,133 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
         const amountMinor = Number.isSafeInteger(source.AmountMinor)
             ? source.AmountMinor
             : toMinorUnits(source.Amount);
-        const nextCashMinor = account.cashMinor + (emailCashActions[action] * amountMinor);
-        if (nextCashMinor < 0) {
+        const occurredAt = source.Timestamp || new Date().toISOString();
+
+        if (!isTrade) {
+            const nextCashMinor = account.cashMinor + (emailCashActions[action] * amountMinor);
+            if (nextCashMinor < 0) {
+                await db.run('COMMIT');
+                return { status: 'review_required', reason: 'Withdrawal exceeds the recorded cash balance' };
+            }
+
+            await db.run(
+                'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                [nextCashMinor, occurredAt, accountId, userId]
+            );
+            await db.run(
+                'INSERT INTO portfolio_transactions (userId, accountId, sourceTransactionId, kind, amountMinor, occurredAt, note) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [userId, accountId, transactionId, 'EMAIL_' + action, amountMinor, occurredAt, source.Reason || null]
+            );
             await db.run('COMMIT');
-            return { status: 'review_required', reason: 'Withdrawal exceeds the recorded cash balance' };
+            return { status: 'applied', accountId, action, amountMinor, cashMinor: nextCashMinor };
         }
 
-        const occurredAt = source.Timestamp || new Date().toISOString();
-        await db.run('UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?', [nextCashMinor, occurredAt, accountId, userId]);
+        if (source.Label !== 'Investment') {
+            await db.run('COMMIT');
+            return { status: 'review_required', reason: 'Security trades must be classified as Investment' };
+        }
+
+        const priceMinor = Math.round(tradePrice * 100);
+        const priceMicros = Math.round(tradePrice * 1000000);
+        const expectedAmountMinor = Math.round(tradeQuantity * tradePrice * 100);
+        const allowedDifference = Math.max(2, Math.round(amountMinor * 0.02));
+        if (Math.abs(expectedAmountMinor - amountMinor) > allowedDifference) {
+            await db.run('COMMIT');
+            return { status: 'review_required', reason: 'Trade total does not match shares multiplied by execution price' };
+        }
+
+        const holding = await db.get(
+            'SELECT * FROM investment_holdings WHERE accountId = ? AND symbol = ? AND userId = ?',
+            [accountId, normalizedSymbol, userId]
+        );
+        const existingQuantity = Number(holding?.quantity || 0);
+        let nextCashMinor;
+        let totalShares;
+        let averageCostMinor;
+        let averageCostMicros;
+
+        if (action === 'BUY') {
+            nextCashMinor = account.cashMinor - amountMinor;
+            if (nextCashMinor < 0) {
+                await db.run('COMMIT');
+                return { status: 'review_required', reason: 'Buy exceeds the recorded cash balance' };
+            }
+
+            totalShares = existingQuantity + tradeQuantity;
+            const existingAverageCostMicros = Number(
+                holding?.averageCostMicros ?? (holding?.averageCostMinor || 0) * 10000
+            );
+            averageCostMicros = Math.round(((existingQuantity * existingAverageCostMicros) + (tradeQuantity * priceMicros)) / totalShares);
+            averageCostMinor = Math.round(averageCostMicros / 10000);
+            await db.run(
+                `INSERT INTO investment_holdings
+                    (userId, accountId, symbol, name, quantity, averageCostMinor, averageCostMicros, priceMinor, priceMicros, currency, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ON CONFLICT(accountId, symbol) DO UPDATE SET
+                    quantity = excluded.quantity,
+                    averageCostMinor = excluded.averageCostMinor,
+                    averageCostMicros = excluded.averageCostMicros,
+                    priceMinor = excluded.priceMinor,
+                    priceMicros = excluded.priceMicros,
+                    currency = excluded.currency,
+                    updatedAt = excluded.updatedAt`,
+                [
+                    userId, accountId, normalizedSymbol, holding?.name || null,
+                    totalShares, averageCostMinor, averageCostMicros, priceMinor, priceMicros, account.currency, occurredAt,
+                ]
+            );
+        } else {
+            if (!holding || tradeQuantity > existingQuantity + 1e-9) {
+                await db.run('COMMIT');
+                return { status: 'review_required', reason: 'Sell exceeds the recorded number of shares' };
+            }
+
+            nextCashMinor = account.cashMinor + amountMinor;
+            totalShares = Math.max(0, existingQuantity - tradeQuantity);
+            averageCostMinor = Number(holding.averageCostMinor || 0);
+            averageCostMicros = Number(holding.averageCostMicros ?? averageCostMinor * 10000);
+            if (totalShares <= 1e-9) {
+                totalShares = 0;
+                await db.run(
+                    'DELETE FROM investment_holdings WHERE id = ? AND userId = ?',
+                    [holding.id, userId]
+                );
+            } else {
+                await db.run(
+                    'UPDATE investment_holdings SET quantity = ?, priceMinor = ?, priceMicros = ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                    [totalShares, priceMinor, priceMicros, occurredAt, holding.id, userId]
+                );
+            }
+        }
+
         await db.run(
-            'INSERT INTO portfolio_transactions (userId, accountId, sourceTransactionId, kind, amountMinor, occurredAt, note) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [userId, accountId, transactionId, `EMAIL_${action}`, amountMinor, occurredAt, source.Reason || null]
+            'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
+            [nextCashMinor, occurredAt, accountId, userId]
+        );
+        await db.run(
+            `INSERT INTO portfolio_transactions
+                (userId, accountId, sourceTransactionId, kind, amountMinor, symbol, quantity, priceMinor, priceMicros, occurredAt, note)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                userId, accountId, transactionId, 'EMAIL_' + action, amountMinor,
+                normalizedSymbol, tradeQuantity, priceMinor, priceMicros, occurredAt, source.Reason || null,
+            ]
         );
         await db.run('COMMIT');
-        return { status: 'applied', accountId, action, amountMinor, cashMinor: nextCashMinor };
+        return {
+            status: 'applied',
+            accountId,
+            action,
+            amountMinor,
+            cashMinor: nextCashMinor,
+            symbol: normalizedSymbol,
+            quantity: tradeQuantity,
+            totalShares,
+            priceMinor,
+            averageCostMinor,
+            priceMicros,
+            averageCostMicros,
+        };
     } catch (error) {
         await db.run('ROLLBACK');
         throw error;

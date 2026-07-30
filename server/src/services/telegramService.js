@@ -110,12 +110,17 @@ function e(text) {
  * Formats a transaction into a rich, readable Telegram MarkdownV2 message.
  */
 function formatTransactionMessage(tx, action = 'new') {
-    const isIncome    = tx.Category === 'Income';
-    const sign        = isIncome ? '+' : '-';
-    const amountStr   = `${sign}$${parseFloat(tx.Amount).toFixed(2)}`;
-    const headerEmoji = action === 'updated' ? '🔄' : (isIncome ? '💰' : '💸');
-    const headerLabel = action === 'updated' ? 'Transaction Updated' : (isIncome ? 'Income Received' : 'Expense Detected');
-    const amountEmoji = isIncome ? '✅' : '🔴';
+    const isIncome = tx.Category === 'Income';
+    const portfolioAction = tx.PortfolioAction || null;
+    const isTrade = portfolioAction === 'BUY' || portfolioAction === 'SELL';
+    const isSell = portfolioAction === 'SELL';
+    const sign = isIncome || isSell ? '+' : '-';
+    const amountStr = `${sign}$${parseFloat(tx.Amount).toFixed(2)}`;
+    const headerEmoji = action === 'updated' ? '🔄' : (isTrade ? '📈' : (isIncome ? '💰' : '💸'));
+    const headerLabel = action === 'updated'
+        ? 'Transaction Updated'
+        : (isTrade ? `${portfolioAction} Order Filled` : (isIncome ? 'Income Received' : 'Expense Detected'));
+    const amountEmoji = isIncome || isSell ? '✅' : '🔴';
     const divider     = e('─────────────────────');
 
     const lines = [
@@ -128,6 +133,14 @@ function formatTransactionMessage(tx, action = 'new') {
         `**>${e(tx.Reason)}`,
         `💳  *Type*        ${e(tx.Type)}`,
     ];
+
+    if (isTrade) {
+        lines.push(divider);
+        lines.push(`📊  *Action*      ${e(portfolioAction)}`);
+        lines.push(`🔤  *Symbol*      ${e(tx.PortfolioSymbol)}`);
+        lines.push(`🔢  *Shares*      ${e(tx.PortfolioQuantity)}`);
+        lines.push(`💵  *Price/share* ${e('$' + Number(tx.PortfolioPrice).toFixed(4))}`);
+    }
 
     if (tx.BankName || tx.Account) {
         lines.push(divider);

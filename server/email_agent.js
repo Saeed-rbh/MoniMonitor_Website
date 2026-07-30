@@ -96,6 +96,9 @@ async function syncPortfolioFromEmail(transactionId, data, idInfo) {
     const result = await dbService.applyEmailPortfolioActivity(USER_ID, transactionId, {
         accountId: data.PortfolioAccountId,
         action: data.PortfolioAction,
+        symbol: data.PortfolioSymbol,
+        quantity: data.PortfolioQuantity,
+        price: data.PortfolioPrice,
         confidence: data.PortfolioConfidence,
     });
     if (result.status === 'applied') {
@@ -103,7 +106,9 @@ async function syncPortfolioFromEmail(transactionId, data, idInfo) {
             `[${idInfo}] Portfolio ${result.action.toLowerCase()} applied to account ${result.accountId}: ${result.amountMinor} minor units.`
         );
         await writeAudit('portfolio_email_update', 'success', {
-            transactionId, accountId: result.accountId, action: result.action, amountMinor: result.amountMinor,
+            transactionId, accountId: result.accountId, action: result.action,
+            amountMinor: result.amountMinor, symbol: result.symbol || null,
+            quantity: result.quantity || null, priceMinor: result.priceMinor || null,
         });
     } else if (result.status === 'review_required' || result.status === 'unmatched_account') {
         console.warn(`[${idInfo}] Portfolio email requires review: ${result.reason || result.status}`);
@@ -199,7 +204,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
             await updateAgentTransaction(fuzzyDuplicate.id, mergedUpdates);
             activeId = fuzzyDuplicate.id;
             // Delete old Telegram message → send fresh complete one
-            await replaceNotification({ ...fuzzyDuplicate, ...mergedUpdates });
+            await replaceNotification({ ...fuzzyDuplicate, ...expenseData, ...mergedUpdates, id: fuzzyDuplicate.id });
         } else {
             // Sort matches by timestamp closeness
             const sortedMatches = [...allMatches].sort((a, b) =>
@@ -223,7 +228,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
                 await updateAgentTransaction(genericMatch.id, specificUpdates);
                 activeId = genericMatch.id;
                 // Delete old generic message → send one clean specific message
-                await replaceNotification({ ...genericMatch, ...specificUpdates });
+                await replaceNotification({ ...genericMatch, ...expenseData, ...specificUpdates, id: genericMatch.id });
 
             } else if (newIsGeneric) {
                 const existingSpecific = allMatches.find(m => !isGeneric(m.Label, m.Reason));
