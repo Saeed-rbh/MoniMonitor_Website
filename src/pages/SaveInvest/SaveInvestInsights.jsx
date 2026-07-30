@@ -266,6 +266,124 @@ const SaveInvestInsights = () => {
       <section className="SaveInvestInsights_Card">
         <div className="SaveInvestInsights_CardHeader">
           <div>
+            <h2>Your accounts</h2>
+            <p>Balances and holdings stored in your portfolio</p>
+          </div>
+          <button
+            type="button"
+            className="SaveInvestInsights_TextButton"
+            onClick={() => navigate("/SaveInvest/Accounts")}
+          >
+            Manage
+          </button>
+        </div>
+
+        <div className="SaveInvestInsights_Accounts">
+          {(portfolio?.accounts || []).map((account) => (
+            <article className="SaveInvestInsights_Account" key={account.id}>
+              <header>
+                <div>
+                  <h3>{account.name}</h3>
+                  <p>
+                    {account.institution || "Independent"} · {account.accountType}
+                  </p>
+                </div>
+                <strong>
+                  {money(Number(account.totalValueMinor || 0) / 100, account.currency)}
+                </strong>
+              </header>
+
+              <div className="SaveInvestInsights_AccountSummary">
+                <span>
+                  Cash
+                  <strong>
+                    {money(Number(account.cashMinor || 0) / 100, account.currency)}
+                  </strong>
+                </span>
+                <span>
+                  Investments
+                  <strong>
+                    {money(
+                      Number(account.holdingsValueMinor || 0) / 100,
+                      account.currency
+                    )}
+                  </strong>
+                </span>
+                <span>
+                  Gain/loss
+                  <strong className={
+                    Number(account.gainLossMinor || 0) >= 0 ? "positive" : "negative"
+                  }>
+                    {Number(account.gainLossMinor || 0) >= 0 ? "+" : ""}
+                    {money(
+                      Number(account.gainLossMinor || 0) / 100,
+                      account.currency
+                    )}
+                  </strong>
+                </span>
+              </div>
+
+              {account.holdings?.length ? (
+                <div className="SaveInvestInsights_Holdings">
+                  {account.holdings.map((holding) => {
+                    const positionValue =
+                      Number(holding.quantity || 0) *
+                      Number(holding.priceMinor || 0) /
+                      100;
+                    return (
+                      <div className="SaveInvestInsights_Holding" key={holding.id}>
+                        <div>
+                          <strong>{holding.symbol}</strong>
+                          {holding.name && <span>{holding.name}</span>}
+                          <small>
+                            {Number(holding.quantity || 0).toLocaleString(
+                              undefined,
+                              { maximumFractionDigits: 6 }
+                            )} shares × {money(
+                              Number(holding.priceMinor || 0) / 100,
+                              holding.currency || account.currency
+                            )} each
+                          </small>
+                        </div>
+                        <div>
+                          <strong>
+                            {money(
+                              positionValue,
+                              holding.currency || account.currency
+                            )}
+                          </strong>
+                          <small>
+                            Avg. cost {money(
+                              Number(holding.averageCostMinor || 0) / 100,
+                              holding.currency || account.currency
+                            )}
+                          </small>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="SaveInvestInsights_CashOnly">
+                  Cash-only account · no investment holdings
+                </p>
+              )}
+            </article>
+          ))}
+          {portfolio && !portfolio.accounts?.length && (
+            <div className="SaveInvestInsights_Empty">
+              No accounts are stored yet. Select Manage to add one.
+            </div>
+          )}
+          {!portfolio && (
+            <div className="SaveInvestInsights_Empty">Loading accounts…</div>
+          )}
+        </div>
+      </section>
+
+      <section className="SaveInvestInsights_Card">
+        <div className="SaveInvestInsights_CardHeader">
+          <div>
             <h2>Top destinations</h2>
             <p>Where recorded contributions went</p>
           </div>
