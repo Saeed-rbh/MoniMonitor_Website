@@ -313,6 +313,7 @@ const TransactionList = ({
                   {Math.abs(totalAmount).toFixed(2)}
                 </span>
               </h1>
+            </animated.div>
               <TransactionFilter
                 sortby={sortby}
                 setSortby={setSortby}
@@ -342,32 +343,15 @@ const TransactionList = ({
                   All: true,
                 }}
               />
-            </animated.div>
 
             {/* Search Input Bar */}
-            <div style={{
-              padding: "0 20px",
-              marginBottom: "10px",
-              width: "100%",
-              boxSizing: "border-box"
-            }}>
+            <div className="TransactionList_Search">
               <input
+                className="TransactionList_SearchInput"
                 type="text"
                 placeholder="Search transactions..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px 16px",
-                  borderRadius: "30px",
-                  border: "1px solid var(--Bc-3)",
-                  background: "rgba(255, 255, 255, 0.03)",
-                  color: "var(--Ac-1)",
-                  fontSize: "0.85rem",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  backdropFilter: "blur(10px)"
-                }}
               />
             </div>
 

@@ -102,6 +102,52 @@ async function getDb() {
                     FOREIGN KEY (userId) REFERENCES users(id)
                 );
 
+                CREATE TABLE IF NOT EXISTS investment_accounts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    userId TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    institution TEXT,
+                    accountType TEXT NOT NULL,
+                    currency TEXT NOT NULL DEFAULT 'USD',
+                    cashMinor INTEGER NOT NULL DEFAULT 0 CHECK(cashMinor >= 0),
+                    createdAt TEXT NOT NULL,
+                    updatedAt TEXT NOT NULL,
+                    FOREIGN KEY (userId) REFERENCES users(id)
+                );
+
+                CREATE TABLE IF NOT EXISTS investment_holdings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    userId TEXT NOT NULL,
+                    accountId INTEGER NOT NULL,
+                    symbol TEXT NOT NULL,
+                    name TEXT,
+                    quantity REAL NOT NULL CHECK(quantity >= 0),
+                    averageCostMinor INTEGER NOT NULL DEFAULT 0 CHECK(averageCostMinor >= 0),
+                    priceMinor INTEGER NOT NULL DEFAULT 0 CHECK(priceMinor >= 0),
+                    currency TEXT NOT NULL DEFAULT 'USD',
+                    updatedAt TEXT NOT NULL,
+                    UNIQUE(accountId, symbol),
+                    FOREIGN KEY (userId) REFERENCES users(id),
+                    FOREIGN KEY (accountId) REFERENCES investment_accounts(id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS portfolio_transactions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    userId TEXT NOT NULL,
+                    accountId INTEGER NOT NULL,
+                    sourceTransactionId INTEGER,
+                    kind TEXT NOT NULL,
+                    amountMinor INTEGER NOT NULL DEFAULT 0,
+                    symbol TEXT,
+                    quantity REAL,
+                    priceMinor INTEGER,
+                    relatedAccountId INTEGER,
+                    occurredAt TEXT NOT NULL,
+                    note TEXT,
+                    FOREIGN KEY (userId) REFERENCES users(id),
+                    FOREIGN KEY (accountId) REFERENCES investment_accounts(id) ON DELETE CASCADE
+                );
+
                 CREATE TABLE IF NOT EXISTS agent_audit_log (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     userId TEXT NOT NULL,
@@ -112,12 +158,20 @@ async function getDb() {
                     FOREIGN KEY (userId) REFERENCES users(id)
                 );
             `);
+            const portfolioTransactionColumns = await db.all('PRAGMA table_info(portfolio_transactions)');
+            if (!portfolioTransactionColumns.some((column) => column.name === 'sourceTransactionId')) {
+                await db.exec('ALTER TABLE portfolio_transactions ADD COLUMN sourceTransactionId INTEGER');
+            }
 
             await db.exec(`
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_timestamp ON transactions(userId, Timestamp DESC);
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_category ON transactions(userId, Category);
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_reference ON transactions(userId, ReferenceNumber);
                 CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(userId);
+                CREATE INDEX IF NOT EXISTS idx_investment_accounts_user ON investment_accounts(userId);
+                CREATE INDEX IF NOT EXISTS idx_investment_holdings_account ON investment_holdings(accountId);
+                CREATE INDEX IF NOT EXISTS idx_portfolio_transactions_user_date ON portfolio_transactions(userId, occurredAt DESC);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_portfolio_transactions_source ON portfolio_transactions(sourceTransactionId) WHERE sourceTransactionId IS NOT NULL;
             `);
 
             // Cleanup processed_emails older than 90 days to prevent DB bloat

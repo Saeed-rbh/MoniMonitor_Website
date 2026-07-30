@@ -24,7 +24,7 @@ if not exist "server\node_modules\.bin\concurrently.cmd" (
 )
 
 echo Ensuring the secure public tunnel is active...
-"%TAILSCALE_EXE%" funnel --bg 3001
+call :ensure_tunnel
 if errorlevel 1 goto :error
 
 powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/health' -TimeoutSec 2 | Out-Null; exit 0 } catch { exit 1 }"
@@ -54,6 +54,26 @@ echo Website: %PUBLIC_URL%
 start "" "%PUBLIC_URL%"
 powershell -NoProfile -Command "Start-Sleep -Seconds 3"
 exit /b 0
+
+:ensure_tunnel
+rem The Tailscale Windows service can briefly report NoState during login or
+rem resume. Wait for the daemon and retry Funnel instead of failing immediately.
+for /L %%A in (1,1,10) do (
+  "%TAILSCALE_EXE%" status --json >nul 2>&1
+  if not errorlevel 1 (
+    "%TAILSCALE_EXE%" funnel --bg 3001 >nul 2>&1
+    if not errorlevel 1 exit /b 0
+  )
+  echo Tailscale is not ready yet. Retrying tunnel setup ^(%%A/10^)...
+  timeout /t 2 /nobreak >nul
+)
+
+echo Tailscale did not become ready after 20 seconds.
+echo Current Tailscale status:
+"%TAILSCALE_EXE%" status
+echo Final Funnel attempt:
+"%TAILSCALE_EXE%" funnel --bg 3001
+exit /b 1
 
 :error
 echo.

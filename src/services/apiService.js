@@ -194,3 +194,43 @@ export const deleteGoalAPI = async (id) => {
     const response = await fetch(apiUrl(`/goals/${id}`), { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
     return response.ok;
 };
+const portfolioRequest = async (path = '', options = {}) => {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+    const response = await fetch(apiUrl(`/portfolio${path}`), {
+        ...options,
+        headers: {
+            ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+            Authorization: `Bearer ${token}`,
+            ...options.headers,
+        },
+    });
+    if (!response.ok) return null;
+    return response.status === 204 ? true : response.json();
+};
+
+export const getPortfolioAPI = () => portfolioRequest();
+
+export const createInvestmentAccountAPI = (account) => portfolioRequest('/accounts', {
+    method: 'POST',
+    body: JSON.stringify(account),
+});
+
+export const updateInvestmentAccountAPI = (id, updates) => portfolioRequest(`/accounts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+});
+
+export const deleteInvestmentAccountAPI = (id) => portfolioRequest(`/accounts/${id}`, {
+    method: 'DELETE',
+});
+
+export const saveInvestmentHoldingAPI = (accountId, holding) => portfolioRequest(`/accounts/${accountId}/holdings`, {
+    method: 'PUT',
+    body: JSON.stringify(holding),
+});
+
+export const deleteInvestmentHoldingAPI = (accountId, holdingId) => portfolioRequest(
+    `/accounts/${accountId}/holdings/${holdingId}`,
+    { method: 'DELETE' },
+);

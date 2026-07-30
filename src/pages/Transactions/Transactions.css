@@ -209,8 +209,7 @@
   align-items: center;
   justify-content: space-between;
   width: calc(100% - 0px);
-  height: 4px;
-  margin: 0 0 30px 0;
+  margin: 0 0 14px 0;
   height: 10px;
 }
 
@@ -360,11 +359,35 @@
   flex-direction: row;
   align-items: flex-start;
   justify-content: flex-start;
-  width: calc(100% + 10px);
+  width: 100%;
   height: min-content;
-  margin: 120px 0 15px 0;
+  margin: 0 0 10px 0;
   padding: 0px 5px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  overflow: hidden;
   touch-action: none;
+}
+
+.TransactionList_Search {
+  width: 100%;
+  padding: 0 5px;
+  margin: 0 0 10px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.TransactionList_SearchInput {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 30px;
+  border: 1px solid var(--Bc-3);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--Ac-1);
+  font-size: 0.85rem;
+  outline: none;
+  box-sizing: border-box;
+  backdrop-filter: blur(10px);
 }
 
 .TransactionList_Menu::-webkit-scrollbar {
@@ -616,12 +639,13 @@
 }
 
 .TransactionList_MonthlyMain {
-  width: calc(100% + 10px);
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  margin-top: 50px;
+  flex: 1;
+  min-height: 0;
   scroll-behavior: smooth;
 }
 

@@ -184,6 +184,193 @@ async function trackAccount(userId, account, bankName, type, firstSeen) {
     }
 }
 
+const portfolioAccountSelect = `
+    SELECT a.*,
+           COALESCE(SUM(ROUND(h.quantity * h.priceMinor)), 0) AS holdingsValueMinor,
+           COALESCE(SUM(ROUND(h.quantity * h.averageCostMinor)), 0) AS holdingsCostMinor,
+           COUNT(h.id) AS holdingCount
+    FROM investment_accounts a
+    LEFT JOIN investment_holdings h ON h.accountId = a.id AND h.userId = a.userId
+`;
+
+async function getInvestmentAccounts(userId) {
+    const db = await getDb();
+    const accounts = await db.all(`${portfolioAccountSelect}
+        WHERE a.userId = ? GROUP BY a.id ORDER BY a.createdAt ASC`, [userId]);
+    const holdings = await db.all('SELECT * FROM investment_holdings WHERE userId = ? ORDER BY symbol ASC', [userId]);
+    const byAccount = holdings.reduce((result, holding) => {
+        (result[holding.accountId] ||= []).push(holding);
+        return result;
+    }, {});
+    return accounts.map((account) => ({
+        ...account,
+        totalValueMinor: account.cashMinor + account.holdingsValueMinor,
+        gainLossMinor: account.holdingsValueMinor - account.holdingsCostMinor,
+        holdings: byAccount[account.id] || [],
+    }));
+}
+
+async function getPortfolioSummary(userId) {
+    const db = await getDb();
+    const accounts = await getInvestmentAccounts(userId);
+    const emailActivities = await db.all(
+        `SELECT t.id AS sourceTransactionId, t.AmountMinor AS amountMinor, t.Currency AS currency,
+                t.Timestamp AS occurredAt, t.Label AS label, t.Reason AS reason,
+                t.Account AS sourceAccount, t.BankName AS bankName, t.ReferenceNumber AS referenceNumber,
+                p.kind, p.accountId, a.name AS accountName
+         FROM transactions t
+         LEFT JOIN portfolio_transactions p
+                ON p.sourceTransactionId = t.id AND p.userId = t.userId
+         LEFT JOIN investment_accounts a
+                ON a.id = p.accountId AND a.userId = t.userId
+         WHERE t.userId = ? AND t.ReceivedAt IS NOT NULL
+               AND t.Category = 'Saving' AND t.Label IN ('Savings', 'Investment')
+         ORDER BY t.Timestamp DESC
+         LIMIT 20`,
+        [userId]
+    );
+    return {
+        totalValueMinor: accounts.reduce((sum, account) => sum + account.totalValueMinor, 0),
+        totalCashMinor: accounts.reduce((sum, account) => sum + account.cashMinor, 0),
+        holdingsValueMinor: accounts.reduce((sum, account) => sum + account.holdingsValueMinor, 0),
+        holdingsCostMinor: accounts.reduce((sum, account) => sum + account.holdingsCostMinor, 0),
+        gainLossMinor: accounts.reduce((sum, account) => sum + account.gainLossMinor, 0),
+        accountCount: accounts.length,
+        accounts,
+        emailActivities,
+    };
+}
+
+async function createInvestmentAccount(userId, account) {
+    const db = await getDb();
+    const now = new Date().toISOString();
+    const result = await db.run(
+        `INSERT INTO investment_accounts (userId, name, institution, accountType, currency, cashMinor, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [userId, account.name, account.institution || null, account.accountType, account.currency, account.cashMinor, now, now]
+    );
+    return await db.get('SELECT * FROM investment_accounts WHERE id = ? AND userId = ?', [result.lastID, userId]);
+}
+
+async function updateInvestmentAccount(userId, id, updates) {
+    const db = await getDb();
+    const allowed = ['name', 'institution', 'accountType', 'currency', 'cashMinor'];
+    const entries = Object.entries(updates).filter(([key]) => allowed.includes(key));
+    if (!entries.length) return null;
+    entries.push(['updatedAt', new Date().toISOString()]);
+    const result = await db.run(
+        `UPDATE investment_accounts SET ${entries.map(([key]) => `${key} = ?`).join(', ')} WHERE id = ? AND userId = ?`,
+        [...entries.map(([, value]) => value), id, userId]
+    );
+    if (!result.changes) return null;
+    return await db.get('SELECT * FROM investment_accounts WHERE id = ? AND userId = ?', [id, userId]);
+}
+
+async function deleteInvestmentAccount(userId, id) {
+    const db = await getDb();
+    const owned = await db.get('SELECT id FROM investment_accounts WHERE id = ? AND userId = ?', [id, userId]);
+    if (!owned) return false;
+    await db.run('BEGIN');
+    try {
+        await db.run('DELETE FROM investment_holdings WHERE accountId = ? AND userId = ?', [id, userId]);
+        await db.run('DELETE FROM portfolio_transactions WHERE accountId = ? AND userId = ?', [id, userId]);
+        await db.run('DELETE FROM investment_accounts WHERE id = ? AND userId = ?', [id, userId]);
+        await db.run('COMMIT');
+        return true;
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+}
+
+async function upsertInvestmentHolding(userId, accountId, holding) {
+    const db = await getDb();
+    const account = await db.get('SELECT id FROM investment_accounts WHERE id = ? AND userId = ?', [accountId, userId]);
+    if (!account) return null;
+    const now = new Date().toISOString();
+    await db.run(
+        `INSERT INTO investment_holdings (userId, accountId, symbol, name, quantity, averageCostMinor, priceMinor, currency, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(accountId, symbol) DO UPDATE SET
+            name = excluded.name, quantity = excluded.quantity, averageCostMinor = excluded.averageCostMinor,
+            priceMinor = excluded.priceMinor, currency = excluded.currency, updatedAt = excluded.updatedAt`,
+        [userId, accountId, holding.symbol, holding.name || null, holding.quantity, holding.averageCostMinor, holding.priceMinor, holding.currency, now]
+    );
+    return await db.get('SELECT * FROM investment_holdings WHERE accountId = ? AND symbol = ? AND userId = ?', [accountId, holding.symbol, userId]);
+}
+
+async function deleteInvestmentHolding(userId, accountId, holdingId) {
+    const db = await getDb();
+    const result = await db.run('DELETE FROM investment_holdings WHERE id = ? AND accountId = ? AND userId = ?', [holdingId, accountId, userId]);
+    return result.changes > 0;
+}
+
+
+const emailCashActions = Object.freeze({
+    DEPOSIT: 1,
+    CONTRIBUTION: 1,
+    INTEREST: 1,
+    DIVIDEND: 1,
+    WITHDRAWAL: -1,
+});
+
+async function applyEmailPortfolioActivity(userId, transactionId, activity = {}) {
+    const { accountId, action, confidence } = activity;
+    if (confidence !== 'HIGH' || !accountId || !action) return { status: 'ignored' };
+    if (!Object.hasOwn(emailCashActions, action)) {
+        return { status: 'review_required', reason: 'Holdings and internal transfers require explicit position details' };
+    }
+
+    const db = await getDb();
+    const source = await db.get(
+        'SELECT * FROM transactions WHERE id = ? AND userId = ?',
+        [transactionId, userId]
+    );
+    if (!source || source.Category !== 'Saving') return { status: 'ignored' };
+    if (!['Savings', 'Investment'].includes(source.Label)) return { status: 'ignored' };
+
+    await db.run('BEGIN IMMEDIATE');
+    try {
+        const alreadyApplied = await db.get(
+            'SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ?',
+            [transactionId]
+        );
+        if (alreadyApplied) {
+            await db.run('COMMIT');
+            return { status: 'duplicate' };
+        }
+
+        const account = await db.get(
+            'SELECT * FROM investment_accounts WHERE id = ? AND userId = ?',
+            [accountId, userId]
+        );
+        if (!account) {
+            await db.run('COMMIT');
+            return { status: 'unmatched_account' };
+        }
+
+        const amountMinor = Number.isSafeInteger(source.AmountMinor)
+            ? source.AmountMinor
+            : toMinorUnits(source.Amount);
+        const nextCashMinor = account.cashMinor + (emailCashActions[action] * amountMinor);
+        if (nextCashMinor < 0) {
+            await db.run('COMMIT');
+            return { status: 'review_required', reason: 'Withdrawal exceeds the recorded cash balance' };
+        }
+
+        const occurredAt = source.Timestamp || new Date().toISOString();
+        await db.run('UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?', [nextCashMinor, occurredAt, accountId, userId]);
+        await db.run(
+            'INSERT INTO portfolio_transactions (userId, accountId, sourceTransactionId, kind, amountMinor, occurredAt, note) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [userId, accountId, transactionId, `EMAIL_${action}`, amountMinor, occurredAt, source.Reason || null]
+        );
+        await db.run('COMMIT');
+        return { status: 'applied', accountId, action, amountMinor, cashMinor: nextCashMinor };
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+}
 async function getUserSettings(userId) {
     const db = await getDb();
     return await db.get('SELECT * FROM user_settings WHERE userId = ?', [userId]);
@@ -433,6 +620,14 @@ module.exports = {
     findDuplicateTransaction,
     getAccountsForUser,
     trackAccount,
+    getInvestmentAccounts,
+    getPortfolioSummary,
+    createInvestmentAccount,
+    updateInvestmentAccount,
+    deleteInvestmentAccount,
+    upsertInvestmentHolding,
+    deleteInvestmentHolding,
+    applyEmailPortfolioActivity,
     getUserSettings,
     saveUserSettings,
     getBudgetsForUser,

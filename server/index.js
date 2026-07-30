@@ -203,6 +203,10 @@ app.delete("/transactions/:id", authenticateToken, async (req, res) => {
 
 const validCurrency = (value) => typeof value === "string" && /^[A-Z]{3}$/.test(value);
 const validMonth = (value) => typeof value === "string" && /^\d{4}-\d{2}$/.test(value);
+const validMinorAmount = (value) => Number.isSafeInteger(value) && value >= 0;
+const validText = (value, max = 120) => typeof value === 'string' && value.trim().length > 0 && value.trim().length <= max;
+const validQuantity = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0;
+const investmentAccountTypes = new Set(['Savings', 'TFSA', 'RRSP', 'Brokerage', '401(k)', 'IRA', 'Other']);
 
 app.get("/settings", authenticateToken, async (req, res) => {
     try {
@@ -286,6 +290,94 @@ app.delete("/goals/:id", authenticateToken, async (req, res) => {
     try {
         if (!await dbService.deleteGoal(req.user.userId, req.params.id)) return res.status(404).json({ error: "Goal not found" });
         return res.json({ message: "Goal deleted" });
+    } catch (error) { return sendValidationError(res, error); }
+});
+
+app.get('/portfolio', authenticateToken, async (req, res) => {
+    try { return res.json(await dbService.getPortfolioSummary(req.user.userId)); }
+    catch (error) { return sendValidationError(res, error); }
+});
+
+app.post('/portfolio/accounts', authenticateToken, async (req, res) => {
+    const { name, institution = null, accountType, currency = 'USD', cashMinor = 0 } = req.body || {};
+    if (!validText(name) || !investmentAccountTypes.has(accountType) || !validCurrency(currency) ||
+        !validMinorAmount(cashMinor) || (institution !== null && (typeof institution !== 'string' || institution.length > 120))) {
+        return res.status(400).json({ error: 'Invalid investment account' });
+    }
+    try {
+        const account = await dbService.createInvestmentAccount(req.user.userId, {
+            name: name.trim(), institution: institution?.trim() || null, accountType, currency, cashMinor,
+        });
+        return res.status(201).json(account);
+    } catch (error) { return sendValidationError(res, error); }
+});
+
+app.put('/portfolio/accounts/:id', authenticateToken, async (req, res) => {
+    const updates = {};
+    const { name, institution, accountType, currency, cashMinor } = req.body || {};
+    if (name !== undefined) {
+        if (!validText(name)) return res.status(400).json({ error: 'Invalid account name' });
+        updates.name = name.trim();
+    }
+    if (institution !== undefined) {
+        if (institution !== null && (typeof institution !== 'string' || institution.length > 120)) return res.status(400).json({ error: 'Invalid institution' });
+        updates.institution = institution?.trim() || null;
+    }
+    if (accountType !== undefined) {
+        if (!investmentAccountTypes.has(accountType)) return res.status(400).json({ error: 'Invalid account type' });
+        updates.accountType = accountType;
+    }
+    if (currency !== undefined) {
+        if (!validCurrency(currency)) return res.status(400).json({ error: 'Invalid currency' });
+        updates.currency = currency;
+    }
+    if (cashMinor !== undefined) {
+        if (!validMinorAmount(cashMinor)) return res.status(400).json({ error: 'Invalid cash balance' });
+        updates.cashMinor = cashMinor;
+    }
+    if (!Object.keys(updates).length) return res.status(400).json({ error: 'No account changes supplied' });
+    try {
+        const account = await dbService.updateInvestmentAccount(req.user.userId, req.params.id, updates);
+        if (!account) return res.status(404).json({ error: 'Investment account not found' });
+        return res.json(account);
+    } catch (error) { return sendValidationError(res, error); }
+});
+
+app.delete('/portfolio/accounts/:id', authenticateToken, async (req, res) => {
+    try {
+        if (!await dbService.deleteInvestmentAccount(req.user.userId, req.params.id)) {
+            return res.status(404).json({ error: 'Investment account not found' });
+        }
+        return res.json({ message: 'Investment account deleted' });
+    } catch (error) { return sendValidationError(res, error); }
+});
+
+app.put('/portfolio/accounts/:id/holdings', authenticateToken, async (req, res) => {
+    const {
+        symbol, name = null, quantity, averageCostMinor = 0, priceMinor = 0, currency = 'USD',
+    } = req.body || {};
+    const normalizedSymbol = typeof symbol === 'string' ? symbol.trim().toUpperCase() : '';
+    if (!/^[A-Z0-9.\-]{1,15}$/.test(normalizedSymbol) || !validQuantity(quantity) ||
+        !validMinorAmount(averageCostMinor) || !validMinorAmount(priceMinor) || !validCurrency(currency) ||
+        (name !== null && (typeof name !== 'string' || name.length > 120))) {
+        return res.status(400).json({ error: 'Invalid holding' });
+    }
+    try {
+        const holding = await dbService.upsertInvestmentHolding(req.user.userId, req.params.id, {
+            symbol: normalizedSymbol, name: name?.trim() || null, quantity, averageCostMinor, priceMinor, currency,
+        });
+        if (!holding) return res.status(404).json({ error: 'Investment account not found' });
+        return res.json(holding);
+    } catch (error) { return sendValidationError(res, error); }
+});
+
+app.delete('/portfolio/accounts/:accountId/holdings/:holdingId', authenticateToken, async (req, res) => {
+    try {
+        const deleted = await dbService.deleteInvestmentHolding(
+            req.user.userId, req.params.accountId, req.params.holdingId
+        );
+        if (!deleted) return res.status(404).json({ error: 'Holding not found' });
+        return res.json({ message: 'Holding deleted' });
     } catch (error) { return sendValidationError(res, error); }
 });
 app.get("/summary", authenticateToken, async (req, res) => {

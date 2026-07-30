@@ -16,6 +16,7 @@ const MoneyEntryAmount = ({
   setIsMoreClicked,
   redirectClick,
   index,
+  portfolio,
 }) => {
   const BannerAmount =
     type === "Income"
@@ -23,7 +24,7 @@ const MoneyEntryAmount = ({
       : type === "Expense"
         ? transaction.totalExpense
         : type === "Save&Invest"
-          ? transaction.totalSaving
+          ? (portfolio?.accountCount ? portfolio.totalValueMinor / 100 : transaction.totalSaving)
           : transaction.netTotal;
 
   const amountStyle = {
@@ -96,8 +97,13 @@ const MoneyEntryAmount = ({
   });
 
   const handleClick = () => {
+    if (type === 'Save&Invest') {
+      setIsMoreClicked(null);
+      redirectClick('/SaveInvest');
+      return;
+    }
     setIsMoreClicked(type);
-    redirectClick("/Transactions");
+    redirectClick('/Transactions');
   };
 
   return (
@@ -134,8 +140,10 @@ const MoneyEntryAmount = ({
         </div>
         <div className="MoneyEntry_Balance">
           <h2>
-            {type === "Save&Invest" || type === "Balance"
-              ? "Total"
+            {type === 'Save&Invest'
+              ? portfolio?.accountCount ? 'Portfolio value' : 'Total contributed'
+              : type === 'Balance'
+                ? 'Total'
               : "Total Amount"}
             :
           </h2>

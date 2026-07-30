@@ -91,13 +91,40 @@ async function replaceNotification(tx) {
     await notifyAndSave(tx);
 }
 
+async function syncPortfolioFromEmail(transactionId, data, idInfo) {
+    if (!transactionId) return { status: 'ignored' };
+    const result = await dbService.applyEmailPortfolioActivity(USER_ID, transactionId, {
+        accountId: data.PortfolioAccountId,
+        action: data.PortfolioAction,
+        confidence: data.PortfolioConfidence,
+    });
+    if (result.status === 'applied') {
+        console.log(
+            `[${idInfo}] Portfolio ${result.action.toLowerCase()} applied to account ${result.accountId}: ${result.amountMinor} minor units.`
+        );
+        await writeAudit('portfolio_email_update', 'success', {
+            transactionId, accountId: result.accountId, action: result.action, amountMinor: result.amountMinor,
+        });
+    } else if (result.status === 'review_required' || result.status === 'unmatched_account') {
+        console.warn(`[${idInfo}] Portfolio email requires review: ${result.reason || result.status}`);
+        await writeAudit('portfolio_email_update', 'review_required', {
+            transactionId, proposedAccountId: data.PortfolioAccountId,
+            proposedAction: data.PortfolioAction, reason: result.reason || result.status,
+        });
+    }
+    return result;
+}
+
 async function onNewEmail(emailBody, idInfo, receivedAt) {
     try {
         console.log(`[${idInfo}] Sending to Gemini for analysis...`);
 
-        // Fetch user's known accounts and inject into AI prompt for better type classification
-        const knownAccounts = await dbService.getAccountsForUser(USER_ID);
-        const expenseData = await parseEmailWithGemini(emailBody, knownAccounts);
+        // Bank accounts help classification; portfolio accounts allow a safe, explicit destination match.
+        const [knownAccounts, investmentAccounts] = await Promise.all([
+            dbService.getAccountsForUser(USER_ID),
+            dbService.getInvestmentAccounts(USER_ID),
+        ]);
+        const expenseData = await parseEmailWithGemini(emailBody, knownAccounts, investmentAccounts);
 
         if (!expenseData) {
             console.log(`[${idInfo}] Parsing failed due to error or hallucination. Retrying later.`);
@@ -130,6 +157,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
         const duplicate = await dbService.findDuplicateTransaction(USER_ID, expenseData.Amount, expenseData.Category, datePrefix, expenseData.Reason, expenseData.ReferenceNumber);
         if (duplicate) {
             console.log(`[${idInfo}] Duplicate expense detected. Skipping save.`);
+            await syncPortfolioFromEmail(duplicate.id, expenseData, idInfo);
             return true;
         }
 
@@ -224,6 +252,10 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
         }
 
         // Account tracking
+        // Apply an explicit portfolio cash movement once, linked to the source transaction.
+        if (activeId) {
+            await syncPortfolioFromEmail(activeId, expenseData, idInfo);
+        }
         if (expenseData.Account && expenseData.BankName) {
             const added = await dbService.trackAccount(USER_ID, expenseData.Account, expenseData.BankName, expenseData.Type, expenseData.Timestamp);
             if (added) console.log(`[${idInfo}] Added new account: ${expenseData.BankName} - ${expenseData.Account}`);
@@ -393,14 +425,18 @@ async function onTelegramUpdate(update) {
     }
 }
 
-if (AI_INGESTION_ENABLED) {
-    if (!IMAP_USER || !IMAP_PASSWORD || !TELEGRAM_CHAT_ID) {
-        throw new Error('IMAP_USER, IMAP_PASSWORD, and TELEGRAM_CHAT_ID are required when AI ingestion is enabled');
-    }
+if (require.main === module) {
+    if (AI_INGESTION_ENABLED) {
+        if (!IMAP_USER || !IMAP_PASSWORD || !TELEGRAM_CHAT_ID) {
+            throw new Error('IMAP_USER, IMAP_PASSWORD, and TELEGRAM_CHAT_ID are required when AI ingestion is enabled');
+        }
 
-    startTelegramPolling(onTelegramUpdate);
-    const emailListener = new ImapService(IMAP_HOST, IMAP_PORT, IMAP_USER, IMAP_PASSWORD, onNewEmail);
-    emailListener.start();
-} else {
-    console.log('AI ingestion is disabled. Set AI_INGESTION_ENABLED=true after completing account linking.');
+        startTelegramPolling(onTelegramUpdate);
+        const emailListener = new ImapService(IMAP_HOST, IMAP_PORT, IMAP_USER, IMAP_PASSWORD, onNewEmail);
+        emailListener.start();
+    } else {
+        console.log('AI ingestion is disabled. Set AI_INGESTION_ENABLED=true after completing account linking.');
+    }
 }
+
+module.exports = { onNewEmail };

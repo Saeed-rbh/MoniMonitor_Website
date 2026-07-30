@@ -2,8 +2,14 @@ import React from "react";
 import MoneyEntryAmount from "./MoneyEntryAmount.jsx";
 import { useNavigate } from "react-router-dom";
 import BlurFade from "@/components/ui/blur-fade";
+import { getPortfolioAPI } from '../../services/apiService';
 
 const MoneyEntry = ({ Transactions, setIsMoreClicked, verticalShift = 0 }) => {
+  const [portfolio, setPortfolio] = React.useState(null);
+
+  React.useEffect(() => {
+    getPortfolioAPI().then(setPortfolio);
+  }, []);
   const totalStyle = {
     color:
       Transactions.netTotal > 0
@@ -13,8 +19,8 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked, verticalShift = 0 }) => {
 
   const redirect = useNavigate();
 
-  const redirectClick = () => {
-    redirect("/Transactions");
+  const redirectClick = (path = '/Transactions') => {
+    redirect(path);
   };
 
   return (
@@ -54,6 +60,7 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked, verticalShift = 0 }) => {
               setIsMoreClicked={setIsMoreClicked}
               transaction={Transactions}
               redirectClick={redirectClick}
+              portfolio={portfolio}
               index={1}
             />
             <MoneyEntryAmount
