@@ -97,11 +97,6 @@ const MoneyEntryAmount = ({
   });
 
   const handleClick = () => {
-    if (type === 'Save&Invest') {
-      setIsMoreClicked(null);
-      redirectClick('/SaveInvest');
-      return;
-    }
     setIsMoreClicked(type);
     redirectClick('/Transactions');
   };

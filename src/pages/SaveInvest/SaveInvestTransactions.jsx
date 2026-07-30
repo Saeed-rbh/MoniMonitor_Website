@@ -1,16 +1,15 @@
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import Transactions from "../Transactions/Transactions";
+import React, { useEffect } from "react";
+import { Navigate } from "react-router-dom";
+import { useTransactions } from "../../context/TransactionContext";
 
 const SaveInvestTransactions = () => {
-  const navigate = useNavigate();
+  const { setIsMoreClicked } = useTransactions();
 
-  return (
-    <Transactions
-      categoryOverride="Save&Invest"
-      onManageAccounts={() => navigate("/SaveInvest/Accounts")}
-    />
-  );
+  useEffect(() => {
+    setIsMoreClicked("Save&Invest");
+  }, [setIsMoreClicked]);
+
+  return <Navigate to="/Transactions" replace />;
 };
 
 export default SaveInvestTransactions;

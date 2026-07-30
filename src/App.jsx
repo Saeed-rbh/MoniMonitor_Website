@@ -48,7 +48,7 @@ const AuthenticatedLayout = () => {
           <Route path="/Insight" element={<Insight />} />
           <Route path="/Account" element={<Account />} />
           <Route path="/Finance" element={<Finance />} />
-          <Route path="/SaveInvest" element={<><Telegram /><SaveInvestTransactions /></>} />
+          <Route path="/SaveInvest" element={<SaveInvestTransactions />} />
           <Route path="/SaveInvest/Accounts" element={<SaveInvestAccounts />} />
         </Routes>
       </div>

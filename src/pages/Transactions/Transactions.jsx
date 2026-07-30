@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useWindowHeight } from "../../utils/tools";
+import { useNavigate } from "react-router-dom";
 import AddTransactionFeed from "../../transactionFeedPage/AddTransactionFeed";
 import TransactionList from "./TransactionList";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
@@ -18,6 +19,7 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
     isDateClicked,
   } = useTransactions();
   const selectedData = monthData.selected;
+  const navigate = useNavigate();
   const availabilityData = monthData.Availability;
   const transactionsData = monthData.transactions;
 
@@ -31,6 +33,13 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
     }
     setIsMoreClicked(value);
   }, [categoryOverride, setIsMoreClicked]);
+  const handleManageAccounts = useCallback(() => {
+    if (onManageAccounts) {
+      onManageAccounts();
+      return;
+    }
+    navigate("/SaveInvest/Accounts");
+  }, [navigate, onManageAccounts]);
   const [open, setOpen] = useState(false);
 
   const [isAddClicked, setIsAddClicked] = useState(null);
@@ -70,7 +79,9 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
         isAddClicked={isAddClicked}
         setOpen={setOpen}
         setShowTransaction={setAddTransaction}
-        onManageAccounts={onManageAccounts}
+        onManageAccounts={
+          activeCategory === "Save&Invest" ? handleManageAccounts : null
+        }
       />
     );
   }, [
@@ -80,7 +91,7 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
     whichMonth,
     availabilityData,
     isAddClicked,
-    onManageAccounts,
+    handleManageAccounts,
   ]);
 
   const AddFeed = () => {
