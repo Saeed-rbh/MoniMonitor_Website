@@ -129,6 +129,33 @@ const TransactionList = ({
     }, [selectedData, isMoreClicked]);
 
   const monthlyMainRef = useRef(null);
+  const [transactionListHeight, setTransactionListHeight] = useState(1);
+
+  useEffect(() => {
+    const container = monthlyMainRef.current;
+    if (!container) return undefined;
+
+    const updateHeight = () => {
+      const nextHeight = Math.max(
+        1,
+        Math.floor(container.getBoundingClientRect().height)
+      );
+      setTransactionListHeight((currentHeight) =>
+        currentHeight === nextHeight ? currentHeight : nextHeight
+      );
+    };
+
+    updateHeight();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateHeight);
+      return () => window.removeEventListener("resize", updateHeight);
+    }
+
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(container);
+    return () => resizeObserver.disconnect();
+  }, []);
 
   const [swipedIndex, setSwipedIndex] = useState([null, null]);
   const [transactionClick, setTransactionClick] = useState([null, null, null]);
@@ -171,10 +198,6 @@ const TransactionList = ({
               ? "var(--Fc-2)"
               : "var(--Gc-2)",
   };
-
-  const springProps4 = useSpring({
-    height: WindowHeight - 230,
-  });
 
   const ClickBlurStyle = useSpring({
     from: {
@@ -358,7 +381,6 @@ const TransactionList = ({
             <animated.div
               className="TransactionList_MonthlyMain"
               ref={monthlyMainRef}
-              style={springProps4}
             >
               {selectedData && Object.keys(selectedData).length !== 0 && (
                 <TransactionListMonthly
@@ -379,7 +401,7 @@ const TransactionList = ({
                   isAddClicked={isAddClicked}
                   setOpen={setOpen}
                   setShowTransaction={setShowTransaction}
-                  height={WindowHeight - 230}
+                  height={transactionListHeight}
                 />
               )}
             </animated.div>

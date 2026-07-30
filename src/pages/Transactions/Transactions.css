@@ -23,6 +23,9 @@
   width: calc(100%);
   border-radius: 35px 35px 0 0;
   padding: 25px 10px 0 10px;
+  box-sizing: border-box;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* .TransactionList_TransactionList::-webkit-scrollbar {
@@ -357,10 +360,10 @@
   position: relative;
   display: flex;
   flex-direction: row;
-  align-items: flex-start;
+  align-items: center;
   justify-content: flex-start;
   width: 100%;
-  height: min-content;
+  height: 50px;
   margin: 0 0 10px 0;
   padding: 0px 5px;
   box-sizing: border-box;
