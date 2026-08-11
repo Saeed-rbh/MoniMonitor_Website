@@ -2,6 +2,7 @@ require('dotenv').config();
 const { ImapService } = require('./src/services/imapService');
 const { parseEmailWithGemini } = require('./src/services/aiService');
 const dbService = require('./src/database/dbService');
+const { SNAPSHOT_CAPTURED_AT } = require('./src/database/financialSnapshot');
 const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery } = require('./src/services/telegramService');
 
 const IMAP_HOST = 'imap.gmail.com';
@@ -122,6 +123,11 @@ async function syncPortfolioFromEmail(transactionId, data, idInfo) {
 
 async function onNewEmail(emailBody, idInfo, receivedAt) {
     try {
+        const receivedTime = new Date(receivedAt || 0).getTime();
+        if (Number.isFinite(receivedTime) && receivedTime < new Date(SNAPSHOT_CAPTURED_AT).getTime()) {
+            console.log(`[${idInfo}] Email predates the financial snapshot; marking processed without analysis.`);
+            return true;
+        }
         console.log(`[${idInfo}] Sending to Gemini for analysis...`);
 
         // Bank accounts help classification; portfolio accounts allow a safe, explicit destination match.
