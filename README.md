@@ -78,3 +78,5 @@ MoniMonitor_Website/
 2.  Commit your changes (`git commit -m 'Add some AmazingFeature'`).
 3.  Push to the branch (`git push origin feature/AmazingFeature`).
 4.  Open a Pull Request.
+
+<!-- GitHub connection test -->
