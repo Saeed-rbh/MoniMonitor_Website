@@ -7,6 +7,9 @@ set "TAILSCALE_EXE=C:\Program Files\Tailscale\tailscale.exe"
 
 echo Starting MoniMonitor public services...
 
+call :update_from_github
+call :ensure_auto_updater
+
 if not exist "%TAILSCALE_EXE%" (
   echo Tailscale is not installed in the expected location.
   goto :error
@@ -40,7 +43,8 @@ if not errorlevel 1 (
   exit /b 0
 )
 
-start "MoniMonitor API + Email + Telegram" /D "%~dp0server" cmd /k "set AI_INGESTION_ENABLED=true&& npm run dev"
+powershell -NoProfile -Command "$command = 'title MoniMonitor API + Email + Telegram&& set AI_INGESTION_ENABLED=true&& npm run dev'; $process = Start-Process -FilePath $env:ComSpec -ArgumentList '/d','/k',$command -WorkingDirectory '%~dp0server' -PassThru; Set-Content -LiteralPath (Join-Path $env:TEMP 'monimonitor-api.pid') -Value $process.Id"
+if errorlevel 1 goto :error
 
 echo Waiting for the backend to become ready...
 powershell -NoProfile -Command "$deadline = (Get-Date).AddSeconds(20); do { try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/health' -TimeoutSec 2 | Out-Null; exit 0 } catch { Start-Sleep -Seconds 1 } } while ((Get-Date) -lt $deadline); exit 1"
@@ -53,6 +57,57 @@ echo Website, API, email analyzer, Telegram connector, and tunnel are running.
 echo Website: %PUBLIC_URL%
 start "" "%PUBLIC_URL%"
 powershell -NoProfile -Command "Start-Sleep -Seconds 3"
+exit /b 0
+
+:update_from_github
+echo Checking GitHub for MoniMonitor updates...
+
+where git >nul 2>&1
+if errorlevel 1 (
+  echo Git is not installed or is not available in PATH. Skipping automatic update.
+  exit /b 0
+)
+
+git rev-parse --is-inside-work-tree >nul 2>&1
+if errorlevel 1 (
+  echo This folder is not a Git repository. Skipping automatic update.
+  exit /b 0
+)
+
+set "CURRENT_BRANCH="
+for /f "delims=" %%B in ('git branch --show-current 2^>nul') do set "CURRENT_BRANCH=%%B"
+if /I not "%CURRENT_BRANCH%"=="main" (
+  echo Current branch is not main. Skipping automatic update.
+  exit /b 0
+)
+
+for /f "delims=" %%G in ('git status --porcelain 2^>nul') do (
+  echo Local changes were found. Skipping automatic update to protect them.
+  exit /b 0
+)
+
+git fetch origin main
+if errorlevel 1 (
+  echo Could not check GitHub. Continuing with the existing local version.
+  exit /b 0
+)
+
+git merge --ff-only origin/main
+if errorlevel 1 (
+  echo The local and GitHub histories have diverged. Automatic update was skipped.
+  exit /b 0
+)
+
+echo MoniMonitor is up to date.
+exit /b 0
+
+:ensure_auto_updater
+if not exist "%~dp0monimonitor-auto-update.ps1" (
+  echo Automatic update watcher was not found. Continuing without background updates.
+  exit /b 0
+)
+
+start "" powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0monimonitor-auto-update.ps1"
 exit /b 0
 
 :ensure_tunnel

@@ -1,0 +1,126 @@
+$ErrorActionPreference = 'Stop'
+
+$repository = $PSScriptRoot
+$pidFile = Join-Path $env:TEMP 'monimonitor-api.pid'
+$stateDirectory = Join-Path $env:LOCALAPPDATA 'MoniMonitor'
+$logFile = Join-Path $stateDirectory 'auto-update.log'
+$mutex = [System.Threading.Mutex]::new($false, 'Local\MoniMonitorGitAutoUpdater')
+$hasMutex = $false
+
+function Write-UpdateLog {
+    param([string]$Message)
+
+    try {
+        if (-not (Test-Path -LiteralPath $stateDirectory)) {
+            New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
+        }
+
+        $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+        Add-Content -LiteralPath $logFile -Value "[$timestamp] $Message"
+    }
+    catch {
+        # Logging must never stop the update watcher.
+    }
+}
+
+function Stop-MoniMonitorBackend {
+    $candidateIds = [System.Collections.Generic.HashSet[int]]::new()
+
+    if (Test-Path -LiteralPath $pidFile) {
+        $savedPid = 0
+        if ([int]::TryParse((Get-Content -LiteralPath $pidFile -Raw).Trim(), [ref]$savedPid)) {
+            [void]$candidateIds.Add($savedPid)
+        }
+    }
+
+    Get-CimInstance Win32_Process -Filter "Name = 'cmd.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -match 'MoniMonitor API \+ Email \+ Telegram' } |
+        ForEach-Object { [void]$candidateIds.Add([int]$_.ProcessId) }
+
+    foreach ($candidateId in $candidateIds) {
+        $process = Get-CimInstance Win32_Process -Filter "ProcessId = $candidateId" -ErrorAction SilentlyContinue
+        if ($process -and $process.Name -eq 'cmd.exe' -and $process.CommandLine -match 'npm run dev') {
+            & taskkill.exe /PID $candidateId /T /F | Out-Null
+        }
+    }
+
+    Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
+}
+
+function Test-CleanMainBranch {
+    $branch = (& git -C $repository branch --show-current 2>$null).Trim()
+    if ($LASTEXITCODE -ne 0 -or $branch -ne 'main') {
+        return $false
+    }
+
+    $changes = & git -C $repository status --porcelain 2>$null
+    return $LASTEXITCODE -eq 0 -and -not $changes
+}
+
+try {
+    try {
+        $hasMutex = $mutex.WaitOne(0, $false)
+    }
+    catch [System.Threading.AbandonedMutexException] {
+        $hasMutex = $true
+    }
+
+    if (-not $hasMutex) {
+        exit 0
+    }
+
+    Write-UpdateLog 'Automatic update watcher started; checking every 60 seconds.'
+    $env:GIT_TERMINAL_PROMPT = '0'
+
+    while ($true) {
+        Start-Sleep -Seconds 60
+
+        try {
+            if (-not (Test-CleanMainBranch)) {
+                continue
+            }
+
+            & git -C $repository fetch --quiet origin main
+            if ($LASTEXITCODE -ne 0) {
+                Write-UpdateLog 'GitHub fetch failed; the running version was left unchanged.'
+                continue
+            }
+
+            $localCommit = (& git -C $repository rev-parse HEAD 2>$null).Trim()
+            $remoteCommit = (& git -C $repository rev-parse origin/main 2>$null).Trim()
+            if (-not $localCommit -or -not $remoteCommit -or $localCommit -eq $remoteCommit) {
+                continue
+            }
+
+            & git -C $repository merge-base --is-ancestor $localCommit $remoteCommit
+            if ($LASTEXITCODE -ne 0) {
+                Write-UpdateLog 'GitHub changed, but the update was not a safe fast-forward. Update skipped.'
+                continue
+            }
+
+            & git -C $repository merge --ff-only origin/main
+            if ($LASTEXITCODE -ne 0) {
+                Write-UpdateLog 'Fast-forward merge failed. The running version was left unchanged.'
+                continue
+            }
+
+            Write-UpdateLog "Updated from $localCommit to $remoteCommit; restarting MoniMonitor."
+            Stop-MoniMonitorBackend
+
+            # Release ownership before relaunching so the updated watcher can take over.
+            $mutex.ReleaseMutex()
+            $hasMutex = $false
+            Start-Process -FilePath (Join-Path $repository 'start-monimonitor.cmd') -WorkingDirectory $repository
+            exit 0
+        }
+        catch {
+            Write-UpdateLog "Update check failed: $($_.Exception.Message)"
+        }
+    }
+}
+finally {
+    if ($hasMutex) {
+        $mutex.ReleaseMutex()
+    }
+    $mutex.Dispose()
+}
