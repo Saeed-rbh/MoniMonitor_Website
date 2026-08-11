@@ -102,9 +102,10 @@ const SaveInvestInsights = () => {
   const cashValue = Number(portfolio?.totalCashMinor || 0) / 100;
   const holdingsValue = Number(portfolio?.holdingsValueMinor || 0) / 100;
   const gainLoss = Number(portfolio?.gainLossMinor || 0) / 100;
-  const cashPercent = portfolioValue > 0 ? (cashValue / portfolioValue) * 100 : 0;
+  const assetValue = cashValue + holdingsValue;
+  const cashPercent = assetValue > 0 ? (cashValue / assetValue) * 100 : 0;
   const holdingsPercent =
-    portfolioValue > 0 ? (holdingsValue / portfolioValue) * 100 : 0;
+    assetValue > 0 ? (holdingsValue / assetValue) * 100 : 0;
   const holdingsCount = (portfolio?.accounts || []).reduce(
     (count, account) => count + (account.holdings?.length || 0),
     0
@@ -132,7 +133,7 @@ const SaveInvestInsights = () => {
       </header>
 
       <section className="SaveInvestInsights_Hero">
-        <span>Portfolio value</span>
+        <span>Net account value</span>
         <h2>{portfolio ? money(portfolioValue, currency) : "Loading…"}</h2>
         <div className="SaveInvestInsights_HeroMeta">
           <span className={gainLoss >= 0 ? "positive" : "negative"}>

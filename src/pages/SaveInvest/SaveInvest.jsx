@@ -10,7 +10,7 @@ import {
     updateInvestmentAccountAPI,
 } from '../../services/apiService';
 
-const accountTypes = ['Savings', 'TFSA', 'RRSP', 'Brokerage', '401(k)', 'IRA', 'Other'];
+const accountTypes = ['Chequing', 'Savings', 'Credit Card', 'TFSA', 'RRSP', 'Brokerage', '401(k)', 'IRA', 'Other'];
 const emptyAccount = { name: '', institution: '', accountType: 'Savings', cash: '', currency: 'USD' };
 const emptyHolding = { symbol: '', name: '', quantity: '', averageCost: '', price: '' };
 const toMinor = (value) => Math.round(Number(value || 0) * 100);
@@ -34,6 +34,8 @@ const styles = {
 };
 
 const AccountCard = ({ account, onRefresh, setStatus }) => {
+    const isCreditCard = account.accountType === 'Credit Card';
+    const canHoldInvestments = !['Chequing', 'Credit Card'].includes(account.accountType);
     const [cash, setCash] = useState((account.cashMinor / 100).toFixed(2));
     const [holding, setHolding] = useState(emptyHolding);
 
@@ -91,13 +93,15 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
                 <h2 style={{ margin: 0, fontSize: '1.08rem' }}>{account.name}</h2>
                 <span style={styles.secondary}>{account.institution || 'Independent'} · {account.accountType}</span>
             </div>
-            <strong style={{ fontSize: '1.15rem' }}>{money(account.totalValueMinor, account.currency)}</strong>
+            <strong style={{ fontSize: '1.15rem', color: isCreditCard ? 'var(--Gc-2)' : undefined }}>
+                {isCreditCard ? money(account.cashMinor, account.currency) : money(account.totalValueMinor, account.currency)}
+            </strong>
         </div>
 
         <div style={{ ...styles.grid, marginTop: '14px' }}>
-            <div><span style={styles.secondary}>Cash</span><strong style={{ display: 'block' }}>{money(account.cashMinor, account.currency)}</strong></div>
-            <div><span style={styles.secondary}>Stocks</span><strong style={{ display: 'block' }}>{money(account.holdingsValueMinor, account.currency)}</strong></div>
-            <div><span style={styles.secondary}>Stock gain/loss</span><strong style={{ display: 'block', color: account.gainLossMinor >= 0 ? 'var(--Fc-1)' : 'var(--Gc-2)' }}>{account.gainLossMinor >= 0 ? '+' : ''}{money(account.gainLossMinor, account.currency)}</strong></div>
+            <div><span style={styles.secondary}>{isCreditCard ? 'Balance owed' : 'Cash balance'}</span><strong style={{ display: 'block' }}>{money(account.cashMinor, account.currency)}</strong></div>
+            {canHoldInvestments && <div><span style={styles.secondary}>Stocks</span><strong style={{ display: 'block' }}>{money(account.holdingsValueMinor, account.currency)}</strong></div>}
+            {canHoldInvestments && <div><span style={styles.secondary}>Stock gain/loss</span><strong style={{ display: 'block', color: account.gainLossMinor >= 0 ? 'var(--Fc-1)' : 'var(--Gc-2)' }}>{account.gainLossMinor >= 0 ? '+' : ''}{money(account.gainLossMinor, account.currency)}</strong></div>}
         </div>
 
         <div style={{ ...styles.row, marginTop: '14px', alignItems: 'end' }}>
@@ -105,7 +109,7 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
             <button type='button' onClick={saveCash} style={styles.button}>Update cash</button>
         </div>
 
-        <div style={{ marginTop: '16px' }}>
+        {canHoldInvestments && <div style={{ marginTop: '16px' }}>
             <h3 style={{ fontSize: '.95rem', marginBottom: '8px' }}>Holdings</h3>
             {account.holdings.length ? account.holdings.map((item) => {
                 const itemPriceMicros = Number.isSafeInteger(item.priceMicros) ? item.priceMicros : item.priceMinor * 10000;
@@ -120,9 +124,9 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
                     }} style={{ ...styles.button, padding: '4px 7px' }}>Remove</button></div></div>
                 </div>;
             }) : <p style={styles.secondary}>No stocks in this account. It can remain cash-only.</p>}
-        </div>
+        </div>}
 
-        <form onSubmit={saveHolding} style={{ marginTop: '10px' }}>
+        {canHoldInvestments && <form onSubmit={saveHolding} style={{ marginTop: '10px' }}>
             <div style={styles.grid}>
                 <input aria-label='Stock symbol' placeholder='Symbol (XEQT)' value={holding.symbol} onChange={(event) => setHolding({ ...holding, symbol: event.target.value })} style={styles.field} maxLength='15' required />
                 <input aria-label='Holding name' placeholder='Name (optional)' value={holding.name} onChange={(event) => setHolding({ ...holding, name: event.target.value })} style={styles.field} maxLength='120' />
@@ -134,7 +138,7 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
                 <span style={styles.secondary}>Prices are manual and show when they were last updated.</span>
                 <button type='submit' style={styles.button}>{account.holdings.some((item) => item.symbol === holding.symbol.trim().toUpperCase()) ? 'Update holding' : 'Add holding'}</button>
             </div>
-        </form>
+        </form>}
 
         <div style={{ textAlign: 'right', marginTop: '12px' }}><button type='button' onClick={async () => {
             if (window.confirm(`Delete ${account.name} and all of its holdings?`) && await deleteInvestmentAccountAPI(account.id)) {
@@ -180,11 +184,12 @@ const SaveInvest = () => {
         {status && <p role='status' style={{ color: 'var(--Fc-1)' }}>{status}</p>}
 
         <section style={{ ...styles.card, background: 'linear-gradient(135deg, var(--Bc-4), var(--Ac-4))' }}>
-            <span style={styles.secondary}>Total portfolio value</span>
+            <span style={styles.secondary}>Net account value</span>
             <h2 style={{ fontSize: '2rem', margin: '3px 0 12px' }}>{money(portfolio.totalValueMinor, portfolio.accounts[0]?.currency || 'USD')}</h2>
             <div style={styles.grid}>
                 <div><span style={styles.secondary}>Cash</span><strong style={{ display: 'block' }}>{money(portfolio.totalCashMinor)}</strong></div>
                 <div><span style={styles.secondary}>Stocks</span><strong style={{ display: 'block' }}>{money(portfolio.holdingsValueMinor)}</strong></div>
+                <div><span style={styles.secondary}>Credit card debt</span><strong style={{ display: 'block', color: 'var(--Gc-2)' }}>{money(portfolio.totalLiabilitiesMinor)}</strong></div>
                 <div><span style={styles.secondary}>This month contributed</span><strong style={{ display: 'block' }}>{money(Math.round(Number(mainSelected?.totalSaving || 0) * 100))}</strong></div>
             </div>
         </section>

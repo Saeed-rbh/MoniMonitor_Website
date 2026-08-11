@@ -206,7 +206,9 @@ const validMonth = (value) => typeof value === "string" && /^\d{4}-\d{2}$/.test(
 const validMinorAmount = (value) => Number.isSafeInteger(value) && value >= 0;
 const validText = (value, max = 120) => typeof value === 'string' && value.trim().length > 0 && value.trim().length <= max;
 const validQuantity = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0;
-const investmentAccountTypes = new Set(['Savings', 'TFSA', 'RRSP', 'Brokerage', '401(k)', 'IRA', 'Other']);
+const investmentAccountTypes = new Set([
+    'Chequing', 'Savings', 'Credit Card', 'TFSA', 'RRSP', 'Brokerage', '401(k)', 'IRA', 'Other',
+]);
 
 app.get("/settings", authenticateToken, async (req, res) => {
     try {

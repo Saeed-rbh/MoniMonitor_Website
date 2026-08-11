@@ -204,7 +204,9 @@ async function getInvestmentAccounts(userId) {
     }, {});
     return accounts.map((account) => ({
         ...account,
-        totalValueMinor: account.cashMinor + account.holdingsValueMinor,
+        totalValueMinor: account.accountType === 'Credit Card'
+            ? -account.cashMinor
+            : account.cashMinor + account.holdingsValueMinor,
         gainLossMinor: account.holdingsValueMinor - account.holdingsCostMinor,
         holdings: byAccount[account.id] || [],
     }));
@@ -231,7 +233,10 @@ async function getPortfolioSummary(userId) {
     );
     return {
         totalValueMinor: accounts.reduce((sum, account) => sum + account.totalValueMinor, 0),
-        totalCashMinor: accounts.reduce((sum, account) => sum + account.cashMinor, 0),
+        totalCashMinor: accounts.reduce((sum, account) =>
+            sum + (account.accountType === 'Credit Card' ? 0 : account.cashMinor), 0),
+        totalLiabilitiesMinor: accounts.reduce((sum, account) =>
+            sum + (account.accountType === 'Credit Card' ? account.cashMinor : 0), 0),
         holdingsValueMinor: accounts.reduce((sum, account) => sum + account.holdingsValueMinor, 0),
         holdingsCostMinor: accounts.reduce((sum, account) => sum + account.holdingsCostMinor, 0),
         gainLossMinor: accounts.reduce((sum, account) => sum + account.gainLossMinor, 0),
