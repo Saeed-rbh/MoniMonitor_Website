@@ -47,10 +47,16 @@ powershell -NoProfile -Command "$command = 'title MoniMonitor API + Email + Tele
 if errorlevel 1 goto :error
 
 echo Waiting for the backend to become ready...
-powershell -NoProfile -Command "$deadline = (Get-Date).AddSeconds(20); do { try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/health' -TimeoutSec 2 | Out-Null; exit 0 } catch { Start-Sleep -Seconds 1 } } while ((Get-Date) -lt $deadline); exit 1"
-if errorlevel 1 goto :error
+powershell -NoProfile -Command "$deadline = (Get-Date).AddSeconds(60); do { try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/health' -TimeoutSec 2 | Out-Null; exit 0 } catch { Start-Sleep -Seconds 1 } } while ((Get-Date) -lt $deadline); exit 1"
+if errorlevel 1 (
+  echo The backend did not become healthy within 60 seconds.
+  goto :error
+)
 powershell -NoProfile -Command "$agent = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' | Where-Object { $_.CommandLine -match 'email_agent\.js' }; if ($agent) { exit 0 } else { exit 1 }"
-if errorlevel 1 goto :error
+if errorlevel 1 (
+  echo The API is healthy, but the email and Telegram agent was not detected.
+  goto :error
+)
 
 echo.
 echo Website, API, email analyzer, Telegram connector, and tunnel are running.
