@@ -35,6 +35,12 @@ async function getDb() {
                     ReferenceNumber TEXT,
                     TelegramMessageId INTEGER,
                     Frequency TEXT DEFAULT 'OneTime',
+                    PortfolioAction TEXT,
+                    PortfolioAccountId INTEGER,
+                    PortfolioConfidence TEXT,
+                    PortfolioSymbol TEXT,
+                    PortfolioQuantity REAL,
+                    PortfolioPrice REAL,
                     FOREIGN KEY (userId) REFERENCES users(id)
                 );
 
@@ -68,6 +74,12 @@ async function getDb() {
             const hasColumn = (name) => transactionColumns.some((column) => column.name === name);
             if (!hasColumn("AmountMinor")) await db.exec("ALTER TABLE transactions ADD COLUMN AmountMinor INTEGER");
             if (!hasColumn("Currency")) await db.exec("ALTER TABLE transactions ADD COLUMN Currency TEXT NOT NULL DEFAULT 'USD'");
+            if (!hasColumn("PortfolioAction")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioAction TEXT");
+            if (!hasColumn("PortfolioAccountId")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioAccountId INTEGER");
+            if (!hasColumn("PortfolioConfidence")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioConfidence TEXT");
+            if (!hasColumn("PortfolioSymbol")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioSymbol TEXT");
+            if (!hasColumn("PortfolioQuantity")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioQuantity REAL");
+            if (!hasColumn("PortfolioPrice")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioPrice REAL");
             await db.run("UPDATE transactions SET AmountMinor = ROUND(Amount * 100) WHERE AmountMinor IS NULL");
 
             await db.exec(`
@@ -109,6 +121,7 @@ async function getDb() {
                     name TEXT NOT NULL,
                     institution TEXT,
                     accountType TEXT NOT NULL,
+                    accountRef TEXT,
                     currency TEXT NOT NULL DEFAULT 'USD',
                     cashMinor INTEGER NOT NULL DEFAULT 0 CHECK(cashMinor >= 0),
                     createdAt TEXT NOT NULL,
@@ -161,6 +174,35 @@ async function getDb() {
                     createdAt TEXT NOT NULL,
                     FOREIGN KEY (userId) REFERENCES users(id)
                 );
+
+                CREATE TABLE IF NOT EXISTS account_balance_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    userId TEXT NOT NULL,
+                    accountId INTEGER NOT NULL,
+                    sourceTransactionId INTEGER NOT NULL UNIQUE,
+                    deltaMinor INTEGER NOT NULL,
+                    occurredAt TEXT NOT NULL,
+                    FOREIGN KEY (userId) REFERENCES users(id),
+                    FOREIGN KEY (accountId) REFERENCES investment_accounts(id) ON DELETE CASCADE,
+                    FOREIGN KEY (sourceTransactionId) REFERENCES transactions(id) ON DELETE CASCADE
+                );
+            `);
+            const investmentAccountColumns = await db.all('PRAGMA table_info(investment_accounts)');
+            if (!investmentAccountColumns.some((column) => column.name === 'accountRef')) {
+                await db.exec('ALTER TABLE investment_accounts ADD COLUMN accountRef TEXT');
+            }
+            await db.exec(`
+                UPDATE investment_accounts
+                SET accountRef = CASE name
+                    WHEN 'CIBC Chequing' THEN '6768237'
+                    WHEN 'RBC Chequing' THEN '03481-5026554'
+                    WHEN 'RBC Visa' THEN '4510 **** **** 2379'
+                    WHEN 'TFSA' THEN 'TFSA'
+                    WHEN 'Future' THEN '•••• 1234'
+                    WHEN 'Earnings' THEN '•••• 1832'
+                    ELSE accountRef
+                END
+                WHERE accountRef IS NULL
             `);
             const portfolioTransactionColumns = await db.all('PRAGMA table_info(portfolio_transactions)');
             if (!portfolioTransactionColumns.some((column) => column.name === 'sourceTransactionId')) {
@@ -189,6 +231,7 @@ async function getDb() {
                 CREATE INDEX IF NOT EXISTS idx_investment_holdings_account ON investment_holdings(accountId);
                 CREATE INDEX IF NOT EXISTS idx_portfolio_transactions_user_date ON portfolio_transactions(userId, occurredAt DESC);
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_portfolio_transactions_source ON portfolio_transactions(sourceTransactionId) WHERE sourceTransactionId IS NOT NULL;
+                CREATE INDEX IF NOT EXISTS idx_account_balance_events_user ON account_balance_events(userId, occurredAt DESC);
             `);
 
             // Cleanup processed_emails older than 90 days to prevent DB bloat

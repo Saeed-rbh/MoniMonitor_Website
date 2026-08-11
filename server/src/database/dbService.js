@@ -1,4 +1,5 @@
 const { getDb } = require('./db');
+const { accountMatchScore, transactionBalanceDelta } = require('../services/accountMatching');
 
 function toMinorUnits(amount) {
     const numericAmount = Number(amount);
@@ -73,8 +74,11 @@ async function getAllTransactionsForUser(userId, filters = {}) {
 async function addTransaction(transaction) {
     const db = await getDb();
     const result = await db.run(
-        `INSERT INTO transactions (userId, Amount, AmountMinor, Currency, Category, Label, Reason, Timestamp, ReceivedAt, Type, Account, BankName, ReferenceNumber, Frequency, TelegramMessageId) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO transactions
+            (userId, Amount, AmountMinor, Currency, Category, Label, Reason, Timestamp, ReceivedAt,
+             Type, Account, BankName, ReferenceNumber, Frequency, TelegramMessageId, PortfolioAction,
+             PortfolioAccountId, PortfolioConfidence, PortfolioSymbol, PortfolioQuantity, PortfolioPrice)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             transaction.userId,
             (Number.isSafeInteger(transaction.AmountMinor) ? transaction.AmountMinor : toMinorUnits(transaction.Amount)) / 100,
@@ -90,7 +94,13 @@ async function addTransaction(transaction) {
             transaction.BankName,
             transaction.ReferenceNumber || null,
             transaction.Frequency || 'OneTime',
-            transaction.TelegramMessageId || null
+            transaction.TelegramMessageId || null,
+            transaction.PortfolioAction || null,
+            transaction.PortfolioAccountId || null,
+            transaction.PortfolioConfidence || null,
+            transaction.PortfolioSymbol || null,
+            transaction.PortfolioQuantity || null,
+            transaction.PortfolioPrice || null,
         ]
     );
     return result.lastID;
@@ -136,6 +146,7 @@ async function updateTransactionForUser(id, userId, updates) {
 
 async function deleteTransaction(id, userId) {
     const db = await getDb();
+    await removeTransactionAccountBalance(userId, id);
     const result = await db.run(
         'DELETE FROM transactions WHERE id = ? AND userId = ?',
         [id, userId]
@@ -212,6 +223,149 @@ async function getInvestmentAccounts(userId) {
     }));
 }
 
+async function syncTransactionAccountBalance(userId, transactionId, preferred = {}) {
+    const db = await getDb();
+    await db.run('BEGIN IMMEDIATE');
+    try {
+        const transaction = await db.get(
+            'SELECT * FROM transactions WHERE id = ? AND userId = ?',
+            [transactionId, userId]
+        );
+        if (!transaction) {
+            await db.run('COMMIT');
+            return { status: 'missing_transaction' };
+        }
+
+        const existing = await db.get(
+            'SELECT * FROM account_balance_events WHERE sourceTransactionId = ? AND userId = ?',
+            [transactionId, userId]
+        );
+        if (existing) {
+            await db.run(
+                'UPDATE investment_accounts SET cashMinor = cashMinor - ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                [existing.deltaMinor, new Date().toISOString(), existing.accountId, userId]
+            );
+            await db.run('DELETE FROM account_balance_events WHERE id = ? AND userId = ?', [existing.id, userId]);
+        }
+
+        const accounts = await db.all('SELECT * FROM investment_accounts WHERE userId = ?', [userId]);
+        const ranked = accounts
+            .map((account) => ({
+                account,
+                score: accountMatchScore(transaction, account, preferred.accountId, preferred.confidence),
+            }))
+            .filter(({ score }) => score > 0)
+            .sort((a, b) => b.score - a.score);
+        const best = ranked[0];
+        if (!best || best.score < 30 || (ranked[1] && ranked[1].score === best.score)) {
+            await db.run('COMMIT');
+            return { status: ranked.length ? 'ambiguous_account' : 'unmatched_account' };
+        }
+
+        const amountMinor = Number.isSafeInteger(transaction.AmountMinor)
+            ? transaction.AmountMinor
+            : toMinorUnits(transaction.Amount);
+        const deltaMinor = transactionBalanceDelta(transaction, best.account, amountMinor);
+        if (deltaMinor === null) {
+            await db.run('COMMIT');
+            return { status: 'not_balance_posting' };
+        }
+        const nextCashMinor = Number(best.account.cashMinor) + deltaMinor;
+        if (nextCashMinor < 0) {
+            await db.run('COMMIT');
+            return { status: 'review_required', reason: 'Transaction would make the account balance negative' };
+        }
+
+        const occurredAt = transaction.Timestamp || new Date().toISOString();
+        await db.run(
+            'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
+            [nextCashMinor, occurredAt, best.account.id, userId]
+        );
+        await db.run(
+            `INSERT INTO account_balance_events
+                (userId, accountId, sourceTransactionId, deltaMinor, occurredAt)
+             VALUES (?, ?, ?, ?, ?)`,
+            [userId, best.account.id, transactionId, deltaMinor, occurredAt]
+        );
+        await db.run('COMMIT');
+        return {
+            status: 'applied', accountId: best.account.id, accountName: best.account.name,
+            deltaMinor, cashMinor: nextCashMinor,
+        };
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+}
+
+async function removeTransactionAccountBalance(userId, transactionId) {
+    const db = await getDb();
+    await db.run('BEGIN IMMEDIATE');
+    try {
+        const existing = await db.get(
+            'SELECT * FROM account_balance_events WHERE sourceTransactionId = ? AND userId = ?',
+            [transactionId, userId]
+        );
+        if (existing) {
+            await db.run(
+                'UPDATE investment_accounts SET cashMinor = cashMinor - ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                [existing.deltaMinor, new Date().toISOString(), existing.accountId, userId]
+            );
+            await db.run('DELETE FROM account_balance_events WHERE id = ? AND userId = ?', [existing.id, userId]);
+        }
+        await db.run('COMMIT');
+        return Boolean(existing);
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+}
+
+async function reconcileTransactionAccountBalances(userId) {
+    const db = await getDb();
+    const transactions = await db.all(
+        `SELECT id FROM transactions
+         WHERE userId = ? AND id NOT IN (
+             SELECT sourceTransactionId FROM account_balance_events WHERE userId = ?
+         ) ORDER BY Timestamp ASC`,
+        [userId, userId]
+    );
+    const results = [];
+    for (const transaction of transactions) {
+        results.push({ transactionId: transaction.id, ...(await syncTransactionAccountBalance(userId, transaction.id)) });
+    }
+    return results;
+}
+
+async function reconcileEmailPortfolioActivities(userId) {
+    const db = await getDb();
+    const transactions = await db.all(
+        `SELECT * FROM transactions
+         WHERE userId = ? AND Category = 'Saving' AND PortfolioAction IS NOT NULL
+           AND id NOT IN (
+               SELECT sourceTransactionId FROM portfolio_transactions
+               WHERE userId = ? AND sourceTransactionId IS NOT NULL
+           )
+         ORDER BY Timestamp ASC`,
+        [userId, userId]
+    );
+    const results = [];
+    for (const transaction of transactions) {
+        results.push({
+            transactionId: transaction.id,
+            ...(await applyEmailPortfolioActivity(userId, transaction.id, {
+                accountId: transaction.PortfolioAccountId,
+                action: transaction.PortfolioAction,
+                confidence: transaction.PortfolioConfidence,
+                symbol: transaction.PortfolioSymbol,
+                quantity: transaction.PortfolioQuantity,
+                price: transaction.PortfolioPrice,
+            })),
+        });
+    }
+    return results;
+}
+
 async function getPortfolioSummary(userId) {
     const db = await getDb();
     const accounts = await getInvestmentAccounts(userId);
@@ -277,6 +431,7 @@ async function deleteInvestmentAccount(userId, id) {
     if (!owned) return false;
     await db.run('BEGIN');
     try {
+        await db.run('DELETE FROM account_balance_events WHERE accountId = ? AND userId = ?', [id, userId]);
         await db.run('DELETE FROM investment_holdings WHERE accountId = ? AND userId = ?', [id, userId]);
         await db.run('DELETE FROM portfolio_transactions WHERE accountId = ? AND userId = ?', [id, userId]);
         await db.run('DELETE FROM investment_accounts WHERE id = ? AND userId = ?', [id, userId]);
@@ -329,7 +484,7 @@ const emailCashActions = Object.freeze({
 
 async function applyEmailPortfolioActivity(userId, transactionId, activity = {}) {
     const { accountId, action, confidence, symbol, quantity, price } = activity;
-    if (confidence !== 'HIGH' || !accountId || !action) return { status: 'ignored' };
+    if (!action) return { status: 'ignored' };
     const isTrade = action === 'BUY' || action === 'SELL';
     if (!Object.hasOwn(emailCashActions, action) && !isTrade) {
         return { status: 'review_required', reason: 'Internal transfers require explicit destination details' };
@@ -365,10 +520,26 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
             return { status: 'duplicate' };
         }
 
-        const account = await db.get(
+        let resolvedAccountId = confidence === 'HIGH' ? Number(accountId) : null;
+        if (!resolvedAccountId) {
+            const investmentTypes = new Set(['TFSA', 'RRSP', 'Brokerage', '401(k)', 'IRA']);
+            const candidates = (await db.all('SELECT * FROM investment_accounts WHERE userId = ?', [userId]))
+                .filter((candidate) => !isTrade || investmentTypes.has(candidate.accountType))
+                .map((candidate) => ({
+                    account: candidate,
+                    score: accountMatchScore(source, candidate, null, null),
+                }))
+                .filter(({ score }) => score >= 30)
+                .sort((a, b) => b.score - a.score);
+            if (candidates.length === 1 || (candidates[0] && candidates[1] && candidates[0].score > candidates[1].score)) {
+                resolvedAccountId = candidates[0].account.id;
+            }
+        }
+
+        const account = resolvedAccountId ? await db.get(
             'SELECT * FROM investment_accounts WHERE id = ? AND userId = ?',
-            [accountId, userId]
-        );
+            [resolvedAccountId, userId]
+        ) : null;
         if (!account) {
             await db.run('COMMIT');
             return { status: 'unmatched_account' };
@@ -388,14 +559,14 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
 
             await db.run(
                 'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
-                [nextCashMinor, occurredAt, accountId, userId]
+                [nextCashMinor, occurredAt, resolvedAccountId, userId]
             );
             await db.run(
                 'INSERT INTO portfolio_transactions (userId, accountId, sourceTransactionId, kind, amountMinor, occurredAt, note) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [userId, accountId, transactionId, 'EMAIL_' + action, amountMinor, occurredAt, source.Reason || null]
+                [userId, resolvedAccountId, transactionId, 'EMAIL_' + action, amountMinor, occurredAt, source.Reason || null]
             );
             await db.run('COMMIT');
-            return { status: 'applied', accountId, action, amountMinor, cashMinor: nextCashMinor };
+            return { status: 'applied', accountId: resolvedAccountId, action, amountMinor, cashMinor: nextCashMinor };
         }
 
         if (source.Label !== 'Investment') {
@@ -414,7 +585,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
 
         const holding = await db.get(
             'SELECT * FROM investment_holdings WHERE accountId = ? AND symbol = ? AND userId = ?',
-            [accountId, normalizedSymbol, userId]
+            [resolvedAccountId, normalizedSymbol, userId]
         );
         const existingQuantity = Number(holding?.quantity || 0);
         let nextCashMinor;
@@ -448,7 +619,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
                     currency = excluded.currency,
                     updatedAt = excluded.updatedAt`,
                 [
-                    userId, accountId, normalizedSymbol, holding?.name || null,
+                    userId, resolvedAccountId, normalizedSymbol, holding?.name || null,
                     totalShares, averageCostMinor, averageCostMicros, priceMinor, priceMicros, account.currency, occurredAt,
                 ]
             );
@@ -478,21 +649,21 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
 
         await db.run(
             'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
-            [nextCashMinor, occurredAt, accountId, userId]
+            [nextCashMinor, occurredAt, resolvedAccountId, userId]
         );
         await db.run(
             `INSERT INTO portfolio_transactions
                 (userId, accountId, sourceTransactionId, kind, amountMinor, symbol, quantity, priceMinor, priceMicros, occurredAt, note)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                userId, accountId, transactionId, 'EMAIL_' + action, amountMinor,
+                userId, resolvedAccountId, transactionId, 'EMAIL_' + action, amountMinor,
                 normalizedSymbol, tradeQuantity, priceMinor, priceMicros, occurredAt, source.Reason || null,
             ]
         );
         await db.run('COMMIT');
         return {
             status: 'applied',
-            accountId,
+            accountId: resolvedAccountId,
             action,
             amountMinor,
             cashMinor: nextCashMinor,
@@ -766,6 +937,10 @@ module.exports = {
     upsertInvestmentHolding,
     deleteInvestmentHolding,
     applyEmailPortfolioActivity,
+    syncTransactionAccountBalance,
+    removeTransactionAccountBalance,
+    reconcileTransactionAccountBalances,
+    reconcileEmailPortfolioActivities,
     getUserSettings,
     saveUserSettings,
     getBudgetsForUser,

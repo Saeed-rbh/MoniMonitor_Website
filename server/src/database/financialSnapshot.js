@@ -51,6 +51,7 @@ async function applyFinancialSnapshot(db, userId) {
         // Clear the previous analysis state while retaining processed email UIDs so
         // historical messages cannot be imported again after the reset.
         await db.run('DELETE FROM portfolio_transactions WHERE userId = ?', [userId]);
+        await db.run('DELETE FROM account_balance_events WHERE userId = ?', [userId]);
         await db.run('DELETE FROM transactions WHERE userId = ?', [userId]);
         await db.run('DELETE FROM merchant_rules WHERE userId = ?', [userId]);
         await db.run('DELETE FROM investment_holdings WHERE userId = ?', [userId]);
@@ -66,9 +67,9 @@ async function applyFinancialSnapshot(db, userId) {
             );
             const result = await db.run(
                 `INSERT INTO investment_accounts
-                    (userId, name, institution, accountType, currency, cashMinor, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, 'CAD', ?, ?, ?)`,
-                [userId, account.name, account.institution, account.accountType, account.cashMinor,
+                    (userId, name, institution, accountType, accountRef, currency, cashMinor, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, 'CAD', ?, ?, ?)`,
+                [userId, account.name, account.institution, account.accountType, account.account, account.cashMinor,
                     SNAPSHOT_CAPTURED_AT, SNAPSHOT_CAPTURED_AT]
             );
             if (account.name === 'TFSA') tfsaAccountId = result.lastID;

@@ -106,6 +106,8 @@ const ExpenseSchema = z.object({
     Account: z.string().nullable(),
     BankName: z.string().nullable(),
     ReferenceNumber: z.string().nullable().optional(),
+    BalanceAccountId: z.coerce.number().int().positive().nullable().optional().default(null),
+    BalanceAccountConfidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).nullable().optional().default(null),
     PortfolioAction: z.enum(['DEPOSIT', 'CONTRIBUTION', 'WITHDRAWAL', 'INTEREST', 'DIVIDEND', 'BUY', 'SELL', 'TRANSFER']).nullable().optional().default(null),
     PortfolioAccountId: z.coerce.number().int().positive().nullable().optional().default(null),
     PortfolioConfidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).nullable().optional().default(null),
@@ -132,9 +134,9 @@ async function parseEmailWithGemini(emailBody, knownAccounts = [], investmentAcc
           knownAccounts.map(a => `- ${a.Account} → ${a.BankName} ${a.Type}`).join('\n') + '\n'
         : '';
     const portfolioContext = investmentAccounts.length > 0
-        ? `\nUser portfolio accounts (select an id only when the email clearly identifies one):\n` +
+        ? `\nUser financial accounts (select an id only when the email clearly identifies one):\n` +
           investmentAccounts.map((account) =>
-              `- id ${account.id}: ${account.name} | ${account.institution || 'no institution'} | ${account.accountType}`
+              `- id ${account.id}: ${account.name} | ${account.institution || 'no institution'} | ${account.accountType} | ${account.accountRef || 'no account reference'}`
           ).join('\n') + '\n'
         : '';
 
@@ -176,6 +178,10 @@ Fields to extract:
 - "Account": Masked account/card number if shown (e.g. "************2379"). Return null if not found.
 - "BankName": Bank name if shown (e.g. "RBC Royal Bank"). Return null if not found.
 - "ReferenceNumber": Transaction reference or confirmation number if shown. Return null if not found.
+- "BalanceAccountId": Select an id from the User financial accounts list when the institution,
+  account type, account name, or masked account/card digits make the match unambiguous. Otherwise return null.
+- "BalanceAccountConfidence": Return "HIGH" only when the email clearly identifies that account,
+  "MEDIUM" for a likely but incomplete match, "LOW" for a guess, or null when no account is selected.
 - "PortfolioAction": For a Saving transaction, use one of "DEPOSIT", "CONTRIBUTION", "WITHDRAWAL",
   "INTEREST", "DIVIDEND", "BUY", "SELL", or "TRANSFER". Otherwise return null.
   - DEPOSIT: cash explicitly added to a savings account.
@@ -199,6 +205,8 @@ Fields to extract:
 - A filled order confirmation from a brokerage is a valid financial transaction notification.
 
 Portfolio safety rules:
+- Never select BalanceAccountId merely because only one account seems plausible. Match evidence from the email.
+- When a masked account or card matches a known account, return the known account's canonical Account value.
 - Never infer an account id merely because there is only one account in the list.
 - A debt or credit-card payment is Saving for reporting but is not a portfolio action; return null portfolio fields.
 - Do not treat a BUY, SELL, or internal TRANSFER as a new contribution.

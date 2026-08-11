@@ -95,12 +95,12 @@ async function replaceNotification(tx) {
 async function syncPortfolioFromEmail(transactionId, data, idInfo) {
     if (!transactionId) return { status: 'ignored' };
     const result = await dbService.applyEmailPortfolioActivity(USER_ID, transactionId, {
-        accountId: data.PortfolioAccountId,
+        accountId: data.PortfolioAccountId || data.BalanceAccountId,
         action: data.PortfolioAction,
         symbol: data.PortfolioSymbol,
         quantity: data.PortfolioQuantity,
         price: data.PortfolioPrice,
-        confidence: data.PortfolioConfidence,
+        confidence: data.PortfolioConfidence === 'HIGH' || data.BalanceAccountConfidence === 'HIGH' ? 'HIGH' : data.PortfolioConfidence,
     });
     if (result.status === 'applied') {
         console.log(
@@ -266,6 +266,24 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
         // Apply an explicit portfolio cash movement once, linked to the source transaction.
         if (activeId) {
             await syncPortfolioFromEmail(activeId, expenseData, idInfo);
+            const accountPosting = await dbService.syncTransactionAccountBalance(USER_ID, activeId, {
+                accountId: expenseData.BalanceAccountId,
+                confidence: expenseData.BalanceAccountConfidence,
+            });
+            if (accountPosting.status === 'applied') {
+                console.log(
+                    `[${idInfo}] Posted transaction to ${accountPosting.accountName}: ${accountPosting.deltaMinor} minor units.`
+                );
+                await writeAudit('account_balance_update', 'success', {
+                    transactionId: activeId, accountId: accountPosting.accountId,
+                    deltaMinor: accountPosting.deltaMinor, cashMinor: accountPosting.cashMinor,
+                });
+            } else if (accountPosting.status === 'ambiguous_account' || accountPosting.status === 'unmatched_account') {
+                console.warn(`[${idInfo}] Transaction saved but account posting was ${accountPosting.status}.`);
+                await writeAudit('account_balance_update', 'review_required', {
+                    transactionId: activeId, reason: accountPosting.status,
+                });
+            }
         }
         if (expenseData.Account && expenseData.BankName) {
             const added = await dbService.trackAccount(USER_ID, expenseData.Account, expenseData.BankName, expenseData.Type, expenseData.Timestamp);
@@ -436,18 +454,42 @@ async function onTelegramUpdate(update) {
     }
 }
 
-if (require.main === module) {
+async function startAgent() {
     if (AI_INGESTION_ENABLED) {
         if (!IMAP_USER || !IMAP_PASSWORD || !TELEGRAM_CHAT_ID) {
             throw new Error('IMAP_USER, IMAP_PASSWORD, and TELEGRAM_CHAT_ID are required when AI ingestion is enabled');
         }
 
+        const portfolioReconciled = await dbService.reconcileEmailPortfolioActivities(USER_ID);
+        const portfolioApplied = portfolioReconciled.filter((result) => result.status === 'applied');
+        if (portfolioReconciled.length) {
+            console.log(`[Portfolio] Reconciled ${portfolioApplied.length}/${portfolioReconciled.length} unapplied activity record(s).`);
+            for (const result of portfolioReconciled.filter((item) => item.status !== 'applied' && item.status !== 'duplicate')) {
+                console.warn(`[Portfolio] Transaction ${result.transactionId}: ${result.status}${result.reason ? ` (${result.reason})` : ''}.`);
+            }
+        }
+
+        const reconciled = await dbService.reconcileTransactionAccountBalances(USER_ID);
+        const applied = reconciled.filter((result) => result.status === 'applied');
+        if (reconciled.length) {
+            console.log(`[Account balances] Reconciled ${applied.length}/${reconciled.length} unposted transaction(s).`);
+            for (const result of reconciled.filter((item) => item.status !== 'applied' && item.status !== 'not_balance_posting')) {
+                console.warn(`[Account balances] Transaction ${result.transactionId}: ${result.status}.`);
+            }
+        }
         startTelegramPolling(onTelegramUpdate);
         const emailListener = new ImapService(IMAP_HOST, IMAP_PORT, IMAP_USER, IMAP_PASSWORD, onNewEmail);
-        emailListener.start();
+        await emailListener.start();
     } else {
         console.log('AI ingestion is disabled. Set AI_INGESTION_ENABLED=true after completing account linking.');
     }
+}
+
+if (require.main === module) {
+    startAgent().catch((error) => {
+        console.error('[Agent] Startup failed:', error);
+        process.exitCode = 1;
+    });
 }
 
 module.exports = { onNewEmail };
