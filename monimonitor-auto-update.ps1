@@ -7,8 +7,17 @@ $logFile = Join-Path $stateDirectory 'auto-update.log'
 $mutex = [System.Threading.Mutex]::new($false, 'Local\MoniMonitorGitAutoUpdater')
 $hasMutex = $false
 
+function Write-WatcherStatus {
+    param([string]$Message)
+
+    $timestamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    Write-Host "[$timestamp] $Message"
+}
+
 function Write-UpdateLog {
     param([string]$Message)
+
+    Write-WatcherStatus $Message
 
     try {
         if (-not (Test-Path -LiteralPath $stateDirectory)) {
@@ -69,6 +78,7 @@ try {
         exit 0
     }
 
+    try { $Host.UI.RawUI.WindowTitle = 'MoniMonitor Update Monitor' } catch {}
     Write-UpdateLog 'Automatic update watcher started; checking every 60 seconds.'
     $env:GIT_TERMINAL_PROMPT = '0'
 
@@ -76,7 +86,10 @@ try {
         Start-Sleep -Seconds 60
 
         try {
+            Write-WatcherStatus 'Checking GitHub for updates...'
+
             if (-not (Test-CleanMainBranch)) {
+                Write-WatcherStatus 'Update paused: local changes exist or the current branch is not main.'
                 continue
             }
 
@@ -89,8 +102,12 @@ try {
             $localCommit = (& git -C $repository rev-parse HEAD 2>$null).Trim()
             $remoteCommit = (& git -C $repository rev-parse origin/main 2>$null).Trim()
             if (-not $localCommit -or -not $remoteCommit -or $localCommit -eq $remoteCommit) {
+                $shortCommit = if ($localCommit) { $localCommit.Substring(0, [Math]::Min(7, $localCommit.Length)) } else { 'unknown' }
+                Write-WatcherStatus "No update found. Running commit: $shortCommit."
                 continue
             }
+
+            Write-WatcherStatus "New GitHub update found: $($remoteCommit.Substring(0, 7)). Applying it now..."
 
             & git -C $repository merge-base --is-ancestor $localCommit $remoteCommit
             if ($LASTEXITCODE -ne 0) {
@@ -111,6 +128,8 @@ try {
             $mutex.ReleaseMutex()
             $hasMutex = $false
             Start-Process -FilePath (Join-Path $repository 'start-monimonitor.cmd') -WorkingDirectory $repository
+            Write-WatcherStatus 'Restart command started. The updated monitor will open in a new window.'
+            Start-Sleep -Seconds 10
             exit 0
         }
         catch {

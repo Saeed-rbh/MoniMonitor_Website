@@ -113,7 +113,7 @@ if not exist "%~dp0monimonitor-auto-update.ps1" (
   exit /b 0
 )
 
-start "" powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0monimonitor-auto-update.ps1"
+start "MoniMonitor Update Monitor" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0monimonitor-auto-update.ps1"
 exit /b 0
 
 :ensure_tunnel
