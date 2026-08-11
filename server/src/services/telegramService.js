@@ -113,14 +113,13 @@ function formatTransactionMessage(tx, action = 'new') {
     const isIncome = tx.Category === 'Income';
     const portfolioAction = tx.PortfolioAction || null;
     const isTrade = portfolioAction === 'BUY' || portfolioAction === 'SELL';
-    const isSell = portfolioAction === 'SELL';
-    const sign = isIncome || isSell ? '+' : '-';
+    const sign = isTrade ? '' : (isIncome ? '+' : '-');
     const amountStr = `${sign}$${parseFloat(tx.Amount).toFixed(2)}`;
     const headerEmoji = action === 'updated' ? '🔄' : (isTrade ? '📈' : (isIncome ? '💰' : '💸'));
     const headerLabel = action === 'updated'
         ? 'Transaction Updated'
         : (isTrade ? `${portfolioAction} Order Filled` : (isIncome ? 'Income Received' : 'Expense Detected'));
-    const amountEmoji = isIncome || isSell ? '✅' : '🔴';
+    const amountEmoji = isTrade ? '⚪' : (isIncome ? '✅' : '🔴');
     const divider     = e('─────────────────────');
 
     const lines = [
