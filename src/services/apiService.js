@@ -2,6 +2,19 @@ import { apiUrl } from "../config/api";
 
 const API_URL = apiUrl("/MoniMonitor_ToDB");
 
+const handleExpiredSession = (response) => {
+    if (response.status !== 401 || typeof window === "undefined") return false;
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("username");
+    localStorage.removeItem("userId");
+
+    // Telegram's in-app browser keeps its own storage. Returning to the login
+    // route lets LoginPage exchange fresh Telegram initData for a new token.
+    if (window.location.pathname !== "/login") window.location.replace("/login");
+    return true;
+};
+
 export const GetDataFromDB = async () => {
     try {
         const token = localStorage.getItem("token");
@@ -17,6 +30,7 @@ export const GetDataFromDB = async () => {
         });
 
         if (!response.ok) {
+            handleExpiredSession(response);
             console.error("Failed to fetch data", response.status);
             return [];
         }
@@ -41,6 +55,7 @@ export const GetSummary = async () => {
         });
 
         if (!response.ok) {
+            handleExpiredSession(response);
             console.error("Failed to fetch summary data", response.status);
             return null;
         }
@@ -205,7 +220,10 @@ const portfolioRequest = async (path = '', options = {}) => {
             ...options.headers,
         },
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+        handleExpiredSession(response);
+        return null;
+    }
     return response.status === 204 ? true : response.json();
 };
 

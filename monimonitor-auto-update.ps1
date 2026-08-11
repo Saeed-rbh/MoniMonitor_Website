@@ -127,7 +127,7 @@ try {
             # Release ownership before relaunching so the updated watcher can take over.
             $mutex.ReleaseMutex()
             $hasMutex = $false
-            Start-Process -FilePath (Join-Path $repository 'start-monimonitor.cmd') -WorkingDirectory $repository
+            Start-Process -FilePath (Join-Path $repository 'start-monimonitor.cmd') -ArgumentList '--auto-update-restart' -WorkingDirectory $repository
             Write-WatcherStatus 'Restart command started. The updated monitor will open in a new window.'
             Start-Sleep -Seconds 10
             exit 0

@@ -4,6 +4,8 @@ cd /d "%~dp0"
 
 set "PUBLIC_URL=https://monimonitor.saeedarabha.com"
 set "TAILSCALE_EXE=C:\Program Files\Tailscale\tailscale.exe"
+set "AUTO_UPDATE_RESTART="
+if /I "%~1"=="--auto-update-restart" set "AUTO_UPDATE_RESTART=1"
 
 echo Starting MoniMonitor public services...
 
@@ -38,7 +40,7 @@ if not errorlevel 1 (
     goto :error
   )
   echo MoniMonitor is already fully running.
-  start "" "%PUBLIC_URL%"
+  if not defined AUTO_UPDATE_RESTART start "" "%PUBLIC_URL%"
   powershell -NoProfile -Command "Start-Sleep -Seconds 3"
   exit /b 0
 )
@@ -61,7 +63,7 @@ if errorlevel 1 (
 echo.
 echo Website, API, email analyzer, Telegram connector, and tunnel are running.
 echo Website: %PUBLIC_URL%
-start "" "%PUBLIC_URL%"
+if not defined AUTO_UPDATE_RESTART start "" "%PUBLIC_URL%"
 powershell -NoProfile -Command "Start-Sleep -Seconds 3"
 exit /b 0
 
