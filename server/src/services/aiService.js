@@ -4,6 +4,61 @@ const { z } = require('zod');
 const AI_API_KEY = process.env.AI_API_KEY;
 const ai = AI_API_KEY ? new GoogleGenAI({ apiKey: AI_API_KEY }) : null;
 const MODEL_NAME = 'gemini-3.1-flash-lite';
+const MIN_REQUEST_INTERVAL_MS = 4200;
+const MAX_RATE_LIMIT_RETRIES = 3;
+
+let generationQueue = Promise.resolve();
+let nextGenerationAllowedAt = 0;
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isRateLimitError(error) {
+    const message = String(error?.message || '');
+    return error?.status === 429 || message.includes('RESOURCE_EXHAUSTED');
+}
+
+function getRetryDelayMs(error, attempt) {
+    const message = String(error?.message || '');
+    const retryInfo = message.match(/retryDelay["']?\s*:\s*["']?([\d.]+)s/i);
+    const retryMessage = message.match(/retry in ([\d.]+)s/i);
+    const seconds = Number(retryInfo?.[1] || retryMessage?.[1]);
+
+    if (Number.isFinite(seconds) && seconds > 0) {
+        return Math.ceil(seconds * 1000) + 750;
+    }
+
+    return Math.min(60000, 5000 * (2 ** attempt));
+}
+
+function generateContentWithQuotaProtection(request) {
+    const queuedRequest = generationQueue.then(async () => {
+        for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt += 1) {
+            const spacingDelay = Math.max(0, nextGenerationAllowedAt - Date.now());
+            if (spacingDelay > 0) await sleep(spacingDelay);
+            nextGenerationAllowedAt = Date.now() + MIN_REQUEST_INTERVAL_MS;
+
+            try {
+                return await ai.models.generateContent(request);
+            } catch (error) {
+                if (!isRateLimitError(error) || attempt === MAX_RATE_LIMIT_RETRIES) throw error;
+
+                const retryDelayMs = getRetryDelayMs(error, attempt);
+                console.warn(
+                    `[Gemini] Rate limit reached. Retrying in ${Math.ceil(retryDelayMs / 1000)}s ` +
+                    `(${attempt + 1}/${MAX_RATE_LIMIT_RETRIES}).`
+                );
+                await sleep(retryDelayMs);
+            }
+        }
+
+        throw new Error('Gemini request retry loop ended unexpectedly.');
+    });
+
+    generationQueue = queuedRequest.catch(() => undefined);
+    return queuedRequest;
+}
 
 // ─── Label Registry ────────────────────────────────────────────────────────
 // Single source of truth for all labels used across the app.
@@ -160,7 +215,7 @@ ${minimizedEmail}
 `;
 
     try {
-        const response = await ai.models.generateContent({
+        const response = await generateContentWithQuotaProtection({
             model: MODEL_NAME,
             contents: prompt,
             config: { responseMimeType: 'application/json' }
