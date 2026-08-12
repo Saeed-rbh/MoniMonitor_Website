@@ -1,7 +1,29 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { apiUrl } from "../config/api";
 
 const AuthContext = createContext(null);
 const getStorage = () => typeof window !== "undefined" ? window.localStorage : null;
+
+const persistSession = (userData, token) => {
+    const storage = getStorage();
+    const normalizedUser = {
+        username: userData.username,
+        userId: userData.id,
+        profilePhotoUrl: userData.profilePhotoUrl || null,
+        token,
+    };
+
+    storage?.setItem("token", token);
+    storage?.setItem("username", normalizedUser.username);
+    if (normalizedUser.userId) storage?.setItem("userId", normalizedUser.userId);
+    if (normalizedUser.profilePhotoUrl) {
+        storage?.setItem("profilePhotoUrl", normalizedUser.profilePhotoUrl);
+    } else {
+        storage?.removeItem("profilePhotoUrl");
+    }
+
+    return normalizedUser;
+};
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
@@ -15,24 +37,36 @@ export const AuthProvider = ({ children }) => {
         const profilePhotoUrl = storage?.getItem("profilePhotoUrl");
         if (token && username) setUser({ username, userId, profilePhotoUrl, token });
         setLoading(false);
+
+        const webApp = window.Telegram?.WebApp;
+        if (!token || !username || !webApp?.initData) return;
+
+        let cancelled = false;
+        webApp.ready();
+        webApp.expand();
+
+        fetch(apiUrl("/telegram-auth"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ initData: webApp.initData }),
+        })
+            .then(async (response) => {
+                if (!response.ok) throw new Error("Unable to refresh Telegram profile");
+                return response.json();
+            })
+            .then((data) => {
+                if (!cancelled) setUser(persistSession(data.user, data.accessToken));
+            })
+            .catch(() => {
+                // Keep the existing website session; normal API authentication will
+                // redirect to login if its token has also expired.
+            });
+
+        return () => { cancelled = true; };
     }, []);
 
     const login = (userData, token) => {
-        const storage = getStorage();
-        storage?.setItem("token", token);
-        storage?.setItem("username", userData.username);
-        if (userData.id) storage?.setItem("userId", userData.id);
-        if (userData.profilePhotoUrl) {
-            storage?.setItem("profilePhotoUrl", userData.profilePhotoUrl);
-        } else {
-            storage?.removeItem("profilePhotoUrl");
-        }
-        setUser({
-            username: userData.username,
-            userId: userData.id,
-            profilePhotoUrl: userData.profilePhotoUrl || null,
-            token,
-        });
+        setUser(persistSession(userData, token));
     };
 
     const logout = () => {
