@@ -3,9 +3,27 @@ setlocal
 cd /d "%~dp0"
 
 set "PUBLIC_URL=https://monimonitor.saeedarabha.com"
+set "PUBLIC_HEALTH_URL=%PUBLIC_URL%/api/health"
 set "TAILSCALE_EXE=C:\Program Files\Tailscale\tailscale.exe"
 set "AUTO_UPDATE_RESTART="
 if /I "%~1"=="--auto-update-restart" set "AUTO_UPDATE_RESTART=1"
+
+rem Tailscale Funnel uses an administrator-only control pipe on Windows.
+rem Elevate the complete launcher so a successful start always includes Funnel.
+powershell -NoProfile -Command "$identity = [Security.Principal.WindowsIdentity]::GetCurrent(); $principal = [Security.Principal.WindowsPrincipal]::new($identity); if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { exit 0 } else { exit 1 }"
+if errorlevel 1 (
+  echo Administrator access is required to manage the public tunnel.
+  echo Requesting permission through Windows User Account Control...
+  set "MONIMONITOR_LAUNCHER=%~f0"
+  set "MONIMONITOR_RESTART_ARG=--elevated"
+  if defined AUTO_UPDATE_RESTART set "MONIMONITOR_RESTART_ARG=--auto-update-restart"
+  powershell -NoProfile -Command "Start-Process -FilePath $env:MONIMONITOR_LAUNCHER -ArgumentList $env:MONIMONITOR_RESTART_ARG -WorkingDirectory (Split-Path -Parent $env:MONIMONITOR_LAUNCHER) -Verb RunAs"
+  if errorlevel 1 (
+    echo MoniMonitor could not request administrator access.
+    goto :error
+  )
+  exit /b 0
+)
 
 echo Starting MoniMonitor public services...
 
@@ -39,6 +57,8 @@ if not errorlevel 1 (
     echo The API is running without the email and Telegram agent. Close the existing backend window, then run this launcher again.
     goto :error
   )
+  call :ensure_public_health
+  if errorlevel 1 goto :error
   echo MoniMonitor is already fully running.
   if not defined AUTO_UPDATE_RESTART start "" "%PUBLIC_URL%"
   powershell -NoProfile -Command "Start-Sleep -Seconds 3"
@@ -59,6 +79,9 @@ if errorlevel 1 (
   echo The API is healthy, but the email and Telegram agent was not detected.
   goto :error
 )
+
+call :ensure_public_health
+if errorlevel 1 goto :error
 
 echo.
 echo Website, API, email analyzer, Telegram connector, and tunnel are running.
@@ -136,6 +159,27 @@ echo Current Tailscale status:
 "%TAILSCALE_EXE%" status
 echo Final Funnel attempt:
 "%TAILSCALE_EXE%" funnel --bg 3001
+exit /b 1
+
+:ensure_public_health
+rem Do not report success based only on local processes or Funnel configuration.
+rem Verify the same public route used by the deployed website, repairing Funnel
+rem between attempts in case Windows resumed with stale networking state.
+echo Verifying the public website can reach the API...
+for /L %%A in (1,1,6) do (
+  powershell -NoProfile -Command "try { $health = Invoke-RestMethod -Uri '%PUBLIC_HEALTH_URL%' -TimeoutSec 5; if ($health.status -eq 'ok') { exit 0 } } catch {}; exit 1"
+  if not errorlevel 1 (
+    echo Public API health check passed.
+    exit /b 0
+  )
+
+  echo Public API is not reachable yet. Repairing Funnel ^(%%A/6^)...
+  "%TAILSCALE_EXE%" funnel --bg 3001 >nul 2>&1
+  timeout /t 5 /nobreak >nul
+)
+
+echo The local API is healthy, but %PUBLIC_HEALTH_URL% is still unavailable.
+echo Check the Tailscale status and Vercel rewrite before using the website.
 exit /b 1
 
 :error

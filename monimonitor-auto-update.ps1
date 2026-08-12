@@ -4,6 +4,9 @@ $repository = $PSScriptRoot
 $pidFile = Join-Path $env:TEMP 'monimonitor-api.pid'
 $stateDirectory = Join-Path $env:LOCALAPPDATA 'MoniMonitor'
 $logFile = Join-Path $stateDirectory 'auto-update.log'
+$localHealthUrl = 'http://127.0.0.1:3001/health'
+$publicHealthUrl = 'https://monimonitor.saeedarabha.com/api/health'
+$tailscaleExecutable = 'C:\Program Files\Tailscale\tailscale.exe'
 $mutex = [System.Threading.Mutex]::new($false, 'Local\MoniMonitorGitAutoUpdater')
 $hasMutex = $false
 
@@ -66,6 +69,42 @@ function Test-CleanMainBranch {
     return $LASTEXITCODE -eq 0 -and -not $changes
 }
 
+function Test-MoniMonitorHealth {
+    param([string]$Url)
+
+    try {
+        $health = Invoke-RestMethod -Uri $Url -TimeoutSec 5
+        return $health.status -eq 'ok'
+    }
+    catch {
+        return $false
+    }
+}
+
+function Repair-PublicTunnel {
+    if (-not (Test-MoniMonitorHealth -Url $localHealthUrl)) {
+        Write-UpdateLog 'Public API is unavailable and the local API is not healthy; Funnel repair was skipped.'
+        return
+    }
+
+    if (-not (Test-Path -LiteralPath $tailscaleExecutable)) {
+        Write-UpdateLog 'Public API is unavailable and Tailscale was not found at the configured path.'
+        return
+    }
+
+    Write-UpdateLog 'Public API health check failed; repairing Tailscale Funnel.'
+    for ($attempt = 1; $attempt -le 3; $attempt++) {
+        & $tailscaleExecutable funnel --bg 3001 2>$null | Out-Null
+        Start-Sleep -Seconds 5
+        if (Test-MoniMonitorHealth -Url $publicHealthUrl) {
+            Write-UpdateLog "Public API connectivity restored on attempt $attempt."
+            return
+        }
+    }
+
+    Write-UpdateLog 'Tailscale Funnel repair did not restore the public API after three attempts.'
+}
+
 try {
     try {
         $hasMutex = $mutex.WaitOne(0, $false)
@@ -86,6 +125,10 @@ try {
         Start-Sleep -Seconds 60
 
         try {
+            if (-not (Test-MoniMonitorHealth -Url $publicHealthUrl)) {
+                Repair-PublicTunnel
+            }
+
             Write-WatcherStatus 'Checking GitHub for updates...'
 
             if (-not (Test-CleanMainBranch)) {
