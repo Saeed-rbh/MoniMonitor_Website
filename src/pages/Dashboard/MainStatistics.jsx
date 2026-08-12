@@ -1,6 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useSprings, animated, useSpring } from "@react-spring/web";
-import { useDrag, useWheel } from "@use-gesture/react";
 import BlurFade from "@/components/ui/blur-fade";
 
 // Constants
@@ -9,14 +8,25 @@ const MIN_PERCENTAGE = 10;
 const FALLBACK_COLOR = "var(--Ac-2)";
 
 // Utility function to calculate percentage
-const calculatePercentage = (value, max) => (max === 0 ? 0 : (value / max) * PERCENTAGE_FACTOR);
+const toFiniteNumber = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+};
+
+const calculatePercentage = (value, max) =>
+  max === 0 ? 0 : (toFiniteNumber(value) / max) * PERCENTAGE_FACTOR;
+
+const hasMonthData = (month) =>
+  Math.abs(toFiniteNumber(month?.income)) +
+    Math.abs(toFiniteNumber(month?.Expense)) +
+    Math.abs(toFiniteNumber(month?.saving)) >
+  0;
 
 const MainStatistics = ({
   height,
   netAmounts,
   mainPageMonth,
   setMainPageMonth,
-  verticalShift = 0, // Accept verticalShift prop
 }) => {
   const netSeries = useMemo(
     () => Object.entries(netAmounts).reverse(),
@@ -36,10 +46,10 @@ const MainStatistics = ({
   const maxValues = useMemo(() => {
     const allValues = last6MonthsData.reduce(
       (acc, d) => ({
-        maxIncome: Math.max(acc.maxIncome, d.income),
-        maxNet: Math.max(acc.maxNet, d.net),
-        maxSaving: Math.max(acc.maxSaving, d.saving),
-        maxExpense: Math.max(acc.maxExpense, d.Expense),
+        maxIncome: Math.max(acc.maxIncome, Math.abs(toFiniteNumber(d.income))),
+        maxNet: Math.max(acc.maxNet, Math.abs(toFiniteNumber(d.net))),
+        maxSaving: Math.max(acc.maxSaving, Math.abs(toFiniteNumber(d.saving))),
+        maxExpense: Math.max(acc.maxExpense, Math.abs(toFiniteNumber(d.Expense))),
       }),
       { maxIncome: 0, maxNet: 0, maxSaving: 0, maxExpense: 0 }
     );
@@ -51,16 +61,8 @@ const MainStatistics = ({
       allValues.maxExpense
     );
 
-    let highestCategory = "";
-    if (maxOfAll === allValues.maxIncome) highestCategory = "Income";
-    else if (maxOfAll === allValues.maxNet) highestCategory = "Net";
-    else if (maxOfAll === allValues.maxSaving) highestCategory = "Saving";
-    else if (maxOfAll === allValues.maxExpense) highestCategory = "Expense";
-
-    return { ...allValues, maxOfAll, highestCategory };
+    return { ...allValues, maxOfAll };
   }, [last6MonthsData]);
-
-  const marginTop = maxValues.highestCategory === "Expense" ? 20 : 30;
 
   const processedData = useMemo(
     () =>
@@ -76,13 +78,16 @@ const MainStatistics = ({
   );
 
   useEffect(() => {
-    processedData.length > 0 &&
-      processedData[mainPageMonth].income +
-      processedData[mainPageMonth].Expense +
-      processedData[mainPageMonth].saving ===
-      0 &&
-      setMainPageMonth(mainPageMonth + 1);
-  }, [processedData]);
+    if (!processedData.length) return;
+
+    const selectedMonth = processedData[mainPageMonth];
+    if (selectedMonth && hasMonthData(selectedMonth)) return;
+
+    const nextAvailableMonth = processedData.findIndex(hasMonthData);
+    if (nextAvailableMonth !== -1 && nextAvailableMonth !== mainPageMonth) {
+      setMainPageMonth(nextAvailableMonth);
+    }
+  }, [mainPageMonth, processedData, setMainPageMonth]);
 
   /* useEffect moved down */
 
@@ -109,19 +114,16 @@ const MainStatistics = ({
         incomeHeight: `${d.incomePercentage === 0 ? MIN_PERCENTAGE : d.incomePercentage
           }%`,
         incomeBg: d.incomePercentage === 0 ? FALLBACK_COLOR : null,
-        opacity: index + 1 === mainPageMonth ? 0.9 : 0.5,
+        opacity: index === mainPageMonth ? 0.9 : 0.45,
         filter: index === mainPageMonth ? "grayscale(0)" : "grayscale(0.4)",
       },
       delay: index * 50,
     }))
   );
 
-  const buttunsHeight =
-    ((420 - 20) / 2 / 1.8) * Math.min(height / 675, 1) * 2 + 10;
-  const baseHeightFactor = height - buttunsHeight - height / 3.7;
-
-  // Use fixed height factor to prevent UI jitter on month change
-  const heightFactor = baseHeightFactor;
+  // Keep enough chart room on short phones without letting it crowd the
+  // summary cards on taller screens.
+  const heightFactor = Math.min(250, Math.max(170, height * 0.36));
 
   const valueSpringIn = useSpring({
     position: "absolute",
@@ -233,138 +235,27 @@ const MainStatistics = ({
     }))
   );
 
-  const [{ x }, api] = useSpring(() => ({ x: 0 }));
-  const [currentX, setCurrentX] = useState(0);
+  const monthRefs = useRef([]);
 
-  // Sync animation X position when mainPageMonth changes
   useEffect(() => {
-    // 50 is the assumed width per item used in existing logic
-    const targetX = -50 * mainPageMonth;
-    api.start({ x: targetX });
-    setCurrentX(targetX);
-  }, [mainPageMonth, api]);
-
-  /* Ref to measure container width for dynamic bounds */
-  const containerRef = React.useRef(null);
-
-  /* Ref to track continuous visual position independent of mainPageMonth state */
-  const visualX = React.useRef(0);
-
-  // Update visualX when mainPageMonth changes programmatically
-  useEffect(() => {
-    visualX.current = -50 * mainPageMonth;
+    monthRefs.current[mainPageMonth]?.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "nearest",
+    });
   }, [mainPageMonth]);
-
-  /* Bounds Calculation */
-  /* Bounds Calculation: Strict Center-to-Center */
-  const minX = -(processedData.length - 1) * 50;
-  const maxX = 0;
-
-  const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
-
-  const bindDrag = useDrag(({ down, movement: [mx, my], memo = visualX.current }) => {
-    // Dynamic Bounds: Stop when Last Item matches Right Edge + Margin
-    const containerWidth = containerRef.current ? containerRef.current.offsetWidth : 0;
-    const contentWidth = processedData.length * 50;
-    // Add 100px buffer to ensure last items are fully visible/not cut off
-    const dynamicMinX = Math.min(0, containerWidth - contentWidth - 100);
-
-    let newX = memo + mx;
-    newX = clamp(newX, dynamicMinX, maxX);
-
-    api.start({ x: newX });
-
-    if (!down) visualX.current = newX;
-
-    return memo;
-  }, {
-    filterTaps: true,
-    axis: 'x'
-  });
-
-  /* bindWheel: Map Vertical/Horizontal Scroll to Visual Pan. Does NOT change Month state. */
-  const bindWheel = useWheel(({ active, movement: [mx, my], memo = 0 }) => {
-    // Map Vertical (my = Scroll Down/Up) or Horizontal (mx) to Pan
-    // Scroll Down (Positive my) -> Pan Left (Negative X in standard scroll)
-    // But natural feel: Scroll Down -> Move View Right (Show next)
-
-    // Let's use simple addition first.
-    // If vertical is dominant, use it. Else use horizontal.
-    const isVertical = Math.abs(my) > Math.abs(mx);
-    const delta = isVertical ? my : mx;
-
-    // Scale delta for sensitivity?
-    const panX = delta * 1.5;
-
-    const initialX = -50 * mainPageMonth;
-    api.start({ x: initialX - panX }); // Subtracting delta to match natural scrolling direction? or Adding?
-    // Let's try subtracting. (Scroll Down -> Move content Up/Right?)
-    // Actually, usually Scroll Down = mx < 0 (Next). So if my > 0, we want mx style < 0.
-    // So if my > 0 (Scroll Down), we want X to decrease (Next).
-    // So x: initialX - my.
-
-    return memo;
-  });
-
-  /* bindWheelNew: Pan with Bounds, Reduced Sensitivity */
-  const bindWheelNew = useWheel(({ active, delta: [dx, dy], memo = visualX.current }) => {
-    // Determine delta based on dominant axis
-    const isVertical = Math.abs(dy) > Math.abs(dx);
-    let delta = isVertical ? dy : dx;
-
-    // Sensitivity Reduction: 0.5 factor
-    const scrollStep = delta * 0.5;
-
-    let newX = visualX.current - scrollStep;
-    newX = clamp(newX, minX, maxX);
-
-    api.start({ x: newX });
-    visualX.current = newX;
-
-    return memo;
-  }, {
-    modal: false
-  });
-
-  /* bindWheelDynamic: Pan with Dynamic Bounds (Viewport Aware) */
-  const bindWheelDynamic = useWheel(({ active, delta: [dx, dy], memo = visualX.current }) => {
-    // Dynamic Bounds for Wheel: Stop when Last Item matches Right Edge + Margin
-    const containerWidth = containerRef.current ? containerRef.current.offsetWidth : 0;
-    const contentWidth = processedData.length * 50;
-    // Add 100px buffer to ensure last items are fully visible/not cut off
-    const dynamicMinX = Math.min(0, containerWidth - contentWidth - 100);
-
-    // Determine delta based on dominant axis
-    const isVertical = Math.abs(dy) > Math.abs(dx);
-    let delta = isVertical ? dy : dx;
-
-    // Sensitivity Reduction: 0.5 factor
-    const scrollStep = delta * 0.5;
-
-    let newX = visualX.current - scrollStep;
-    newX = clamp(newX, dynamicMinX, maxX);
-
-    api.start({ x: newX });
-    visualX.current = newX;
-
-    return memo;
-  }, {
-    modal: false
-  });
 
   return (
     <div
-      style={{ height: `${heightFactor + 60}px` }}
+      style={{ height: `${heightFactor + 48}px` }}
       className="MainStatistics"
-      {...bindDrag()}
-      {...bindWheelDynamic()}
     >
       <BlurFade
         delay={0.3 + 0.05 * 5}
-        style={{ height: `${heightFactor + 60}px` }}
+        style={{ height: `${heightFactor + 48}px` }}
         duration={0.3}
       >
-        <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", transform: `translateY(${verticalShift * 0.5}%)` }}>
+        <div className="MainStatistics-Content">
           <h3>
             <span className="MoneyEntry_Dot" style={{ color: "var(--Bc-1)" }}>
               •
@@ -372,13 +263,11 @@ const MainStatistics = ({
             <span>Insight</span> Dashboard
           </h3>
           <div
-            ref={containerRef}
             className="MainStatistics-Graph"
-            style={{ marginTop: `${marginTop}px`, flex: 1 }}
           >
             <div
               className="MainStatistics-dash"
-              style={{ marginLeft: "20px", width: "calc(100%)" }}
+              style={{ left: "20px", width: "calc(100% - 25px)" }}
             ></div>
             <animated.div style={valueSpringIn} className="MainStatistics-dash">
               <animated.h1 style={valueSpringInText}>
@@ -395,7 +284,6 @@ const MainStatistics = ({
                 {processedData[mainPageMonth]
                   ? Number(processedData[mainPageMonth].Expense.toFixed(0))
                   : 0}
-                $
               </animated.h1>
             </animated.div>
 
@@ -447,49 +335,18 @@ const MainStatistics = ({
                 <animated.div
                   key={index}
                   className="MainStatistics-batch"
+                  ref={(element) => {
+                    monthRefs.current[index] = element;
+                  }}
                   style={{
-                    opacity: x.to((x) => {
-                      const threshold = 50 * (index + 1) - 30;
-                      const distance = -x - threshold;
-
-                      const hasData =
-                        Math.round(processedData[index].income) +
-                        Math.round(processedData[index].Expense) +
-                        Math.round(processedData[index].saving) !==
-                        0;
-
-                      const minOpacity = 0.0;
-                      // If empty, maxOpacity is low (0.2). If selected 0.8, else 0.4
-                      const maxOpacity = hasData
-                        ? index === mainPageMonth
-                          ? 0.8
-                          : 0.4
-                        : 0.2;
-
-                      const fadeDistance = 5;
-
-                      const sigmoid = (x) => 1 / (1 + Math.exp(-x));
-                      const transition = sigmoid(distance / fadeDistance);
-
-                      const opacity =
-                        maxOpacity * (1 - transition) + minOpacity * transition;
-                      return opacity;
-                    }),
+                    opacity: hasMonthData(processedData[index])
+                      ? style.opacity
+                      : 0.2,
                     filter: style.filter,
-                    transform: x.to((x) => `translate3d(${x}px,0,0)`),
-                    cursor:
-                      Math.round(processedData[index].income) +
-                        Math.round(processedData[index].Expense) +
-                        Math.round(processedData[index].saving) !==
-                        0
-                        ? "pointer"
-                        : "default",
+                    cursor: hasMonthData(processedData[index]) ? "pointer" : "default",
                   }}
                   onClick={() => {
-                    Math.round(processedData[index].income) +
-                      Math.round(processedData[index].Expense) +
-                      Math.round(processedData[index].saving) !==
-                      0 && setMainPageMonth(index);
+                    hasMonthData(processedData[index]) && setMainPageMonth(index);
                   }}
                 >
                   <li></li>

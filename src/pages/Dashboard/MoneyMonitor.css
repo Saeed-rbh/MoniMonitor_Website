@@ -20,6 +20,12 @@
   overflow-x: hidden;
 }
 
+.MoneyMonitor_Content {
+  min-height: 0;
+  height: 100%;
+  gap: 12px;
+}
+
 .MoneyMonitor_Gradient1 {
   position: absolute;
   width: 500px;
@@ -132,7 +138,8 @@
   width: 100%;
   z-index: 10;
   margin: 0;
-  /* Reset margins */
+  padding-bottom: 2px;
+  box-sizing: border-box;
 }
 
 .MoneyEntry_Title {
@@ -140,7 +147,7 @@
   width: -webkit-fill-available;
   flex-direction: row;
   justify-content: space-between;
-  margin: 0px 0;
+  margin: 0 0 2px;
   padding: 0 5px;
 }
 
@@ -189,7 +196,7 @@
 
 .MoneyEntry_Data {
   width: -webkit-fill-available;
-  margin: -2px 0 0 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   cursor: pointer;
@@ -251,7 +258,7 @@
      Let's keep the formula but using 420 for now to be safe, or just utilize aspect-ratio CSS property if supported.
      (420 - 20) / 2 / 1.6 = 200 / 1.6 = 125px */
   height: calc((var(--app-max-width, 420px) - 20px) / 2 / 1.8);
-  border-radius: 30px;
+  border-radius: 26px;
   /* margin-left: 5px; removed for gap */
   display: flex;
   flex-direction: column;
@@ -512,13 +519,13 @@
   /* Internet Explorer 10+ */
   scrollbar-width: none;
   /* Firefox */
-  gap: 6px;
+  gap: 8px;
   width: 100%;
   white-space: nowrap;
   user-select: none;
   -webkit-user-select: none;
   box-sizing: border-box;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
 }
 
 
@@ -957,6 +964,13 @@
   /* background: linear-gradient(165deg, var(--Ac-4) 30%, var(--Ac-4) 100%); */
 }
 
+.MainStatistics-Content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 .MainStatistics-Graph {
   position: relative;
   display: flex;
@@ -972,7 +986,8 @@
   /* background: linear-gradient(165deg, var(--Ac-4) 30%, var(--Ac-4) 100%); */
   padding: 5px 5px 5px;
   /* transform: translateY(-10px); */
-  margin-top: 30px;
+  margin-top: 24px;
+  flex: 1;
   /* outline: 1px solid var(--Bc-3); */
 }
 
@@ -1043,7 +1058,7 @@
   position: absolute;
   border-radius: 50px;
   height: 50px;
-  width: max-content;
+  width: 100%;
   /* background: linear-gradient(165deg, var(--Ac-4) 0%, var(--Ec-4) 100%); */
   display: flex;
   align-items: center;
@@ -1151,13 +1166,24 @@
   flex-direction: row;
   align-items: center;
   /* justify-content: space-between; */
-  width: calc(100%);
-  padding: 0 10px;
+  width: max-content;
+  min-width: 100%;
+  padding: 0 14px 0 54px;
   height: 100%;
-  padding-left: 60px;
   list-style-type: none;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
   margin: 0;
+  box-sizing: border-box;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.MainStatistics ul::-webkit-scrollbar {
+  display: none;
 }
 
 .MoneyMonitor_MainBlur {
@@ -1189,11 +1215,72 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  /* width: 100%; */
+  flex: 0 0 52px;
   padding: 0 11px;
   height: 100%;
-  margin: 0 15px;
+  margin: 0;
   cursor: pointer;
+  box-sizing: border-box;
+  scroll-snap-align: center;
+}
+
+@media (max-width: 420px) {
+  .App {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .MoneyMonitor_Content {
+    gap: clamp(8px, 1.8vh, 12px);
+  }
+
+  .MainStatistics-Graph {
+    width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .MoneyEntry_AmountBase {
+    gap: 7px;
+    margin-bottom: 7px;
+  }
+
+  .MoneyEntry_Amount {
+    border-radius: 23px;
+  }
+
+  .MoneyEntry_Amount p:first-of-type {
+    padding-left: 8px;
+    font-size: 1.05rem;
+  }
+
+  .MoneyEntry_type_Open {
+    width: 44px;
+    height: 44px;
+  }
+
+  .MoneyEntry_Balance {
+    right: 14px;
+  }
+}
+
+@media (max-height: 700px) {
+  .App {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .MoneyMonitor_Content {
+    gap: 6px;
+  }
+
+  .MoneyEntry h1 {
+    margin-bottom: 4px;
+  }
+
+  .MoneyEntry_AmountBase {
+    margin-bottom: 6px;
+  }
 }
 
 .MainStatistics-batch li:nth-last-of-type(1) {

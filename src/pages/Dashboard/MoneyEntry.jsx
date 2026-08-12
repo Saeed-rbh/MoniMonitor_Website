@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import BlurFade from "@/components/ui/blur-fade";
 import { getPortfolioAPI } from '../../services/apiService';
 
-const MoneyEntry = ({ Transactions, setIsMoreClicked, verticalShift = 0 }) => {
+const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
   const [portfolio, setPortfolio] = React.useState(null);
 
   React.useEffect(() => {
@@ -25,7 +25,7 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked, verticalShift = 0 }) => {
 
   return (
     Transactions && (
-      <div className="MoneyEntry" style={{ transform: `translateY(${-verticalShift * 0.5}%)`, transition: "transform 0.5s ease-out" }}>
+      <div className="MoneyEntry">
         <BlurFade delay={0.3 + 0.05 * 4} duration={0.4}>
           <div className="MoneyEntry_Title">
             <h1>

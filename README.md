@@ -81,3 +81,8 @@ MoniMonitor_Website/
 
 <!-- GitHub connection test -->
 <!-- GitHub connection test 2 -->
+
+## Change delivery
+
+After making and verifying a code change, commit and push the related files to
+the configured Git remote. Keep unrelated local changes out of that commit.
