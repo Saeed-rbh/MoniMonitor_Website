@@ -9,6 +9,7 @@ const handleExpiredSession = (response) => {
     localStorage.removeItem("username");
     localStorage.removeItem("userId");
     localStorage.removeItem("profilePhotoUrl");
+    localStorage.removeItem("joinedAt");
 
     // Telegram's in-app browser keeps its own storage. Returning to the login
     // route lets LoginPage exchange fresh Telegram initData for a new token.

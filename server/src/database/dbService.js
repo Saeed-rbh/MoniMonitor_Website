@@ -22,8 +22,8 @@ function withDisplayAmounts(transactions) {
 async function createUser(id, username, hashedPassword) {
     const db = await getDb();
     await db.run(
-        'INSERT INTO users (id, username, password) VALUES (?, ?, ?)',
-        [id, username, hashedPassword]
+        'INSERT INTO users (id, username, password, createdAt) VALUES (?, ?, ?, ?)',
+        [id, username, hashedPassword, new Date().toISOString()]
     );
 }
 

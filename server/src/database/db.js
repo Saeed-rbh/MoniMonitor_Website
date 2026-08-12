@@ -18,7 +18,8 @@ async function getDb() {
                     id TEXT PRIMARY KEY,
                     username TEXT UNIQUE NOT NULL,
                     password TEXT NOT NULL,
-                    profilePhotoUrl TEXT
+                    profilePhotoUrl TEXT,
+                    createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
 
                 CREATE TABLE IF NOT EXISTS transactions (
@@ -74,6 +75,13 @@ async function getDb() {
             const userColumns = await db.all("PRAGMA table_info(users)");
             if (!userColumns.some((column) => column.name === "profilePhotoUrl")) {
                 await db.exec("ALTER TABLE users ADD COLUMN profilePhotoUrl TEXT");
+            }
+            if (!userColumns.some((column) => column.name === "createdAt")) {
+                await db.exec("ALTER TABLE users ADD COLUMN createdAt TEXT");
+                await db.run(
+                    "UPDATE users SET createdAt = ? WHERE createdAt IS NULL",
+                    [new Date().toISOString()]
+                );
             }
             const transactionColumns = await db.all("PRAGMA table_info(transactions)");
             const hasColumn = (name) => transactionColumns.some((column) => column.name === name);

@@ -37,6 +37,7 @@ test("refreshes and persists the Telegram profile photo for an existing session"
                 id: "app-user-id",
                 username: "saeed",
                 profilePhotoUrl: "https://t.me/i/userpic/320/profile.jpg",
+                joinedAt: "2026-08-12T12:00:00.000Z",
             },
         }),
     });
@@ -52,5 +53,6 @@ test("refreshes and persists the Telegram profile photo for an existing session"
         expect(screen.getByText("https://t.me/i/userpic/320/profile.jpg")).toBeInTheDocument();
     });
     expect(localStorage.getItem("profilePhotoUrl")).toBe("https://t.me/i/userpic/320/profile.jpg");
+    expect(localStorage.getItem("joinedAt")).toBe("2026-08-12T12:00:00.000Z");
     expect(localStorage.getItem("token")).toBe("refreshed-token");
 });

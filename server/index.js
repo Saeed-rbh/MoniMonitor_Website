@@ -113,6 +113,7 @@ app.post("/login", authRateLimit, async (req, res) => {
                 id: user.id,
                 username: user.username,
                 profilePhotoUrl: user.profilePhotoUrl || null,
+                joinedAt: user.createdAt || null,
             },
         });
     } catch (error) {
@@ -145,7 +146,12 @@ app.post("/telegram-auth", authRateLimit, async (req, res) => {
         );
         return res.json({
             accessToken,
-            user: { id: user.id, username: user.username, profilePhotoUrl },
+            user: {
+                id: user.id,
+                username: user.username,
+                profilePhotoUrl,
+                joinedAt: user.createdAt || null,
+            },
         });
     } catch {
         return res.status(401).json({ error: "Unable to verify Telegram identity" });

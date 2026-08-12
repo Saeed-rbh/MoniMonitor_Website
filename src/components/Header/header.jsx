@@ -6,6 +6,16 @@ import { useTransactions } from "../../context/TransactionContext";
 import { useAuth } from "../../context/AuthContext";
 import { useLocation } from "react-router-dom";
 
+const formatJoinedMonth = (joinedAt) => {
+  if (!joinedAt) return "Member";
+  const date = new Date(joinedAt);
+  if (Number.isNaN(date.getTime())) return "Member";
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    year: "numeric",
+  }).format(date);
+};
+
 function Header() {
   const {
     userData,
@@ -47,7 +57,7 @@ function Header() {
           </div>
           <p>
             <span>{user?.username}</span>
-            <span>{user?.userId}</span>
+            <span>{formatJoinedMonth(user?.joinedAt)}</span>
           </p>
         </div>
       </BlurFade>

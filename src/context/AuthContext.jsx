@@ -10,6 +10,7 @@ const persistSession = (userData, token) => {
         username: userData.username,
         userId: userData.id,
         profilePhotoUrl: userData.profilePhotoUrl || null,
+        joinedAt: userData.joinedAt || null,
         token,
     };
 
@@ -20,6 +21,11 @@ const persistSession = (userData, token) => {
         storage?.setItem("profilePhotoUrl", normalizedUser.profilePhotoUrl);
     } else {
         storage?.removeItem("profilePhotoUrl");
+    }
+    if (normalizedUser.joinedAt) {
+        storage?.setItem("joinedAt", normalizedUser.joinedAt);
+    } else {
+        storage?.removeItem("joinedAt");
     }
 
     return normalizedUser;
@@ -35,7 +41,8 @@ export const AuthProvider = ({ children }) => {
         const username = storage?.getItem("username");
         const userId = storage?.getItem("userId");
         const profilePhotoUrl = storage?.getItem("profilePhotoUrl");
-        if (token && username) setUser({ username, userId, profilePhotoUrl, token });
+        const joinedAt = storage?.getItem("joinedAt");
+        if (token && username) setUser({ username, userId, profilePhotoUrl, joinedAt, token });
         setLoading(false);
 
         const webApp = window.Telegram?.WebApp;
@@ -75,6 +82,7 @@ export const AuthProvider = ({ children }) => {
         storage?.removeItem("username");
         storage?.removeItem("userId");
         storage?.removeItem("profilePhotoUrl");
+        storage?.removeItem("joinedAt");
         setUser(null);
     };
 
