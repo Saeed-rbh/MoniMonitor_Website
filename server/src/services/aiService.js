@@ -6,6 +6,7 @@ const ai = AI_API_KEY ? new GoogleGenAI({ apiKey: AI_API_KEY }) : null;
 const MODEL_NAME = 'gemini-3.1-flash-lite';
 const MIN_REQUEST_INTERVAL_MS = 4200;
 const MAX_RATE_LIMIT_RETRIES = 3;
+const MAX_RESPONSE_ATTEMPTS = 2;
 
 let generationQueue = Promise.resolve();
 let nextGenerationAllowedAt = 0;
@@ -96,6 +97,30 @@ const SAVING_LABELS = [
 const ALL_LABELS = [...EXPENSE_LABELS, ...INCOME_LABELS, ...SAVING_LABELS];
 
 // ─── Zod Schema ────────────────────────────────────────────────────────────
+function normalizeNullablePositiveNumber(value) {
+    if (value === null || value === undefined) return null;
+
+    if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase();
+        if (!normalized || ['null', 'none', 'n/a', 'na', 'nan', 'undefined'].includes(normalized)) {
+            return null;
+        }
+    }
+
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0 ? number : null;
+}
+
+const NullablePositiveInteger = z.preprocess(
+    normalizeNullablePositiveNumber,
+    z.number().int().positive().nullable()
+).optional().default(null);
+
+const NullablePositiveNumber = z.preprocess(
+    normalizeNullablePositiveNumber,
+    z.number().finite().positive().nullable()
+).optional().default(null);
+
 const ExpenseSchema = z.object({
     Amount: z.string(),
     Category: z.enum(['Expense', 'Income', 'Saving']),
@@ -106,14 +131,14 @@ const ExpenseSchema = z.object({
     Account: z.string().nullable(),
     BankName: z.string().nullable(),
     ReferenceNumber: z.string().nullable().optional(),
-    BalanceAccountId: z.coerce.number().int().positive().nullable().optional().default(null),
+    BalanceAccountId: NullablePositiveInteger,
     BalanceAccountConfidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).nullable().optional().default(null),
     PortfolioAction: z.enum(['DEPOSIT', 'CONTRIBUTION', 'WITHDRAWAL', 'INTEREST', 'DIVIDEND', 'BUY', 'SELL', 'TRANSFER']).nullable().optional().default(null),
-    PortfolioAccountId: z.coerce.number().int().positive().nullable().optional().default(null),
+    PortfolioAccountId: NullablePositiveInteger,
     PortfolioConfidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).nullable().optional().default(null),
     PortfolioSymbol: z.string().trim().regex(/^[A-Z0-9.\-]{1,15}$/).nullable().optional().default(null),
-    PortfolioQuantity: z.coerce.number().finite().positive().nullable().optional().default(null),
-    PortfolioPrice: z.coerce.number().finite().positive().nullable().optional().default(null)
+    PortfolioQuantity: NullablePositiveNumber,
+    PortfolioPrice: NullablePositiveNumber
 });
 
 const ErrorSchema = z.object({ error: z.string() });
@@ -123,6 +148,12 @@ function minimizeEmailForAI(emailBody) {
         .slice(0, 8000)
         .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, "[REDACTED_EMAIL]")
         .replace(/\b\d{12,19}\b/g, "[REDACTED_ACCOUNT]");
+}
+
+function parseAIResponseText(responseText) {
+    const parsedJson = JSON.parse(responseText);
+    if (parsedJson.error) return ErrorSchema.parse(parsedJson);
+    return ExpenseSchema.parse(parsedJson);
 }
 
 // ─── AI Parser ─────────────────────────────────────────────────────────────
@@ -222,22 +253,42 @@ ${minimizedEmail}
 """
 `;
 
-    try {
-        const response = await generateContentWithQuotaProtection({
-            model: MODEL_NAME,
-            contents: prompt,
-            config: { responseMimeType: 'application/json' }
-        });
+    let lastError = null;
 
-        const parsedJson = JSON.parse(response.text);
+    for (let attempt = 1; attempt <= MAX_RESPONSE_ATTEMPTS; attempt += 1) {
+        try {
+            const retryInstruction = attempt === 1
+                ? ''
+                : '\nYour previous response could not be validated. Return every field with the exact types requested; use JSON null for unknown optional values.';
+            const response = await generateContentWithQuotaProtection({
+                model: MODEL_NAME,
+                contents: `${prompt}${retryInstruction}`,
+                config: { responseMimeType: 'application/json' }
+            });
 
-        if (parsedJson.error) return ErrorSchema.parse(parsedJson);
-
-        return ExpenseSchema.parse(parsedJson);
-    } catch (err) {
-        console.error('AI Parsing or Validation Error:', err);
-        return null;
+            return parseAIResponseText(response.text);
+        } catch (err) {
+            lastError = err;
+            if (attempt < MAX_RESPONSE_ATTEMPTS) {
+                console.warn(
+                    `AI response could not be parsed or validated. Retrying ` +
+                    `(${attempt}/${MAX_RESPONSE_ATTEMPTS})...`
+                );
+            }
+        }
     }
+
+    console.error('AI Parsing or Validation Error after retries:', lastError);
+    return null;
 }
 
-module.exports = { parseEmailWithGemini, minimizeEmailForAI, ALL_LABELS, EXPENSE_LABELS, INCOME_LABELS, SAVING_LABELS };
+module.exports = {
+    parseEmailWithGemini,
+    parseAIResponseText,
+    normalizeNullablePositiveNumber,
+    minimizeEmailForAI,
+    ALL_LABELS,
+    EXPENSE_LABELS,
+    INCOME_LABELS,
+    SAVING_LABELS,
+};

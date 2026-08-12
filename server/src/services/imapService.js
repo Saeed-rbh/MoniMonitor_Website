@@ -1,9 +1,15 @@
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
-const dbService = require('../database/dbService');
+
+let dbService = null;
+function getDbService() {
+    if (!dbService) dbService = require('../database/dbService');
+    return dbService;
+}
 
 // Fix #6: Process emails in batches of this size concurrently
 const CONCURRENCY = 3;
+const RETRY_UNSEEN_INTERVAL_MS = 60 * 1000;
 
 class ImapService {
     constructor(host, port, user, password, onNewEmail) {
@@ -15,11 +21,14 @@ class ImapService {
         this.reconnectTimeout = null;
         this.reconnectDelay = 5000;
         this.lock = null;
+        this.retryUnseenInterval = null;
+        this.processingUnseen = null;
         this.client = this._createClient();
 
         // Graceful shutdown: release lock and logout on Ctrl+C or system kill
         const cleanup = async () => {
             console.log('\nShutting down IMAP client gracefully...');
+            if (this.retryUnseenInterval) clearInterval(this.retryUnseenInterval);
             if (this.lock) { try { this.lock.release(); } catch(e) {} }
             if (this.client.usable) { try { await this.client.logout(); } catch(e) {} }
             process.exit(0);
@@ -51,6 +60,7 @@ class ImapService {
             try {
                 // Process existing unseen emails on startup
                 await this.processUnseen();
+                this.startRetryPolling();
 
                 console.log("Listening for new emails in INBOX...");
                 
@@ -80,11 +90,12 @@ class ImapService {
     }
 
     async processOne(seq) {
+        const database = getDbService();
         const message = await this.client.fetchOne(seq, { source: true, uid: true, envelope: true });
         if (!message || !message.source) return;
 
         // Skip if already successfully processed in a previous run
-        if (await dbService.isEmailProcessed(message.uid)) {
+        if (await database.isEmailProcessed(message.uid)) {
             await this.client.messageFlagsAdd(seq, ['\\Seen']);
             return;
         }
@@ -98,8 +109,10 @@ class ImapService {
             const success = await this.onNewEmail(emailBody, `Unread UID ${message.uid}`, receivedAt);
             
             if (success) {
-                await dbService.markEmailProcessed(message.uid);
+                await database.markEmailProcessed(message.uid);
                 await this.client.messageFlagsAdd(seq, ['\\Seen']);
+            } else {
+                console.warn(`Email ${message.uid} remains unread and will be retried automatically.`);
             }
         } catch (err) {
             console.error(`Error processing email ${message.uid}:`, err);
@@ -107,6 +120,17 @@ class ImapService {
     }
 
     async processUnseen() {
+        if (this.processingUnseen) return this.processingUnseen;
+
+        this.processingUnseen = this.processUnseenBatch();
+        try {
+            return await this.processingUnseen;
+        } finally {
+            this.processingUnseen = null;
+        }
+    }
+
+    async processUnseenBatch() {
         try {
             let messages = await this.client.search({ unseen: true });
             if (messages.length === 0) return;
@@ -123,8 +147,22 @@ class ImapService {
         }
     }
 
+    startRetryPolling() {
+        if (this.retryUnseenInterval) clearInterval(this.retryUnseenInterval);
+        this.retryUnseenInterval = setInterval(() => {
+            this.processUnseen().catch((error) => {
+                console.error('Error retrying unseen messages:', error);
+            });
+        }, RETRY_UNSEEN_INTERVAL_MS);
+        this.retryUnseenInterval.unref?.();
+    }
+
     handleReconnect() {
         if (this.reconnectTimeout) return;
+        if (this.retryUnseenInterval) {
+            clearInterval(this.retryUnseenInterval);
+            this.retryUnseenInterval = null;
+        }
         console.log(`Attempting to reconnect in ${this.reconnectDelay / 1000}s...`);
         this.reconnectTimeout = setTimeout(async () => {
             this.reconnectTimeout = null;

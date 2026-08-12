@@ -6,7 +6,8 @@
     "scripts": {
         "start": "node index.js",
         "agent": "node email_agent.js",
-        "dev": "concurrently --names \"API,AGENT\" --prefix-colors \"cyan,yellow\" \"node index.js\" \"node email_agent.js\""
+        "dev": "concurrently --names \"API,AGENT\" --prefix-colors \"cyan,yellow\" \"node index.js\" \"node email_agent.js\"",
+        "test": "node --test src/services/*.test.js"
     },
     "keywords": [],
     "author": "",
