@@ -37,8 +37,12 @@ function Header() {
         <div className="MoneyMonitor_User">
           <div className="MoneyMonitor_Logo">
             <img
-              src={`../../public/MoneyMonitor.jpg`}
-              alt="MoneyMonitor Logo"
+              src={user?.profilePhotoUrl || "/MoneyMonitor.jpg"}
+              alt={`${user?.username || "User"} profile`}
+              onError={({ currentTarget }) => {
+                currentTarget.onerror = null;
+                currentTarget.src = "/MoneyMonitor.jpg";
+              }}
             />
           </div>
           <p>

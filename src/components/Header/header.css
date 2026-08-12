@@ -39,6 +39,7 @@
   margin-right: 10px;
   overflow: hidden;
   padding: 5px;
+  box-sizing: border-box;
 }
 
 .MoneyMonitor_User p {
@@ -65,11 +66,12 @@
 }
 
 .MoneyMonitor_Logo img {
-  height: 35px;
-  width: 35px;
-  opacity: 0.6;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  opacity: 1;
   border-radius: 100%;
-  margin: 0 10px;
+  margin: 0;
 }
 
 .HomePage-M-T-R {

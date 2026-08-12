@@ -17,7 +17,8 @@ async function getDb() {
                 CREATE TABLE IF NOT EXISTS users (
                     id TEXT PRIMARY KEY,
                     username TEXT UNIQUE NOT NULL,
-                    password TEXT NOT NULL
+                    password TEXT NOT NULL,
+                    profilePhotoUrl TEXT
                 );
 
                 CREATE TABLE IF NOT EXISTS transactions (
@@ -70,6 +71,10 @@ async function getDb() {
                     UNIQUE(userId, pattern)
                 );
             `);
+            const userColumns = await db.all("PRAGMA table_info(users)");
+            if (!userColumns.some((column) => column.name === "profilePhotoUrl")) {
+                await db.exec("ALTER TABLE users ADD COLUMN profilePhotoUrl TEXT");
+            }
             const transactionColumns = await db.all("PRAGMA table_info(transactions)");
             const hasColumn = (name) => transactionColumns.some((column) => column.name === name);
             if (!hasColumn("AmountMinor")) await db.exec("ALTER TABLE transactions ADD COLUMN AmountMinor INTEGER");

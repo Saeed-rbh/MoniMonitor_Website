@@ -8,7 +8,7 @@ const { ZodError } = require("zod");
 const dbService = require("./src/database/dbService");
 const { createRateLimit } = require("./src/middleware/rateLimit");
 const { parseTransaction, transactionUpdateSchema } = require("./src/validation/transaction");
-const { validateTelegramInitData } = require("./src/services/telegramAuthService");
+const { validateTelegramInitData, normalizeTelegramPhotoUrl } = require("./src/services/telegramAuthService");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3001);
@@ -107,7 +107,14 @@ app.post("/login", authRateLimit, async (req, res) => {
         if (!valid) return res.status(401).json({ error: "Invalid username or password" });
 
         const accessToken = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-        return res.json({ accessToken, user: { id: user.id, username: user.username } });
+        return res.json({
+            accessToken,
+            user: {
+                id: user.id,
+                username: user.username,
+                profilePhotoUrl: user.profilePhotoUrl || null,
+            },
+        });
     } catch (error) {
         console.error("Login error:", error);
         return res.status(500).json({ error: "Unable to sign in" });
@@ -128,12 +135,18 @@ app.post("/telegram-auth", authRateLimit, async (req, res) => {
         const user = await dbService.getUserById(TELEGRAM_APP_USER_ID);
         if (!user) return res.status(403).json({ error: "Telegram account is not linked" });
 
+        const profilePhotoUrl = normalizeTelegramPhotoUrl(telegramUser.photo_url);
+        await dbService.updateUserProfilePhoto(user.id, profilePhotoUrl);
+
         const accessToken = jwt.sign(
             { userId: user.id, username: user.username, telegramUserId: String(telegramUser.id) },
             JWT_SECRET,
             { expiresIn: JWT_EXPIRES_IN }
         );
-        return res.json({ accessToken, user: { id: user.id, username: user.username } });
+        return res.json({
+            accessToken,
+            user: { id: user.id, username: user.username, profilePhotoUrl },
+        });
     } catch {
         return res.status(401).json({ error: "Unable to verify Telegram identity" });
     }

@@ -37,6 +37,14 @@ async function getUserById(id) {
     return await db.get('SELECT * FROM users WHERE id = ?', [id]);
 }
 
+async function updateUserProfilePhoto(userId, profilePhotoUrl) {
+    const db = await getDb();
+    await db.run(
+        'UPDATE users SET profilePhotoUrl = ? WHERE id = ?',
+        [profilePhotoUrl, userId]
+    );
+}
+
 async function getAllTransactionsForUser(userId, filters = {}) {
     const db = await getDb();
     let query = 'SELECT * FROM transactions WHERE userId = ?';
@@ -920,6 +928,7 @@ module.exports = {
     createUser,
     getUserByUsername,
     getUserById,
+    updateUserProfilePhoto,
     getAllTransactionsForUser,
     addTransaction,
     getTransactionById,

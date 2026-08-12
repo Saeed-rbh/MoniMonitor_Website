@@ -12,7 +12,8 @@ export const AuthProvider = ({ children }) => {
         const token = storage?.getItem("token");
         const username = storage?.getItem("username");
         const userId = storage?.getItem("userId");
-        if (token && username) setUser({ username, userId, token });
+        const profilePhotoUrl = storage?.getItem("profilePhotoUrl");
+        if (token && username) setUser({ username, userId, profilePhotoUrl, token });
         setLoading(false);
     }, []);
 
@@ -21,7 +22,17 @@ export const AuthProvider = ({ children }) => {
         storage?.setItem("token", token);
         storage?.setItem("username", userData.username);
         if (userData.id) storage?.setItem("userId", userData.id);
-        setUser({ username: userData.username, userId: userData.id, token });
+        if (userData.profilePhotoUrl) {
+            storage?.setItem("profilePhotoUrl", userData.profilePhotoUrl);
+        } else {
+            storage?.removeItem("profilePhotoUrl");
+        }
+        setUser({
+            username: userData.username,
+            userId: userData.id,
+            profilePhotoUrl: userData.profilePhotoUrl || null,
+            token,
+        });
     };
 
     const logout = () => {
@@ -29,6 +40,7 @@ export const AuthProvider = ({ children }) => {
         storage?.removeItem("token");
         storage?.removeItem("username");
         storage?.removeItem("userId");
+        storage?.removeItem("profilePhotoUrl");
         setUser(null);
     };
 

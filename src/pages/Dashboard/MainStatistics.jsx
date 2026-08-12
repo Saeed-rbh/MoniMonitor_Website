@@ -114,7 +114,7 @@ const MainStatistics = ({
         incomeHeight: `${d.incomePercentage === 0 ? MIN_PERCENTAGE : d.incomePercentage
           }%`,
         incomeBg: d.incomePercentage === 0 ? FALLBACK_COLOR : null,
-        opacity: index === mainPageMonth ? 0.9 : 0.45,
+        opacity: 1,
         filter: index === mainPageMonth ? "grayscale(0)" : "grayscale(0.4)",
       },
       delay: index * 50,
@@ -339,9 +339,7 @@ const MainStatistics = ({
                     monthRefs.current[index] = element;
                   }}
                   style={{
-                    opacity: hasMonthData(processedData[index])
-                      ? style.opacity
-                      : 0.2,
+                    opacity: 1,
                     filter: style.filter,
                     cursor: hasMonthData(processedData[index]) ? "pointer" : "default",
                   }}

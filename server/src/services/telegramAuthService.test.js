@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
 const test = require("node:test");
-const { validateTelegramInitData } = require("./telegramAuthService");
+const { validateTelegramInitData, normalizeTelegramPhotoUrl } = require("./telegramAuthService");
 
 const botToken = "123456:test-token";
 const now = 1777500000;
@@ -37,4 +37,17 @@ test("rejects expired Telegram Mini App data", () => {
         () => validateTelegramInitData(signedInitData(), botToken, { now: now + 601 }),
         /Expired/
     );
+});
+
+test("accepts HTTPS Telegram profile photo URLs", () => {
+    assert.equal(
+        normalizeTelegramPhotoUrl("https://t.me/i/userpic/320/example.jpg"),
+        "https://t.me/i/userpic/320/example.jpg"
+    );
+});
+
+test("rejects unsafe Telegram profile photo URLs", () => {
+    assert.equal(normalizeTelegramPhotoUrl("http://example.com/photo.jpg"), null);
+    assert.equal(normalizeTelegramPhotoUrl("javascript:alert(1)"), null);
+    assert.equal(normalizeTelegramPhotoUrl("not a URL"), null);
 });

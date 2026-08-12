@@ -25,4 +25,14 @@ function validateTelegramInitData(initData, botToken, options = {}) {
     return user;
 }
 
-module.exports = { validateTelegramInitData };
+function normalizeTelegramPhotoUrl(value) {
+    if (typeof value !== "string" || !value || value.length > 2048) return null;
+    try {
+        const url = new URL(value);
+        return url.protocol === "https:" ? url.toString() : null;
+    } catch {
+        return null;
+    }
+}
+
+module.exports = { validateTelegramInitData, normalizeTelegramPhotoUrl };

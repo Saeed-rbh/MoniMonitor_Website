@@ -24,6 +24,7 @@
   min-height: 0;
   height: 100%;
   gap: 12px;
+  justify-content: center;
 }
 
 .MoneyMonitor_Gradient1 {
@@ -275,6 +276,7 @@
   font-weight: 200;
   font-family: "Noto Sans", sans-serif;
   color: var(--Ac-1);
+  opacity: 1;
   margin: 0;
   text-transform: capitalize;
   align-items: center;
@@ -878,6 +880,7 @@
   font-weight: 100;
   font-family: "Noto Sans", sans-serif;
   color: var(--Ac-1);
+  opacity: 1;
   margin: 0;
   margin-top: -8px;
 }
@@ -886,7 +889,8 @@
   font-size: 0.7rem;
   font-weight: 300;
   font-family: "Noto Sans", sans-serif;
-  color: var(--Ac-2);
+  color: var(--Ac-1);
+  opacity: 1;
   margin: 0;
   margin-top: 5px;
 }
