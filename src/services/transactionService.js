@@ -232,15 +232,17 @@ const getMonthDataAvailability = (data) => {
   return availability;
 };
 
-const getNetAmounts = (Transactions) => {
+export const getNetAmounts = (Transactions) => {
   const TransObject = Object.keys(Transactions);
   const allMonths = [...TransObject];
 
-  const latestMonth = allMonths.reduce((latest, month) => {
-    if (!latest || new Date(month) > new Date(latest)) {
+  // The dashboard needs the complete history. Starting at the newest key made
+  // every older imported month disappear from the main chart.
+  const earliestMonth = allMonths.reduce((earliest, month) => {
+    if (!earliest || month < earliest) {
       return month;
     }
-    return latest;
+    return earliest;
   }, null);
 
   const currentDate = new Date();
@@ -248,10 +250,10 @@ const getNetAmounts = (Transactions) => {
   const currentMonth = currentDate.getMonth() + 1;
 
   const months = [];
-  if (!latestMonth) return {};
+  if (!earliestMonth) return {};
 
-  const [latestYear, latestMonthNum] = latestMonth.split("-").map(Number);
-  let tempDate = new Date(latestYear, latestMonthNum - 1);
+  const [earliestYear, earliestMonthNum] = earliestMonth.split("-").map(Number);
+  let tempDate = new Date(earliestYear, earliestMonthNum - 1);
 
   while (
     tempDate.getFullYear() < currentYear ||
