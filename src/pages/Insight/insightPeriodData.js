@@ -174,6 +174,44 @@ export const getInvestmentPeriodValues = (timeline = [], periodEnds = []) => {
     });
 };
 
+export const getRebasedInvestmentPeriodValues = (
+    timeline = [],
+    periodStart,
+    periodEnds = []
+) => {
+    const startTimestamp = periodStart instanceof Date
+        ? periodStart.getTime()
+        : Number(periodStart);
+    if (!Number.isFinite(startTimestamp)) return periodEnds.map(() => 0);
+
+    let timelineIndex = 0;
+    let openingValue = 0;
+    let latestValue = 0;
+
+    while (
+        timelineIndex < timeline.length &&
+        timeline[timelineIndex].timestamp < startTimestamp
+    ) {
+        latestValue = Number(timeline[timelineIndex].value) || 0;
+        timelineIndex += 1;
+    }
+    openingValue = latestValue;
+
+    return periodEnds.map((periodEnd) => {
+        const endTimestamp = periodEnd instanceof Date
+            ? periodEnd.getTime()
+            : Number(periodEnd);
+        while (
+            timelineIndex < timeline.length &&
+            timeline[timelineIndex].timestamp <= endTimestamp
+        ) {
+            latestValue = Number(timeline[timelineIndex].value) || 0;
+            timelineIndex += 1;
+        }
+        return latestValue - openingValue;
+    });
+};
+
 export const buildAllTimeInsightData = (allTransactions = {}) => {
     const totalsByYear = new Map();
     const transactions = [];

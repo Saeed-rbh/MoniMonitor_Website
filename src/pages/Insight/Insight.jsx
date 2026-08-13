@@ -11,7 +11,7 @@ import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 import {
     buildAllTimeInsightData,
     buildInvestmentValueTimeline,
-    getInvestmentPeriodValues,
+    getRebasedInvestmentPeriodValues,
     getVisibleInsightPeriodCount,
 } from "./insightPeriodData";
 
@@ -67,8 +67,10 @@ const Insight = () => {
 
         if (viewMode === 'alltime') {
             const allTimeData = buildAllTimeInsightData(allTransactions);
-            const investValues = getInvestmentPeriodValues(
+            const firstYear = Number(allTimeData.labels[0]);
+            const investValues = getRebasedInvestmentPeriodValues(
                 investmentTimeline,
+                new Date(firstYear, 0, 1),
                 allTimeData.labels.map((label) => new Date(Number(label) + 1, 0, 1).getTime() - 1)
             );
 
@@ -90,8 +92,9 @@ const Insight = () => {
             const monthsInYear = 12;
             const incomeArr = Array(monthsInYear).fill(0);
             const expenseArr = Array(monthsInYear).fill(0);
-            const investArr = getInvestmentPeriodValues(
+            const investArr = getRebasedInvestmentPeriodValues(
                 investmentTimeline,
+                new Date(targetYear, 0, 1),
                 Array.from({ length: monthsInYear }, (_, index) =>
                     new Date(targetYear, index + 1, 1).getTime() - 1
                 )
@@ -144,8 +147,9 @@ const Insight = () => {
 
         const incomeArr = Array(daysInMonth).fill(0);
         const expenseArr = Array(daysInMonth).fill(0);
-        const investArr = getInvestmentPeriodValues(
+        const investArr = getRebasedInvestmentPeriodValues(
             investmentTimeline,
+            new Date(targetYear, targetMonth, 1),
             Array.from({ length: daysInMonth }, (_, index) =>
                 new Date(targetYear, targetMonth, index + 2).getTime() - 1
             )
@@ -399,7 +403,7 @@ const Insight = () => {
         let accIncome = 0;
         let accExpense = 0;
 
-        return income.map((_, i) => {
+        const cumulativeData = income.map((_, i) => {
             accIncome += (income[i] || 0);
             accExpense += (expense[i] || 0);
 
@@ -410,6 +414,10 @@ const Insight = () => {
                 invest: invest[i] || 0
             };
         });
+        return [
+            { day: 'Start', income: 0, expense: 0, invest: 0 },
+            ...cumulativeData,
+        ];
     }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode, visiblePeriodCount]);
 
     const periodTrendData = useMemo(() => {
@@ -417,12 +425,18 @@ const Insight = () => {
         const expense = dailyExpense.slice(paddingDays, paddingDays + visiblePeriodCount);
         const invest = dailyInvest.slice(paddingDays, paddingDays + visiblePeriodCount);
 
-        return income.map((value, index) => ({
-            period: viewMode === 'monthly' ? String(index + 1) : periodLabels[index],
-            income: value || 0,
-            expenses: expense[index] || 0,
-            invest: invest[index] || 0,
-        }));
+        let previousInvest = 0;
+        return income.map((value, index) => {
+            const cumulativeInvest = invest[index] || 0;
+            const periodInvest = cumulativeInvest - previousInvest;
+            previousInvest = cumulativeInvest;
+            return {
+                period: viewMode === 'monthly' ? String(index + 1) : periodLabels[index],
+                income: value || 0,
+                expenses: expense[index] || 0,
+                invest: periodInvest,
+            };
+        });
     }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode, visiblePeriodCount]);
 
     const periodTrendTitle = viewMode === 'monthly'

@@ -66,7 +66,10 @@ const InsightTrendChart = ({ data }) => {
                         tickLine={false}
                         axisLine={false}
                         tickFormatter={(val) => `$${Math.round(val)}`}
-                        domain={[0, (dataMax) => Math.ceil(dataMax / 100) * 100]}
+                        domain={[
+                            (dataMin) => Math.min(0, Math.floor(dataMin / 100) * 100),
+                            (dataMax) => Math.max(0, Math.ceil(dataMax / 100) * 100),
+                        ]}
                     />
                     <Tooltip content={<CustomTooltip />} />
 

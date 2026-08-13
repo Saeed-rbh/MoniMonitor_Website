@@ -4,6 +4,7 @@ import {
     buildInvestmentValueTimeline,
     getCurrentInvestmentValue,
     getInvestmentPeriodValues,
+    getRebasedInvestmentPeriodValues,
     getVisibleInsightPeriodCount,
 } from "./insightPeriodData";
 
@@ -152,5 +153,23 @@ describe("investment portfolio value history", () => {
             new Date("2026-02-28T23:59:59Z"),
             new Date("2026-03-31T23:59:59Z"),
         ])).toEqual([1100, 1300, 1500]);
+    });
+
+    it("rebases investment values to zero at the selected period start", () => {
+        const timeline = buildInvestmentValueTimeline(
+            allTransactions,
+            portfolio,
+            new Date("2026-03-15T12:00:00Z")
+        );
+
+        expect(getRebasedInvestmentPeriodValues(
+            timeline,
+            new Date("2026-02-01T00:00:00Z"),
+            [
+                new Date("2026-02-01T23:59:59Z"),
+                new Date("2026-02-28T23:59:59Z"),
+                new Date("2026-03-31T23:59:59Z"),
+            ]
+        )).toEqual([200, 200, 400]);
     });
 });
