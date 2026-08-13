@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 
 const InsightCategoryBreakdown = ({ transactions }) => {
+    const [showAllExpenses, setShowAllExpenses] = React.useState(false);
 
     const { incomeStats, expenseStats } = useMemo(() => {
         if (!transactions || transactions.length === 0) return { incomeStats: [], expenseStats: [] };
@@ -45,6 +46,8 @@ const InsightCategoryBreakdown = ({ transactions }) => {
     }, [transactions]);
 
     const formatCurrency = (val) => val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const visibleExpenseStats = showAllExpenses ? expenseStats : expenseStats.slice(0, 3);
 
     const RenderList = ({ title, data, colorVar, emptyMsg }) => (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -95,6 +98,25 @@ const InsightCategoryBreakdown = ({ transactions }) => {
                         </div>
                     ))
                 )}
+                {expenseStats.length > 3 && (
+                    <button
+                        type="button"
+                        onClick={() => setShowAllExpenses((current) => !current)}
+                        style={{
+                            alignSelf: 'center',
+                            marginTop: '4px',
+                            padding: '6px 18px',
+                            border: '1px solid var(--Bc-3)',
+                            borderRadius: '20px',
+                            background: 'transparent',
+                            color: 'var(--Bc-1)',
+                            fontSize: '0.72rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        {showAllExpenses ? 'Show Less' : `More (${expenseStats.length - 3})`}
+                    </button>
+                )}
             </div>
         </div>
     );
@@ -113,7 +135,7 @@ const InsightCategoryBreakdown = ({ transactions }) => {
             <div style={{ display: 'flex', gap: '15px', flexDirection: 'row', flexWrap: 'wrap' }}>
                 <RenderList
                     title="Expense Breakdown"
-                    data={expenseStats}
+                    data={visibleExpenseStats}
                     colorVar="var(--Gc-1)"
                     emptyMsg="No Expense Data"
                 />

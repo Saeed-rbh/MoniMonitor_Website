@@ -2,10 +2,9 @@ import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const InsightMonthlyTrendChart = ({ data }) => {
-    // Reverse data so it runs chronologically (left to right)
     const chartData = React.useMemo(() => {
         if (!data || !Array.isArray(data)) return [];
-        return [...data].reverse();
+        return data;
     }, [data]);
 
     const CustomTooltip = ({ active, payload, label }) => {
@@ -52,16 +51,13 @@ const InsightMonthlyTrendChart = ({ data }) => {
                 <BarChart data={chartData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" opacity={0.05} vertical={false} />
                     <XAxis
-                        dataKey="month"
+                        dataKey="period"
                         stroke="var(--Ac-3)"
                         fontSize={10}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(val) => {
-                            const [year, month] = val.split('-');
-                            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                            return `${monthNames[parseInt(month) - 1]} '${year.substring(2)}`;
-                        }}
+                        interval="preserveStartEnd"
+                        minTickGap={10}
                     />
                     <YAxis
                         stroke="var(--Ac-3)"

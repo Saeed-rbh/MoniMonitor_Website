@@ -18,7 +18,7 @@ const InsightTrendChart = ({ data }) => {
                     fontSize: '0.8rem',
                     boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
                 }}>
-                    <p style={{ margin: 0, fontWeight: 'bold', marginBottom: '5px' }}>{isNaN(label) ? label : `Day ${label}`}</p>
+                    <p style={{ margin: 0, fontWeight: 'bold', marginBottom: '5px' }}>{typeof label === 'number' ? `Day ${label}` : label}</p>
                     {payload.map((entry, index) => (
                         <p key={index} style={{ margin: 0, color: entry.color, fontSize: '0.75rem' }}>
                             {entry.name}: ${entry.value.toFixed(2)}

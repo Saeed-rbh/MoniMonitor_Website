@@ -6,8 +6,6 @@ import InsightMonthlyTrendChart from "./InsightMonthlyTrendChart";
 import { animated, useSpring, easings } from "@react-spring/web";
 import { ScalableElement } from "../../utils/tools";
 import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
-import InsightFacts from './InsightFacts';
-import { GetSummary } from "../../services/apiService";
 import { getSavingEffect } from "../../services/transactionService";
 import { buildAllTimeInsightData } from "./insightPeriodData";
 
@@ -15,17 +13,6 @@ const Insight = () => {
     // Access global transaction data from context
     const { transactionsData: transactions, allTransactions, whichMonth, isDateClicked, isMoreClicked } = useTransactions();
     const [viewMode, setViewMode] = React.useState('monthly');
-    const [summaryData, setSummaryData] = React.useState(null);
-
-    React.useEffect(() => {
-        let isMounted = true;
-        GetSummary().then(data => {
-            if (isMounted && data) {
-                setSummaryData(data);
-            }
-        });
-        return () => { isMounted = false; };
-    }, [whichMonth]);
 
     const scaleStyle = useSpring({
         position: "relative",
@@ -41,7 +28,7 @@ const Insight = () => {
         },
     });
 
-    const { dailyIncome, dailyExpense, dailyInvest, daysInMonth, paddingDays, year, periodLabels } = useMemo(() => {
+    const { dailyIncome, dailyExpense, dailyInvest, daysInMonth, paddingDays, year, periodLabels, accountBalance } = useMemo(() => {
         // Determine the Target Month/Year
         let targetYear, targetMonth;
 
@@ -67,6 +54,7 @@ const Insight = () => {
                 paddingDays: 0,
                 year: targetYear,
                 periodLabels: allTimeData.labels,
+                accountBalance: allTimeData.accountBalance,
             };
         }
 
@@ -98,7 +86,8 @@ const Insight = () => {
                 daysInMonth: 12,
                 paddingDays: 0,
                 year: targetYear,
-                periodLabels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+                periodLabels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+                accountBalance: null
             };
         }
 
@@ -115,7 +104,8 @@ const Insight = () => {
                 daysInMonth,
                 paddingDays,
                 year: targetYear,
-                periodLabels: []
+                periodLabels: [],
+                accountBalance: null
             };
         }
 
@@ -150,7 +140,8 @@ const Insight = () => {
             daysInMonth,
             paddingDays,
             year: targetYear,
-            periodLabels: []
+            periodLabels: [],
+            accountBalance: null
         };
     }, [transactions, allTransactions, whichMonth, viewMode]);
 
@@ -162,7 +153,7 @@ const Insight = () => {
     const totalExpense = useMemo(() => dailyExpense.reduce((a, b) => a + (b || 0), 0), [dailyExpense]);
     const totalInvest = useMemo(() => dailyInvest.reduce((a, b) => a + (b || 0), 0), [dailyInvest]);
 
-    const totalBalance = totalIncome - totalExpense;
+    const totalBalance = viewMode === 'alltime' ? accountBalance : totalIncome - totalExpense;
 
     // --- Balance Comparison Logic ---
     const percentageChange = useMemo(() => {
@@ -411,6 +402,25 @@ const Insight = () => {
         });
     }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode]);
 
+    const periodTrendData = useMemo(() => {
+        const income = dailyIncome.slice(paddingDays);
+        const expense = dailyExpense.slice(paddingDays);
+        const invest = dailyInvest.slice(paddingDays);
+
+        return income.map((value, index) => ({
+            period: viewMode === 'monthly' ? String(index + 1) : periodLabels[index],
+            income: value || 0,
+            expenses: expense[index] || 0,
+            savings: invest[index] || 0,
+        }));
+    }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode]);
+
+    const periodTrendTitle = viewMode === 'monthly'
+        ? 'Day-by-Day Spending Trend'
+        : viewMode === 'yearly'
+            ? 'Month-by-Month Spending Trend'
+            : 'Year-by-Year Spending Trend';
+
     // --- Prepare Data for Category Breakdown ---
     const currentViewTransactions = useMemo(() => {
         if (viewMode === 'monthly') {
@@ -461,6 +471,8 @@ const Insight = () => {
                 margin: '10px 0 5px 0',
                 justifyContent: 'center',
                 padding: '4px',
+                width: '100%',
+                boxSizing: 'border-box',
             }}>
                 <ScalableElement
                     as="button"
@@ -472,6 +484,8 @@ const Insight = () => {
                         border: 'none',
                         borderRadius: '30px',
                         padding: '10px 25px',
+                        flex: 1,
+                        minWidth: 0,
                         fontSize: '0.8rem',
                         fontWeight: viewMode === 'monthly' ? '600' : '200',
                         cursor: 'pointer',
@@ -490,6 +504,8 @@ const Insight = () => {
                         border: 'none',
                         borderRadius: '30px',
                         padding: '10px 25px',
+                        flex: 1,
+                        minWidth: 0,
                         fontSize: '0.8rem',
                         fontWeight: viewMode === 'yearly' ? '600' : '200',
                         cursor: 'pointer',
@@ -508,6 +524,8 @@ const Insight = () => {
                         border: 'none',
                         borderRadius: '30px',
                         padding: '10px 20px',
+                        flex: 1,
+                        minWidth: 0,
                         fontSize: '0.8rem',
                         fontWeight: viewMode === 'alltime' ? '600' : '200',
                         cursor: 'pointer',
@@ -611,7 +629,7 @@ const Insight = () => {
                 <InsightTrendChart data={chartData} />
             </div>
 
-            {summaryData && summaryData.byMonth && summaryData.byMonth.length > 0 && (
+            {periodTrendData.length > 0 && (
                 <div style={{ width: "100%", flexShrink: 0, marginTop: "10px" }}>
                     <div style={{
                         width: "100%",
@@ -621,9 +639,9 @@ const Insight = () => {
                         color: "var(--Ac-3)",
                         marginBottom: "5px"
                     }}>
-                        Month-over-Month Spending Trend
+                        {periodTrendTitle}
                     </div>
-                    <InsightMonthlyTrendChart data={summaryData.byMonth} />
+                    <InsightMonthlyTrendChart data={periodTrendData} />
                 </div>
             )}
 
@@ -654,14 +672,6 @@ const Insight = () => {
                     ))}
                 </div>
             )}
-
-            {/* Insight Facts */}
-            <InsightFacts
-                transactions={currentViewTransactions}
-                allTransactions={allTransactions}
-                viewMode={viewMode}
-                currentDate={new Date(transactions && transactions.length > 0 ? transactions[0].Timestamp : new Date())} // Pass current date context
-            />
 
             {/* Category Breakdown */}
             <InsightCategoryBreakdown transactions={currentViewTransactions} />

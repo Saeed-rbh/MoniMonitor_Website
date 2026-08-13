@@ -3,6 +3,7 @@ const MONTH_KEY_PATTERN = /^(\d{4})-(\d{2})$/;
 export const buildAllTimeInsightData = (allTransactions = {}) => {
     const totalsByYear = new Map();
     const transactions = [];
+    let accountBalance = 0;
 
     Object.entries(allTransactions).forEach(([key, value]) => {
         const match = key.match(MONTH_KEY_PATTERN);
@@ -22,6 +23,22 @@ export const buildAllTimeInsightData = (allTransactions = {}) => {
 
         if (Array.isArray(value?.transactions)) {
             transactions.push(...value.transactions);
+            value.transactions.forEach((transaction) => {
+                const amount = Number(transaction?.Amount) || 0;
+                const category = String(transaction?.Category || '').toLowerCase();
+                const type = String(transaction?.Type || '').toLowerCase();
+                const accountFlow = String(transaction?.AccountFlow || '').toUpperCase();
+
+                if (category === 'income' || type === 'income' || type === 'credit') {
+                    accountBalance += amount;
+                } else if (category === 'expense' || type === 'expense' || type === 'debit') {
+                    accountBalance -= amount;
+                } else if (accountFlow === 'IN') {
+                    accountBalance += amount;
+                } else if (accountFlow === 'OUT') {
+                    accountBalance -= amount;
+                }
+            });
         }
     });
 
@@ -33,5 +50,6 @@ export const buildAllTimeInsightData = (allTransactions = {}) => {
         expense: years.map((year) => totalsByYear.get(year).expense),
         invest: years.map((year) => totalsByYear.get(year).invest),
         transactions,
+        accountBalance,
     };
 };
