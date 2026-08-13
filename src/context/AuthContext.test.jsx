@@ -9,10 +9,20 @@ const CurrentProfile = () => {
 };
 
 beforeEach(() => {
-    localStorage.clear();
-    localStorage.setItem("token", "saved-token");
-    localStorage.setItem("username", "saeed");
-    localStorage.setItem("userId", "app-user-id");
+    const values = new Map();
+    Object.defineProperty(window, "localStorage", {
+        configurable: true,
+        value: {
+            clear: () => values.clear(),
+            getItem: (key) => values.has(key) ? values.get(key) : null,
+            removeItem: (key) => values.delete(key),
+            setItem: (key, value) => values.set(key, String(value)),
+        },
+    });
+    window.localStorage.clear();
+    window.localStorage.setItem("token", "saved-token");
+    window.localStorage.setItem("username", "saeed");
+    window.localStorage.setItem("userId", "app-user-id");
     window.Telegram = {
         WebApp: {
             initData: "signed-telegram-data",
@@ -25,7 +35,7 @@ beforeEach(() => {
 afterEach(() => {
     vi.restoreAllMocks();
     delete window.Telegram;
-    localStorage.clear();
+    window.localStorage.clear();
 });
 
 test("refreshes and persists the Telegram profile photo for an existing session", async () => {
@@ -52,7 +62,7 @@ test("refreshes and persists the Telegram profile photo for an existing session"
     await waitFor(() => {
         expect(screen.getByText("https://t.me/i/userpic/320/profile.jpg")).toBeInTheDocument();
     });
-    expect(localStorage.getItem("profilePhotoUrl")).toBe("https://t.me/i/userpic/320/profile.jpg");
-    expect(localStorage.getItem("joinedAt")).toBe("2026-08-12T12:00:00.000Z");
-    expect(localStorage.getItem("token")).toBe("refreshed-token");
+    expect(window.localStorage.getItem("profilePhotoUrl")).toBe("https://t.me/i/userpic/320/profile.jpg");
+    expect(window.localStorage.getItem("joinedAt")).toBe("2026-08-12T12:00:00.000Z");
+    expect(window.localStorage.getItem("token")).toBe("refreshed-token");
 });

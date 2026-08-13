@@ -19,12 +19,22 @@ const Finance = lazy(() => import("./pages/Finance/Finance"));
 const SaveInvestAccounts = lazy(() => import("./pages/SaveInvest/SaveInvest"));
 const SaveInvestInsights = lazy(() => import("./pages/SaveInvest/SaveInvestInsights"));
 
+const BrandedLoader = ({ label = "Loading MoniMonitor" }) => (
+  <div className="MoniLoader" role="status" aria-label={label}>
+    <div className="MoniLoader_Content">
+      <img className="MoniLoader_Logo" src="/monimonitor-logo.png" alt="MoniMonitor" />
+      <div className="MoniLoader_Track" aria-hidden="true" />
+      <span className="MoniLoader_SrOnly">{label}</span>
+    </div>
+  </div>
+);
+
 // Private Route Component
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <BrandedLoader label="Checking your session" />;
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -55,7 +65,36 @@ const AuthenticatedLayout = () => {
       <MainMenu />
     </div>
   ) : (
-    <div className="flex justify-center items-center h-screen">Loading Transaction Data...</div>
+    <BrandedLoader label="Loading transaction data" />
+  );
+};
+
+const AppRoutes = () => {
+  const { loading } = useAuth();
+
+  if (loading) return <BrandedLoader label="Checking your session" />;
+
+  return (
+    <Router>
+      <Suspense fallback={<BrandedLoader label="Loading page" />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+
+          {/* Protected Routes */}
+          <Route
+            path="/*"
+            element={
+              <PrivateRoute>
+                <TransactionProvider>
+                  <AuthenticatedLayout />
+                </TransactionProvider>
+              </PrivateRoute>
+            }
+          />
+        </Routes>
+      </Suspense>
+    </Router>
   );
 };
 
@@ -63,26 +102,7 @@ const App = () => {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <Router>
-          <Suspense fallback={<div className="flex justify-center items-center h-screen">Loading...</div>}>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-
-              {/* Protected Routes */}
-              <Route
-                path="/*"
-                element={
-                  <PrivateRoute>
-                    <TransactionProvider>
-                      <AuthenticatedLayout />
-                    </TransactionProvider>
-                  </PrivateRoute>
-                }
-              />
-            </Routes>
-          </Suspense>
-        </Router>
+        <AppRoutes />
       </AuthProvider>
     </ErrorBoundary>
   );
