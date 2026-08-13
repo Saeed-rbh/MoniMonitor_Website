@@ -559,6 +559,14 @@
   padding-top: 4px;
   padding-bottom: 8px;
   border-radius: 34px 34px 0 0;
+  background:
+    linear-gradient(
+      155deg,
+      color-mix(in srgb, var(--Ec-2) 94%, transparent),
+      color-mix(in srgb, var(--Ec-4) 97%, transparent)
+    );
+  -webkit-backdrop-filter: blur(24px) saturate(125%);
+  backdrop-filter: blur(24px) saturate(125%);
 }
 
 .AccountTransactions_NotFound {
