@@ -189,24 +189,37 @@ async function deleteTransaction(id, userId) {
 }
 
 // For deduplication in email agent.
-// Priority: ReferenceNumber match (definitive), then Reason+Amount+Category same-day match.
-async function findDuplicateTransaction(userId, amount, category, datePrefix, reason, referenceNumber) {
+// Match a reference only within the same dated amount. Some bank exports reuse a
+// reference for related adjustments, and internal transfers legitimately have two sides.
+async function findDuplicateTransaction(userId, amount, category, datePrefix, reason, referenceNumber, account) {
     const db = await getDb();
+    const amountMinor = toMinorUnits(amount);
 
-    // If we have a ReferenceNumber, that is a globally unique identifier — check across ALL dates
     if (referenceNumber) {
-        const byRef = await db.get(
-            `SELECT * FROM transactions WHERE userId = ? AND ReferenceNumber = ?`,
-            [userId, referenceNumber]
+        const byRef = await db.all(
+            `SELECT * FROM transactions
+             WHERE userId = ? AND ReferenceNumber = ? AND AmountMinor = ? AND Timestamp LIKE ?`,
+            [userId, referenceNumber, amountMinor, datePrefix + '%']
         );
-        if (byRef) return withDisplayAmount(byRef);
+        if (byRef.length) {
+            const accountMatch = account && byRef.find(
+                (transaction) => String(transaction.Account || '').trim().toLowerCase() ===
+                    String(account).trim().toLowerCase()
+            );
+            return withDisplayAmount(accountMatch || byRef[0]);
+        }
     }
 
-    // Fallback: exact Reason + Amount + Category on the same day
+    // Fallback: exact reason, amount, category, and day. Prefer the same account
+    // so equal purchases from different accounts are not collapsed together.
     return withDisplayAmount(await db.get(
-        `SELECT * FROM transactions 
-         WHERE userId = ? AND AmountMinor = ? AND Category = ? AND Timestamp LIKE ? AND Reason = ?`,
-        [userId, toMinorUnits(amount), category, datePrefix + '%', reason]
+        `SELECT * FROM transactions
+         WHERE userId = ? AND AmountMinor = ? AND Category = ? AND Timestamp LIKE ?
+           AND Reason = ? COLLATE NOCASE
+         ORDER BY CASE WHEN LOWER(TRIM(COALESCE(Account, ''))) = LOWER(TRIM(COALESCE(?, '')))
+                       THEN 0 ELSE 1 END, id
+         LIMIT 1`,
+        [userId, amountMinor, category, datePrefix + '%', reason, account || null]
     ));
 }
 

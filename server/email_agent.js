@@ -124,10 +124,15 @@ async function syncPortfolioFromEmail(transactionId, data, idInfo) {
     return result;
 }
 
-async function onNewEmail(emailBody, idInfo, receivedAt) {
+async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
     try {
+        const {
+            allowBeforeSnapshot = false,
+            suppressNotifications = false,
+            accountCutoffs = null,
+        } = options;
         const receivedTime = new Date(receivedAt || 0).getTime();
-        if (Number.isFinite(receivedTime) && receivedTime < new Date(SNAPSHOT_CAPTURED_AT).getTime()) {
+        if (!allowBeforeSnapshot && Number.isFinite(receivedTime) && receivedTime < new Date(SNAPSHOT_CAPTURED_AT).getTime()) {
             console.log(`[${idInfo}] Email predates the financial snapshot; marking processed without analysis.`);
             return true;
         }
@@ -150,6 +155,25 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
             return true;
         }
 
+        if (accountCutoffs) {
+            const transactionTime = new Date(expenseData.Timestamp || receivedAt).getTime();
+            const accountIds = [expenseData.BalanceAccountId, expenseData.PortfolioAccountId]
+                .filter((value) => value !== null && value !== undefined)
+                .map(String);
+            const normalizedAccount = String(expenseData.Account || '').trim().toLowerCase();
+            const cutoffValue = accountIds.map((id) => accountCutoffs.byId?.[id]).find(Boolean) ||
+                accountCutoffs.byAlias?.[normalizedAccount] || null;
+
+            if (!cutoffValue) {
+                console.warn(`[${idInfo}] Replay skipped because its account could not be matched to an imported account.`);
+                return true;
+            }
+            if (Number.isFinite(transactionTime) && transactionTime <= new Date(cutoffValue).getTime()) {
+                console.log(`[${idInfo}] Transaction is already covered by the imported account cutoff; skipping.`);
+                return true;
+            }
+        }
+
         // Apply learned merchant rules (user category/label overrides)
         const rule = await dbService.getMerchantRuleForReason(USER_ID, expenseData.Reason);
         if (rule) {
@@ -168,7 +192,10 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
 
         // 1. Exact duplicate check
         const datePrefix = expenseData.Timestamp.substring(0, 10);
-        const duplicate = await dbService.findDuplicateTransaction(USER_ID, expenseData.Amount, expenseData.Category, datePrefix, expenseData.Reason, expenseData.ReferenceNumber);
+        const duplicate = await dbService.findDuplicateTransaction(
+            USER_ID, expenseData.Amount, expenseData.Category, datePrefix,
+            expenseData.Reason, expenseData.ReferenceNumber, expenseData.Account
+        );
         if (duplicate) {
             console.log(`[${idInfo}] Duplicate expense detected. Skipping save.`);
             await syncPortfolioFromEmail(duplicate.id, expenseData, idInfo);
@@ -213,7 +240,9 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
             await updateAgentTransaction(fuzzyDuplicate.id, mergedUpdates);
             activeId = fuzzyDuplicate.id;
             // Delete old Telegram message → send fresh complete one
-            await replaceNotification({ ...fuzzyDuplicate, ...expenseData, ...mergedUpdates, id: fuzzyDuplicate.id });
+            if (!suppressNotifications) {
+                await replaceNotification({ ...fuzzyDuplicate, ...expenseData, ...mergedUpdates, id: fuzzyDuplicate.id });
+            }
         } else {
             // Sort matches by timestamp closeness
             const sortedMatches = [...allMatches].sort((a, b) =>
@@ -237,7 +266,9 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
                 await updateAgentTransaction(genericMatch.id, specificUpdates);
                 activeId = genericMatch.id;
                 // Delete old generic message → send one clean specific message
-                await replaceNotification({ ...genericMatch, ...expenseData, ...specificUpdates, id: genericMatch.id });
+                if (!suppressNotifications) {
+                    await replaceNotification({ ...genericMatch, ...expenseData, ...specificUpdates, id: genericMatch.id });
+                }
 
             } else if (newIsGeneric) {
                 const existingSpecific = allMatches.find(m => !isGeneric(m.Label, m.Reason));
@@ -254,14 +285,14 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
                     const newId = await dbService.addTransaction(expenseData);
                     activeId = newId;
                     console.log(`[${idInfo}] Saved generic. Sending placeholder notification.`);
-                    await notifyAndSave({ ...expenseData, id: newId });
+                    if (!suppressNotifications) await notifyAndSave({ ...expenseData, id: newId });
                 }
             } else {
                 // Brand new specific transaction
                 const newId = await dbService.addTransaction(expenseData);
                 activeId = newId;
                 console.log(`[${idInfo}] Saved specific to SQLite successfully!`);
-                await notifyAndSave({ ...expenseData, id: newId });
+                if (!suppressNotifications) await notifyAndSave({ ...expenseData, id: newId });
             }
         }
 

@@ -8,10 +8,11 @@ const { CATEGORY_LABELS } = require('../src/services/transactionCategories');
 
 const inputPath = process.argv[2] ? path.resolve(process.argv[2]) : null;
 const replaceAll = process.argv.includes('--replace-all');
+const dedupeExact = process.argv.includes('--dedupe-exact');
 if (!inputPath) throw new Error('Usage: node scripts/import-portfolio-history.js <transactions.json>');
 if (!process.env.USER_ID) throw new Error('USER_ID is required');
 
-const rows = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
+let rows = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
 if (!Array.isArray(rows) || !rows.length) throw new Error('The transaction file must be a non-empty JSON array');
 
 if (replaceAll) {
@@ -22,6 +23,27 @@ if (replaceAll) {
             row.Label = 'Internal Transfer';
         }
     }
+}
+
+if (dedupeExact) {
+    const normalizeIdentityPart = (value) => String(value ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+    const seen = new Set();
+    const before = rows.length;
+    rows = rows.filter((row) => {
+        const key = [
+            Number(row.Amount), row.Category, normalizeIdentityPart(row.Label),
+            normalizeIdentityPart(row.Reason), new Date(row.Timestamp).toISOString(),
+            normalizeIdentityPart(row.Account), normalizeIdentityPart(row.BankName),
+            normalizeIdentityPart(row.ReferenceNumber), normalizeIdentityPart(row.PortfolioAction),
+            normalizeIdentityPart(row.PortfolioSymbol), row.PortfolioQuantity ?? '',
+            row.PortfolioPrice ?? '', normalizeIdentityPart(row.PortfolioToSymbol),
+            row.PortfolioToQuantity ?? '', normalizeIdentityPart(row.AccountFlow),
+        ].join('|');
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+    console.log(`Removed ${before - rows.length} exact duplicate transaction row(s) before import.`);
 }
 
 const requiredFields = ['Amount', 'Category', 'Timestamp'];
