@@ -86,3 +86,16 @@ MoniMonitor_Website/
 
 After making and verifying a code change, commit and push the related files to
 the configured Git remote. Keep unrelated local changes out of that commit.
+
+## Backup and recovery
+
+The API creates verified SQLite snapshots in `server/backups` by default. The
+directory can be changed with `MONIMONITOR_BACKUP_DIR`, and the automatic
+interval can be changed with `MONIMONITOR_BACKUP_INTERVAL_HOURS`.
+
+- Automatic backups are checked when the API starts and at least every six hours.
+- Retention keeps recent daily, weekly, monthly, and manual recovery points.
+- Profile shows the last successful backup date and provides Backup, Download,
+  and Restore controls.
+- Every restore verifies the selected file and creates a pre-restore safety
+  backup before replacing application data in one database transaction.

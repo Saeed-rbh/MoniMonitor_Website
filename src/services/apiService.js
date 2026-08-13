@@ -211,6 +211,54 @@ export const deleteGoalAPI = async (id) => {
     const response = await fetch(apiUrl(`/goals/${id}`), { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
     return response.ok;
 };
+
+const backupRequest = async (path = "", options = {}) => {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+    const response = await fetch(apiUrl(`/backups${path}`), {
+        ...options,
+        headers: {
+            ...(options.body ? { "Content-Type": "application/json" } : {}),
+            Authorization: `Bearer ${token}`,
+            ...options.headers,
+        },
+    });
+    if (!response.ok) {
+        handleExpiredSession(response);
+        return null;
+    }
+    return response;
+};
+
+export const getBackupStatusAPI = async () => {
+    const response = await backupRequest();
+    return response ? response.json() : null;
+};
+
+export const createBackupAPI = async () => {
+    const response = await backupRequest("", { method: "POST" });
+    return response ? response.json() : null;
+};
+
+export const downloadBackupAPI = async (fileName) => {
+    const response = await backupRequest(`/${encodeURIComponent(fileName)}/download`);
+    if (!response) return false;
+    const url = URL.createObjectURL(await response.blob());
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+    return true;
+};
+
+export const restoreBackupAPI = async (fileName) => {
+    const response = await backupRequest(`/${encodeURIComponent(fileName)}/restore`, {
+        method: "POST",
+        body: JSON.stringify({ confirm: "RESTORE" }),
+    });
+    return response ? response.json() : null;
+};
 const portfolioRequest = async (path = '', options = {}) => {
     const token = localStorage.getItem('token');
     if (!token) return null;

@@ -9,6 +9,7 @@ const dbService = require("./src/database/dbService");
 const { createRateLimit } = require("./src/middleware/rateLimit");
 const { parseTransaction, transactionUpdateSchema } = require("./src/validation/transaction");
 const { validateTelegramInitData, normalizeTelegramPhotoUrl } = require("./src/services/telegramAuthService");
+const backupService = require("./src/services/backupService");
 
 const app = express();
 const PORT = Number(process.env.PORT || 3001);
@@ -444,6 +445,44 @@ app.get("/accounts", authenticateToken, async (req, res) => {
     }
 });
 
+app.get("/backups", authenticateToken, async (_req, res) => {
+    try {
+        return res.json(await backupService.getBackupStatus());
+    } catch (error) {
+        return sendValidationError(res, error);
+    }
+});
+
+app.post("/backups", authenticateToken, async (_req, res) => {
+    try {
+        return res.status(201).json(await backupService.createBackup("manual"));
+    } catch (error) {
+        return sendValidationError(res, error);
+    }
+});
+
+app.get("/backups/:fileName/download", authenticateToken, async (req, res) => {
+    try {
+        const filePath = await backupService.resolveBackupPath(req.params.fileName);
+        return res.download(filePath, req.params.fileName);
+    } catch (error) {
+        if (error.code === "ENOENT") return res.status(404).json({ error: "Backup not found" });
+        return sendValidationError(res, error);
+    }
+});
+
+app.post("/backups/:fileName/restore", authenticateToken, async (req, res) => {
+    if (req.body?.confirm !== "RESTORE") {
+        return res.status(400).json({ error: "Restore confirmation is required" });
+    }
+    try {
+        return res.json(await backupService.restoreBackup(req.params.fileName, req.user.userId));
+    } catch (error) {
+        if (error.code === "ENOENT") return res.status(404).json({ error: "Backup not found" });
+        return sendValidationError(res, error);
+    }
+});
+
 // Compatibility endpoint for the current frontend. New integrations should use /transactions.
 app.post("/MoniMonitor_ToDB", authenticateToken, async (req, res) => {
     const { status, record_entry, record_type, ...filters } = req.body || {};
@@ -473,6 +512,7 @@ app.use((error, _req, res, _next) => {
 if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`API server listening on http://localhost:${PORT}`);
+        backupService.startAutomaticBackups();
     });
 }
 

@@ -3,7 +3,15 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import "../../pages/Auth.css"; // Reuse Auth styles
 import BlurFade from "../../components/ui/blur-fade"; // Use relative path
-import { GetDataFromDB, getSettingsAPI, saveSettingsAPI } from "../../services/apiService";
+import {
+    createBackupAPI,
+    downloadBackupAPI,
+    GetDataFromDB,
+    getBackupStatusAPI,
+    getSettingsAPI,
+    restoreBackupAPI,
+    saveSettingsAPI,
+} from "../../services/apiService";
 
 const Account = () => {
     const { user, logout } = useAuth();
@@ -13,6 +21,9 @@ const Account = () => {
     const [currency, setCurrency] = useState("USD");
     const [theme, setTheme] = useState("Dark");
     const [notifications, setNotifications] = useState(true);
+    const [backupStatus, setBackupStatus] = useState(null);
+    const [backupBusy, setBackupBusy] = useState(false);
+    const [backupMessage, setBackupMessage] = useState("");
 
     // UI State
     const [activeDropdown, setActiveDropdown] = useState(null);
@@ -29,10 +40,13 @@ const Account = () => {
 
     useEffect(() => {
         let active = true;
-        getSettingsAPI().then((settings) => {
-            if (!active || !settings) return;
-            setCurrency(settings.currency || "USD");
-            setNotifications(Boolean(settings.notificationsEnabled));
+        Promise.all([getSettingsAPI(), getBackupStatusAPI()]).then(([settings, backups]) => {
+            if (!active) return;
+            if (settings) {
+                setCurrency(settings.currency || "USD");
+                setNotifications(Boolean(settings.notificationsEnabled));
+            }
+            if (backups) setBackupStatus(backups);
         });
         return () => { active = false; };
     }, []);
@@ -75,9 +89,54 @@ const Account = () => {
         URL.revokeObjectURL(url);
     };
 
-    const handleBackup = () => {
-        alert("Backing up data to cloud... (Simulated)");
+    const refreshBackupStatus = async () => {
+        const status = await getBackupStatusAPI();
+        if (status) setBackupStatus(status);
+        return status;
     };
+
+    const handleBackup = async () => {
+        setBackupBusy(true);
+        setBackupMessage("Creating verified backup…");
+        const backup = await createBackupAPI();
+        if (backup) {
+            await refreshBackupStatus();
+            setBackupMessage("Backup created and verified.");
+        } else {
+            setBackupMessage("Backup could not be created.");
+        }
+        setBackupBusy(false);
+    };
+
+    const handleBackupDownload = async () => {
+        const latest = backupStatus?.lastBackup;
+        if (!latest) return setBackupMessage("Create a backup first.");
+        setBackupBusy(true);
+        const downloaded = await downloadBackupAPI(latest.fileName);
+        setBackupMessage(downloaded ? "Backup downloaded." : "Backup download failed.");
+        setBackupBusy(false);
+    };
+
+    const handleBackupRestore = async () => {
+        const latest = backupStatus?.lastBackup;
+        if (!latest) return setBackupMessage("No backup is available to restore.");
+        const createdAt = new Date(latest.createdAt).toLocaleString();
+        if (!window.confirm(`Restore the backup from ${createdAt}? A safety backup will be created first.`)) return;
+        setBackupBusy(true);
+        setBackupMessage("Verifying and restoring backup…");
+        const restored = await restoreBackupAPI(latest.fileName);
+        if (!restored) {
+            setBackupMessage("Restore failed. Your current data was not replaced.");
+            setBackupBusy(false);
+            return;
+        }
+        setBackupMessage("Backup restored. Reloading your financial data…");
+        window.setTimeout(() => window.location.reload(), 800);
+    };
+
+    const lastBackupLabel = backupStatus?.lastBackup
+        ? new Date(backupStatus.lastBackup.createdAt).toLocaleString()
+        : "Never";
 
     const openCurrencyModal = () => setShowCurrency(true);
 
@@ -231,10 +290,23 @@ const Account = () => {
                             <span>Export CSV</span>
                             <span style={{ fontSize: "1rem", cursor: "pointer" }}>⬇️</span>
                         </div>
-                        <div className="settings-item" style={itemStyle} onClick={handleBackup}>
-                            <span>Backup</span>
+                        <div className="settings-item" style={{ ...itemStyle, cursor: "default" }}>
+                            <span>Last backup</span>
+                            <span style={{ color: "var(--Bc-2)", fontSize: "0.72rem", textAlign: "right" }}>{lastBackupLabel}</span>
+                        </div>
+                        <div className="settings-item" style={itemStyle} onClick={backupBusy ? undefined : handleBackup}>
+                            <span>{backupBusy ? "Backup in progress…" : "Backup now"}</span>
                             <span style={{ fontSize: "1rem", cursor: "pointer" }}>☁️</span>
                         </div>
+                        <div className="settings-item" style={itemStyle} onClick={backupBusy ? undefined : handleBackupDownload}>
+                            <span>Download latest backup</span>
+                            <span style={{ fontSize: "1rem", cursor: "pointer" }}>⬇️</span>
+                        </div>
+                        <div className="settings-item" style={{ ...itemStyle, color: "var(--Gc-2)" }} onClick={backupBusy ? undefined : handleBackupRestore}>
+                            <span>Restore latest backup</span>
+                            <span style={{ fontSize: "1rem", cursor: "pointer" }}>↺</span>
+                        </div>
+                        {backupMessage && <p role="status" style={{ color: "var(--Ac-2)", fontSize: "0.72rem", margin: "2px 6px 8px" }}>{backupMessage}</p>}
                     </div>
 
                     {/* Support */}
