@@ -482,6 +482,10 @@ const Insight = () => {
                 width: '100%',
                 boxSizing: 'border-box',
             }}>
+                <span
+                    aria-hidden="true"
+                    className={`Insight_PeriodIndicator ${viewMode}`}
+                />
                 <ScalableElement
                     as="button"
                     className={`Insight_PeriodButton ${viewMode === 'monthly' ? 'is-active' : ''}`}

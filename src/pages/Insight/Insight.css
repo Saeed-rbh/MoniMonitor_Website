@@ -47,17 +47,21 @@
     padding: 14px 12px 32px !important;
     gap: 12px !important;
     color: var(--Ac-1);
-    background:
-        radial-gradient(circle at 8% -4%, var(--Bc-4), transparent 28%),
-        radial-gradient(circle at 96% 18%, var(--Cc-4), transparent 24%);
+    background: none;
 }
 
 .Insight_Header {
     display: flex;
-    align-items: flex-end;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
     padding: 6px 5px 0;
+}
+
+.Insight_Header>div,
+.Insight_Header h1,
+.Insight_Eyebrow {
+    text-align: left;
 }
 
 .Insight_Header h1 {
@@ -86,16 +90,44 @@
 }
 
 .Insight_PeriodToggle {
+    position: relative;
     gap: 3px !important;
     margin: 0 !important;
     padding: 4px !important;
     border: 1px solid var(--Ac-4);
     border-radius: 16px;
-    background: linear-gradient(145deg, var(--Ac-5), var(--Ec-2));
-    box-shadow: inset 0 1px 0 rgba(255, 245, 240, 0.03);
+    background: none;
+    box-shadow: none;
+}
+
+.Insight_PeriodIndicator {
+    position: absolute;
+    z-index: 0;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc((100% - 14px) / 3);
+    border: 1px solid var(--Bc-2);
+    border-radius: 11px;
+    background: linear-gradient(135deg, rgba(212, 157, 129, 0.28), rgba(212, 157, 129, 0.1));
+    box-shadow: 0 5px 16px rgba(212, 157, 129, 0.12), inset 0 1px 0 rgba(255, 245, 240, 0.12);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    pointer-events: none;
+    transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.Insight_PeriodIndicator.yearly {
+    transform: translateX(calc(100% + 3px));
+}
+
+.Insight_PeriodIndicator.alltime {
+    transform: translateX(calc(200% + 6px));
 }
 
 .Insight_PeriodButton {
+    position: relative;
+    z-index: 1;
     min-height: 36px;
     padding: 8px 6px !important;
     border: 0 !important;
@@ -109,10 +141,10 @@
 }
 
 .Insight_PeriodButton.is-active {
-    color: var(--Ec-1) !important;
+    color: var(--Bc-1) !important;
     font-weight: 700 !important;
-    background: linear-gradient(135deg, var(--Bc-1), rgba(212, 157, 129, 0.78)) !important;
-    box-shadow: 0 6px 18px rgba(212, 157, 129, 0.16), inset 0 1px 0 rgba(255, 245, 240, 0.35);
+    background: transparent !important;
+    box-shadow: none;
 }
 
 .Insight_Hero {
@@ -125,10 +157,8 @@
     padding: 15px 17px !important;
     border: 1px solid var(--Bc-3) !important;
     border-radius: 22px !important;
-    background:
-        linear-gradient(145deg, rgba(212, 157, 129, 0.13), rgba(255, 245, 240, 0.025) 55%),
-        rgba(24, 25, 30, 0.52);
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16), inset 0 1px 0 rgba(255, 245, 240, 0.035);
+    background: none;
+    box-shadow: none;
 }
 
 .Insight_HeroCopy {
@@ -136,6 +166,8 @@
     min-width: 0;
     flex-direction: column;
     gap: 3px;
+    align-items: flex-start;
+    text-align: left;
 }
 
 .Insight_HeroCopy span {
@@ -170,12 +202,12 @@
 
 .Insight_ChangeBadge.positive {
     border-color: var(--Fc-3);
-    background: var(--Fc-4) !important;
+    background: none !important;
 }
 
 .Insight_ChangeBadge.negative {
     border-color: var(--Gc-3);
-    background: var(--Gc-4) !important;
+    background: none !important;
 }
 
 .Insight_KpiGrid {
@@ -196,7 +228,7 @@
     overflow: hidden;
     border: 1px solid color-mix(in srgb, var(--insight-accent) 24%, transparent);
     border-radius: 17px;
-    background: linear-gradient(150deg, color-mix(in srgb, var(--insight-accent) 7%, transparent), var(--Ac-5));
+    background: none;
 }
 
 .Insight_KpiHeader {
@@ -204,6 +236,8 @@
     min-width: 0;
     flex-direction: column;
     gap: 4px;
+    align-items: flex-start;
+    text-align: left;
 }
 
 .Insight_KpiHeader span {
@@ -244,8 +278,8 @@
     overflow: hidden;
     border: 1px solid var(--Ac-4);
     border-radius: 21px;
-    background: linear-gradient(155deg, var(--Ac-5), rgba(24, 25, 30, 0.34));
-    box-shadow: inset 0 1px 0 rgba(255, 245, 240, 0.025);
+    background: none;
+    box-shadow: none;
 }
 
 .Insight_SectionTitle {
@@ -257,6 +291,7 @@
     font-weight: 650 !important;
     letter-spacing: 0.09em !important;
     text-transform: uppercase;
+    text-align: left !important;
 }
 
 .Insight_BarChart {
@@ -274,7 +309,7 @@
     gap: 8px !important;
     border: 1px solid var(--Gc-3) !important;
     border-radius: 20px !important;
-    background: linear-gradient(145deg, var(--Gc-4), rgba(24, 25, 30, 0.38)) !important;
+    background: none !important;
 }
 
 .Insight_AnomalyHeader {
@@ -306,7 +341,7 @@
     place-items: center;
     border: 1px solid var(--Gc-3);
     border-radius: 50%;
-    background: var(--Gc-4);
+    background: none;
     color: var(--Gc-1);
     font-size: 0.74rem;
     font-weight: 800;
@@ -314,6 +349,12 @@
 
 .Insight_AnomalyItem {
     padding: 10px 0 5px 31px !important;
+}
+
+.Insight_AnomalyItem>span:last-child {
+    align-self: flex-end;
+    width: 100%;
+    text-align: right !important;
 }
 
 .Insight_AnomalyCopy strong {
@@ -330,7 +371,7 @@
     padding: 16px !important;
     border: 1px solid var(--Ac-4) !important;
     border-radius: 21px !important;
-    background: linear-gradient(155deg, var(--Ac-5), rgba(24, 25, 30, 0.34)) !important;
+    background: none !important;
 }
 
 .Insight_BreakdownItem {
@@ -365,7 +406,7 @@
     margin-top: 1px !important;
     padding: 6px 18px !important;
     border-color: var(--Bc-3) !important;
-    background: var(--Bc-5) !important;
+    background: none !important;
     font-weight: 600;
 }
 
