@@ -18,7 +18,7 @@ export const buildAllTimeInsightData = (allTransactions = {}) => {
 
         current.income += Number(value?.totalIncome) || 0;
         current.expense += Number(value?.totalExpense) || 0;
-        current.invest += Number(value?.totalSaving) || 0;
+        current.invest += Number(value?.totalSaveInvest ?? value?.totalSaving) || 0;
         totalsByYear.set(year, current);
 
         if (Array.isArray(value?.transactions)) {

@@ -7,7 +7,7 @@ import { animated, useSpring, easings } from "@react-spring/web";
 import { ScalableElement } from "../../utils/tools";
 import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
 import { getPortfolioAPI } from "../../services/apiService";
-import { getSavingEffect } from "../../services/transactionService";
+import { getSaveInvestActivity } from "../../services/transactionService";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 import { buildAllTimeInsightData } from "./insightPeriodData";
 
@@ -87,7 +87,7 @@ const Insight = () => {
 
                         incomeArr[m] = val.totalIncome || 0;
                         expenseArr[m] = val.totalExpense || 0;
-                        investArr[m] = val.totalSaving || 0;
+                        investArr[m] = val.totalSaveInvest ?? val.totalSaving ?? 0;
                     }
                 });
             }
@@ -136,11 +136,11 @@ const Insight = () => {
             if (tYear === targetYear && tMonth === targetMonth && day >= 1 && day <= daysInMonth) {
                 const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
                 const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
-                const savingEffect = getSavingEffect(t);
+                const saveInvestActivity = getSaveInvestActivity(t);
 
                 if (isIncome) incomeArr[day - 1] += amount;
                 else if (isExpense) expenseArr[day - 1] += amount;
-                else investArr[day - 1] += savingEffect;
+                else investArr[day - 1] += saveInvestActivity;
             }
         });
 
@@ -675,8 +675,10 @@ const Insight = () => {
                     border: "1px solid var(--Gc-1)",
                     display: "flex",
                     flexDirection: "column",
+                    alignItems: "stretch",
                     gap: "5px",
-                    boxSizing: "border-box"
+                    boxSizing: "border-box",
+                    textAlign: "left"
                 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--Gc-1)" }}>
                         <span style={{ fontSize: "1.2rem" }}>⚠️</span>
@@ -687,9 +689,9 @@ const Insight = () => {
                             key={t.id || `${t.Timestamp}-${t.Amount}-${idx}`}
                             style={{
                                 display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                gap: "12px",
+                                flexDirection: "column",
+                                alignItems: "flex-start",
+                                gap: "5px",
                                 fontSize: "0.8rem",
                                 color: "var(--Ac-3)",
                                 padding: "8px 0 8px 28px",
@@ -708,7 +710,7 @@ const Insight = () => {
                                     })].filter(Boolean).join(" · ")}
                                 </span>
                             </div>
-                            <span style={{ fontWeight: "600", color: "var(--Gc-1)", whiteSpace: "nowrap" }}>
+                            <span style={{ fontWeight: "600", color: "var(--Gc-1)", whiteSpace: "nowrap", textAlign: "left" }}>
                                 ${Number(t.Amount).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
                         </div>

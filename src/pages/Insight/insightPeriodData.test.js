@@ -8,6 +8,7 @@ describe("buildAllTimeInsightData", () => {
                 totalIncome: 200,
                 totalExpense: 80,
                 totalSaving: 30,
+                totalSaveInvest: 230,
                 transactions: [{ id: 3, Amount: 200, Category: "Income" }],
             },
             "2024-12": {
@@ -20,6 +21,7 @@ describe("buildAllTimeInsightData", () => {
                 totalIncome: 50,
                 totalExpense: 20,
                 totalSaving: -5,
+                totalSaveInvest: 55,
                 transactions: [
                     { id: 2, Amount: 50, Category: "Internal", AccountFlow: "IN" },
                     { id: 4, Amount: 10, Category: "Investment", AccountFlow: "OUT" },
@@ -30,7 +32,7 @@ describe("buildAllTimeInsightData", () => {
         expect(result.labels).toEqual(["2024", "2026"]);
         expect(result.income).toEqual([100, 250]);
         expect(result.expense).toEqual([25, 100]);
-        expect(result.invest).toEqual([10, 25]);
+        expect(result.invest).toEqual([10, 285]);
         expect(result.transactions.map(({ id }) => id)).toEqual([3, 1, 2, 4]);
         expect(result.accountBalance).toBe(215);
     });
