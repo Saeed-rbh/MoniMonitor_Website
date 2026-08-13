@@ -16,6 +16,40 @@ const monthsNames = [
   "Dec",
 ];
 
+const normalizeAccountName = (value) =>
+  String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const parseInternalTransfer = (reason) => {
+  const match = String(reason || "").match(
+    /^Internal transfer:\s*(.*?)\s*->\s*(.*?)(?:\s*\[|$)/i
+  );
+  return match ? { source: match[1], destination: match[2] } : null;
+};
+
+export const getSavingEffect = (transaction) => {
+  const amount = Number(transaction?.Amount || 0);
+  if (!Number.isFinite(amount)) return 0;
+
+  if (transaction?.Category === "SavingWithdrawal") return -amount;
+  if (!["Saving", "Save&Invest"].includes(transaction?.Category)) return 0;
+
+  const label = String(transaction?.Label || "").toLowerCase();
+  if (label === "tfsa withdrawal") return -amount;
+  if (label === "tfsa contribution") return amount;
+
+  const transfer = parseInternalTransfer(transaction?.Reason);
+  if (!transfer) return 0;
+
+  const account = normalizeAccountName(transaction?.Account);
+  if (!account.includes("tfsa")) return 0;
+
+  const source = normalizeAccountName(transfer.source);
+  const destination = normalizeAccountName(transfer.destination);
+  if (destination.includes("tfsa")) return amount;
+  if (source.includes("tfsa")) return -amount;
+  return 0;
+};
+
 const fillMissingMonths = (data) => {
   if (!data || data.length === 0) return [];
 
@@ -132,23 +166,16 @@ export const groupTransactionsByMonth = (transactions) => {
           (groupedTransactions[key].labelDistributionIncome[label] || 0) +
           Number(transaction.Amount);
       }
-    } else if (transaction.Category === "Saving" || transaction.Category === "Save&Invest") {
-      groupedTransactions[key].totalSaving += Number(transaction.Amount);
-      groupedTransactions[key].netTotal -= Number(transaction.Amount);
+    } else {
+      const savingEffect = getSavingEffect(transaction);
+      // Only money crossing the TFSA boundary affects savings. Other internal
+      // transfers and trades remain visible activity but have no cash-flow effect.
+      groupedTransactions[key].totalSaving += savingEffect;
+      groupedTransactions[key].netTotal -= savingEffect;
       if (label) {
         groupedTransactions[key].labelDistributionSaving[label] =
           (groupedTransactions[key].labelDistributionSaving[label] || 0) +
-          Number(transaction.Amount);
-      }
-    } else if (transaction.Category === "SavingWithdrawal") {
-      // Withdrawals reverse a prior contribution. Transfers and investment
-      // activity intentionally fall through without affecting cash-flow totals.
-      groupedTransactions[key].totalSaving -= Number(transaction.Amount);
-      groupedTransactions[key].netTotal += Number(transaction.Amount);
-      if (label) {
-        groupedTransactions[key].labelDistributionSaving[label] =
-          (groupedTransactions[key].labelDistributionSaving[label] || 0) -
-          Number(transaction.Amount);
+          savingEffect;
       }
     }
   });

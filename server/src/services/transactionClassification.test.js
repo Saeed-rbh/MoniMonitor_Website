@@ -1,0 +1,38 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { getSavingEffectMinor } = require('./transactionClassification');
+
+test('counts only the TFSA-side transfer as a contribution', () => {
+    const transfer = {
+        AmountMinor: 100000,
+        Category: 'Saving',
+        Label: 'Internal Transfer',
+        Reason: 'Internal transfer: RBC Chequing -> TFSA [XFER-1]',
+    };
+    assert.equal(getSavingEffectMinor({ ...transfer, Account: 'RBC Chequing' }), 0);
+    assert.equal(getSavingEffectMinor({ ...transfer, Account: 'TFSA' }), 100000);
+});
+
+test('subtracts TFSA withdrawals and ignores non-TFSA transfers and trades', () => {
+    assert.equal(getSavingEffectMinor({
+        AmountMinor: 20000,
+        Category: 'Saving',
+        Label: 'Internal Transfer',
+        Reason: 'Internal transfer: TFSA -> Future [XFER-2]',
+        Account: 'TFSA',
+    }), -20000);
+    assert.equal(getSavingEffectMinor({
+        AmountMinor: 50000,
+        Category: 'Saving',
+        Label: 'Internal Transfer',
+        Reason: 'Internal transfer: RBC Chequing -> Future [XFER-3]',
+        Account: 'Future',
+    }), 0);
+    assert.equal(getSavingEffectMinor({
+        AmountMinor: 10000,
+        Category: 'Saving',
+        Label: 'Stocks',
+        Reason: 'Bought VFV',
+        Account: 'TFSA',
+    }), 0);
+});

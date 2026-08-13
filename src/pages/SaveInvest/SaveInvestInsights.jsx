@@ -11,13 +11,14 @@ import {
 } from "recharts";
 import { useTransactions } from "../../context/TransactionContext";
 import { getPortfolioAPI } from "../../services/apiService";
+import { getSavingEffect } from "../../services/transactionService";
 import "./SaveInvestInsights.css";
 
 const isSaveInvestTransaction = (transaction) =>
   ["Saving", "SavingWithdrawal", "Save&Invest", "Investment"].includes(transaction?.Category);
 
 const isContributionTransaction = (transaction) =>
-  ["Saving", "Save&Invest"].includes(transaction?.Category);
+  getSavingEffect(transaction) > 0;
 
 const money = (value, currency = "USD") =>
   new Intl.NumberFormat(undefined, {

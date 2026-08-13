@@ -1,5 +1,6 @@
 const { getDb } = require('./db');
 const { accountMatchScore, transactionBalanceDelta } = require('../services/accountMatching');
+const { getSavingEffectMinor } = require('../services/transactionClassification');
 
 function toMinorUnits(amount) {
     const numericAmount = Number(amount);
@@ -776,17 +777,16 @@ async function writeAgentAudit(userId, action, status, details = null) {
 async function getSummaryForUser(userId) {
     const db = await getDb();
 
-    const totals = await db.get(`
-        SELECT
-            SUM(CASE WHEN Category = 'Income'  THEN AmountMinor ELSE 0 END) as totalIncome,
-            SUM(CASE WHEN Category = 'Expense' THEN AmountMinor ELSE 0 END) as totalExpenses,
-            SUM(CASE
-                WHEN Category = 'Saving' THEN AmountMinor
-                WHEN Category = 'SavingWithdrawal' THEN -AmountMinor
-                ELSE 0
-            END) as totalSavings
+    const summaryTransactions = await db.all(`
+        SELECT AmountMinor, Category, Label, Reason, Account, Timestamp
         FROM transactions WHERE userId = ?
     `, [userId]);
+    const totals = summaryTransactions.reduce((result, transaction) => {
+        if (transaction.Category === 'Income') result.totalIncome += Number(transaction.AmountMinor || 0);
+        if (transaction.Category === 'Expense') result.totalExpenses += Number(transaction.AmountMinor || 0);
+        result.totalSavings += getSavingEffectMinor(transaction);
+        return result;
+    }, { totalIncome: 0, totalExpenses: 0, totalSavings: 0 });
 
     const byLabel = await db.all(`
         SELECT Label, Category,
@@ -797,21 +797,21 @@ async function getSummaryForUser(userId) {
         ORDER BY total DESC
     `, [userId]);
 
-    const byMonth = await db.all(`
-        SELECT
-            strftime('%Y-%m', Timestamp) as month,
-            SUM(CASE WHEN Category = 'Income'  THEN AmountMinor ELSE 0 END) / 100.0 as income,
-            SUM(CASE WHEN Category = 'Expense' THEN AmountMinor ELSE 0 END) / 100.0 as expenses,
-            SUM(CASE
-                WHEN Category = 'Saving' THEN AmountMinor
-                WHEN Category = 'SavingWithdrawal' THEN -AmountMinor
-                ELSE 0
-            END) / 100.0 as savings,
-            COUNT(*) as count
-        FROM transactions WHERE userId = ?
-        GROUP BY month
-        ORDER BY month DESC
-    `, [userId]);
+    const monthlyTotals = new Map();
+    summaryTransactions.forEach((transaction) => {
+        const month = String(transaction.Timestamp || '').slice(0, 7);
+        if (!/^\d{4}-\d{2}$/.test(month)) return;
+        if (!monthlyTotals.has(month)) {
+            monthlyTotals.set(month, { month, income: 0, expenses: 0, savings: 0, count: 0 });
+        }
+        const total = monthlyTotals.get(month);
+        const amountMinor = Number(transaction.AmountMinor || 0);
+        if (transaction.Category === 'Income') total.income += amountMinor / 100;
+        if (transaction.Category === 'Expense') total.expenses += amountMinor / 100;
+        total.savings += getSavingEffectMinor(transaction) / 100;
+        total.count += 1;
+    });
+    const byMonth = [...monthlyTotals.values()].sort((a, b) => b.month.localeCompare(a.month));
 
     return {
         totalIncome:    (totals.totalIncome || 0) / 100,

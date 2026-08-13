@@ -8,6 +8,7 @@ import { ScalableElement } from "../../utils/tools";
 import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
 import InsightFacts from './InsightFacts';
 import { GetSummary } from "../../services/apiService";
+import { getSavingEffect } from "../../services/transactionService";
 
 const Insight = () => {
     // Access global transaction data from context
@@ -115,11 +116,7 @@ const Insight = () => {
             if (tYear === targetYear && tMonth === targetMonth && day >= 1 && day <= daysInMonth) {
                 const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
                 const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
-                const savingEffect = t.Category === "Saving" || t.Category === "Save&Invest"
-                    ? amount
-                    : t.Category === "SavingWithdrawal"
-                        ? -amount
-                        : 0;
+                const savingEffect = getSavingEffect(t);
 
                 if (isIncome) incomeArr[day - 1] += amount;
                 else if (isExpense) expenseArr[day - 1] += amount;

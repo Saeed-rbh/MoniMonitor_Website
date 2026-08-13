@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { getSavingEffect } from '../../services/transactionService';
 
 const InsightFacts = ({ transactions, allTransactions, viewMode, currentDate }) => {
 
@@ -22,11 +23,7 @@ const InsightFacts = ({ transactions, allTransactions, viewMode, currentDate }) 
 
             const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
             const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
-            const savingEffect = t.Category === "Saving" || t.Category === "Save&Invest"
-                ? amt
-                : t.Category === "SavingWithdrawal"
-                    ? -amt
-                    : 0;
+            const savingEffect = getSavingEffect(t);
 
             // 1. Income/Expense/Invest Calc
             if (isIncome) totalIncome += amt;
