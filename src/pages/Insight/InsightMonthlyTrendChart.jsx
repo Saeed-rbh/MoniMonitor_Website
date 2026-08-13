@@ -35,6 +35,31 @@ const InsightMonthlyTrendChart = ({ data }) => {
         return null;
     };
 
+    const CustomLegend = ({ payload = [] }) => (
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexWrap: 'wrap',
+            gap: '8px 24px',
+            minHeight: '28px',
+            color: 'var(--Ac-3)',
+            fontSize: '0.7rem',
+        }}>
+            {payload.map((entry) => (
+                <span key={entry.value} style={{ display: 'inline-flex', alignItems: 'center', gap: '7px' }}>
+                    <span style={{
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        background: entry.color,
+                    }} />
+                    {entry.value}
+                </span>
+            ))}
+        </div>
+    );
+
     return (
         <div className="Insight_BarChart" style={{
             width: '100%',
@@ -69,10 +94,8 @@ const InsightMonthlyTrendChart = ({ data }) => {
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} />
                     <Legend
                         verticalAlign="top"
-                        height={36}
-                        iconType="circle"
-                        iconSize={8}
-                        wrapperStyle={{ fontSize: '0.7rem', color: 'var(--Ac-3)' }}
+                        height={38}
+                        content={<CustomLegend />}
                     />
                     <Bar
                         dataKey="income"
@@ -91,7 +114,7 @@ const InsightMonthlyTrendChart = ({ data }) => {
                     <Bar
                         dataKey="invest"
                         name="Invest"
-                        fill="var(--Bc-1)"
+                        fill="#fff"
                         radius={[4, 4, 0, 0]}
                         maxBarSize={20}
                     />
