@@ -3,6 +3,7 @@ import { useSpring, animated, config } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
 import { ScalableElement } from "../../utils/tools";
 import { getTransactionIcon } from "../../components/Categories";
+import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 
 const TransactionListItem = ({
   description,
@@ -18,6 +19,7 @@ const TransactionListItem = ({
   setShowTransaction,
 }) => {
   const ModifyLabel = getTransactionIcon(category, label);
+  const displayReason = getTransactionDisplayReason(description, label);
 
   const [visibleButton, setVisibleButton] = useState("M");
   const [showLeftActions, setLeftShowActions] = useState(false);
@@ -224,7 +226,7 @@ const TransactionListItem = ({
           <animated.p>
             <animated.span>{ModifyLabel}</animated.span>
             <div className="transaction-Description">
-              <h4>{truncateDescription(description)}</h4>
+              <h4>{truncateDescription(displayReason)}</h4>
 
               <h3>
                 {hasValidDate ? dateArray[2] : "--"} | <span>{weekdayName}</span> - {clockTime}
