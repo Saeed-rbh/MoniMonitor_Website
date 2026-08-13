@@ -89,12 +89,18 @@ const INCOME_LABELS = [
 ];
 
 const SAVING_LABELS = [
-    'Savings',           // transfer to savings account
-    'Investment',        // RRSP, TFSA, brokerage contributions
+    'Savings',           // verified new contribution
+    'Investment',        // verified TFSA contribution
     'Debt Payment',      // credit card payment, loan repayment
 ];
 
-const ALL_LABELS = [...EXPENSE_LABELS, ...INCOME_LABELS, ...SAVING_LABELS];
+const NEUTRAL_LABELS = [
+    'Internal Transfer', // movement between accounts owned by the user
+    'Investment Activity', // buy, sell, dividend, or interest inside an account
+    'TFSA Withdrawal',   // cash removed from TFSA; reverses prior saving
+];
+
+const ALL_LABELS = [...EXPENSE_LABELS, ...INCOME_LABELS, ...SAVING_LABELS, ...NEUTRAL_LABELS];
 
 // ─── Zod Schema ────────────────────────────────────────────────────────────
 function normalizeNullablePositiveNumber(value) {
@@ -123,7 +129,7 @@ const NullablePositiveNumber = z.preprocess(
 
 const ExpenseSchema = z.object({
     Amount: z.string(),
-    Category: z.enum(['Expense', 'Income', 'Saving']),
+    Category: z.enum(['Expense', 'Income', 'Saving', 'SavingWithdrawal', 'Transfer', 'Investment']),
     Label: z.enum(ALL_LABELS),
     Reason: z.string(),
     Timestamp: z.string(),
@@ -182,15 +188,18 @@ Return ONLY a valid JSON object with NO markdown or backticks.
 
 Fields to extract:
 - "Amount": Transaction amount as a string without currency symbols (e.g. "45.99").
-- "Category": MUST be exactly one of: "Expense", "Income", "Saving".
+- "Category": MUST be exactly one of: "Expense", "Income", "Saving", "SavingWithdrawal", "Transfer", "Investment".
   - Expense: money going OUT for purchases, bills, fees, e-Transfers sent.
   - Income: money coming IN — salary, deposits, e-Transfers received.
-  - Saving: transfers to/from savings, RRSP/TFSA contributions, debt/loan payments.
-    Interest or dividends credited inside a savings/investment account are Saving, not general Income.
+  - Saving: verified new cash contributed into the user's TFSA. Count the contribution once at the destination.
+  - SavingWithdrawal: cash explicitly withdrawn from the user's TFSA.
+  - Transfer: movement between accounts owned by the user, including credit-card payments. It is cash-flow neutral.
+  - Investment: BUY, SELL, dividend, interest, tax, or fee activity inside an investment account. It is not a new contribution.
 - "Label": MUST be exactly one from the list below. Pick the BEST fit — do NOT use "Other".
   EXPENSE labels:   ${EXPENSE_LABELS.join(', ')}
   INCOME labels:    ${INCOME_LABELS.join(', ')}
   SAVING labels:    ${SAVING_LABELS.join(', ')}
+  NEUTRAL labels:   ${NEUTRAL_LABELS.join(', ')}
 
   Label selection rules:
   - Coffee shops, cafes, bakeries → "Food & Dining"
@@ -198,9 +207,10 @@ Fields to extract:
   - Interac e-Transfer sent → "e-Transfer Out"
   - Interac e-Transfer received → "e-Transfer In"
   - Bank/payroll deposit → "Payroll" or "Bank Deposit"
-  - Credit card payment or loan → "Debt Payment"
-  - RRSP/TFSA/investment → "Investment"
-  - Interest or dividends credited within a portfolio account → "Investment"
+  - Transfer between the user's accounts or credit-card payment → Category "Transfer", Label "Internal Transfer"
+  - Verified new cash contribution into TFSA → Category "Saving", Label "Investment"
+  - Cash withdrawn from TFSA → Category "SavingWithdrawal", Label "TFSA Withdrawal"
+  - BUY, SELL, interest, dividend, tax, or fee inside TFSA/brokerage → Category "Investment", Label "Investment Activity"
   - Bank fees, NSF, interest charges → "Fees & Charges"
 
 - "Reason": Short merchant name or description (e.g. "Tim Hortons", "Interac e-Transfer from John").
@@ -213,7 +223,7 @@ Fields to extract:
   account type, account name, or masked account/card digits make the match unambiguous. Otherwise return null.
 - "BalanceAccountConfidence": Return "HIGH" only when the email clearly identifies that account,
   "MEDIUM" for a likely but incomplete match, "LOW" for a guess, or null when no account is selected.
-- "PortfolioAction": For a Saving transaction, use one of "DEPOSIT", "CONTRIBUTION", "WITHDRAWAL",
+- "PortfolioAction": For Saving, SavingWithdrawal, Transfer, or Investment activity, use one of "DEPOSIT", "CONTRIBUTION", "WITHDRAWAL",
   "INTEREST", "DIVIDEND", "BUY", "SELL", or "TRANSFER". Otherwise return null.
   - DEPOSIT: cash explicitly added to a savings account.
   - CONTRIBUTION: cash explicitly contributed to an RRSP, TFSA, brokerage, or investment account.
@@ -239,7 +249,7 @@ Portfolio safety rules:
 - Never select BalanceAccountId merely because only one account seems plausible. Match evidence from the email.
 - When a masked account or card matches a known account, return the known account's canonical Account value.
 - Never infer an account id merely because there is only one account in the list.
-- A debt or credit-card payment is Saving for reporting but is not a portfolio action; return null portfolio fields.
+- A debt or credit-card payment is Transfer for reporting and is not a portfolio action; return null portfolio fields.
 - Do not treat a BUY, SELL, or internal TRANSFER as a new contribution.
 
 - For BUY or SELL, PortfolioSymbol, PortfolioQuantity, and PortfolioPrice must all come directly

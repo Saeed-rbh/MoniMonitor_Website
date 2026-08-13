@@ -103,7 +103,7 @@ const MainStatistics = ({
       to: {
         savingDesplay: d.savingPercentage === 0 ? "none" : "flex",
         netDesplay: d.netPercentage === 0 ? "none" : "flex",
-        savingHeight: `${d.savingPercentage}%`,
+        savingHeight: `${Math.abs(d.savingPercentage)}%`,
         netBottom: d.netPercentage > 0 ? "calc(50% + 10px)" : "none",
         netTop: d.netPercentage < 0 ? "calc(50% + 10px)" : "none",
         netHeight:
@@ -212,9 +212,9 @@ const MainStatistics = ({
       },
       {
         width: data
-          ? data.savingPercentage * 0.9 < 10
+          ? Math.abs(data.savingPercentage) * 0.9 < 10
             ? 10
-            : data.savingPercentage * 0.9
+            : Math.abs(data.savingPercentage) * 0.9
           : 10,
         background: "var(--Ac-1)",
         outline: "3px solid var(--Ac-3)",

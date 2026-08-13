@@ -44,6 +44,8 @@ const fillMissingMonths = (data) => {
 };
 
 const LabelDistribution = (amount, labels) => {
+  if (!Number.isFinite(Number(amount)) || Number(amount) === 0) return {};
+
   const labelPercentages = Object.keys(labels).map((label) => {
     return {
       label: label,
@@ -67,7 +69,7 @@ const LabelDistribution = (amount, labels) => {
   return sortedDistribution;
 };
 
-const groupTransactionsByMonth = (transactions) => {
+export const groupTransactionsByMonth = (transactions) => {
   const groupedTransactions = {};
 
   const sortedTransactions = [...(transactions || [])].sort(
@@ -136,6 +138,16 @@ const groupTransactionsByMonth = (transactions) => {
       if (label) {
         groupedTransactions[key].labelDistributionSaving[label] =
           (groupedTransactions[key].labelDistributionSaving[label] || 0) +
+          Number(transaction.Amount);
+      }
+    } else if (transaction.Category === "SavingWithdrawal") {
+      // Withdrawals reverse a prior contribution. Transfers and investment
+      // activity intentionally fall through without affecting cash-flow totals.
+      groupedTransactions[key].totalSaving -= Number(transaction.Amount);
+      groupedTransactions[key].netTotal += Number(transaction.Amount);
+      if (label) {
+        groupedTransactions[key].labelDistributionSaving[label] =
+          (groupedTransactions[key].labelDistributionSaving[label] || 0) -
           Number(transaction.Amount);
       }
     }

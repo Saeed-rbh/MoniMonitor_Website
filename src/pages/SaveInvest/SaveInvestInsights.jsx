@@ -14,7 +14,10 @@ import { getPortfolioAPI } from "../../services/apiService";
 import "./SaveInvestInsights.css";
 
 const isSaveInvestTransaction = (transaction) =>
-  ["Saving", "Save&Invest", "Investment"].includes(transaction?.Category);
+  ["Saving", "SavingWithdrawal", "Save&Invest", "Investment"].includes(transaction?.Category);
+
+const isContributionTransaction = (transaction) =>
+  ["Saving", "Save&Invest"].includes(transaction?.Category);
 
 const money = (value, currency = "USD") =>
   new Intl.NumberFormat(undefined, {
@@ -67,6 +70,11 @@ const SaveInvestInsights = () => {
     [monthlyData]
   );
 
+  const contributionTransactions = useMemo(
+    () => savingTransactions.filter(isContributionTransaction),
+    [savingTransactions]
+  );
+
   const visibleMonthlyData =
     range === 0 ? monthlyData : monthlyData.slice(-range);
   const totalContributed = monthlyData.reduce(
@@ -87,7 +95,7 @@ const SaveInvestInsights = () => {
 
   const labels = useMemo(() => {
     const totals = new Map();
-    savingTransactions.forEach((transaction) => {
+    contributionTransactions.forEach((transaction) => {
       const label = transaction.Label || "Other";
       totals.set(label, (totals.get(label) || 0) + Number(transaction.Amount || 0));
     });
@@ -95,7 +103,7 @@ const SaveInvestInsights = () => {
       .map(([label, amount]) => ({ label, amount }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 4);
-  }, [savingTransactions]);
+  }, [contributionTransactions]);
 
   const currency = portfolio?.accounts?.[0]?.currency || "USD";
   const portfolioValue = Number(portfolio?.totalValueMinor || 0) / 100;
@@ -164,7 +172,7 @@ const SaveInvestInsights = () => {
         <article>
           <span>All-time recorded</span>
           <strong>{money(totalContributed, currency)}</strong>
-          <small>{savingTransactions.length} saving/investment entries</small>
+          <small>{contributionTransactions.length} contribution entries</small>
         </article>
         <article>
           <span>Cash</span>

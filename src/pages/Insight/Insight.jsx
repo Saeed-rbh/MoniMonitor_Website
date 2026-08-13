@@ -115,11 +115,15 @@ const Insight = () => {
             if (tYear === targetYear && tMonth === targetMonth && day >= 1 && day <= daysInMonth) {
                 const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
                 const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
-                const isInvest = t.Category === "Save&Invest" || t.Type === "Transfer" || t.Type === "Invest";
+                const savingEffect = t.Category === "Saving" || t.Category === "Save&Invest"
+                    ? amount
+                    : t.Category === "SavingWithdrawal"
+                        ? -amount
+                        : 0;
 
                 if (isIncome) incomeArr[day - 1] += amount;
                 else if (isExpense) expenseArr[day - 1] += amount;
-                else if (isInvest) investArr[day - 1] += amount;
+                else investArr[day - 1] += savingEffect;
             }
         });
 
@@ -137,7 +141,7 @@ const Insight = () => {
 
     const maxIncome = useMemo(() => Math.max(...dailyIncome.filter(v => v !== null), 1), [dailyIncome]);
     const maxExpense = useMemo(() => Math.max(...dailyExpense.filter(v => v !== null), 1), [dailyExpense]);
-    const maxInvest = useMemo(() => Math.max(...dailyInvest.filter(v => v !== null), 1), [dailyInvest]);
+    const maxInvest = useMemo(() => Math.max(...dailyInvest.filter(v => v !== null).map(Math.abs), 1), [dailyInvest]);
 
     const totalIncome = useMemo(() => dailyIncome.reduce((a, b) => a + (b || 0), 0), [dailyIncome]);
     const totalExpense = useMemo(() => dailyExpense.reduce((a, b) => a + (b || 0), 0), [dailyExpense]);

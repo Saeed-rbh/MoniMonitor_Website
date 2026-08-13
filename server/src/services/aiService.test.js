@@ -59,3 +59,16 @@ test('coerces a valid portfolio account id from a numeric string', () => {
 
     assert.equal(parsed.PortfolioAccountId, 7);
 });
+
+test('accepts neutral transfers and investment activity', () => {
+    assert.equal(parseAIResponseText(JSON.stringify(validTransaction({
+        Category: 'Transfer',
+        Label: 'Internal Transfer',
+    }))).Category, 'Transfer');
+
+    assert.equal(parseAIResponseText(JSON.stringify(validTransaction({
+        Category: 'Investment',
+        Label: 'Investment Activity',
+        PortfolioAction: 'BUY',
+    }))).Category, 'Investment');
+});

@@ -777,7 +777,11 @@ async function getSummaryForUser(userId) {
         SELECT
             SUM(CASE WHEN Category = 'Income'  THEN AmountMinor ELSE 0 END) as totalIncome,
             SUM(CASE WHEN Category = 'Expense' THEN AmountMinor ELSE 0 END) as totalExpenses,
-            SUM(CASE WHEN Category = 'Saving'  THEN AmountMinor ELSE 0 END) as totalSavings
+            SUM(CASE
+                WHEN Category = 'Saving' THEN AmountMinor
+                WHEN Category = 'SavingWithdrawal' THEN -AmountMinor
+                ELSE 0
+            END) as totalSavings
         FROM transactions WHERE userId = ?
     `, [userId]);
 
@@ -795,7 +799,11 @@ async function getSummaryForUser(userId) {
             strftime('%Y-%m', Timestamp) as month,
             SUM(CASE WHEN Category = 'Income'  THEN AmountMinor ELSE 0 END) / 100.0 as income,
             SUM(CASE WHEN Category = 'Expense' THEN AmountMinor ELSE 0 END) / 100.0 as expenses,
-            SUM(CASE WHEN Category = 'Saving'  THEN AmountMinor ELSE 0 END) / 100.0 as savings,
+            SUM(CASE
+                WHEN Category = 'Saving' THEN AmountMinor
+                WHEN Category = 'SavingWithdrawal' THEN -AmountMinor
+                ELSE 0
+            END) / 100.0 as savings,
             COUNT(*) as count
         FROM transactions WHERE userId = ?
         GROUP BY month

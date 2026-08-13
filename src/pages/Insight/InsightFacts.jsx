@@ -22,13 +22,17 @@ const InsightFacts = ({ transactions, allTransactions, viewMode, currentDate }) 
 
             const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
             const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
-            const isInvest = t.Category === "Save&Invest" || t.Type === "Transfer" || t.Type === "Invest";
+            const savingEffect = t.Category === "Saving" || t.Category === "Save&Invest"
+                ? amt
+                : t.Category === "SavingWithdrawal"
+                    ? -amt
+                    : 0;
 
             // 1. Income/Expense/Invest Calc
             if (isIncome) totalIncome += amt;
             else if (isExpense) totalExpense += amt;
-            else if (isInvest) {
-                totalInvest += amt;
+            else if (savingEffect) {
+                totalInvest += savingEffect;
             }
 
             // 2. Top Merchant (Expenses only)

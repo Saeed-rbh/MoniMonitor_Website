@@ -5,7 +5,9 @@ const optionalText = (max) => z.string().trim().max(max).nullable().optional();
 
 const transactionFields = {
     Amount: z.coerce.number().finite().positive().max(1_000_000_000),
-    Category: z.preprocess(normalizeCategory, z.enum(["Income", "Expense", "Saving"])),
+    Category: z.preprocess(normalizeCategory, z.enum([
+        "Income", "Expense", "Saving", "SavingWithdrawal", "Transfer", "Investment",
+    ])),
     Label: optionalText(100),
     Reason: optionalText(500),
     Timestamp: z.string().trim().min(1).max(64),
