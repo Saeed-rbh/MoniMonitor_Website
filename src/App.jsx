@@ -18,6 +18,7 @@ const Account = lazy(() => import("./pages/Account/Account"));
 const Finance = lazy(() => import("./pages/Finance/Finance"));
 const SaveInvestAccounts = lazy(() => import("./pages/SaveInvest/SaveInvest"));
 const SaveInvestInsights = lazy(() => import("./pages/SaveInvest/SaveInvestInsights"));
+const AccountTransactions = lazy(() => import("./pages/SaveInvest/AccountTransactions"));
 
 const BrandedLoader = ({ label = "Loading MoniMonitor" }) => (
   <div className="MoniLoader" role="status" aria-label={label}>
@@ -61,6 +62,7 @@ const AuthenticatedLayout = () => {
           <Route path="/Finance" element={<Finance />} />
           <Route path="/Accounts" element={<SaveInvestInsights />} />
           <Route path="/Accounts/Manage" element={<SaveInvestAccounts />} />
+          <Route path="/Accounts/:accountId/Transactions" element={<AccountTransactions />} />
           <Route path="/SaveInvest" element={<Navigate to="/Accounts" replace />} />
           <Route path="/SaveInvest/Accounts" element={<Navigate to="/Accounts/Manage" replace />} />
         </Routes>

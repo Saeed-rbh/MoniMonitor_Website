@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAccountStatistics } from "./accountStatistics";
+import { buildAccountStatistics, getAccountTransactions } from "./accountStatistics";
 
 describe("buildAccountStatistics", () => {
   it("builds separate flow and activity statistics for each account", () => {
@@ -37,5 +37,23 @@ describe("buildAccountStatistics", () => {
       netFlowMinor: 3000,
       transactionCount: 2,
     });
+  });
+
+  it("returns one account's complete monthly history newest first", () => {
+    const account = { id: 2, name: "TFSA", accountRef: "2468" };
+    const result = getAccountTransactions(account, {
+      "2026-01": { transactions: [
+        { id: 1, Timestamp: "2026-01-02", Account: "TFSA" },
+        { id: 2, Timestamp: "2026-01-03", Account: "RBC Chequing" },
+      ] },
+      "2026-02": { transactions: [
+        { id: 3, Timestamp: "2026-02-01", PortfolioAccountId: 2 },
+      ] },
+      "2026-Annual": { transactions: [
+        { id: 4, Timestamp: "2026-03-01", Account: "TFSA" },
+      ] },
+    });
+
+    expect(result.map((transaction) => transaction.id)).toEqual([3, 1]);
   });
 });

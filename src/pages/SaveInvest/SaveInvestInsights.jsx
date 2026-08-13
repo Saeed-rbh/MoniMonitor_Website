@@ -106,7 +106,27 @@ const SaveInvestInsights = () => {
               : 0;
 
             return (
-              <article className="SaveInvestInsights_Account AccountsOverview_Account" key={account.id}>
+              <article
+                className="SaveInvestInsights_Account AccountsOverview_Account"
+                key={account.id}
+                role="link"
+                tabIndex={0}
+                aria-label={`Open ${account.name} transactions`}
+                onClick={() => navigate(`/Accounts/${encodeURIComponent(account.id)}/Transactions`)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    navigate(`/Accounts/${encodeURIComponent(account.id)}/Transactions`);
+                  }
+                }}
+              >
+                <div
+                  className="AccountsOverview_OpenAccount"
+                  aria-hidden="true"
+                >
+                  <span>View transactions</span>
+                  <span>›</span>
+                </div>
                 <header>
                   <div>
                     <h3>{account.name}</h3>

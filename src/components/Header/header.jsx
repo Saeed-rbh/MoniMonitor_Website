@@ -33,7 +33,7 @@ function Header() {
     <header className="MoneyMonitor_header" style={{ zIndex: 1000000 }}>
       <BlurFade delay={0.3 + 0.05 * 6} duration={0.3}>
         {/* Account and profile views use all-time/current data rather than the selected month. */}
-        {!["/Account", "/Profile", "/Accounts", "/Accounts/Manage"].includes(location.pathname) && (
+        {!(["/Account", "/Profile"].includes(location.pathname) || location.pathname.startsWith("/Accounts")) && (
           <ChooseMonth
             isDateClicked={isDateClicked}
             setIsDateClicked={setIsDateClicked}

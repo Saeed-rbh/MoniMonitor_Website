@@ -396,6 +396,42 @@
 
 .AccountsOverview_Account {
   padding: 14px;
+  position: relative;
+  cursor: pointer;
+  transition: border-color 180ms ease, transform 180ms ease;
+}
+
+.AccountsOverview_Account:hover,
+.AccountsOverview_Account:focus-visible {
+  border-color: var(--Bc-3);
+  outline: none;
+}
+
+.AccountsOverview_Account:active {
+  transform: scale(0.99);
+}
+
+.AccountsOverview_OpenAccount {
+  width: 100%;
+  margin: -5px 0 10px;
+  padding: 5px 1px;
+  border-bottom: 1px solid var(--Ac-4);
+  color: var(--Bc-1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  text-align: left;
+  font-size: 0.68rem;
+}
+
+.AccountsOverview_OpenAccount span:last-child {
+  font-size: 1rem;
+  transition: transform 180ms ease;
+}
+
+.AccountsOverview_Account:hover .AccountsOverview_OpenAccount span:last-child,
+.AccountsOverview_Account:focus-visible .AccountsOverview_OpenAccount span:last-child {
+  transform: translateX(3px);
 }
 
 .AccountsOverview_Account > header small,
@@ -511,6 +547,94 @@
 .AccountsOverview_InvestmentStats strong.negative,
 .AccountsOverview_Stats strong.negative {
   color: var(--Gc-1);
+}
+
+.AccountTransactions_Header {
+  align-items: flex-end;
+}
+
+.AccountTransactions_Back {
+  display: block;
+  margin: 0 0 12px;
+  padding: 5px 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--Bc-1) !important;
+}
+
+.AccountTransactions_ListCard {
+  padding: 14px 10px 4px;
+}
+
+.AccountTransactions_List {
+  margin-top: 10px;
+}
+
+.AccountTransactions_Row {
+  min-height: 62px;
+  padding: 8px 4px;
+  border-top: 1px solid var(--Ac-4);
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  box-sizing: border-box;
+}
+
+.AccountTransactions_Icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 13px;
+  background: var(--Ac-4);
+  color: var(--Bc-1);
+  display: grid;
+  place-items: center;
+}
+
+.AccountTransactions_Icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.AccountTransactions_Reason,
+.AccountTransactions_Amount {
+  min-width: 0;
+}
+
+.AccountTransactions_Reason strong {
+  display: block;
+  overflow: hidden;
+  color: var(--Ac-1);
+  font-size: 0.76rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.AccountTransactions_Reason span,
+.AccountTransactions_Amount span {
+  display: block;
+  margin-top: 3px;
+  color: var(--Ac-3);
+  font-size: 0.57rem;
+}
+
+.AccountTransactions_Amount {
+  text-align: right;
+}
+
+.AccountTransactions_Amount strong {
+  color: var(--Gc-1);
+  font-size: 0.75rem;
+  font-weight: 550;
+}
+
+.AccountTransactions_Amount.in strong {
+  color: var(--Fc-1);
+}
+
+.AccountTransactions_Sentinel {
+  height: 2px;
 }
 
 @media (max-width: 350px) {

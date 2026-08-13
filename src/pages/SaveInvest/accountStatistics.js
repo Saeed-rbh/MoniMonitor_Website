@@ -4,7 +4,7 @@ const normalize = (value) => String(value || "")
   .toLowerCase()
   .replace(/[^a-z0-9]/g, "");
 
-const matchesAccount = (transaction, account) => {
+export const matchesAccount = (transaction, account) => {
   if (Number(transaction?.PortfolioAccountId) === Number(account?.id)) return true;
   const transactionAccount = normalize(transaction?.Account);
   if (!transactionAccount) return false;
@@ -14,6 +14,13 @@ const matchesAccount = (transaction, account) => {
     .some((identity) => transactionAccount === identity ||
       transactionAccount.includes(identity) || identity.includes(transactionAccount));
 };
+
+export const getAccountTransactions = (account, allTransactions = {}) =>
+  Object.entries(allTransactions)
+    .filter(([key]) => MONTH_KEY.test(key))
+    .flatMap(([, value]) => Array.isArray(value?.transactions) ? value.transactions : [])
+    .filter((transaction) => matchesAccount(transaction, account))
+    .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp));
 
 const transactionFlow = (transaction) => {
   const explicitFlow = String(transaction?.AccountFlow || "").toUpperCase();
@@ -26,14 +33,8 @@ const transactionFlow = (transaction) => {
 };
 
 export const buildAccountStatistics = (accounts = [], allTransactions = {}) => {
-  const transactions = Object.entries(allTransactions)
-    .filter(([key]) => MONTH_KEY.test(key))
-    .flatMap(([, value]) => Array.isArray(value?.transactions) ? value.transactions : []);
-
   return accounts.map((account) => {
-    const matchingTransactions = transactions
-      .filter((transaction) => matchesAccount(transaction, account))
-      .sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
+    const matchingTransactions = getAccountTransactions(account, allTransactions).reverse();
     let moneyInMinor = 0;
     let moneyOutMinor = 0;
 
