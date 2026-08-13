@@ -162,7 +162,9 @@ const TransactionListItem = ({
             : visibleButton === "RR" && !resetMod
               ? "translateX(380px)"
               : "translateX(0px)",
-    touchAction: "none",
+    // Let the browser own vertical gestures so the virtualized list scrolls on
+    // mobile. The x-axis drag handler still receives horizontal swipe gestures.
+    touchAction: "pan-y",
     marginTop: finalDel || finalMod ? -55 : 0,
     opacity: finalDel || finalMod ? 0 : 1,
     scale: isScaled && !isSwiped ? 0.9 : 1,

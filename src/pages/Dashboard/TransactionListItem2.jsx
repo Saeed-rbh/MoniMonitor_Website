@@ -63,6 +63,7 @@ const TransactionListItem = ({
   const swipeStyle = useSpring({
     transform: isSwiped ? "translateX(-120px)" : "translateX(0px)",
     scale: isScaled && !isSwiped ? 0.9 : 1,
+    touchAction: "pan-y",
   });
 
   const handleClick = (event) => {
