@@ -16,6 +16,14 @@ const toFiniteNumber = (value) => {
 const calculatePercentage = (value, max) =>
   max === 0 ? 0 : (toFiniteNumber(value) / max) * PERCENTAGE_FACTOR;
 
+const formatBalance = (value) =>
+  new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(toFiniteNumber(value));
+
 const hasMonthData = (month) =>
   Math.abs(toFiniteNumber(month?.income)) +
     Math.abs(toFiniteNumber(month?.Expense)) +
@@ -262,6 +270,9 @@ const MainStatistics = ({
             </span>
             <span>Insight</span> Dashboard
           </h3>
+          <p className="MainStatistics-Balance" aria-live="polite">
+            Balance: {formatBalance(processedData[mainPageMonth]?.net)}
+          </p>
           <div
             className="MainStatistics-Graph"
           >

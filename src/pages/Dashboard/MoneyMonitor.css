@@ -1020,6 +1020,19 @@
   margin-right: 5px;
 }
 
+.MainStatistics-Balance {
+  position: absolute;
+  top: 32px;
+  left: 10px;
+  z-index: 20;
+  margin: 0;
+  color: var(--Ac-2);
+  font-family: "Noto Sans", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
 .MainStatistics-arrowN {
   position: absolute;
   border-radius: 50px;
