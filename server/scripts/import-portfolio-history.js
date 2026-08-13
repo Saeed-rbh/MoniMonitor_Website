@@ -3,6 +3,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { getDb } = require('../src/database/db');
+const { accountMatchScore, transactionBalanceDelta } = require('../src/services/accountMatching');
 
 const inputPath = process.argv[2] ? path.resolve(process.argv[2]) : null;
 if (!inputPath) throw new Error('Usage: node scripts/import-portfolio-history.js <transactions.json>');
@@ -153,6 +154,16 @@ async function main() {
             `SELECT * FROM transactions WHERE userId = ? ORDER BY Timestamp ASC, id ASC`,
             [userId]
         );
+        const ledgerAccounts = await db.all(
+            `SELECT * FROM investment_accounts
+             WHERE userId = ? AND accountType NOT IN ('TFSA', 'Crypto')`,
+            [userId]
+        );
+        const ledgerState = new Map(ledgerAccounts.map((account) => [account.id, {
+            account,
+            cashMinor: 0,
+            updatedAt: null,
+        }]));
         const accountState = new Map([
             ['TFSA', { id: tfsa.id, cashMinor: 0, positions: new Map(), updatedAt: null }],
             ['Crypto', { id: crypto.id, cashMinor: 0, positions: new Map(), updatedAt: null }],
@@ -169,7 +180,30 @@ async function main() {
             return state.positions.get(symbol);
         };
 
+        await db.run('DELETE FROM account_balance_events WHERE userId = ?', [userId]);
+
         for (const transaction of allTransactions) {
+            const rankedLedgerAccounts = ledgerAccounts
+                .map((account) => ({ account, score: accountMatchScore(transaction, account) }))
+                .filter(({ score }) => score > 0)
+                .sort((a, b) => b.score - a.score);
+            const ledgerMatch = rankedLedgerAccounts[0];
+            if (ledgerMatch && ledgerMatch.score >= 30 &&
+                (!rankedLedgerAccounts[1] || rankedLedgerAccounts[1].score !== ledgerMatch.score)) {
+                const ledger = ledgerState.get(ledgerMatch.account.id);
+                const deltaMinor = transactionBalanceDelta(transaction, ledgerMatch.account, Number(transaction.AmountMinor || 0));
+                if (deltaMinor !== null) {
+                    ledger.cashMinor += deltaMinor;
+                    ledger.updatedAt = transaction.Timestamp;
+                    await db.run(
+                        `INSERT INTO account_balance_events
+                            (userId, accountId, sourceTransactionId, deltaMinor, occurredAt)
+                         VALUES (?, ?, ?, ?, ?)`,
+                        [userId, ledgerMatch.account.id, transaction.id, deltaMinor, transaction.Timestamp]
+                    );
+                }
+            }
+
             const kind = accountKind(transaction, tfsa.id, crypto.id, tfsaSymbols, cryptoSymbols);
             if (!kind) continue;
             const state = accountState.get(kind);
@@ -245,6 +279,16 @@ async function main() {
             }
         }
 
+        for (const ledger of ledgerState.values()) {
+            if (ledger.cashMinor < 0) {
+                throw new Error(`${ledger.account.name} ledger ends negative (${ledger.cashMinor})`);
+            }
+            await db.run(
+                'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                [ledger.cashMinor, ledger.updatedAt || now, ledger.account.id, userId]
+            );
+        }
+
         for (const [kind, state] of accountState.entries()) {
             if (state.cashMinor < 0) throw new Error(`${kind} cash is negative (${state.cashMinor})`);
             await db.run(
@@ -283,8 +327,8 @@ async function main() {
         );
         const resultAccounts = await db.all(
             `SELECT id, name, accountType, accountRef, cashMinor
-             FROM investment_accounts WHERE id IN (?, ?) ORDER BY id`,
-            portfolioAccountIds
+             FROM investment_accounts WHERE userId = ? ORDER BY id`,
+            [userId]
         );
         const holdings = await db.all(
             `SELECT accountId, symbol, quantity, averageCostMinor, priceMinor

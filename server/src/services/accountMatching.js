@@ -42,6 +42,10 @@ function accountMatchScore(transaction, account, preferredAccountId, preferredCo
 
 function transactionBalanceDelta(transaction, account, amountMinor) {
     const isCreditCard = account.accountType === 'Credit Card';
+    const accountFlow = String(transaction.AccountFlow || '').toUpperCase();
+    if (accountFlow === 'IN') return isCreditCard ? -amountMinor : amountMinor;
+    if (accountFlow === 'OUT') return isCreditCard ? amountMinor : -amountMinor;
+    if (accountFlow === 'NONE') return null;
     if (transaction.Category === 'Expense') return isCreditCard ? amountMinor : -amountMinor;
     if (transaction.Category === 'Income') return isCreditCard ? -amountMinor : amountMinor;
     if (transaction.Category === 'Saving' && transaction.Label === 'Debt Payment') return -amountMinor;

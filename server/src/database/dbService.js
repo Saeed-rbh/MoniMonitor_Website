@@ -341,7 +341,8 @@ async function reconcileTransactionAccountBalances(userId) {
     const transactions = await db.all(
         `SELECT id FROM transactions
          WHERE userId = ? AND ReceivedAt IS NOT NULL
-           AND (Category IN ('Expense', 'Income') OR (Category = 'Saving' AND Label = 'Debt Payment'))
+           AND (AccountFlow IN ('IN', 'OUT') OR Category IN ('Expense', 'Income')
+                OR (Category = 'Saving' AND Label = 'Debt Payment'))
            AND id NOT IN (
              SELECT sourceTransactionId FROM account_balance_events WHERE userId = ?
          ) ORDER BY Timestamp ASC`,
