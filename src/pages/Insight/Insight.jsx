@@ -11,6 +11,7 @@ import { getSaveInvestActivity } from "../../services/transactionService";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 import {
     buildAllTimeInsightData,
+    getCurrentInvestmentValue,
     getVisibleInsightPeriodCount,
 } from "./insightPeriodData";
 
@@ -172,6 +173,9 @@ const Insight = () => {
     const totalIncome = useMemo(() => dailyIncome.reduce((a, b) => a + (b || 0), 0), [dailyIncome]);
     const totalExpense = useMemo(() => dailyExpense.reduce((a, b) => a + (b || 0), 0), [dailyExpense]);
     const totalInvest = useMemo(() => dailyInvest.reduce((a, b) => a + (b || 0), 0), [dailyInvest]);
+    const displayedInvestTotal = viewMode === 'alltime'
+        ? getCurrentInvestmentValue(portfolio || {})
+        : totalInvest;
 
     const portfolioNetValue = Number(portfolio?.totalValueMinor);
     const totalBalance = viewMode === 'alltime'
@@ -626,7 +630,7 @@ const Insight = () => {
                 {renderGrid("Expense", "var(--Gc-1)", dailyExpense, maxExpense, totalExpense)}
 
                 {/* Invest Grid */}
-                {renderGrid("Invest", "#fff", dailyInvest, maxInvest, totalInvest)}
+                {renderGrid("Invest", "#fff", dailyInvest, maxInvest, displayedInvestTotal)}
             </div>
 
             <section className="Insight_ChartCard" style={{ width: "100%", flexShrink: 0 }}>

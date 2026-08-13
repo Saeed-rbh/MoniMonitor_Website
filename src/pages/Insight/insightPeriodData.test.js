@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     buildAllTimeInsightData,
+    getCurrentInvestmentValue,
     getVisibleInsightPeriodCount,
 } from "./insightPeriodData";
 
@@ -79,5 +80,17 @@ describe("getVisibleInsightPeriodCount", () => {
             totalPeriods: 12,
             now,
         })).toBe(12);
+    });
+});
+
+describe("getCurrentInvestmentValue", () => {
+    it("sums current TFSA and crypto values without counting other accounts", () => {
+        expect(getCurrentInvestmentValue({
+            accounts: [
+                { name: "TFSA", accountType: "TFSA", totalValueMinor: 948643 },
+                { name: "Crypto", accountType: "Crypto", totalValueMinor: 86 },
+                { name: "Future", accountType: "Savings", totalValueMinor: 4031034 },
+            ],
+        })).toBe(9487.29);
     });
 });

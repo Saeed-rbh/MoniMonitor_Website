@@ -24,6 +24,16 @@ export const getVisibleInsightPeriodCount = ({
     return Math.min(safeTotal, now.getDate());
 };
 
+export const getCurrentInvestmentValue = (portfolio = {}) =>
+    (portfolio.accounts || [])
+        .filter((account) => {
+            const type = String(account?.accountType || '').toLowerCase();
+            const name = String(account?.name || '').toLowerCase();
+            return type === 'tfsa' || type === 'crypto' ||
+                name.includes('tfsa') || name.includes('crypto');
+        })
+        .reduce((sum, account) => sum + Number(account?.totalValueMinor || 0), 0) / 100;
+
 export const buildAllTimeInsightData = (allTransactions = {}) => {
     const totalsByYear = new Map();
     const transactions = [];
