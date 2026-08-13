@@ -9,7 +9,10 @@ import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
 import { getPortfolioAPI } from "../../services/apiService";
 import { getSaveInvestActivity } from "../../services/transactionService";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
-import { buildAllTimeInsightData } from "./insightPeriodData";
+import {
+    buildAllTimeInsightData,
+    getVisibleInsightPeriodCount,
+} from "./insightPeriodData";
 
 const Insight = () => {
     // Access global transaction data from context
@@ -41,7 +44,7 @@ const Insight = () => {
         },
     });
 
-    const { dailyIncome, dailyExpense, dailyInvest, daysInMonth, paddingDays, year, periodLabels, accountBalance } = useMemo(() => {
+    const { dailyIncome, dailyExpense, dailyInvest, daysInMonth, paddingDays, year, month, periodLabels, accountBalance } = useMemo(() => {
         // Determine the Target Month/Year
         let targetYear, targetMonth;
 
@@ -66,6 +69,7 @@ const Insight = () => {
                 daysInMonth: allTimeData.labels.length,
                 paddingDays: 0,
                 year: targetYear,
+                month: targetMonth,
                 periodLabels: allTimeData.labels,
                 accountBalance: allTimeData.accountBalance,
             };
@@ -99,6 +103,7 @@ const Insight = () => {
                 daysInMonth: 12,
                 paddingDays: 0,
                 year: targetYear,
+                month: targetMonth,
                 periodLabels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
                 accountBalance: null
             };
@@ -117,6 +122,7 @@ const Insight = () => {
                 daysInMonth,
                 paddingDays,
                 year: targetYear,
+                month: targetMonth,
                 periodLabels: [],
                 accountBalance: null
             };
@@ -153,6 +159,7 @@ const Insight = () => {
             daysInMonth,
             paddingDays,
             year: targetYear,
+            month: targetMonth,
             periodLabels: [],
             accountBalance: null
         };
@@ -172,6 +179,13 @@ const Insight = () => {
             ? portfolioNetValue / 100
             : accountBalance
         : totalIncome - totalExpense;
+
+    const visiblePeriodCount = useMemo(() => getVisibleInsightPeriodCount({
+        viewMode,
+        year,
+        month,
+        totalPeriods: dailyIncome.length - paddingDays,
+    }), [viewMode, year, month, dailyIncome.length, paddingDays]);
 
     // --- Balance Comparison Logic ---
     const percentageChange = useMemo(() => {
@@ -399,9 +413,9 @@ const Insight = () => {
 
     const chartData = useMemo(() => {
         if (!dailyIncome || !dailyExpense || !dailyInvest) return [];
-        const income = dailyIncome.slice(paddingDays);
-        const expense = dailyExpense.slice(paddingDays);
-        const invest = dailyInvest.slice(paddingDays);
+        const income = dailyIncome.slice(paddingDays, paddingDays + visiblePeriodCount);
+        const expense = dailyExpense.slice(paddingDays, paddingDays + visiblePeriodCount);
+        const invest = dailyInvest.slice(paddingDays, paddingDays + visiblePeriodCount);
         let accIncome = 0;
         let accExpense = 0;
         let accInvest = 0;
@@ -418,12 +432,12 @@ const Insight = () => {
                 invest: accInvest
             };
         });
-    }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode]);
+    }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode, visiblePeriodCount]);
 
     const periodTrendData = useMemo(() => {
-        const income = dailyIncome.slice(paddingDays);
-        const expense = dailyExpense.slice(paddingDays);
-        const invest = dailyInvest.slice(paddingDays);
+        const income = dailyIncome.slice(paddingDays, paddingDays + visiblePeriodCount);
+        const expense = dailyExpense.slice(paddingDays, paddingDays + visiblePeriodCount);
+        const invest = dailyInvest.slice(paddingDays, paddingDays + visiblePeriodCount);
 
         return income.map((value, index) => ({
             period: viewMode === 'monthly' ? String(index + 1) : periodLabels[index],
@@ -431,7 +445,7 @@ const Insight = () => {
             expenses: expense[index] || 0,
             savings: invest[index] || 0,
         }));
-    }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode]);
+    }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode, visiblePeriodCount]);
 
     const periodTrendTitle = viewMode === 'monthly'
         ? 'Day-by-Day Spending Trend'

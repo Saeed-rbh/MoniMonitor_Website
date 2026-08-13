@@ -1,5 +1,29 @@
 const MONTH_KEY_PATTERN = /^(\d{4})-(\d{2})$/;
 
+export const getVisibleInsightPeriodCount = ({
+    viewMode,
+    year,
+    month,
+    totalPeriods,
+    now = new Date(),
+}) => {
+    const safeTotal = Math.max(0, Number(totalPeriods) || 0);
+    if (viewMode === 'alltime') return safeTotal;
+
+    const currentYear = now.getFullYear();
+    if (Number(year) < currentYear) return safeTotal;
+    if (Number(year) > currentYear) return 0;
+
+    if (viewMode === 'yearly') {
+        return Math.min(safeTotal, now.getMonth() + 1);
+    }
+
+    const currentMonth = now.getMonth();
+    if (Number(month) < currentMonth) return safeTotal;
+    if (Number(month) > currentMonth) return 0;
+    return Math.min(safeTotal, now.getDate());
+};
+
 export const buildAllTimeInsightData = (allTransactions = {}) => {
     const totalsByYear = new Map();
     const transactions = [];

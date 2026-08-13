@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildAllTimeInsightData } from "./insightPeriodData";
+import {
+    buildAllTimeInsightData,
+    getVisibleInsightPeriodCount,
+} from "./insightPeriodData";
 
 describe("buildAllTimeInsightData", () => {
     it("aggregates the full history by year in chronological order", () => {
@@ -44,5 +47,37 @@ describe("buildAllTimeInsightData", () => {
 
         expect(result.labels).toEqual([]);
         expect(result.transactions).toEqual([]);
+    });
+});
+
+describe("getVisibleInsightPeriodCount", () => {
+    const now = new Date(2026, 8, 14);
+
+    it("stops a current-year trend at the current month", () => {
+        expect(getVisibleInsightPeriodCount({
+            viewMode: "yearly",
+            year: 2026,
+            totalPeriods: 12,
+            now,
+        })).toBe(9);
+    });
+
+    it("stops a current-month trend at the current day", () => {
+        expect(getVisibleInsightPeriodCount({
+            viewMode: "monthly",
+            year: 2026,
+            month: 8,
+            totalPeriods: 30,
+            now,
+        })).toBe(14);
+    });
+
+    it("keeps completed historical periods intact", () => {
+        expect(getVisibleInsightPeriodCount({
+            viewMode: "yearly",
+            year: 2025,
+            totalPeriods: 12,
+            now,
+        })).toBe(12);
     });
 });

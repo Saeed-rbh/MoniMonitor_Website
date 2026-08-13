@@ -30,6 +30,22 @@ const InsightTrendChart = ({ data }) => {
         return null;
     };
 
+    const endDot = (color) => ({ cx, cy, index }) => {
+        if (index !== data.length - 1 || !Number.isFinite(cx) || !Number.isFinite(cy)) {
+            return null;
+        }
+        return (
+            <circle
+                cx={cx}
+                cy={cy}
+                r={3.5}
+                fill={color}
+                stroke="var(--Ec-1)"
+                strokeWidth={1.5}
+            />
+        );
+    };
+
     return (
         <div style={{ width: '100%', height: 150, paddingRight: '10px' }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -60,7 +76,7 @@ const InsightTrendChart = ({ data }) => {
                         name="Income"
                         stroke="var(--Fc-1)"
                         strokeWidth={2}
-                        dot={false}
+                        dot={endDot("var(--Fc-1)")}
                         activeDot={{ r: 4 }}
                     />
                     <Line
@@ -69,7 +85,7 @@ const InsightTrendChart = ({ data }) => {
                         name="Expense"
                         stroke="var(--Gc-1)"
                         strokeWidth={2}
-                        dot={false}
+                        dot={endDot("var(--Gc-1)")}
                         activeDot={{ r: 4 }}
                     />
                     <Line
@@ -78,7 +94,7 @@ const InsightTrendChart = ({ data }) => {
                         name="Invest"
                         stroke="#fff"
                         strokeWidth={2}
-                        dot={false}
+                        dot={endDot("#fff")}
                         activeDot={{ r: 4 }}
                     />
                 </LineChart>
