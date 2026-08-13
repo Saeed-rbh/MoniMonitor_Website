@@ -38,7 +38,7 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
       onManageAccounts();
       return;
     }
-    navigate("/SaveInvest/Accounts");
+    navigate("/Accounts/Manage");
   }, [navigate, onManageAccounts]);
   const [open, setOpen] = useState(false);
 

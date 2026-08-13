@@ -232,8 +232,7 @@ import React from "react";
 import { useSpring, animated, easings } from "@react-spring/web";
 import { TbHomeStats } from "react-icons/tb";
 import { HiOutlinePlusSm } from "react-icons/hi";
-import { LuPiggyBank } from "react-icons/lu";
-import { IoWalletOutline } from "react-icons/io5";
+import { LuLandmark, LuUser } from "react-icons/lu";
 import { RiDonutChartFill } from "react-icons/ri";
 import { ScalableElement } from "../../utils/tools";
 import { useNavigate } from "react-router-dom";
@@ -334,16 +333,16 @@ const MainMenu = () => {
 
   const menuItemsR = [
     {
-      icon: LuPiggyBank,
-      label: "Save/Invest",
-      route: "/SaveInvest",
-      active: location.startsWith("/SaveInvest"),
+      icon: LuLandmark,
+      label: "Accounts",
+      route: "/Accounts",
+      active: location.startsWith("/Accounts") || location.startsWith("/SaveInvest"),
     },
     {
-      icon: IoWalletOutline,
-      label: "Account",
-      route: "/Account",
-      active: location === "/Account",
+      icon: LuUser,
+      label: "Profile",
+      route: "/Profile",
+      active: location === "/Profile" || location === "/Account",
     },
   ];
 

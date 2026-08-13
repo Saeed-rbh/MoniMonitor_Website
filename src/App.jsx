@@ -56,10 +56,13 @@ const AuthenticatedLayout = () => {
           <Route path="/Transactions" element={<><Telegram /><Transactions /></>} />
           <Route path="/AddTransaction" element={<AddTransaction />} />
           <Route path="/Insight" element={<Insight />} />
-          <Route path="/Account" element={<Account />} />
+          <Route path="/Profile" element={<Account />} />
+          <Route path="/Account" element={<Navigate to="/Profile" replace />} />
           <Route path="/Finance" element={<Finance />} />
-          <Route path="/SaveInvest" element={<SaveInvestInsights />} />
-          <Route path="/SaveInvest/Accounts" element={<SaveInvestAccounts />} />
+          <Route path="/Accounts" element={<SaveInvestInsights />} />
+          <Route path="/Accounts/Manage" element={<SaveInvestAccounts />} />
+          <Route path="/SaveInvest" element={<Navigate to="/Accounts" replace />} />
+          <Route path="/SaveInvest/Accounts" element={<Navigate to="/Accounts/Manage" replace />} />
         </Routes>
       </div>
       <MainMenu />

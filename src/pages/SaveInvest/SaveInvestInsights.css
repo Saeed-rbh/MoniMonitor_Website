@@ -386,6 +386,133 @@
   font-size: 0.72rem !important;
 }
 
+.AccountsOverview_Metrics article {
+  min-height: 96px;
+}
+
+.AccountsOverview_ListCard {
+  padding: 14px 10px;
+}
+
+.AccountsOverview_Account {
+  padding: 14px;
+}
+
+.AccountsOverview_Account > header small,
+.AccountsOverview_Balance small {
+  display: block;
+  margin-top: 3px;
+  color: var(--Ac-3);
+  font-size: 0.57rem;
+}
+
+.AccountsOverview_Balance {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.AccountsOverview_Balance > strong {
+  color: var(--Bc-1);
+  font-size: 0.88rem;
+}
+
+.AccountsOverview_Balance > strong.negative {
+  color: var(--Gc-1);
+}
+
+.AccountsOverview_Share {
+  width: 100%;
+  height: 4px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--Ac-4);
+}
+
+.AccountsOverview_Share span {
+  display: block;
+  height: 100%;
+  min-width: 2px;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--Bc-1), var(--Fc-2));
+}
+
+.AccountsOverview_Share.debt span {
+  background: linear-gradient(90deg, var(--Bc-1), var(--Gc-2));
+}
+
+.AccountsOverview_ShareLabel {
+  margin-top: 4px;
+  color: var(--Ac-3);
+  font-size: 0.56rem;
+  text-align: right;
+}
+
+.AccountsOverview_Stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.AccountsOverview_Stats > span {
+  min-height: 43px;
+  box-sizing: border-box;
+}
+
+.AccountsOverview_Stats strong {
+  font-size: 0.72rem;
+}
+
+.AccountsOverview_Period,
+.AccountsOverview_InvestmentStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--Ac-4);
+}
+
+.AccountsOverview_Period span,
+.AccountsOverview_InvestmentStats span {
+  color: var(--Ac-3);
+  font-size: 0.57rem;
+}
+
+.AccountsOverview_Period span:last-child {
+  text-align: right;
+}
+
+.AccountsOverview_Period strong,
+.AccountsOverview_InvestmentStats strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--Ac-2);
+  font-size: 0.62rem;
+  font-weight: 550;
+}
+
+.AccountsOverview_InvestmentStats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.AccountsOverview_InvestmentStats span:nth-child(2) {
+  text-align: center;
+}
+
+.AccountsOverview_InvestmentStats span:last-child {
+  text-align: right;
+}
+
+.AccountsOverview_InvestmentStats strong.positive,
+.AccountsOverview_Stats strong.positive {
+  color: var(--Fc-1);
+}
+
+.AccountsOverview_InvestmentStats strong.negative,
+.AccountsOverview_Stats strong.negative {
+  color: var(--Gc-1);
+}
+
 @media (max-width: 350px) {
   .SaveInvestInsights_Header {
     flex-wrap: wrap;
