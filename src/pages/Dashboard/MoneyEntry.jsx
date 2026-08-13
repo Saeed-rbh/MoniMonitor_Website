@@ -12,6 +12,12 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
   };
 
   const redirect = useNavigate();
+  const formattedBalance = new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(Transactions.netTotal || 0));
 
   const redirectClick = (path = '/Transactions') => {
     redirect(path);
@@ -28,6 +34,9 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
               </span>
               <span>{Transactions.month}</span> Summary
             </h1>
+            <p className="MoneyEntry_TitleBalance" aria-live="polite">
+              Balance: <strong>{formattedBalance}</strong>
+            </p>
           </div>
         </BlurFade>
         <div className="MoneyEntry_Data">

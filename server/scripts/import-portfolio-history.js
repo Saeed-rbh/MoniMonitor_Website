@@ -12,7 +12,46 @@ const dedupeExact = process.argv.includes('--dedupe-exact');
 if (!inputPath) throw new Error('Usage: node scripts/import-portfolio-history.js <transactions.json>');
 if (!process.env.USER_ID) throw new Error('USER_ID is required');
 
-let rows = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
+function parseTransactionFile(filePath) {
+    const source = fs.readFileSync(filePath, 'utf8');
+    try {
+        return JSON.parse(source);
+    } catch (originalError) {
+        // Some exports contain a literal line break inside a quoted Reason.
+        // Normalize only line breaks inside JSON strings; structural formatting
+        // remains unchanged and every other parse error still fails normally.
+        const normalized = source.replace(/\r\n/g, '\n');
+        let inString = false;
+        let escaped = false;
+        let repaired = '';
+        let repairedLineBreaks = 0;
+
+        for (const character of normalized) {
+            if (inString && character === '\n') {
+                repaired += ' ';
+                repairedLineBreaks += 1;
+                continue;
+            }
+            repaired += character;
+            if (!inString && character === '"') {
+                inString = true;
+            } else if (inString && escaped) {
+                escaped = false;
+            } else if (inString && character === '\\') {
+                escaped = true;
+            } else if (inString && character === '"') {
+                inString = false;
+            }
+        }
+
+        if (!repairedLineBreaks) throw originalError;
+        const parsed = JSON.parse(repaired);
+        console.log(`Normalized ${repairedLineBreaks} raw line break(s) inside JSON text fields.`);
+        return parsed;
+    }
+}
+
+let rows = parseTransactionFile(inputPath);
 if (!Array.isArray(rows) || !rows.length) throw new Error('The transaction file must be a non-empty JSON array');
 
 if (replaceAll) {

@@ -147,9 +147,25 @@
   display: flex;
   width: -webkit-fill-available;
   flex-direction: row;
+  align-items: center;
   justify-content: space-between;
   margin: 0 0 2px;
   padding: 0 5px;
+}
+
+.MoneyEntry_TitleBalance {
+  margin: 0 0 7px;
+  color: var(--Ac-2);
+  font-family: "Noto Sans", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.MoneyEntry_TitleBalance strong {
+  color: var(--Bc-1);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .MoneyEntry_total {
@@ -1018,19 +1034,6 @@
 .MainStatistics h3 span {
   font-weight: 300;
   margin-right: 5px;
-}
-
-.MainStatistics-Balance {
-  position: absolute;
-  top: 32px;
-  left: 10px;
-  z-index: 20;
-  margin: 0;
-  color: var(--Ac-2);
-  font-family: "Noto Sans", sans-serif;
-  font-size: 0.72rem;
-  font-weight: 400;
-  letter-spacing: 0.01em;
 }
 
 .MainStatistics-arrowN {
