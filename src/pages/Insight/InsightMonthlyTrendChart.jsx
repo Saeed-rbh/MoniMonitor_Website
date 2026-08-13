@@ -89,8 +89,8 @@ const InsightMonthlyTrendChart = ({ data }) => {
                         maxBarSize={20}
                     />
                     <Bar
-                        dataKey="savings"
-                        name="Savings"
+                        dataKey="invest"
+                        name="Invest"
                         fill="var(--Bc-1)"
                         radius={[4, 4, 0, 0]}
                         maxBarSize={20}

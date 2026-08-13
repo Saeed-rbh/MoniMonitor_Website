@@ -7,11 +7,11 @@ import { animated, useSpring, easings } from "@react-spring/web";
 import { ScalableElement } from "../../utils/tools";
 import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
 import { getPortfolioAPI } from "../../services/apiService";
-import { getSaveInvestActivity } from "../../services/transactionService";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 import {
     buildAllTimeInsightData,
-    getCurrentInvestmentValue,
+    buildInvestmentValueTimeline,
+    getInvestmentPeriodValues,
     getVisibleInsightPeriodCount,
 } from "./insightPeriodData";
 
@@ -30,6 +30,11 @@ const Insight = () => {
             active = false;
         };
     }, [allTransactions]);
+
+    const investmentTimeline = useMemo(
+        () => buildInvestmentValueTimeline(allTransactions, portfolio || {}),
+        [allTransactions, portfolio]
+    );
 
     const scaleStyle = useSpring({
         position: "relative",
@@ -62,11 +67,15 @@ const Insight = () => {
 
         if (viewMode === 'alltime') {
             const allTimeData = buildAllTimeInsightData(allTransactions);
+            const investValues = getInvestmentPeriodValues(
+                investmentTimeline,
+                allTimeData.labels.map((label) => new Date(Number(label) + 1, 0, 1).getTime() - 1)
+            );
 
             return {
                 dailyIncome: allTimeData.income,
                 dailyExpense: allTimeData.expense,
-                dailyInvest: allTimeData.invest,
+                dailyInvest: investValues,
                 daysInMonth: allTimeData.labels.length,
                 paddingDays: 0,
                 year: targetYear,
@@ -81,7 +90,12 @@ const Insight = () => {
             const monthsInYear = 12;
             const incomeArr = Array(monthsInYear).fill(0);
             const expenseArr = Array(monthsInYear).fill(0);
-            const investArr = Array(monthsInYear).fill(0);
+            const investArr = getInvestmentPeriodValues(
+                investmentTimeline,
+                Array.from({ length: monthsInYear }, (_, index) =>
+                    new Date(targetYear, index + 1, 1).getTime() - 1
+                )
+            );
 
             if (allTransactions) {
                 Object.entries(allTransactions).forEach(([key, val]) => {
@@ -92,7 +106,6 @@ const Insight = () => {
 
                         incomeArr[m] = val.totalIncome || 0;
                         expenseArr[m] = val.totalExpense || 0;
-                        investArr[m] = val.totalSaveInvest ?? val.totalSaving ?? 0;
                     }
                 });
             }
@@ -131,7 +144,12 @@ const Insight = () => {
 
         const incomeArr = Array(daysInMonth).fill(0);
         const expenseArr = Array(daysInMonth).fill(0);
-        const investArr = Array(daysInMonth).fill(0);
+        const investArr = getInvestmentPeriodValues(
+            investmentTimeline,
+            Array.from({ length: daysInMonth }, (_, index) =>
+                new Date(targetYear, targetMonth, index + 2).getTime() - 1
+            )
+        );
 
         transactions.forEach(t => {
             const date = new Date(t.Timestamp);
@@ -143,11 +161,9 @@ const Insight = () => {
             if (tYear === targetYear && tMonth === targetMonth && day >= 1 && day <= daysInMonth) {
                 const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
                 const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
-                const saveInvestActivity = getSaveInvestActivity(t);
 
                 if (isIncome) incomeArr[day - 1] += amount;
                 else if (isExpense) expenseArr[day - 1] += amount;
-                else investArr[day - 1] += saveInvestActivity;
             }
         });
 
@@ -164,7 +180,7 @@ const Insight = () => {
             periodLabels: [],
             accountBalance: null
         };
-    }, [transactions, allTransactions, whichMonth, viewMode]);
+    }, [transactions, allTransactions, whichMonth, viewMode, investmentTimeline]);
 
     const maxIncome = useMemo(() => Math.max(...dailyIncome.filter(v => v !== null), 1), [dailyIncome]);
     const maxExpense = useMemo(() => Math.max(...dailyExpense.filter(v => v !== null), 1), [dailyExpense]);
@@ -172,17 +188,6 @@ const Insight = () => {
 
     const totalIncome = useMemo(() => dailyIncome.reduce((a, b) => a + (b || 0), 0), [dailyIncome]);
     const totalExpense = useMemo(() => dailyExpense.reduce((a, b) => a + (b || 0), 0), [dailyExpense]);
-    const totalInvest = useMemo(() => dailyInvest.reduce((a, b) => a + (b || 0), 0), [dailyInvest]);
-    const displayedInvestTotal = viewMode === 'alltime'
-        ? getCurrentInvestmentValue(portfolio || {})
-        : totalInvest;
-
-    const portfolioNetValue = Number(portfolio?.totalValueMinor);
-    const totalBalance = viewMode === 'alltime'
-        ? Number.isFinite(portfolioNetValue)
-            ? portfolioNetValue / 100
-            : accountBalance
-        : totalIncome - totalExpense;
 
     const visiblePeriodCount = useMemo(() => getVisibleInsightPeriodCount({
         viewMode,
@@ -190,6 +195,18 @@ const Insight = () => {
         month,
         totalPeriods: dailyIncome.length - paddingDays,
     }), [viewMode, year, month, dailyIncome.length, paddingDays]);
+
+    const displayedInvestTotal = useMemo(() => {
+        const visibleValues = dailyInvest.slice(paddingDays, paddingDays + visiblePeriodCount);
+        return visibleValues.length ? Number(visibleValues.at(-1)) || 0 : 0;
+    }, [dailyInvest, paddingDays, visiblePeriodCount]);
+
+    const portfolioNetValue = Number(portfolio?.totalValueMinor);
+    const totalBalance = viewMode === 'alltime'
+        ? Number.isFinite(portfolioNetValue)
+            ? portfolioNetValue / 100
+            : accountBalance
+        : totalIncome - totalExpense;
 
     // --- Balance Comparison Logic ---
     const percentageChange = useMemo(() => {
@@ -381,18 +398,16 @@ const Insight = () => {
         const invest = dailyInvest.slice(paddingDays, paddingDays + visiblePeriodCount);
         let accIncome = 0;
         let accExpense = 0;
-        let accInvest = 0;
 
         return income.map((_, i) => {
             accIncome += (income[i] || 0);
             accExpense += (expense[i] || 0);
-            accInvest += (invest[i] || 0);
 
             return {
                 day: viewMode === 'monthly' ? i + 1 : periodLabels[i],
                 income: accIncome,
                 expense: accExpense,
-                invest: accInvest
+                invest: invest[i] || 0
             };
         });
     }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode, visiblePeriodCount]);
@@ -406,7 +421,7 @@ const Insight = () => {
             period: viewMode === 'monthly' ? String(index + 1) : periodLabels[index],
             income: value || 0,
             expenses: expense[index] || 0,
-            savings: invest[index] || 0,
+            invest: invest[index] || 0,
         }));
     }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode, visiblePeriodCount]);
 
