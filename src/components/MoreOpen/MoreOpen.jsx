@@ -71,6 +71,7 @@ const MoreOpen = ({
       }}
       drag="y"
       dragControls={controls}
+      dragListener={false}
       dragConstraints={{ top: 0, bottom: 0 }}
       dragElastic={{ top: 0, bottom: 0.2 }}
       onDragEnd={(event, info) => {
@@ -90,6 +91,11 @@ const MoreOpen = ({
           height: "100%",
         }}
       >
+        <div
+          aria-hidden="true"
+          className="MoreOpen_DragHandle"
+          onPointerDown={(event) => controls.start(event)}
+        />
         <ScalableElement
           as="div"
           className="MoreOpen_Close"

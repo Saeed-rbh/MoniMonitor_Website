@@ -4,13 +4,25 @@ const fs = require('fs');
 const path = require('path');
 const { getDb } = require('../src/database/db');
 const { accountMatchScore, transactionBalanceDelta } = require('../src/services/accountMatching');
+const { CATEGORY_LABELS } = require('../src/services/transactionCategories');
 
 const inputPath = process.argv[2] ? path.resolve(process.argv[2]) : null;
+const replaceAll = process.argv.includes('--replace-all');
 if (!inputPath) throw new Error('Usage: node scripts/import-portfolio-history.js <transactions.json>');
 if (!process.env.USER_ID) throw new Error('USER_ID is required');
 
 const rows = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
 if (!Array.isArray(rows) || !rows.length) throw new Error('The transaction file must be a non-empty JSON array');
+
+if (replaceAll) {
+    for (const row of rows) {
+        if (row.Category === 'Saving' && row.Label === 'Savings Withdrawals' &&
+            /^Transfer from .*savings$/i.test(String(row.Reason || '').trim())) {
+            row.Category = 'Internal';
+            row.Label = 'Internal Transfer';
+        }
+    }
+}
 
 const requiredFields = ['Amount', 'Category', 'Timestamp'];
 for (const [index, row] of rows.entries()) {
@@ -24,6 +36,9 @@ for (const [index, row] of rows.entries()) {
     }
     if (Number.isNaN(new Date(row.Timestamp).getTime())) {
         throw new Error(`Row ${index + 1} has an invalid Timestamp`);
+    }
+    if (replaceAll && !CATEGORY_LABELS[row.Category]?.includes(row.Label)) {
+        throw new Error(`Row ${index + 1} has invalid category/label pair: ${row.Category} / ${row.Label}`);
     }
 }
 
@@ -100,17 +115,24 @@ async function main() {
             crypto = await db.get('SELECT * FROM investment_accounts WHERE id = ?', [result.lastID]);
         }
 
-        const historicalIds = await db.all(
-            'SELECT id FROM transactions WHERE userId = ? AND ReceivedAt IS NULL',
-            [userId]
-        );
-        if (historicalIds.length) {
-            const ids = historicalIds.map((row) => row.id);
-            const placeholders = ids.map(() => '?').join(',');
-            await db.run(`DELETE FROM account_balance_events WHERE sourceTransactionId IN (${placeholders})`, ids);
-            await db.run(`DELETE FROM portfolio_transactions WHERE sourceTransactionId IN (${placeholders})`, ids);
+        if (replaceAll) {
+            await db.run('DELETE FROM account_balance_events WHERE userId = ?', [userId]);
+            await db.run('DELETE FROM portfolio_transactions WHERE userId = ?', [userId]);
+            await db.run('DELETE FROM investment_holdings WHERE userId = ?', [userId]);
+            await db.run('DELETE FROM transactions WHERE userId = ?', [userId]);
+        } else {
+            const historicalIds = await db.all(
+                'SELECT id FROM transactions WHERE userId = ? AND ReceivedAt IS NULL',
+                [userId]
+            );
+            if (historicalIds.length) {
+                const ids = historicalIds.map((row) => row.id);
+                const placeholders = ids.map(() => '?').join(',');
+                await db.run(`DELETE FROM account_balance_events WHERE sourceTransactionId IN (${placeholders})`, ids);
+                await db.run(`DELETE FROM portfolio_transactions WHERE sourceTransactionId IN (${placeholders})`, ids);
+            }
+            await db.run('DELETE FROM transactions WHERE userId = ? AND ReceivedAt IS NULL', [userId]);
         }
-        await db.run('DELETE FROM transactions WHERE userId = ? AND ReceivedAt IS NULL', [userId]);
 
         const insertSql = `INSERT INTO transactions
             (userId, Amount, AmountMinor, Currency, Category, Label, Reason, Timestamp, ReceivedAt,

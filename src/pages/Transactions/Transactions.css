@@ -6,7 +6,7 @@
   justify-content: center;
   width: 100%;
   opacity: 1;
-  touch-action: none;
+  touch-action: pan-y;
   padding: 0 5px;
   top: 20px;
   box-sizing: border-box;
@@ -649,7 +649,14 @@
   justify-content: flex-start;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
   scroll-behavior: smooth;
+}
+
+.TransactionList_MonthlyMain .TransactionList_TransactionList {
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .TransactionList_MonthlyFooter {

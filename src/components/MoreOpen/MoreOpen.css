@@ -10,7 +10,7 @@
   max-width: var(--app-max-width);
   bottom: 0;
   opacity: 1;
-  touch-action: none;
+  touch-action: pan-y;
   z-index: 101;
 }
 
@@ -29,10 +29,30 @@
   border: 1px solid var(--Ac-3);
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .MoreOpen_Wall::-webkit-scrollbar {
   display: none;
+}
+
+.MoreOpen_DragHandle {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 42px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--Ac-3);
+  transform: translateX(-50%);
+  cursor: grab;
+  touch-action: none;
+  z-index: 55;
+}
+
+.MoreOpen_DragHandle:active {
+  cursor: grabbing;
 }
 
 .MoreOpen_Close {
