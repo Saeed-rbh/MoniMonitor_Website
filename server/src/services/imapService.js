@@ -7,17 +7,28 @@ function getDbService() {
     return dbService;
 }
 
-// Fix #6: Process emails in batches of this size concurrently
 const CONCURRENCY = 3;
-const RETRY_UNSEEN_INTERVAL_MS = 60 * 1000;
+const RETRY_INTERVAL_MS = 60 * 1000;
+const PENDING_BATCH_SIZE = 250;
+const DEFAULT_INITIAL_CATCHUP_DAYS = 30;
+
+function validDate(value) {
+    const date = value ? new Date(value) : null;
+    return date && Number.isFinite(date.getTime()) ? date : null;
+}
 
 class ImapService {
-    constructor(host, port, user, password, onNewEmail) {
+    constructor(host, port, user, password, onNewEmail, options = {}) {
         this.host = host;
         this.port = port;
         this.user = user;
         this.password = password;
         this.onNewEmail = onNewEmail;
+        this.database = options.database || null;
+        this.mailboxName = options.mailboxName || 'INBOX';
+        this.mailboxKey = `${String(user || '').trim().toLowerCase()}:${this.mailboxName}`;
+        this.initialSyncSince = validDate(options.initialSyncSince) ||
+            new Date(Date.now() - DEFAULT_INITIAL_CATCHUP_DAYS * 24 * 60 * 60 * 1000);
         this.reconnectTimeout = null;
         this.reconnectDelay = 5000;
         this.lock = null;
@@ -25,16 +36,19 @@ class ImapService {
         this.processingUnseen = null;
         this.client = this._createClient();
 
-        // Graceful shutdown: release lock and logout on Ctrl+C or system kill
         const cleanup = async () => {
             console.log('\nShutting down IMAP client gracefully...');
             if (this.retryUnseenInterval) clearInterval(this.retryUnseenInterval);
-            if (this.lock) { try { this.lock.release(); } catch(e) {} }
-            if (this.client.usable) { try { await this.client.logout(); } catch(e) {} }
+            if (this.lock) { try { this.lock.release(); } catch (error) {} }
+            if (this.client.usable) { try { await this.client.logout(); } catch (error) {} }
             process.exit(0);
         };
         process.on('SIGINT', cleanup);
         process.on('SIGTERM', cleanup);
+    }
+
+    getDatabase() {
+        return this.database || getDbService();
     }
 
     _createClient() {
@@ -42,11 +56,8 @@ class ImapService {
             host: this.host,
             port: this.port,
             secure: true,
-            auth: {
-                user: this.user,
-                pass: this.password
-            },
-            logger: false
+            auth: { user: this.user, pass: this.password },
+            logger: false,
         });
     }
 
@@ -54,68 +65,95 @@ class ImapService {
         try {
             console.log('Connecting to IMAP server...');
             await this.client.connect();
+            this.reconnectDelay = 5000;
             console.log('Connected to email!');
 
-            this.lock = await this.client.getMailboxLock('INBOX');
+            this.lock = await this.client.getMailboxLock(this.mailboxName);
             try {
-                // Process existing unseen emails on startup
                 await this.processUnseen();
                 this.startRetryPolling();
 
-                console.log("Listening for new emails in INBOX...");
-                
+                console.log(`Listening for new emails in ${this.mailboxName}...`);
                 this.client.on('exists', async () => {
-                    console.log("New email arrived! Processing...");
+                    console.log('New email arrived! Synchronizing mailbox...');
                     await this.processUnseen();
                 });
-
-                this.client.on('error', err => {
-                    console.error("IMAP Error:", err);
+                this.client.on('error', (error) => {
+                    console.error('IMAP Error:', error);
                     this.handleReconnect();
                 });
-
                 this.client.on('close', () => {
-                    console.log("IMAP Connection Closed");
+                    console.log('IMAP Connection Closed');
                     this.handleReconnect();
                 });
-
-            } catch (err) {
-                console.error("Error setting up inbox:", err);
-                if (this.lock) { try { this.lock.release(); } catch(e) {} }
+            } catch (error) {
+                console.error('Error setting up inbox:', error);
+                if (this.lock) { try { this.lock.release(); } catch (releaseError) {} }
+                this.lock = null;
+                this.handleReconnect();
             }
-        } catch (err) {
-            console.error("Failed to connect to IMAP server:", err);
+        } catch (error) {
+            console.error('Failed to connect to IMAP server:', error);
             this.handleReconnect();
         }
     }
 
-    async processOne(seq) {
-        const database = getDbService();
-        const message = await this.client.fetchOne(seq, { source: true, uid: true, envelope: true });
-        if (!message || !message.source) return;
-
-        // Skip if already successfully processed in a previous run
-        if (await database.isEmailProcessed(message.uid)) {
-            await this.client.messageFlagsAdd(seq, ['\\Seen']);
-            return;
+    getUidValidity() {
+        const uidValidity = this.client.mailbox?.uidValidity;
+        if (uidValidity === null || uidValidity === undefined) {
+            throw new Error('IMAP mailbox did not provide UIDVALIDITY');
         }
+        return String(uidValidity);
+    }
 
+    async discoverMessages() {
+        const database = this.getDatabase();
+        const uidValidity = this.getUidValidity();
+        const state = await database.prepareEmailSync(this.mailboxKey, uidValidity);
+        const searchQuery = state.lastDiscoveredUid > 0
+            ? { uid: `${state.lastDiscoveredUid + 1}:*` }
+            : { since: this.initialSyncSince };
+        const searchResult = await this.client.search(searchQuery, { uid: true });
+        const newUids = (Array.isArray(searchResult) ? searchResult : [])
+            .map(Number)
+            .filter((uid) => Number.isSafeInteger(uid) && uid > state.lastDiscoveredUid);
+        if (newUids.length) {
+            await database.enqueueDiscoveredEmails(this.mailboxKey, uidValidity, newUids);
+            console.log(`Discovered ${newUids.length} new email(s) for durable processing.`);
+        }
+        return uidValidity;
+    }
+
+    async processOne(uid, uidValidity) {
+        const database = this.getDatabase();
         try {
-            const parsedMail = await simpleParser(message.source);
-            const emailBody = parsedMail.text || parsedMail.html || "";
-            // Fix #5: capture when the email was received (from email Date header)
-            const receivedAt = parsedMail.date ? parsedMail.date.toISOString() : new Date().toISOString();
-            
-            const success = await this.onNewEmail(emailBody, `Unread UID ${message.uid}`, receivedAt);
-            
-            if (success) {
-                await database.markEmailProcessed(message.uid);
-                await this.client.messageFlagsAdd(seq, ['\\Seen']);
-            } else {
-                console.warn(`Email ${message.uid} remains unread and will be retried automatically.`);
+            if (await database.isEmailProcessed(uid, this.mailboxKey, uidValidity)) return;
+
+            const message = await this.client.fetchOne(
+                uid,
+                { source: true, uid: true, envelope: true },
+                { uid: true }
+            );
+            if (!message?.source) {
+                await database.markEmailFailed(uid, this.mailboxKey, uidValidity, 'Message is no longer available in the mailbox');
+                return;
             }
-        } catch (err) {
-            console.error(`Error processing email ${message.uid}:`, err);
+
+            const parsedMail = await simpleParser(message.source);
+            const emailBody = parsedMail.text || parsedMail.html || '';
+            const receivedAt = parsedMail.date ? parsedMail.date.toISOString() : new Date().toISOString();
+            const success = await this.onNewEmail(emailBody, `Email UID ${uid}`, receivedAt);
+
+            if (success) {
+                await database.markEmailProcessed(uid, this.mailboxKey, uidValidity);
+                await this.client.messageFlagsAdd(uid, ['\\Seen'], { uid: true });
+            } else {
+                await database.markEmailFailed(uid, this.mailboxKey, uidValidity, 'Transaction analysis did not complete');
+                console.warn(`Email ${uid} remains in the durable retry queue.`);
+            }
+        } catch (error) {
+            await database.markEmailFailed(uid, this.mailboxKey, uidValidity, error).catch(() => {});
+            console.error(`Error processing email ${uid}:`, error);
         }
     }
 
@@ -132,18 +170,21 @@ class ImapService {
 
     async processUnseenBatch() {
         try {
-            let messages = await this.client.search({ unseen: true });
-            if (messages.length === 0) return;
+            const uidValidity = await this.discoverMessages();
+            const pending = await this.getDatabase().getPendingEmails(
+                this.mailboxKey,
+                uidValidity,
+                PENDING_BATCH_SIZE
+            );
+            if (!pending.length) return;
 
-            console.log(`Found ${messages.length} unread email(s).`);
-
-            // Fix #6: Process in batches of CONCURRENCY to speed up startup
-            for (let i = 0; i < messages.length; i += CONCURRENCY) {
-                const batch = messages.slice(i, i + CONCURRENCY);
-                await Promise.all(batch.map(seq => this.processOne(seq)));
+            console.log(`Processing ${pending.length} queued email(s), including messages already marked read.`);
+            for (let index = 0; index < pending.length; index += CONCURRENCY) {
+                const batch = pending.slice(index, index + CONCURRENCY);
+                await Promise.all(batch.map(({ uid }) => this.processOne(uid, uidValidity)));
             }
-        } catch (err) {
-            console.error("Error processing unseen messages:", err);
+        } catch (error) {
+            console.error('Error synchronizing mailbox:', error);
         }
     }
 
@@ -151,9 +192,9 @@ class ImapService {
         if (this.retryUnseenInterval) clearInterval(this.retryUnseenInterval);
         this.retryUnseenInterval = setInterval(() => {
             this.processUnseen().catch((error) => {
-                console.error('Error retrying unseen messages:', error);
+                console.error('Error retrying queued messages:', error);
             });
-        }, RETRY_UNSEEN_INTERVAL_MS);
+        }, RETRY_INTERVAL_MS);
         this.retryUnseenInterval.unref?.();
     }
 
@@ -166,9 +207,8 @@ class ImapService {
         console.log(`Attempting to reconnect in ${this.reconnectDelay / 1000}s...`);
         this.reconnectTimeout = setTimeout(async () => {
             this.reconnectTimeout = null;
-            // Create a fresh ImapFlow instance — old ones cannot be reused after disconnect
+            this.lock = null;
             this.client = this._createClient();
-            // Exponential backoff: double the delay each attempt, cap at 5 minutes
             this.reconnectDelay = Math.min(this.reconnectDelay * 2, 5 * 60 * 1000);
             await this.start();
         }, this.reconnectDelay);

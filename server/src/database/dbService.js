@@ -1021,17 +1021,126 @@ async function getSummaryForUser(userId) {
     };
 }
 
-async function isEmailProcessed(uid) {
+function normalizeEmailUid(uid) {
+    const numericUid = Number(uid);
+    if (!Number.isSafeInteger(numericUid) || numericUid <= 0) throw new Error('Invalid email UID');
+    return numericUid;
+}
+
+async function prepareEmailSync(mailboxKey, uidValidity) {
+    const normalizedMailboxKey = String(mailboxKey || '').trim();
+    const normalizedUidValidity = String(uidValidity || '').trim();
+    if (!normalizedMailboxKey || !normalizedUidValidity) throw new Error('Mailbox identity is required');
+
     const db = await getDb();
+    const now = new Date().toISOString();
+    const current = await db.get(
+        'SELECT * FROM email_sync_state WHERE mailboxKey = ?',
+        [normalizedMailboxKey]
+    );
+    if (!current) {
+        await db.run(
+            `INSERT INTO email_sync_state
+                (mailboxKey, uidValidity, lastDiscoveredUid, initializedAt, updatedAt)
+             VALUES (?, ?, 0, ?, ?)`,
+            [normalizedMailboxKey, normalizedUidValidity, now, now]
+        );
+        return { mailboxKey: normalizedMailboxKey, uidValidity: normalizedUidValidity, lastDiscoveredUid: 0, initialSync: true };
+    }
+    if (String(current.uidValidity) !== normalizedUidValidity) {
+        await db.run(
+            `UPDATE email_sync_state
+             SET uidValidity = ?, lastDiscoveredUid = 0, initializedAt = ?, updatedAt = ?
+             WHERE mailboxKey = ?`,
+            [normalizedUidValidity, now, now, normalizedMailboxKey]
+        );
+        return { mailboxKey: normalizedMailboxKey, uidValidity: normalizedUidValidity, lastDiscoveredUid: 0, initialSync: true };
+    }
+    return { ...current, lastDiscoveredUid: Number(current.lastDiscoveredUid || 0), initialSync: false };
+}
+
+async function enqueueDiscoveredEmails(mailboxKey, uidValidity, uids) {
+    const normalizedUids = [...new Set((uids || []).map(normalizeEmailUid))].sort((left, right) => left - right);
+    if (!normalizedUids.length) return 0;
+
+    const db = await getDb();
+    const now = new Date().toISOString();
+    await db.run('BEGIN IMMEDIATE');
+    try {
+        for (const uid of normalizedUids) {
+            await db.run(
+                `INSERT OR IGNORE INTO email_ingestion_queue
+                    (mailboxKey, uidValidity, uid, status, attempts, discoveredAt)
+                 VALUES (?, ?, ?, 'pending', 0, ?)`,
+                [mailboxKey, String(uidValidity), uid, now]
+            );
+        }
+        await db.run(
+            `UPDATE email_sync_state
+             SET lastDiscoveredUid = MAX(lastDiscoveredUid, ?), updatedAt = ?
+             WHERE mailboxKey = ? AND uidValidity = ?`,
+            [normalizedUids.at(-1), now, mailboxKey, String(uidValidity)]
+        );
+        await db.run('COMMIT');
+        return normalizedUids.length;
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+}
+
+async function getPendingEmails(mailboxKey, uidValidity, limit = 250) {
+    const safeLimit = Number.isSafeInteger(limit) ? Math.min(1000, Math.max(1, limit)) : 250;
+    const db = await getDb();
+    return await db.all(
+        `SELECT uid, attempts, lastError, discoveredAt
+         FROM email_ingestion_queue
+         WHERE mailboxKey = ? AND uidValidity = ? AND status = 'pending'
+         ORDER BY uid ASC LIMIT ?`,
+        [mailboxKey, String(uidValidity), safeLimit]
+    );
+}
+
+async function isEmailProcessed(uid, mailboxKey = null, uidValidity = null) {
+    const db = await getDb();
+    if (mailboxKey && uidValidity !== null && uidValidity !== undefined) {
+        const row = await db.get(
+            `SELECT uid FROM email_ingestion_queue
+             WHERE mailboxKey = ? AND uidValidity = ? AND uid = ? AND status = 'processed'`,
+            [mailboxKey, String(uidValidity), normalizeEmailUid(uid)]
+        );
+        return !!row;
+    }
     const row = await db.get('SELECT uid FROM processed_emails WHERE uid = ?', [uid]);
     return !!row;
 }
 
-async function markEmailProcessed(uid) {
+async function markEmailProcessed(uid, mailboxKey = null, uidValidity = null) {
     const db = await getDb();
+    const normalizedUid = normalizeEmailUid(uid);
+    const now = new Date().toISOString();
+    if (mailboxKey && uidValidity !== null && uidValidity !== undefined) {
+        await db.run(
+            `UPDATE email_ingestion_queue
+             SET status = 'processed', attempts = attempts + 1, lastError = NULL, processedAt = ?
+             WHERE mailboxKey = ? AND uidValidity = ? AND uid = ?`,
+            [now, mailboxKey, String(uidValidity), normalizedUid]
+        );
+    }
     await db.run(
         'INSERT OR IGNORE INTO processed_emails (uid, processedAt) VALUES (?, ?)',
-        [uid, new Date().toISOString()]
+        [normalizedUid, now]
+    );
+}
+
+async function markEmailFailed(uid, mailboxKey, uidValidity, error) {
+    const db = await getDb();
+    await db.run(
+        `UPDATE email_ingestion_queue
+         SET attempts = attempts + 1, lastError = ?
+         WHERE mailboxKey = ? AND uidValidity = ? AND uid = ? AND status = 'pending'`,
+        [String(error?.message || error || 'Processing failed').slice(0, 1000),
+            mailboxKey, String(uidValidity), normalizeEmailUid(uid)]
     );
 }
 
@@ -1170,8 +1279,12 @@ module.exports = {
     deleteGoal,
     writeAgentAudit,
     getSummaryForUser,
+    prepareEmailSync,
+    enqueueDiscoveredEmails,
+    getPendingEmails,
     isEmailProcessed,
     markEmailProcessed,
+    markEmailFailed,
     saveMerchantRule,
     getMerchantRuleForReason,
     detectAndMarkRecurring

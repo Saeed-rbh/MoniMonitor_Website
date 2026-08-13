@@ -24,6 +24,8 @@ const INSERT_ORDER = [
     'transactions',
     'merchant_rules',
     'processed_emails',
+    'email_sync_state',
+    'email_ingestion_queue',
     'investment_holdings',
     'portfolio_transactions',
     'account_balance_events',
@@ -198,6 +200,8 @@ async function restoreBackup(fileName, restoredByUserId) {
             "SELECT name FROM restore_source.sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
         )).map((row) => row.name));
         const tables = INSERT_ORDER.filter((table) => currentTables.has(table) && sourceTables.has(table));
+        const sourceHasDurableEmailState = sourceTables.has('email_sync_state') &&
+            sourceTables.has('email_ingestion_queue');
 
         await db.exec('BEGIN IMMEDIATE');
         for (const table of [...tables].reverse()) {
@@ -216,6 +220,10 @@ async function restoreBackup(fileName, restoredByUserId) {
                 `INSERT INTO ${quoteIdentifier(table)} (${columnList}) ` +
                 `SELECT ${columnList} FROM restore_source.${quoteIdentifier(table)}`
             );
+        }
+        if (!sourceHasDurableEmailState) {
+            if (currentTables.has('email_ingestion_queue')) await db.exec('DELETE FROM email_ingestion_queue');
+            if (currentTables.has('email_sync_state')) await db.exec('DELETE FROM email_sync_state');
         }
         if (currentTables.has('agent_audit_log')) {
             await db.run(

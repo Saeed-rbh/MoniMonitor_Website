@@ -99,3 +99,17 @@ interval can be changed with `MONIMONITOR_BACKUP_INTERVAL_HOURS`.
   and Restore controls.
 - Every restore verifies the selected file and creates a pre-restore safety
   backup before replacing application data in one database transaction.
+
+## Durable email ingestion
+
+The email agent stores its IMAP UID cursor and pending-message queue in SQLite.
+On every startup and reconnect it discovers all newly delivered messages,
+including emails that were marked read while the server was offline. A message
+stays in the retry queue until analysis and database ingestion succeed.
+
+- `IMAP_INITIAL_SYNC_SINCE` controls the beginning of the one-time first scan.
+- Later restarts resume from the saved UID with no time-based downtime limit.
+- IMAP `UIDVALIDITY` changes reset the cursor safely and start a new mailbox
+  generation without mixing message identities.
+- Transaction-level duplicate detection remains the final protection if a
+  message succeeds immediately before an unexpected shutdown.

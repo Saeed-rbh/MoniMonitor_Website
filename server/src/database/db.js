@@ -72,6 +72,27 @@ async function getDb() {
                     processedAt TEXT NOT NULL
                 );
 
+                CREATE TABLE IF NOT EXISTS email_sync_state (
+                    mailboxKey TEXT PRIMARY KEY,
+                    uidValidity TEXT NOT NULL,
+                    lastDiscoveredUid INTEGER NOT NULL DEFAULT 0,
+                    initializedAt TEXT NOT NULL,
+                    updatedAt TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS email_ingestion_queue (
+                    mailboxKey TEXT NOT NULL,
+                    uidValidity TEXT NOT NULL,
+                    uid INTEGER NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending'
+                        CHECK(status IN ('pending', 'processed')),
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    lastError TEXT,
+                    discoveredAt TEXT NOT NULL,
+                    processedAt TEXT,
+                    PRIMARY KEY (mailboxKey, uidValidity, uid)
+                );
+
                 CREATE TABLE IF NOT EXISTS merchant_rules (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     userId TEXT NOT NULL,
@@ -260,6 +281,8 @@ async function getDb() {
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_category ON transactions(userId, Category);
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_reference ON transactions(userId, ReferenceNumber);
                 CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(userId);
+                CREATE INDEX IF NOT EXISTS idx_email_ingestion_pending
+                    ON email_ingestion_queue(mailboxKey, uidValidity, status, uid);
                 CREATE INDEX IF NOT EXISTS idx_investment_accounts_user ON investment_accounts(userId);
                 CREATE INDEX IF NOT EXISTS idx_investment_holdings_account ON investment_holdings(accountId);
                 CREATE INDEX IF NOT EXISTS idx_portfolio_transactions_user_date ON portfolio_transactions(userId, occurredAt DESC);

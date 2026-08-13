@@ -12,6 +12,7 @@ const IMAP_PASSWORD = process.env.IMAP_PASSWORD;
 const USER_ID = process.env.USER_ID;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const AI_INGESTION_ENABLED = process.env.AI_INGESTION_ENABLED === "true";
+const IMAP_INITIAL_SYNC_SINCE = process.env.IMAP_INITIAL_SYNC_SINCE || SNAPSHOT_CAPTURED_AT;
 const WEB_APP_URL = process.env.PUBLIC_APP_URL ||
     (process.env.FRONTEND_URL || "").split(",").map((url) => url.trim()).find((url) => url.startsWith("https://")) ||
     "http://localhost:3000";
@@ -537,7 +538,14 @@ async function startAgent() {
             }
         }
         startTelegramPolling(onTelegramUpdate);
-        const emailListener = new ImapService(IMAP_HOST, IMAP_PORT, IMAP_USER, IMAP_PASSWORD, onNewEmail);
+        const emailListener = new ImapService(
+            IMAP_HOST,
+            IMAP_PORT,
+            IMAP_USER,
+            IMAP_PASSWORD,
+            onNewEmail,
+            { initialSyncSince: IMAP_INITIAL_SYNC_SINCE }
+        );
         await emailListener.start();
     } else {
         console.log('AI ingestion is disabled. Set AI_INGESTION_ENABLED=true after completing account linking.');
