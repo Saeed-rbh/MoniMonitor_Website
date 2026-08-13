@@ -45,6 +45,7 @@ export const getSavingEffect = (transaction) => {
 
   const source = normalizeAccountName(transfer.source);
   const destination = normalizeAccountName(transfer.destination);
+  if (source.includes("tfsa") && destination.includes("tfsa")) return 0;
   if (destination.includes("tfsa")) return amount;
   if (source.includes("tfsa")) return -amount;
   return 0;

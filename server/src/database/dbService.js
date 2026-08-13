@@ -86,8 +86,9 @@ async function addTransaction(transaction) {
         `INSERT INTO transactions
             (userId, Amount, AmountMinor, Currency, Category, Label, Reason, Timestamp, ReceivedAt,
              Type, Account, BankName, ReferenceNumber, Frequency, TelegramMessageId, PortfolioAction,
-             PortfolioAccountId, PortfolioConfidence, PortfolioSymbol, PortfolioQuantity, PortfolioPrice)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             PortfolioAccountId, PortfolioConfidence, PortfolioSymbol, PortfolioQuantity, PortfolioPrice,
+             BalanceAccountConfidence, PortfolioAccountNumber, PortfolioToSymbol, PortfolioToQuantity, AccountFlow)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             transaction.userId,
             (Number.isSafeInteger(transaction.AmountMinor) ? transaction.AmountMinor : toMinorUnits(transaction.Amount)) / 100,
@@ -110,6 +111,11 @@ async function addTransaction(transaction) {
             transaction.PortfolioSymbol || null,
             transaction.PortfolioQuantity || null,
             transaction.PortfolioPrice || null,
+            transaction.BalanceAccountConfidence || null,
+            transaction.PortfolioAccountNumber || null,
+            transaction.PortfolioToSymbol || null,
+            transaction.PortfolioToQuantity || null,
+            transaction.AccountFlow || null,
         ]
     );
     return result.lastID;
@@ -353,7 +359,7 @@ async function reconcileEmailPortfolioActivities(userId) {
     const transactions = await db.all(
         `SELECT * FROM transactions
          WHERE userId = ? AND ReceivedAt IS NOT NULL
-           AND Category = 'Saving' AND PortfolioAction IS NOT NULL
+           AND Category IN ('Saving', 'SavingWithdrawal', 'Investment') AND PortfolioAction IS NOT NULL
            AND id NOT IN (
                SELECT sourceTransactionId FROM portfolio_transactions
                WHERE userId = ? AND sourceTransactionId IS NOT NULL
@@ -372,6 +378,9 @@ async function reconcileEmailPortfolioActivities(userId) {
                 symbol: transaction.PortfolioSymbol,
                 quantity: transaction.PortfolioQuantity,
                 price: transaction.PortfolioPrice,
+                toSymbol: transaction.PortfolioToSymbol,
+                toQuantity: transaction.PortfolioToQuantity,
+                accountFlow: transaction.AccountFlow,
             })),
         });
     }
@@ -392,7 +401,8 @@ async function getPortfolioSummary(userId) {
          LEFT JOIN investment_accounts a
                 ON a.id = p.accountId AND a.userId = t.userId
          WHERE t.userId = ? AND t.ReceivedAt IS NOT NULL
-               AND t.Category = 'Saving' AND t.Label IN ('Savings', 'Investment')
+               AND t.Category IN ('Saving', 'SavingWithdrawal', 'Investment')
+               AND t.Label IN ('Savings', 'Investment', 'Investment Activity', 'TFSA Withdrawal')
          ORDER BY t.Timestamp DESC
          LIMIT 20`,
         [userId]
@@ -491,18 +501,26 @@ const emailCashActions = Object.freeze({
     CONTRIBUTION: 1,
     INTEREST: 1,
     DIVIDEND: 1,
+    REIMBURSEMENT: 1,
     WITHDRAWAL: -1,
+    FEE: -1,
+    TAX: -1,
 });
 
+const portfolioQuantityActions = new Set(['REWARD', 'DISTRIBUTION', 'FEE', 'SWAP']);
+const portfolioNoBalanceActions = new Set(['TRANSFER', 'LOAN', 'RECALL', 'STAKE', 'UNSTAKE']);
+
 async function applyEmailPortfolioActivity(userId, transactionId, activity = {}) {
-    const { accountId, action, confidence, symbol, quantity, price } = activity;
+    const { accountId, action, confidence, symbol, quantity, price, toSymbol, toQuantity, accountFlow } = activity;
     if (!action) return { status: 'ignored' };
     const isTrade = action === 'BUY' || action === 'SELL';
-    if (!Object.hasOwn(emailCashActions, action) && !isTrade) {
-        return { status: 'review_required', reason: 'Internal transfers require explicit destination details' };
+    if (!Object.hasOwn(emailCashActions, action) && !isTrade &&
+        !portfolioQuantityActions.has(action) && !portfolioNoBalanceActions.has(action)) {
+        return { status: 'review_required', reason: 'Unsupported portfolio action' };
     }
 
     const normalizedSymbol = typeof symbol === 'string' ? symbol.trim().toUpperCase() : '';
+    const normalizedToSymbol = typeof toSymbol === 'string' ? toSymbol.trim().toUpperCase() : '';
     const tradeQuantity = Number(quantity);
     const tradePrice = Number(price);
     if (isTrade && (
@@ -518,8 +536,8 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
         'SELECT * FROM transactions WHERE id = ? AND userId = ?',
         [transactionId, userId]
     );
-    if (!source || source.Category !== 'Saving') return { status: 'ignored' };
-    if (!['Savings', 'Investment'].includes(source.Label)) return { status: 'ignored' };
+    if (!source || !['Saving', 'SavingWithdrawal', 'Investment'].includes(source.Category)) return { status: 'ignored' };
+    if (!['Savings', 'Investment', 'Investment Activity', 'TFSA Withdrawal'].includes(source.Label)) return { status: 'ignored' };
 
     await db.run('BEGIN IMMEDIATE');
     try {
@@ -534,7 +552,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
 
         let resolvedAccountId = confidence === 'HIGH' ? Number(accountId) : null;
         if (!resolvedAccountId) {
-            const investmentTypes = new Set(['TFSA', 'RRSP', 'Brokerage', '401(k)', 'IRA']);
+            const investmentTypes = new Set(['TFSA', 'RRSP', 'Brokerage', '401(k)', 'IRA', 'Crypto']);
             const candidates = (await db.all('SELECT * FROM investment_accounts WHERE userId = ?', [userId]))
                 .filter((candidate) => !isTrade || investmentTypes.has(candidate.accountType))
                 .map((candidate) => ({
@@ -563,10 +581,71 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
         const occurredAt = source.Timestamp || new Date().toISOString();
 
         if (!isTrade) {
-            const nextCashMinor = account.cashMinor + (emailCashActions[action] * amountMinor);
+            const explicitFlow = accountFlow || source.AccountFlow;
+            const cashMultiplier = explicitFlow === 'IN'
+                ? 1
+                : explicitFlow === 'OUT'
+                    ? -1
+                    : explicitFlow === 'NONE'
+                        ? 0
+                        : (emailCashActions[action] || 0);
+            const nextCashMinor = account.cashMinor + (cashMultiplier * amountMinor);
             if (nextCashMinor < 0) {
                 await db.run('COMMIT');
-                return { status: 'review_required', reason: 'Withdrawal exceeds the recorded cash balance' };
+                return { status: 'review_required', reason: 'Portfolio action exceeds the recorded cash balance' };
+            }
+
+            const adjustHolding = async (holdingSymbol, delta) => {
+                if (!holdingSymbol || !Number.isFinite(delta) || Math.abs(delta) <= 1e-12) return;
+                const holding = await db.get(
+                    'SELECT * FROM investment_holdings WHERE accountId = ? AND symbol = ? AND userId = ?',
+                    [resolvedAccountId, holdingSymbol, userId]
+                );
+                const nextQuantity = Number(holding?.quantity || 0) + delta;
+                if (nextQuantity < -1e-8) throw new Error(`Portfolio action would make ${holdingSymbol} negative`);
+                if (nextQuantity <= 1e-8) {
+                    if (holding) await db.run('DELETE FROM investment_holdings WHERE id = ? AND userId = ?', [holding.id, userId]);
+                    return;
+                }
+                const actionPriceMicros = Number.isFinite(tradePrice) && tradePrice > 0
+                    ? Math.round(tradePrice * 1000000)
+                    : Number(holding?.priceMicros || 0);
+                await db.run(
+                    `INSERT INTO investment_holdings
+                        (userId, accountId, symbol, name, quantity, averageCostMinor, averageCostMicros,
+                         priceMinor, priceMicros, currency, updatedAt)
+                     VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)
+                     ON CONFLICT(accountId, symbol) DO UPDATE SET
+                        quantity = excluded.quantity, priceMinor = excluded.priceMinor,
+                        priceMicros = excluded.priceMicros, updatedAt = excluded.updatedAt`,
+                    [
+                        userId, resolvedAccountId, holdingSymbol, nextQuantity,
+                        Number(holding?.averageCostMinor || 0), Number(holding?.averageCostMicros || 0),
+                        Math.round(actionPriceMicros / 10000), actionPriceMicros, account.currency, occurredAt,
+                    ]
+                );
+            };
+
+            if (portfolioQuantityActions.has(action)) {
+                if (!normalizedSymbol || !Number.isFinite(tradeQuantity)) {
+                    await db.run('COMMIT');
+                    return { status: 'review_required', reason: 'Portfolio action is missing an asset quantity' };
+                }
+                const primaryDelta = action === 'REWARD'
+                    ? Math.abs(tradeQuantity)
+                    : action === 'FEE'
+                        ? -Math.abs(tradeQuantity)
+                        : action === 'SWAP'
+                            ? -Math.abs(tradeQuantity)
+                            : tradeQuantity;
+                await adjustHolding(normalizedSymbol, primaryDelta);
+                if (action === 'SWAP') {
+                    const receivedQuantity = Number(toQuantity);
+                    if (!normalizedToSymbol || !Number.isFinite(receivedQuantity) || receivedQuantity <= 0) {
+                        throw new Error('Swap is missing the received asset quantity');
+                    }
+                    await adjustHolding(normalizedToSymbol, receivedQuantity);
+                }
             }
 
             await db.run(
@@ -574,14 +653,20 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
                 [nextCashMinor, occurredAt, resolvedAccountId, userId]
             );
             await db.run(
-                'INSERT INTO portfolio_transactions (userId, accountId, sourceTransactionId, kind, amountMinor, occurredAt, note) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [userId, resolvedAccountId, transactionId, 'EMAIL_' + action, amountMinor, occurredAt, source.Reason || null]
+                `INSERT INTO portfolio_transactions
+                    (userId, accountId, sourceTransactionId, kind, amountMinor, symbol, quantity,
+                     toSymbol, toQuantity, occurredAt, note)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [userId, resolvedAccountId, transactionId, 'EMAIL_' + action, amountMinor,
+                    normalizedSymbol || null, Number.isFinite(tradeQuantity) ? tradeQuantity : null,
+                    normalizedToSymbol || null, Number.isFinite(Number(toQuantity)) ? Number(toQuantity) : null,
+                    occurredAt, source.Reason || null]
             );
             await db.run('COMMIT');
             return { status: 'applied', accountId: resolvedAccountId, action, amountMinor, cashMinor: nextCashMinor };
         }
 
-        if (source.Label !== 'Investment') {
+        if (!['Investment', 'Investment Activity'].includes(source.Label)) {
             await db.run('COMMIT');
             return { status: 'review_required', reason: 'Security trades must be classified as Investment' };
         }

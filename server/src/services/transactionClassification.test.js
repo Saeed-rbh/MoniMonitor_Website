@@ -22,6 +22,14 @@ test('subtracts TFSA withdrawals and ignores non-TFSA transfers and trades', () 
         Account: 'TFSA',
     }), -20000);
     assert.equal(getSavingEffectMinor({
+        AmountMinor: 1651556,
+        Category: 'Saving',
+        Label: 'Internal Transfer',
+        Reason: 'Internal transfer: TFSA (OLD) -> TFSA (NEW) [XFER-2B]',
+        Account: 'TFSA',
+        AccountFlow: 'OUT',
+    }), 0);
+    assert.equal(getSavingEffectMinor({
         AmountMinor: 50000,
         Category: 'Saving',
         Label: 'Internal Transfer',

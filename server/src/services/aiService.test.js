@@ -72,3 +72,23 @@ test('accepts neutral transfers and investment activity', () => {
         PortfolioAction: 'BUY',
     }))).Category, 'Investment');
 });
+
+test('accepts expanded crypto and portfolio actions', () => {
+    const parsed = parseAIResponseText(JSON.stringify(validTransaction({
+        Amount: '0',
+        Category: 'Investment',
+        Label: 'Investment Activity',
+        PortfolioAction: 'SWAP',
+        PortfolioAccountNumber: 'HQ5YZLZ12CAD',
+        PortfolioSymbol: 'SHIB',
+        PortfolioQuantity: 6032423.84652606,
+        PortfolioToSymbol: 'DOGE',
+        PortfolioToQuantity: 358.26249237,
+        AccountFlow: 'NONE',
+    })));
+
+    assert.equal(parsed.PortfolioAction, 'SWAP');
+    assert.equal(parsed.PortfolioToSymbol, 'DOGE');
+    assert.equal(parsed.PortfolioToQuantity, 358.26249237);
+    assert.equal(parsed.AccountFlow, 'NONE');
+});

@@ -62,5 +62,13 @@ describe("groupTransactionsByMonth", () => {
       Reason: "Payment or purchase - toFind&Save",
       Account: "RBC Chequing",
     })).toBe(0);
+    expect(getSavingEffect({
+      Amount: 16515.56,
+      Category: "Saving",
+      Label: "Internal Transfer",
+      Reason: "Internal transfer: TFSA (OLD) -> TFSA (NEW) [XFER-4]",
+      Account: "TFSA",
+      AccountFlow: "OUT",
+    })).toBe(0);
   });
 });

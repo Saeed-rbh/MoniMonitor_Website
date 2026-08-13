@@ -100,6 +100,9 @@ async function syncPortfolioFromEmail(transactionId, data, idInfo) {
         symbol: data.PortfolioSymbol,
         quantity: data.PortfolioQuantity,
         price: data.PortfolioPrice,
+        toSymbol: data.PortfolioToSymbol,
+        toQuantity: data.PortfolioToQuantity,
+        accountFlow: data.AccountFlow,
         confidence: data.PortfolioConfidence === 'HIGH' || data.BalanceAccountConfidence === 'HIGH' ? 'HIGH' : data.PortfolioConfidence,
     });
     if (result.status === 'applied') {

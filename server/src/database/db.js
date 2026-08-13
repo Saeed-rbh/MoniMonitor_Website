@@ -3,7 +3,9 @@ const { open } = require('sqlite');
 const path = require('path');
 const { applyFinancialSnapshot } = require('./financialSnapshot');
 
-const DB_PATH = path.join(__dirname, '..', '..', 'monimonitor.sqlite');
+const DB_PATH = process.env.MONIMONITOR_DB_PATH
+    ? path.resolve(process.env.MONIMONITOR_DB_PATH)
+    : path.join(__dirname, '..', '..', 'monimonitor.sqlite');
 const DB_BUSY_TIMEOUT_MS = 10000;
 
 let dbPromise = null;
@@ -100,6 +102,11 @@ async function getDb() {
             if (!hasColumn("PortfolioSymbol")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioSymbol TEXT");
             if (!hasColumn("PortfolioQuantity")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioQuantity REAL");
             if (!hasColumn("PortfolioPrice")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioPrice REAL");
+            if (!hasColumn("BalanceAccountConfidence")) await db.exec("ALTER TABLE transactions ADD COLUMN BalanceAccountConfidence TEXT");
+            if (!hasColumn("PortfolioAccountNumber")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioAccountNumber TEXT");
+            if (!hasColumn("PortfolioToSymbol")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioToSymbol TEXT");
+            if (!hasColumn("PortfolioToQuantity")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioToQuantity REAL");
+            if (!hasColumn("AccountFlow")) await db.exec("ALTER TABLE transactions ADD COLUMN AccountFlow TEXT");
             await db.run("UPDATE transactions SET AmountMinor = ROUND(Amount * 100) WHERE AmountMinor IS NULL");
 
             await db.exec(`
@@ -230,6 +237,12 @@ async function getDb() {
             }
             if (!portfolioTransactionColumns.some((column) => column.name === 'priceMicros')) {
                 await db.exec('ALTER TABLE portfolio_transactions ADD COLUMN priceMicros INTEGER');
+            }
+            if (!portfolioTransactionColumns.some((column) => column.name === 'toSymbol')) {
+                await db.exec('ALTER TABLE portfolio_transactions ADD COLUMN toSymbol TEXT');
+            }
+            if (!portfolioTransactionColumns.some((column) => column.name === 'toQuantity')) {
+                await db.exec('ALTER TABLE portfolio_transactions ADD COLUMN toQuantity REAL');
             }
 
             const holdingColumns = await db.all('PRAGMA table_info(investment_holdings)');

@@ -127,6 +127,11 @@ const NullablePositiveNumber = z.preprocess(
     z.number().finite().positive().nullable()
 ).optional().default(null);
 
+const NullableSignedNumber = z.preprocess(
+    (value) => value === null || value === undefined || value === '' ? null : Number(value),
+    z.number().finite().nullable()
+).optional().default(null);
+
 const ExpenseSchema = z.object({
     Amount: z.string(),
     Category: z.enum(['Expense', 'Income', 'Saving', 'SavingWithdrawal', 'Transfer', 'Investment']),
@@ -139,12 +144,19 @@ const ExpenseSchema = z.object({
     ReferenceNumber: z.string().nullable().optional(),
     BalanceAccountId: NullablePositiveInteger,
     BalanceAccountConfidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).nullable().optional().default(null),
-    PortfolioAction: z.enum(['DEPOSIT', 'CONTRIBUTION', 'WITHDRAWAL', 'INTEREST', 'DIVIDEND', 'BUY', 'SELL', 'TRANSFER']).nullable().optional().default(null),
+    PortfolioAction: z.enum([
+        'DEPOSIT', 'CONTRIBUTION', 'WITHDRAWAL', 'INTEREST', 'DIVIDEND', 'BUY', 'SELL', 'TRANSFER',
+        'FEE', 'TAX', 'REIMBURSEMENT', 'LOAN', 'RECALL', 'REWARD', 'STAKE', 'UNSTAKE', 'DISTRIBUTION', 'SWAP',
+    ]).nullable().optional().default(null),
     PortfolioAccountId: NullablePositiveInteger,
     PortfolioConfidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).nullable().optional().default(null),
     PortfolioSymbol: z.string().trim().regex(/^[A-Z0-9.\-]{1,15}$/).nullable().optional().default(null),
     PortfolioQuantity: NullablePositiveNumber,
-    PortfolioPrice: NullablePositiveNumber
+    PortfolioPrice: NullablePositiveNumber,
+    PortfolioAccountNumber: z.string().trim().max(100).nullable().optional().default(null),
+    PortfolioToSymbol: z.string().trim().regex(/^[A-Z0-9.\-]{1,15}$/).nullable().optional().default(null),
+    PortfolioToQuantity: NullableSignedNumber,
+    AccountFlow: z.enum(['IN', 'OUT', 'NONE']).nullable().optional().default(null)
 });
 
 const ErrorSchema = z.object({ error: z.string() });
@@ -223,8 +235,8 @@ Fields to extract:
   account type, account name, or masked account/card digits make the match unambiguous. Otherwise return null.
 - "BalanceAccountConfidence": Return "HIGH" only when the email clearly identifies that account,
   "MEDIUM" for a likely but incomplete match, "LOW" for a guess, or null when no account is selected.
-- "PortfolioAction": For Saving, SavingWithdrawal, Transfer, or Investment activity, use one of "DEPOSIT", "CONTRIBUTION", "WITHDRAWAL",
-  "INTEREST", "DIVIDEND", "BUY", "SELL", or "TRANSFER". Otherwise return null.
+- "PortfolioAction": For Saving, SavingWithdrawal, Transfer, or Investment activity, use the exact action: "DEPOSIT", "CONTRIBUTION", "WITHDRAWAL",
+  "INTEREST", "DIVIDEND", "BUY", "SELL", "TRANSFER", "FEE", "TAX", "REIMBURSEMENT", "LOAN", "RECALL", "REWARD", "STAKE", "UNSTAKE", "DISTRIBUTION", or "SWAP". Otherwise return null.
   - DEPOSIT: cash explicitly added to a savings account.
   - CONTRIBUTION: cash explicitly contributed to an RRSP, TFSA, brokerage, or investment account.
   - WITHDRAWAL: cash explicitly removed from a savings or investment account.
@@ -243,6 +255,9 @@ Fields to extract:
 - "PortfolioPrice": For a BUY or SELL, return the execution price per share as a number without
   a currency symbol (for example 44.5699). Otherwise return null.
   "Amount" must be the order's total cost for a BUY or total proceeds for a SELL.
+- "PortfolioAccountNumber": Return the investment account identifier shown in the email, otherwise null.
+- "PortfolioToSymbol" and "PortfolioToQuantity": For a SWAP, return the asset and exact quantity received; otherwise null.
+- "AccountFlow": Return "IN" when cash enters the selected account, "OUT" when cash leaves it, and "NONE" for non-cash actions such as staking, recalls, distributions, or swaps.
 - A filled order confirmation from a brokerage is a valid financial transaction notification.
 
 Portfolio safety rules:

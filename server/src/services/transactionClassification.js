@@ -28,6 +28,7 @@ function getSavingEffectMinor(transaction) {
 
     const source = normalizeAccountName(transfer.source);
     const destination = normalizeAccountName(transfer.destination);
+    if (source.includes('tfsa') && destination.includes('tfsa')) return 0;
     if (destination.includes('tfsa')) return amountMinor;
     if (source.includes('tfsa')) return -amountMinor;
     return 0;
