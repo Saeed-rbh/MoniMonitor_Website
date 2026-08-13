@@ -551,15 +551,18 @@
 
 .AccountTransactions_Header {
   align-items: flex-end;
+  padding: 28px 58px 14px 4px;
 }
 
-.AccountTransactions_Back {
-  display: block;
-  margin: 0 0 12px;
-  padding: 5px 0 !important;
-  border: 0 !important;
-  background: transparent !important;
-  color: var(--Bc-1) !important;
+.AccountTransactions_Sheet {
+  max-width: none;
+  padding-top: 4px;
+  padding-bottom: 8px;
+  border-radius: 34px 34px 0 0;
+}
+
+.AccountTransactions_NotFound {
+  padding-top: 90px;
 }
 
 .AccountTransactions_ListCard {
