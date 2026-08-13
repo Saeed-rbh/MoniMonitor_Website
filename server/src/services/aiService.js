@@ -1,5 +1,14 @@
 const { GoogleGenAI } = require('@google/genai');
 const { z } = require('zod');
+const {
+    ALL_LABELS,
+    CATEGORY_LABELS,
+    EXPENSE_LABELS,
+    INCOME_LABELS,
+    INTERNAL_LABELS,
+    INVESTMENT_LABELS,
+    SAVING_LABELS,
+} = require('./transactionCategories');
 
 const AI_API_KEY = process.env.AI_API_KEY;
 const ai = AI_API_KEY ? new GoogleGenAI({ apiKey: AI_API_KEY }) : null;
@@ -61,47 +70,6 @@ function generateContentWithQuotaProtection(request) {
     return queuedRequest;
 }
 
-// ─── Label Registry ────────────────────────────────────────────────────────
-// Single source of truth for all labels used across the app.
-// Keep this list in sync with the AI prompt below.
-const EXPENSE_LABELS = [
-    'Food & Dining',     // restaurants, takeout, fast food
-    'Groceries',         // supermarkets, food stores
-    'Transport',         // Uber, transit, parking, taxi
-    'Gas',               // fuel for vehicle
-    'Shopping',          // retail, clothing, Amazon, general purchases
-    'Housing',           // rent, mortgage, maintenance
-    'Utilities',         // electricity, water, internet, phone
-    'Healthcare',        // pharmacy, clinics, dentist, prescriptions
-    'Entertainment',     // movies, streaming, concerts, hobbies
-    'Travel',            // flights, hotels, vacations
-    'Personal Care',     // haircut, gym, cosmetics, toiletries
-    'Education',         // tuition, books, courses
-    'Fees & Charges',    // bank fees, interest, fines, service charges
-    'e-Transfer Out',    // money sent via Interac e-Transfer
-];
-
-const INCOME_LABELS = [
-    'Payroll',           // salary, wages from employer
-    'e-Transfer In',     // money received via Interac e-Transfer
-    'Bank Deposit',      // direct deposits, other bank credits
-    'Other Income',      // freelance, gifts, refunds, misc income
-];
-
-const SAVING_LABELS = [
-    'Savings',           // verified new contribution
-    'Investment',        // verified TFSA contribution
-    'Debt Payment',      // credit card payment, loan repayment
-];
-
-const NEUTRAL_LABELS = [
-    'Internal Transfer', // movement between accounts owned by the user
-    'Investment Activity', // buy, sell, dividend, or interest inside an account
-    'TFSA Withdrawal',   // cash removed from TFSA; reverses prior saving
-];
-
-const ALL_LABELS = [...EXPENSE_LABELS, ...INCOME_LABELS, ...SAVING_LABELS, ...NEUTRAL_LABELS];
-
 // ─── Zod Schema ────────────────────────────────────────────────────────────
 function normalizeNullablePositiveNumber(value) {
     if (value === null || value === undefined) return null;
@@ -134,7 +102,7 @@ const NullableSignedNumber = z.preprocess(
 
 const ExpenseSchema = z.object({
     Amount: z.string(),
-    Category: z.enum(['Expense', 'Income', 'Saving', 'SavingWithdrawal', 'Transfer', 'Investment']),
+    Category: z.enum(['Expense', 'Income', 'Internal', 'Investment', 'Saving']),
     Label: z.enum(ALL_LABELS),
     Reason: z.string(),
     Timestamp: z.string(),
@@ -157,6 +125,14 @@ const ExpenseSchema = z.object({
     PortfolioToSymbol: z.string().trim().regex(/^[A-Z0-9.\-]{1,15}$/).nullable().optional().default(null),
     PortfolioToQuantity: NullableSignedNumber,
     AccountFlow: z.enum(['IN', 'OUT', 'NONE']).nullable().optional().default(null)
+}).superRefine((transaction, context) => {
+    if (!CATEGORY_LABELS[transaction.Category].includes(transaction.Label)) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['Label'],
+            message: `${transaction.Label} is not valid for ${transaction.Category}`,
+        });
+    }
 });
 
 const ErrorSchema = z.object({ error: z.string() });
@@ -200,30 +176,35 @@ Return ONLY a valid JSON object with NO markdown or backticks.
 
 Fields to extract:
 - "Amount": Transaction amount as a string without currency symbols (e.g. "45.99").
-- "Category": MUST be exactly one of: "Expense", "Income", "Saving", "SavingWithdrawal", "Transfer", "Investment".
+- "Category": MUST be exactly one of: "Expense", "Income", "Internal", "Investment", "Saving".
   - Expense: money going OUT for purchases, bills, fees, e-Transfers sent.
   - Income: money coming IN — salary, deposits, e-Transfers received.
-  - Saving: verified new cash contributed into the user's TFSA. Count the contribution once at the destination.
-  - SavingWithdrawal: cash explicitly withdrawn from the user's TFSA.
-  - Transfer: movement between accounts owned by the user, including credit-card payments. It is cash-flow neutral.
-  - Investment: BUY, SELL, dividend, interest, tax, or fee activity inside an investment account. It is not a new contribution.
-- "Label": MUST be exactly one from the list below. Pick the BEST fit — do NOT use "Other".
+  - Internal: movement between accounts owned by the user, including credit-card payments. It is cash-flow neutral.
+  - Investment: security or crypto activity inside an investment account, including purchases, sales, distributions, staking, swaps, dividends, interest, taxes, fees, reimbursements, and securities lending.
+  - Saving: verified new cash funding a savings, TFSA, brokerage, or crypto account. Count it once at the destination.
+- "Label": MUST be exactly one from the list below. Pick the BEST fit — do not invent a label.
   EXPENSE labels:   ${EXPENSE_LABELS.join(', ')}
   INCOME labels:    ${INCOME_LABELS.join(', ')}
+  INTERNAL labels:  ${INTERNAL_LABELS.join(', ')}
+  INVESTMENT labels:${INVESTMENT_LABELS.join(', ')}
   SAVING labels:    ${SAVING_LABELS.join(', ')}
-  NEUTRAL labels:   ${NEUTRAL_LABELS.join(', ')}
 
   Label selection rules:
-  - Coffee shops, cafes, bakeries → "Food & Dining"
+  - Restaurants, coffee shops, cafes, bakeries, and takeout → "Dining"
   - Supermarkets, grocery stores → "Groceries"
-  - Interac e-Transfer sent → "e-Transfer Out"
-  - Interac e-Transfer received → "e-Transfer In"
-  - Bank/payroll deposit → "Payroll" or "Bank Deposit"
-  - Transfer between the user's accounts or credit-card payment → Category "Transfer", Label "Internal Transfer"
-  - Verified new cash contribution into TFSA → Category "Saving", Label "Investment"
-  - Cash withdrawn from TFSA → Category "SavingWithdrawal", Label "TFSA Withdrawal"
-  - BUY, SELL, interest, dividend, tax, or fee inside TFSA/brokerage → Category "Investment", Label "Investment Activity"
-  - Bank fees, NSF, interest charges → "Fees & Charges"
+  - Interac e-Transfer sent to another person → "Personal Transfers"
+  - Interac e-Transfer received from another person → "Personal Transfers Received"
+  - Payroll or wages → "Employment Income"
+  - Cash, cheque, or ordinary bank deposit → "Cash & Cheque Deposits"
+  - Transfer between the user's accounts or credit-card payment → Category "Internal", Label "Internal Transfer"
+  - Verified new cash funding TFSA, brokerage, or savings → Category "Saving", Label "Savings Contributions"
+  - Verified new cash funding a crypto account → Category "Saving", Label "Crypto Funding"
+  - Cash or assets distributed out of an investment account → Category "Investment", Label "Asset Distribution"
+  - BUY of ETF or stock → Category "Investment", Label "ETF & Stock Purchase"
+  - SELL of ETF or stock → Category "Investment", Label "ETF & Stock Sale"
+  - BUY of crypto → Category "Investment", Label "Crypto Purchase"
+  - SELL of crypto → Category "Investment", Label "Crypto Sale"
+  - Bank fees, NSF, or interest charges → "Financial Charges"
 
 - "Reason": Short merchant name or description (e.g. "Tim Hortons", "Interac e-Transfer from John").
 - "Timestamp": Transaction date in ISO 8601 (e.g. "2024-10-01T16:09:00.000Z").
@@ -235,7 +216,7 @@ Fields to extract:
   account type, account name, or masked account/card digits make the match unambiguous. Otherwise return null.
 - "BalanceAccountConfidence": Return "HIGH" only when the email clearly identifies that account,
   "MEDIUM" for a likely but incomplete match, "LOW" for a guess, or null when no account is selected.
-- "PortfolioAction": For Saving, SavingWithdrawal, Transfer, or Investment activity, use the exact action: "DEPOSIT", "CONTRIBUTION", "WITHDRAWAL",
+- "PortfolioAction": For Saving, Internal, or Investment activity, use the exact action: "DEPOSIT", "CONTRIBUTION", "WITHDRAWAL",
   "INTEREST", "DIVIDEND", "BUY", "SELL", "TRANSFER", "FEE", "TAX", "REIMBURSEMENT", "LOAN", "RECALL", "REWARD", "STAKE", "UNSTAKE", "DISTRIBUTION", or "SWAP". Otherwise return null.
   - DEPOSIT: cash explicitly added to a savings account.
   - CONTRIBUTION: cash explicitly contributed to an RRSP, TFSA, brokerage, or investment account.
@@ -264,7 +245,7 @@ Portfolio safety rules:
 - Never select BalanceAccountId merely because only one account seems plausible. Match evidence from the email.
 - When a masked account or card matches a known account, return the known account's canonical Account value.
 - Never infer an account id merely because there is only one account in the list.
-- A debt or credit-card payment is Transfer for reporting and is not a portfolio action; return null portfolio fields.
+- A debt or credit-card payment is Internal for reporting and is not a portfolio action; return null portfolio fields.
 - Do not treat a BUY, SELL, or internal TRANSFER as a new contribution.
 
 - For BUY or SELL, PortfolioSymbol, PortfolioQuantity, and PortfolioPrice must all come directly

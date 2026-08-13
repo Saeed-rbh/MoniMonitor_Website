@@ -27,6 +27,8 @@ const parseInternalTransfer = (reason) => {
 };
 
 export const isInternalTransfer = (transaction) =>
+  ["Internal", "Transfer"].includes(transaction?.Category) ||
+  String(transaction?.Label || "").toLowerCase() === "internal transfer" ||
   /^Internal transfer:/i.test(String(transaction?.Reason || "").trim());
 
 export const getInternalTransferKey = (transaction) => {
@@ -49,16 +51,21 @@ export const getSavingEffect = (transaction) => {
   if (!Number.isFinite(amount)) return 0;
 
   if (transaction?.Category === "SavingWithdrawal") return -amount;
-  if (!["Saving", "Save&Invest"].includes(transaction?.Category)) return 0;
-
   const label = String(transaction?.Label || "").toLowerCase();
+  if (["savings contributions", "crypto funding"].includes(label)) return amount;
   if (label === "tfsa withdrawal") return -amount;
   if (label === "tfsa contribution") return amount;
 
+  const account = normalizeAccountName(transaction?.Account);
+  if (transaction?.Category === "Investment" &&
+      transaction?.PortfolioAction === "WITHDRAWAL" && account.includes("tfsa")) {
+    return -amount;
+  }
+
+  if (!["Saving", "Save&Invest"].includes(transaction?.Category)) return 0;
+
   const transfer = parseInternalTransfer(transaction?.Reason);
   if (!transfer) return 0;
-
-  const account = normalizeAccountName(transaction?.Account);
   if (!account.includes("tfsa")) return 0;
 
   const source = normalizeAccountName(transfer.source);

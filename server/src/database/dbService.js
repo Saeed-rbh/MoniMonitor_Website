@@ -1,6 +1,25 @@
 const { getDb } = require('./db');
 const { accountMatchScore, transactionBalanceDelta } = require('../services/accountMatching');
 const { getSavingEffectMinor } = require('../services/transactionClassification');
+const { CATEGORY_LABELS } = require('../services/transactionCategories');
+
+const portfolioActivityCategories = new Set(['Saving', 'SavingWithdrawal', 'Investment']);
+const portfolioActivityLabels = new Set([
+    ...CATEGORY_LABELS.Saving,
+    ...CATEGORY_LABELS.Investment,
+    'Savings',
+    'Investment',
+    'Investment Activity',
+    'TFSA Withdrawal',
+]);
+const securityTradeLabels = new Set([
+    'ETF & Stock Purchase',
+    'ETF & Stock Sale',
+    'Crypto Purchase',
+    'Crypto Sale',
+    'Investment',
+    'Investment Activity',
+]);
 
 function toMinorUnits(amount) {
     const numericAmount = Number(amount);
@@ -403,7 +422,7 @@ async function getPortfolioSummary(userId) {
                 ON a.id = p.accountId AND a.userId = t.userId
          WHERE t.userId = ? AND t.ReceivedAt IS NOT NULL
                AND t.Category IN ('Saving', 'SavingWithdrawal', 'Investment')
-               AND t.Label IN ('Savings', 'Investment', 'Investment Activity', 'TFSA Withdrawal')
+               AND t.PortfolioAction IS NOT NULL
          ORDER BY t.Timestamp DESC
          LIMIT 20`,
         [userId]
@@ -537,8 +556,8 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
         'SELECT * FROM transactions WHERE id = ? AND userId = ?',
         [transactionId, userId]
     );
-    if (!source || !['Saving', 'SavingWithdrawal', 'Investment'].includes(source.Category)) return { status: 'ignored' };
-    if (!['Savings', 'Investment', 'Investment Activity', 'TFSA Withdrawal'].includes(source.Label)) return { status: 'ignored' };
+    if (!source || !portfolioActivityCategories.has(source.Category)) return { status: 'ignored' };
+    if (!portfolioActivityLabels.has(source.Label)) return { status: 'ignored' };
 
     await db.run('BEGIN IMMEDIATE');
     try {
@@ -667,7 +686,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
             return { status: 'applied', accountId: resolvedAccountId, action, amountMinor, cashMinor: nextCashMinor };
         }
 
-        if (!['Investment', 'Investment Activity'].includes(source.Label)) {
+        if (!securityTradeLabels.has(source.Label)) {
             await db.run('COMMIT');
             return { status: 'review_required', reason: 'Security trades must be classified as Investment' };
         }
@@ -864,7 +883,7 @@ async function getSummaryForUser(userId) {
     const db = await getDb();
 
     const summaryTransactions = await db.all(`
-        SELECT AmountMinor, Category, Label, Reason, Account, Timestamp
+        SELECT AmountMinor, Category, Label, Reason, Account, Timestamp, PortfolioAction
         FROM transactions WHERE userId = ?
     `, [userId]);
     const totals = summaryTransactions.reduce((result, transaction) => {

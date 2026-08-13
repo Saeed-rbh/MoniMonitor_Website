@@ -7,6 +7,7 @@ import { useDrag } from "@use-gesture/react";
 import { FaXmark } from "react-icons/fa6";
 import { FaCheck } from "react-icons/fa";
 import { CgUndo } from "react-icons/cg";
+import { getTransactionIcon } from "../Categories";
 
 import { sendDataToDB, GetLabel, GetDataFromDB, updateTransactionAPI, deleteTransactionAPI } from "../../services/apiService";
 
@@ -46,14 +47,14 @@ const Notification = ({
       ? addTransaction.Reason
       : "No Reason Provided";
 
-  const Logo =
-    addTransaction.Category === "Income" ? (
+  const Logo = getTransactionIcon(addTransaction.Category, addTransaction.Label) ||
+    (addTransaction.Category === "Income" ? (
       <GoArrowDownLeft color="var(--Fc-2)" />
     ) : addTransaction.Category === "Expense" ? (
       <GoArrowUpRight color="var(--Gc-2)" />
     ) : (
       <GoPlus color="var(--Ac-2)" />
-    );
+    ));
 
   useEffect(() => {
     if (open && !deleted) {

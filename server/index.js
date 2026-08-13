@@ -218,7 +218,7 @@ app.put("/transactions/:id", authenticateToken, async (req, res) => {
         });
 
         if (updates.Category || updates.Label) {
-            const genericLabels = ["withdrawal", "deposit", "bank withdrawal", "bank deposit", "other"];
+            const genericLabels = ["withdrawal", "deposit", "bank withdrawal", "bank deposit", "other", "other expense", "other income"];
             const cleanLabel = finalTx.Label?.toLowerCase().trim();
             if (finalTx.Reason && cleanLabel && !genericLabels.includes(cleanLabel)) {
                 await dbService.saveMerchantRule(req.user.userId, finalTx.Reason, finalTx.Category, finalTx.Label);

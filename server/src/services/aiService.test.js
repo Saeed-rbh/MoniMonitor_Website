@@ -51,7 +51,7 @@ test('accepts a transaction when Gemini returns null-like portfolio values', () 
 test('coerces a valid portfolio account id from a numeric string', () => {
     const parsed = parseAIResponseText(JSON.stringify(validTransaction({
         Category: 'Saving',
-        Label: 'Investment',
+        Label: 'Savings Contributions',
         PortfolioAction: 'CONTRIBUTION',
         PortfolioAccountId: '7',
         PortfolioConfidence: 'HIGH',
@@ -62,13 +62,13 @@ test('coerces a valid portfolio account id from a numeric string', () => {
 
 test('accepts neutral transfers and investment activity', () => {
     assert.equal(parseAIResponseText(JSON.stringify(validTransaction({
-        Category: 'Transfer',
+        Category: 'Internal',
         Label: 'Internal Transfer',
-    }))).Category, 'Transfer');
+    }))).Category, 'Internal');
 
     assert.equal(parseAIResponseText(JSON.stringify(validTransaction({
         Category: 'Investment',
-        Label: 'Investment Activity',
+        Label: 'ETF & Stock Purchase',
         PortfolioAction: 'BUY',
     }))).Category, 'Investment');
 });
@@ -77,7 +77,7 @@ test('accepts expanded crypto and portfolio actions', () => {
     const parsed = parseAIResponseText(JSON.stringify(validTransaction({
         Amount: '0',
         Category: 'Investment',
-        Label: 'Investment Activity',
+        Label: 'Crypto Swap',
         PortfolioAction: 'SWAP',
         PortfolioAccountNumber: 'HQ5YZLZ12CAD',
         PortfolioSymbol: 'SHIB',
@@ -91,4 +91,11 @@ test('accepts expanded crypto and portfolio actions', () => {
     assert.equal(parsed.PortfolioToSymbol, 'DOGE');
     assert.equal(parsed.PortfolioToQuantity, 358.26249237);
     assert.equal(parsed.AccountFlow, 'NONE');
+});
+
+test('rejects a label paired with the wrong parent category', () => {
+    assert.throws(() => parseAIResponseText(JSON.stringify(validTransaction({
+        Category: 'Income',
+        Label: 'Dining',
+    }))));
 });

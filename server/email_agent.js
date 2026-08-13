@@ -366,12 +366,12 @@ async function onTelegramUpdate(update) {
             
             if (data.startsWith('save:')) {
                 const txId = data.split(':')[1];
-                await updateAgentTransaction(txId, { Category: 'Saving', Label: 'Savings' });
+                await updateAgentTransaction(txId, { Category: 'Saving', Label: 'Savings Contributions' });
                 
                 const db = await dbService.getDb();
                 const tx = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [txId, USER_ID]);
                 if (tx && tx.Reason) {
-                    await dbService.saveMerchantRule(tx.userId, tx.Reason, 'Saving', 'Savings');
+                    await dbService.saveMerchantRule(tx.userId, tx.Reason, 'Saving', 'Savings Contributions');
                     const newText = formatTransactionMessage(tx, 'updated');
                     await editTelegramMessage(messageId, newText);
                 }
@@ -382,14 +382,14 @@ async function onTelegramUpdate(update) {
                     inline_keyboard: [
                         [
                             { text: "🛒 Groceries", callback_data: `setcat:${txId}:Expense:Groceries` },
-                            { text: "🍔 Food", callback_data: `setcat:${txId}:Expense:Food & Dining` }
+                            { text: "🍔 Dining", callback_data: `setcat:${txId}:Expense:Dining` }
                         ],
                         [
                             { text: "🚗 Transport", callback_data: `setcat:${txId}:Expense:Transportation` },
                             { text: "🛍️ Shopping", callback_data: `setcat:${txId}:Expense:Shopping` }
                         ],
                         [
-                            { text: "🏠 Bills", callback_data: `setcat:${txId}:Expense:Bills & Utilities` },
+                            { text: "🏠 Housing", callback_data: `setcat:${txId}:Expense:Housing & Utilities` },
                             { text: "🔙 Cancel", callback_data: `cancel:${txId}` }
                         ]
                     ]

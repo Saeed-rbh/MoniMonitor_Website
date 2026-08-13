@@ -57,7 +57,8 @@ const Finance = () => {
         const parsed = rows.slice(0, 250).map((row) => ({
             Amount: Number(row[index("amount")]), Category: row[index("category")], Label: row[index("label")] || null,
             Reason: row[index("reason")] || null, Timestamp: row[index("timestamp")] || new Date().toISOString(),
-        })).filter((item) => Number.isFinite(item.Amount) && item.Amount > 0 && ["Income", "Expense", "Saving", "Save&Invest"].includes(item.Category));
+        })).filter((item) => Number.isFinite(item.Amount) && item.Amount > 0 &&
+            ["Expense", "Income", "Internal", "Investment", "Saving", "Save&Invest"].includes(item.Category));
         setImportRows(parsed);
         setStatus(parsed.length ? `${parsed.length} valid rows ready for review (maximum 250).` : "No valid rows found. CSV needs Amount and Category columns.");
     };

@@ -1,12 +1,16 @@
 const { z } = require("zod");
 
-const normalizeCategory = (category) => category === "Save&Invest" ? "Saving" : category;
+const normalizeCategory = (category) => ({
+    "Save&Invest": "Saving",
+    SavingWithdrawal: "Investment",
+    Transfer: "Internal",
+}[category] || category);
 const optionalText = (max) => z.string().trim().max(max).nullable().optional();
 
 const transactionFields = {
     Amount: z.coerce.number().finite().positive().max(1_000_000_000),
     Category: z.preprocess(normalizeCategory, z.enum([
-        "Income", "Expense", "Saving", "SavingWithdrawal", "Transfer", "Investment",
+        "Expense", "Income", "Internal", "Investment", "Saving",
     ])),
     Label: optionalText(100),
     Reason: optionalText(500),

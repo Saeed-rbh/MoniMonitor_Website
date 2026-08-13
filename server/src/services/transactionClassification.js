@@ -14,16 +14,23 @@ function getSavingEffectMinor(transaction) {
     if (!Number.isFinite(amountMinor)) return 0;
 
     if (transaction?.Category === 'SavingWithdrawal') return -amountMinor;
-    if (!['Saving', 'Save&Invest'].includes(transaction?.Category)) return 0;
 
     const label = String(transaction?.Label || '').toLowerCase();
+    if (['savings contributions', 'crypto funding'].includes(label)) return amountMinor;
     if (label === 'tfsa withdrawal') return -amountMinor;
     if (label === 'tfsa contribution') return amountMinor;
+
+    const account = normalizeAccountName(transaction?.Account);
+    if (transaction?.Category === 'Investment' &&
+        transaction?.PortfolioAction === 'WITHDRAWAL' && account.includes('tfsa')) {
+        return -amountMinor;
+    }
+
+    if (!['Saving', 'Save&Invest'].includes(transaction?.Category)) return 0;
 
     const transfer = parseInternalTransfer(transaction?.Reason);
     if (!transfer) return 0;
 
-    const account = normalizeAccountName(transaction?.Account);
     if (!account.includes('tfsa')) return 0;
 
     const source = normalizeAccountName(transfer.source);

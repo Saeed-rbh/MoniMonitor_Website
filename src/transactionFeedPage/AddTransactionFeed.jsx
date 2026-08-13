@@ -12,9 +12,8 @@ import Category from "./Category";
 import Type from "./Type";
 
 import {
-  Expense_categories,
-  Income_categories,
-  SaveInvest_categories,
+  getCategoryForLabel,
+  getCategoryList,
 } from "../components/Categories";
 import { useWindowHeight, ScalableElement } from "../utils/tools";
 import "./AddTransactionFeed.css";
@@ -85,14 +84,7 @@ function AddTransactionFeed({
    * Category List Determination
    */
   const OriginalList = useMemo(() => {
-    switch (isAddClicked) {
-      case "Income":
-        return Income_categories;
-      case "Expense":
-        return Expense_categories;
-      default:
-        return SaveInvest_categories;
-    }
+    return getCategoryList(isAddClicked);
   }, [isAddClicked]);
 
   const AutoDetect = useMemo(
@@ -107,7 +99,9 @@ function AddTransactionFeed({
   const Modify = addTransaction.Amount > 0;
   const [selectedCategory, setSelectedCategory] = useState(
     Modify
-      ? List.find((item) => addTransaction.Label === item[0].toLowerCase())
+      ? List.find((item) =>
+        String(addTransaction.Label || "").toLowerCase() === item[0].toLowerCase()
+      ) || List[0]
       : List[0]
   );
 
@@ -179,7 +173,9 @@ function AddTransactionFeed({
       Label: selectedCategory[0],
       Timestamp: `${selectedDate.year}-${selectedDate.month}-${selectedDate.day} ${selectedDate.hours}:${selectedDate.minutes}`,
       Type: whichType ? "Daily" : "Monthly",
-      Category: isAddClicked,
+      Category: isAddClicked === "Save&Invest"
+        ? getCategoryForLabel(selectedCategory[0])
+        : isAddClicked,
     };
   }, [
     value,

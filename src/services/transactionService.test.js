@@ -92,6 +92,28 @@ describe("groupTransactionsByMonth", () => {
     expect(isSaveInvestTransaction(result["2026-08"].transactions[1])).toBe(false);
   });
 
+  it("uses the new saving labels and subtracts TFSA investment withdrawals", () => {
+    expect(getSavingEffect({
+      Amount: 750,
+      Category: "Saving",
+      Label: "Savings Contributions",
+      Account: "TFSA",
+    })).toBe(750);
+    expect(getSavingEffect({
+      Amount: 125,
+      Category: "Saving",
+      Label: "Crypto Funding",
+      Account: "Crypto",
+    })).toBe(125);
+    expect(getSavingEffect({
+      Amount: 200,
+      Category: "Investment",
+      Label: "Asset Distribution",
+      PortfolioAction: "WITHDRAWAL",
+      Account: "TFSA",
+    })).toBe(-200);
+  });
+
   it("deduplicates paired internal-transfer ledger entries", () => {
     const transfers = [
       { id: 1, Amount: 810.22, Reason: "Internal transfer: RBC Chequing -> RBC Visa [XFER-6]", ReferenceNumber: "XFER-6" },

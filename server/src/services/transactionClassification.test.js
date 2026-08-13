@@ -44,3 +44,25 @@ test('subtracts TFSA withdrawals and ignores non-TFSA transfers and trades', () 
         Account: 'TFSA',
     }), 0);
 });
+
+test('supports the new saving and investment labels', () => {
+    assert.equal(getSavingEffectMinor({
+        AmountMinor: 75000,
+        Category: 'Saving',
+        Label: 'Savings Contributions',
+        Account: 'TFSA',
+    }), 75000);
+    assert.equal(getSavingEffectMinor({
+        AmountMinor: 12500,
+        Category: 'Saving',
+        Label: 'Crypto Funding',
+        Account: 'Crypto',
+    }), 12500);
+    assert.equal(getSavingEffectMinor({
+        AmountMinor: 20000,
+        Category: 'Investment',
+        Label: 'Asset Distribution',
+        PortfolioAction: 'WITHDRAWAL',
+        Account: 'TFSA',
+    }), -20000);
+});

@@ -4,6 +4,7 @@ $repository = $PSScriptRoot
 $pidFile = Join-Path $env:TEMP 'monimonitor-api.pid'
 $stateDirectory = Join-Path $env:LOCALAPPDATA 'MoniMonitor'
 $logFile = Join-Path $stateDirectory 'auto-update.log'
+$runningCommitFile = Join-Path $stateDirectory 'running-commit.txt'
 $localHealthUrl = 'http://127.0.0.1:3001/health'
 $publicHealthUrl = 'https://monimonitor.saeedarabha.com/api/health'
 $tailscaleExecutable = 'C:\Program Files\Tailscale\tailscale.exe'
@@ -40,9 +41,16 @@ function Stop-MoniMonitorBackend {
         Where-Object { $_.CommandLine -match 'MoniMonitor API \+ Email \+ Telegram' } |
         ForEach-Object { [void]$candidateIds.Add([int]$_.ProcessId) }
 
+    Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue |
+        Where-Object { $_.CommandLine -like '*MoniMonitor_Website*concurrently*' } |
+        ForEach-Object { [void]$candidateIds.Add([int]$_.ProcessId) }
+
     foreach ($candidateId in $candidateIds) {
         $process = Get-CimInstance Win32_Process -Filter "ProcessId = $candidateId" -ErrorAction SilentlyContinue
-        if ($process -and $process.Name -eq 'cmd.exe' -and $process.CommandLine -match 'npm run dev') {
+        $isLauncher = $process -and $process.Name -eq 'cmd.exe' -and $process.CommandLine -match 'npm run dev'
+        $isSupervisor = $process -and $process.Name -eq 'node.exe' -and
+            $process.CommandLine -like '*MoniMonitor_Website*concurrently*'
+        if ($isLauncher -or $isSupervisor) {
             & taskkill.exe /PID $candidateId /T /F | Out-Null
         }
     }
@@ -131,23 +139,41 @@ try {
 
             $localCommit = (& git -C $repository rev-parse HEAD 2>$null).Trim()
             $remoteCommit = (& git -C $repository rev-parse origin/main 2>$null).Trim()
-            if (-not $localCommit -or -not $remoteCommit -or $localCommit -eq $remoteCommit) {
+            if (-not $localCommit -or -not $remoteCommit) {
                 continue
             }
 
-            & git -C $repository merge-base --is-ancestor $localCommit $remoteCommit
-            if ($LASTEXITCODE -ne 0) {
-                Write-UpdateLog 'GitHub changed, but the update was not a safe fast-forward. Update skipped.'
+            if ($localCommit -ne $remoteCommit) {
+                & git -C $repository merge-base --is-ancestor $localCommit $remoteCommit
+                if ($LASTEXITCODE -ne 0) {
+                    Write-UpdateLog 'GitHub changed, but the update was not a safe fast-forward. Update skipped.'
+                    continue
+                }
+
+                & git -C $repository merge --ff-only origin/main
+                if ($LASTEXITCODE -ne 0) {
+                    Write-UpdateLog 'Fast-forward merge failed. The running version was left unchanged.'
+                    continue
+                }
+
+                Write-UpdateLog "Updated repository from $localCommit to $remoteCommit."
+                $localCommit = (& git -C $repository rev-parse HEAD 2>$null).Trim()
+            }
+
+            $runningCommit = if (Test-Path -LiteralPath $runningCommitFile) {
+                (Get-Content -LiteralPath $runningCommitFile -Raw).Trim()
+            } else {
+                ''
+            }
+            if ($runningCommit -eq $localCommit) {
                 continue
             }
 
-            & git -C $repository merge --ff-only origin/main
-            if ($LASTEXITCODE -ne 0) {
-                Write-UpdateLog 'Fast-forward merge failed. The running version was left unchanged.'
-                continue
+            if ($runningCommit) {
+                Write-UpdateLog "Running commit $runningCommit differs from repository commit $localCommit; restarting MoniMonitor."
+            } else {
+                Write-UpdateLog "Running commit is unknown; restarting MoniMonitor at $localCommit."
             }
-
-            Write-UpdateLog "Updated from $localCommit to $remoteCommit; restarting MoniMonitor."
             Stop-MoniMonitorBackend
 
             # Release ownership before relaunching so the updated watcher can take over.

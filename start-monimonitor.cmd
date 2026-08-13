@@ -53,16 +53,22 @@ if errorlevel 1 goto :error
 powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/health' -TimeoutSec 2 | Out-Null; exit 0 } catch { exit 1 }"
 if not errorlevel 1 (
   powershell -NoProfile -Command "$agent = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' | Where-Object { $_.CommandLine -match 'email_agent\.js' }; if ($agent) { exit 0 } else { exit 1 }"
-  if errorlevel 1 (
-    echo The API is running without the email and Telegram agent. Close the existing backend window, then run this launcher again.
-    goto :error
+    if errorlevel 1 (
+      echo The API is running without the email and Telegram agent. Close the existing backend window, then run this launcher again.
+      goto :error
+    )
+  call :running_commit_matches
+  if not errorlevel 1 (
+    call :ensure_public_health
+    if errorlevel 1 goto :error
+    echo MoniMonitor is already fully running at the current Git commit.
+    if not defined AUTO_UPDATE_RESTART start "" "%PUBLIC_URL%"
+    powershell -NoProfile -Command "Start-Sleep -Seconds 3"
+    exit /b 0
   )
-  call :ensure_public_health
+  echo The running backend does not match the current Git commit. Restarting it...
+  call :stop_backend
   if errorlevel 1 goto :error
-  echo MoniMonitor is already fully running.
-  if not defined AUTO_UPDATE_RESTART start "" "%PUBLIC_URL%"
-  powershell -NoProfile -Command "Start-Sleep -Seconds 3"
-  exit /b 0
 )
 
 powershell -NoProfile -Command "$command = 'title MoniMonitor API + Email + Telegram&& set AI_INGESTION_ENABLED=true&& npm run dev'; $process = Start-Process -FilePath $env:ComSpec -ArgumentList '/d','/k',$command -WorkingDirectory '%~dp0server' -PassThru; Set-Content -LiteralPath (Join-Path $env:TEMP 'monimonitor-api.pid') -Value $process.Id"
@@ -82,6 +88,8 @@ if errorlevel 1 (
 
 call :ensure_public_health
 if errorlevel 1 goto :error
+call :record_running_commit
+if errorlevel 1 goto :error
 
 echo.
 echo Website, API, email analyzer, Telegram connector, and tunnel are running.
@@ -89,6 +97,18 @@ echo Website: %PUBLIC_URL%
 if not defined AUTO_UPDATE_RESTART start "" "%PUBLIC_URL%"
 powershell -NoProfile -Command "Start-Sleep -Seconds 3"
 exit /b 0
+
+:running_commit_matches
+powershell -NoProfile -Command "$state = Join-Path $env:LOCALAPPDATA 'MoniMonitor'; $marker = Join-Path $state 'running-commit.txt'; if (-not (Test-Path -LiteralPath $marker)) { exit 1 }; $running = (Get-Content -LiteralPath $marker -Raw).Trim(); $current = (& git -C '%~dp0' rev-parse HEAD).Trim(); if ($LASTEXITCODE -eq 0 -and $running -and $running -eq $current) { exit 0 }; exit 1"
+exit /b %errorlevel%
+
+:record_running_commit
+powershell -NoProfile -Command "$state = Join-Path $env:LOCALAPPDATA 'MoniMonitor'; New-Item -ItemType Directory -Path $state -Force ^| Out-Null; $current = (& git -C '%~dp0' rev-parse HEAD).Trim(); if ($LASTEXITCODE -ne 0 -or -not $current) { exit 1 }; Set-Content -LiteralPath (Join-Path $state 'running-commit.txt') -Value $current"
+exit /b %errorlevel%
+
+:stop_backend
+powershell -NoProfile -Command "$pidFile = Join-Path $env:TEMP 'monimonitor-api.pid'; $candidateIds = [Collections.Generic.HashSet[int]]::new(); if (Test-Path -LiteralPath $pidFile) { $savedPid = 0; if ([int]::TryParse((Get-Content -LiteralPath $pidFile -Raw).Trim(), [ref]$savedPid)) { [void]$candidateIds.Add($savedPid) } }; Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' -ErrorAction SilentlyContinue ^| Where-Object { $_.CommandLine -like '*MoniMonitor_Website*concurrently*' } ^| ForEach-Object { [void]$candidateIds.Add([int]$_.ProcessId) }; foreach ($candidateId in $candidateIds) { taskkill.exe /PID $candidateId /T /F ^| Out-Null }; Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; $remaining = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' -ErrorAction SilentlyContinue ^| Where-Object { $_.CommandLine -like '*MoniMonitor_Website*concurrently*' }; if ($remaining) { exit 1 }; exit 0"
+exit /b %errorlevel%
 
 :update_from_github
 echo Checking GitHub for MoniMonitor updates...

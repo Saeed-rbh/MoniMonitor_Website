@@ -1,13 +1,7 @@
 import React from "react";
 import { useSpring, animated } from "@react-spring/web";
-import { LiaHouseDamageSolid } from "react-icons/lia";
-import { LiaBusSolid } from "react-icons/lia";
-import { MdOutlineLocalGroceryStore } from "react-icons/md";
-import { RiMentalHealthLine } from "react-icons/ri";
-import { BiBookBookmark } from "react-icons/bi";
-import { CgGym } from "react-icons/cg";
-import { MdOutlineQuestionMark } from "react-icons/md";
 import { IoClose } from "react-icons/io5";
+import { Expense_categories } from "../../components/Categories";
 
 function ModifyCategory({
   categoryClick,
@@ -15,16 +9,6 @@ function ModifyCategory({
   halfHeightE,
   setCategoryClick,
 }) {
-  const Expense_categories = [
-    ["Utilities", <LiaHouseDamageSolid />],
-    ["Transportation", <LiaBusSolid />],
-    ["Groceries & Dining", <MdOutlineLocalGroceryStore />],
-    ["Health", <RiMentalHealthLine />],
-    ["Education ", <BiBookBookmark />],
-    ["Leisure", <CgGym />],
-    ["Other", <MdOutlineQuestionMark />],
-  ];
-
   const ClickOpacityStyle = useSpring({
     from: {
       opacity: !categoryClick ? 0.5 : 1,
@@ -75,8 +59,8 @@ function ModifyCategory({
         style={ClickModifyStyle}
       >
         <div className="TransactionModification_Category">
-          {Expense_categories.map((category, index) => (
-            <p>
+          {Expense_categories.map((category) => (
+            <p key={category[0]}>
               {category[1]}
               <h3>{category[0]}</h3>
             </p>
