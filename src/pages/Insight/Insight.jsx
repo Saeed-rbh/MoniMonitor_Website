@@ -9,11 +9,12 @@ import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
 import InsightFacts from './InsightFacts';
 import { GetSummary } from "../../services/apiService";
 import { getSavingEffect } from "../../services/transactionService";
+import { buildAllTimeInsightData } from "./insightPeriodData";
 
 const Insight = () => {
     // Access global transaction data from context
     const { transactionsData: transactions, allTransactions, whichMonth, isDateClicked, isMoreClicked } = useTransactions();
-    const [viewMode, setViewMode] = React.useState('monthly'); // 'monthly' or 'yearly'
+    const [viewMode, setViewMode] = React.useState('monthly');
     const [summaryData, setSummaryData] = React.useState(null);
 
     React.useEffect(() => {
@@ -40,7 +41,7 @@ const Insight = () => {
         },
     });
 
-    const { dailyIncome, dailyExpense, dailyInvest, daysInMonth, paddingDays, year } = useMemo(() => {
+    const { dailyIncome, dailyExpense, dailyInvest, daysInMonth, paddingDays, year, periodLabels } = useMemo(() => {
         // Determine the Target Month/Year
         let targetYear, targetMonth;
 
@@ -53,6 +54,20 @@ const Insight = () => {
             const targetDate = new Date(today.getFullYear(), today.getMonth() - whichMonth, 1);
             targetYear = targetDate.getFullYear();
             targetMonth = targetDate.getMonth();
+        }
+
+        if (viewMode === 'alltime') {
+            const allTimeData = buildAllTimeInsightData(allTransactions);
+
+            return {
+                dailyIncome: allTimeData.income,
+                dailyExpense: allTimeData.expense,
+                dailyInvest: allTimeData.invest,
+                daysInMonth: allTimeData.labels.length,
+                paddingDays: 0,
+                year: targetYear,
+                periodLabels: allTimeData.labels,
+            };
         }
 
         if (viewMode === 'yearly') {
@@ -82,7 +97,8 @@ const Insight = () => {
                 dailyInvest: investArr,
                 daysInMonth: 12,
                 paddingDays: 0,
-                year: targetYear
+                year: targetYear,
+                periodLabels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
             };
         }
 
@@ -98,7 +114,8 @@ const Insight = () => {
                 dailyInvest: Array(paddingDays).fill(null).concat(Array(daysInMonth).fill(0)),
                 daysInMonth,
                 paddingDays,
-                year: targetYear
+                year: targetYear,
+                periodLabels: []
             };
         }
 
@@ -132,7 +149,8 @@ const Insight = () => {
             dailyInvest: [...padding, ...investArr],
             daysInMonth,
             paddingDays,
-            year: targetYear
+            year: targetYear,
+            periodLabels: []
         };
     }, [transactions, allTransactions, whichMonth, viewMode]);
 
@@ -148,7 +166,7 @@ const Insight = () => {
 
     // --- Balance Comparison Logic ---
     const percentageChange = useMemo(() => {
-        if (!allTransactions || viewMode === 'yearly') return null;
+        if (!allTransactions || viewMode !== 'monthly') return null;
 
         // 1. Identify Target Comparison Date (Max Day in current view)
         // If current transactions exist, use the latest transaction day. Else use Today's day?
@@ -212,7 +230,7 @@ const Insight = () => {
 
     // --- Expense Anomaly Detection Logic ---
     const anomalies = useMemo(() => {
-        if (!allTransactions || !transactions || viewMode === 'yearly') return [];
+        if (!allTransactions || !transactions || viewMode !== 'monthly') return [];
 
         // 1. Collect Historical Expense Data (Previous 3 Months)
         let historicalExpenses = [];
@@ -308,7 +326,11 @@ const Insight = () => {
                 gridColumn: "2",
                 gridRow: "1",
                 display: "grid",
-                gridTemplateColumns: viewMode === 'yearly' ? "repeat(4, 12px)" : "repeat(7, 12px)", // Adjust grid for 12 months (4x3) if yearly
+                gridTemplateColumns: viewMode === 'yearly'
+                    ? "repeat(4, 12px)"
+                    : viewMode === 'alltime'
+                        ? `repeat(${Math.min(Math.max(data.length, 1), 7)}, 12px)`
+                        : "repeat(7, 12px)",
                 gap: "2px",
             }}>
                 {data.map((amount, index) => {
@@ -328,9 +350,9 @@ const Insight = () => {
                     // Using deterministic random for stability
                     const delay = ((index * 137.5) % 1.2).toFixed(2);
 
-                    const titleText = viewMode === 'yearly'
-                        ? `${new Date(0, index).toLocaleString('default', { month: 'short' })}: $${amount}`
-                        : `Day ${index - paddingDays + 1}: $${amount}`;
+                    const titleText = viewMode === 'monthly'
+                        ? `Day ${index - paddingDays + 1}: $${amount}`
+                        : `${periodLabels[index] || index + 1}: $${amount}`;
 
                     return (
                         <div key={index} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "12px", height: "12px" }} title={titleText}>
@@ -375,27 +397,31 @@ const Insight = () => {
         let accExpense = 0;
         let accInvest = 0;
 
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
         return income.map((_, i) => {
             accIncome += (income[i] || 0);
             accExpense += (expense[i] || 0);
             accInvest += (invest[i] || 0);
 
             return {
-                day: viewMode === 'yearly' ? monthNames[i] : i + 1,
+                day: viewMode === 'monthly' ? i + 1 : periodLabels[i],
                 income: accIncome,
                 expense: accExpense,
                 invest: accInvest
             };
         });
-    }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, viewMode]);
+    }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode]);
 
     // --- Prepare Data for Category Breakdown ---
     const currentViewTransactions = useMemo(() => {
         if (viewMode === 'monthly') {
             return transactions || [];
-        } else {
+        }
+
+        if (viewMode === 'alltime') {
+            return buildAllTimeInsightData(allTransactions).transactions;
+        }
+
+        {
             // YEARLY: Aggregate all transactions for the target year
             if (!allTransactions) return [];
             let yearlyTx = [];
@@ -471,6 +497,25 @@ const Insight = () => {
                     }}
                 >
                     Yearly
+                </ScalableElement>
+                <ScalableElement
+                    as="button"
+                    onClick={() => setViewMode('alltime')}
+                    style={{
+                        background: 'radial-gradient(circle at 30% -20%, var(--Bc-3) -100%, var(--Ec-4) 65%)',
+                        color: viewMode === 'alltime' ? 'var(--Bc-1)' : 'var(--Ac-1)',
+                        outline: '1px solid var(--Bc-3)',
+                        border: 'none',
+                        borderRadius: '30px',
+                        padding: '10px 20px',
+                        fontSize: '0.8rem',
+                        fontWeight: viewMode === 'alltime' ? '600' : '200',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease',
+                        whiteSpace: 'nowrap'
+                    }}
+                >
+                    All Time
                 </ScalableElement>
             </div>
 
@@ -557,7 +602,11 @@ const Insight = () => {
                     color: "var(--Ac-3)",
                     marginBottom: "5px"
                 }}>
-                    {viewMode === 'yearly' ? `${year} Annual Trend` : 'Monthly Trend'}
+                    {viewMode === 'alltime'
+                        ? 'All-Time Trend'
+                        : viewMode === 'yearly'
+                            ? `${year} Annual Trend`
+                            : 'Monthly Trend'}
                 </div>
                 <InsightTrendChart data={chartData} />
             </div>
