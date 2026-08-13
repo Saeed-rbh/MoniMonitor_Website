@@ -74,7 +74,16 @@ const sendValidationError = (res, error) => {
     return res.status(500).json({ error: "Unable to process this request" });
 };
 
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+app.get("/health", async (_req, res) => {
+    try {
+        const db = await dbService.getDb();
+        await db.get("SELECT 1 AS ready");
+        return res.json({ status: "ok" });
+    } catch (error) {
+        console.error("Database health check failed:", error);
+        return res.status(503).json({ status: "unavailable" });
+    }
+});
 
 app.post("/register", authRateLimit, async (req, res) => {
     const username = typeof req.body?.username === "string" ? req.body.username.trim().toLowerCase() : "";

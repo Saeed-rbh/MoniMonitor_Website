@@ -333,7 +333,9 @@ async function reconcileTransactionAccountBalances(userId) {
     const db = await getDb();
     const transactions = await db.all(
         `SELECT id FROM transactions
-         WHERE userId = ? AND id NOT IN (
+         WHERE userId = ? AND ReceivedAt IS NOT NULL
+           AND (Category IN ('Expense', 'Income') OR (Category = 'Saving' AND Label = 'Debt Payment'))
+           AND id NOT IN (
              SELECT sourceTransactionId FROM account_balance_events WHERE userId = ?
          ) ORDER BY Timestamp ASC`,
         [userId, userId]
@@ -349,7 +351,8 @@ async function reconcileEmailPortfolioActivities(userId) {
     const db = await getDb();
     const transactions = await db.all(
         `SELECT * FROM transactions
-         WHERE userId = ? AND Category = 'Saving' AND PortfolioAction IS NOT NULL
+         WHERE userId = ? AND ReceivedAt IS NOT NULL
+           AND Category = 'Saving' AND PortfolioAction IS NOT NULL
            AND id NOT IN (
                SELECT sourceTransactionId FROM portfolio_transactions
                WHERE userId = ? AND sourceTransactionId IS NOT NULL

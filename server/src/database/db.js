@@ -4,15 +4,22 @@ const path = require('path');
 const { applyFinancialSnapshot } = require('./financialSnapshot');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'monimonitor.sqlite');
+const DB_BUSY_TIMEOUT_MS = 10000;
 
 let dbPromise = null;
 
 async function getDb() {
     if (!dbPromise) {
-        dbPromise = open({
+        let openedDb = null;
+        const initialization = open({
             filename: DB_PATH,
             driver: sqlite3.Database
         }).then(async (db) => {
+            openedDb = db;
+            db.configure('busyTimeout', DB_BUSY_TIMEOUT_MS);
+            await db.exec('PRAGMA journal_mode = WAL');
+            await db.exec('PRAGMA synchronous = NORMAL');
+
             await db.exec(`
                 CREATE TABLE IF NOT EXISTS users (
                     id TEXT PRIMARY KEY,
@@ -253,6 +260,17 @@ async function getDb() {
             await applyFinancialSnapshot(db, process.env.USER_ID);
             return db;
         });
+
+        const recoverableInitialization = initialization.catch(async (error) => {
+            if (openedDb) {
+                await openedDb.close().catch(() => {});
+            }
+            if (dbPromise === recoverableInitialization) {
+                dbPromise = null;
+            }
+            throw error;
+        });
+        dbPromise = recoverableInitialization;
     }
     return dbPromise;
 }
