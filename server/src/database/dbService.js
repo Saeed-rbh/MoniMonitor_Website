@@ -1,5 +1,10 @@
 const { getDb } = require('./db');
 const { accountMatchScore, transactionBalanceDelta } = require('../services/accountMatching');
+const {
+    describeDiscoveredAccount,
+    getAccountReference,
+    resolveAccountCandidate,
+} = require('../services/accountDiscovery');
 const { getSavingEffectMinor } = require('../services/transactionClassification');
 const { CATEGORY_LABELS } = require('../services/transactionCategories');
 
@@ -242,6 +247,80 @@ async function trackAccount(userId, account, bankName, type, firstSeen) {
     }
 }
 
+async function ensureTransactionAccount(userId, transaction = {}) {
+    const accountRef = getAccountReference(transaction);
+    if (!accountRef) return { status: 'insufficient_identity', account: null, created: false };
+
+    const db = await getDb();
+    await db.run('BEGIN IMMEDIATE');
+    try {
+        const accounts = await db.all('SELECT * FROM investment_accounts WHERE userId = ?', [userId]);
+        const matchTransaction = { ...transaction, Account: accountRef };
+        const preferredAccountId = transaction.PortfolioAccountId || transaction.BalanceAccountId || null;
+        const preferredConfidence = transaction.PortfolioConfidence === 'HIGH' || transaction.BalanceAccountConfidence === 'HIGH'
+            ? 'HIGH'
+            : null;
+        const resolved = resolveAccountCandidate(
+            matchTransaction,
+            accounts,
+            preferredAccountId,
+            preferredConfidence
+        );
+
+        let account;
+        let created = false;
+        let status = 'matched';
+        if (resolved) {
+            account = resolved.account;
+            if (!account.accountRef) {
+                await db.run(
+                    'UPDATE investment_accounts SET accountRef = ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                    [accountRef, new Date().toISOString(), account.id, userId]
+                );
+                account = { ...account, accountRef };
+                status = 'linked';
+            }
+        } else {
+            const discovered = describeDiscoveredAccount(matchTransaction);
+            if (!discovered) {
+                await db.run('COMMIT');
+                return { status: 'insufficient_identity', account: null, created: false };
+            }
+            const settings = await db.get('SELECT currency FROM user_settings WHERE userId = ?', [userId]);
+            const currency = settings?.currency || transaction.Currency || 'CAD';
+            const now = new Date().toISOString();
+            const result = await db.run(
+                `INSERT INTO investment_accounts
+                    (userId, name, institution, accountType, accountRef, currency, cashMinor, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+                [userId, discovered.name, discovered.institution, discovered.accountType,
+                    discovered.accountRef, currency, now, now]
+            );
+            account = await db.get(
+                'SELECT * FROM investment_accounts WHERE id = ? AND userId = ?',
+                [result.lastID, userId]
+            );
+            created = true;
+            status = 'created';
+        }
+
+        await db.run(
+            `INSERT INTO accounts (userId, Account, BankName, Type, FirstSeen)
+             VALUES (?, ?, ?, ?, ?)
+             ON CONFLICT(userId, Account) DO UPDATE SET
+                 BankName = COALESCE(excluded.BankName, accounts.BankName),
+                 Type = COALESCE(excluded.Type, accounts.Type)`,
+            [userId, accountRef, transaction.BankName || account.institution,
+                transaction.Type || account.accountType, transaction.Timestamp || new Date().toISOString()]
+        );
+        await db.run('COMMIT');
+        return { status, account, created };
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+}
+
 const portfolioAccountSelect = `
     SELECT a.*,
            COALESCE(SUM(ROUND(h.quantity * COALESCE(h.priceMicros, h.priceMinor * 10000) / 10000.0)), 0) AS holdingsValueMinor,
@@ -459,9 +538,10 @@ async function createInvestmentAccount(userId, account) {
     const db = await getDb();
     const now = new Date().toISOString();
     const result = await db.run(
-        `INSERT INTO investment_accounts (userId, name, institution, accountType, currency, cashMinor, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [userId, account.name, account.institution || null, account.accountType, account.currency, account.cashMinor, now, now]
+        `INSERT INTO investment_accounts (userId, name, institution, accountType, accountRef, currency, cashMinor, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [userId, account.name, account.institution || null, account.accountType, account.accountRef || null,
+            account.currency, account.cashMinor, now, now]
     );
     return await db.get('SELECT * FROM investment_accounts WHERE id = ? AND userId = ?', [result.lastID, userId]);
 }
@@ -1067,6 +1147,7 @@ module.exports = {
     findDuplicateTransaction,
     getAccountsForUser,
     trackAccount,
+    ensureTransactionAccount,
     getInvestmentAccounts,
     getPortfolioSummary,
     createInvestmentAccount,

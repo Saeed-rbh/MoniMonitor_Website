@@ -190,11 +190,17 @@ app.post("/transactions", authenticateToken, async (req, res) => {
         const { BalanceAccountId = null, ...transactionInput } = req.body || {};
         const transaction = parseTransaction(transactionInput);
         const id = await dbService.addTransaction({ ...transaction, userId: req.user.userId });
+        const accountResolution = await dbService.ensureTransactionAccount(req.user.userId, {
+            ...transaction,
+            BalanceAccountId,
+            BalanceAccountConfidence: BalanceAccountId ? 'HIGH' : null,
+        });
+        const resolvedAccountId = BalanceAccountId || accountResolution.account?.id || null;
         const accountPosting = await dbService.syncTransactionAccountBalance(req.user.userId, id, {
-            accountId: BalanceAccountId, confidence: BalanceAccountId ? 'HIGH' : null,
+            accountId: resolvedAccountId, confidence: resolvedAccountId ? 'HIGH' : null,
         });
         await dbService.detectAndMarkRecurring(req.user.userId, id).catch((error) => console.error("Recurrence detection error:", error.message));
-        return res.status(201).json({ message: "Created", data: { ...transaction, id }, accountPosting });
+        return res.status(201).json({ message: "Created", data: { ...transaction, id }, accountPosting, accountResolution });
     } catch (error) {
         return sendValidationError(res, error);
     }
@@ -214,8 +220,14 @@ app.put("/transactions/:id", authenticateToken, async (req, res) => {
             await dbService.updateTransactionForUser(req.params.id, req.user.userId, updates);
         }
         const finalTx = await dbService.getTransactionById(req.params.id, req.user.userId);
+        const accountResolution = await dbService.ensureTransactionAccount(req.user.userId, {
+            ...finalTx,
+            BalanceAccountId,
+            BalanceAccountConfidence: BalanceAccountId ? 'HIGH' : null,
+        });
+        const resolvedAccountId = BalanceAccountId || accountResolution.account?.id || null;
         const accountPosting = await dbService.syncTransactionAccountBalance(req.user.userId, req.params.id, {
-            accountId: BalanceAccountId, confidence: BalanceAccountId ? 'HIGH' : null,
+            accountId: resolvedAccountId, confidence: resolvedAccountId ? 'HIGH' : null,
         });
 
         if (updates.Category || updates.Label) {
@@ -227,7 +239,7 @@ app.put("/transactions/:id", authenticateToken, async (req, res) => {
         }
 
         await dbService.detectAndMarkRecurring(req.user.userId, req.params.id).catch((error) => console.error("Recurrence detection error:", error.message));
-        return res.json({ message: "Updated", data: finalTx, accountPosting });
+        return res.json({ message: "Updated", data: finalTx, accountPosting, accountResolution });
     } catch (error) {
         return sendValidationError(res, error);
     }
@@ -493,11 +505,17 @@ app.post("/MoniMonitor_ToDB", authenticateToken, async (req, res) => {
         const { BalanceAccountId = null, ...recordInput } = record_entry || {};
         const transaction = parseTransaction({ ...recordInput, Type: record_type || recordInput.Type });
         const id = await dbService.addTransaction({ ...transaction, userId: req.user.userId });
+        const accountResolution = await dbService.ensureTransactionAccount(req.user.userId, {
+            ...transaction,
+            BalanceAccountId,
+            BalanceAccountConfidence: BalanceAccountId ? 'HIGH' : null,
+        });
+        const resolvedAccountId = BalanceAccountId || accountResolution.account?.id || null;
         const accountPosting = await dbService.syncTransactionAccountBalance(req.user.userId, id, {
-            accountId: BalanceAccountId, confidence: BalanceAccountId ? 'HIGH' : null,
+            accountId: resolvedAccountId, confidence: resolvedAccountId ? 'HIGH' : null,
         });
         await dbService.detectAndMarkRecurring(req.user.userId, id).catch((error) => console.error("Recurrence detection error:", error.message));
-        return res.status(201).json({ message: "Created", data: { ...transaction, id }, accountPosting });
+        return res.status(201).json({ message: "Created", data: { ...transaction, id }, accountPosting, accountResolution });
     } catch (error) {
         return sendValidationError(res, error);
     }

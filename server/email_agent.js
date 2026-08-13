@@ -190,6 +190,31 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             expenseData.Timestamp = new Date().toISOString();
         }
 
+        // A stable account/card reference in a transaction is enough to add a new
+        // account to the Accounts page. Vague emails without an identifier are
+        // intentionally left unmatched to avoid inventing duplicate accounts.
+        const accountResolution = await dbService.ensureTransactionAccount(USER_ID, expenseData);
+        if (accountResolution.account) {
+            expenseData.BalanceAccountId = accountResolution.account.id;
+            expenseData.BalanceAccountConfidence = 'HIGH';
+            if (expenseData.PortfolioAction) {
+                expenseData.PortfolioAccountId = accountResolution.account.id;
+                expenseData.PortfolioConfidence = 'HIGH';
+            }
+            if (accountResolution.created) {
+                console.log(
+                    `[${idInfo}] Automatically added account: ${accountResolution.account.name} (${accountResolution.account.accountRef}).`
+                );
+                await writeAudit('account_auto_created', 'success', {
+                    accountId: accountResolution.account.id,
+                    name: accountResolution.account.name,
+                    institution: accountResolution.account.institution,
+                    accountType: accountResolution.account.accountType,
+                    accountRef: accountResolution.account.accountRef,
+                });
+            }
+        }
+
         // 1. Exact duplicate check
         const datePrefix = expenseData.Timestamp.substring(0, 10);
         const duplicate = await dbService.findDuplicateTransaction(
