@@ -36,7 +36,7 @@ const InsightMonthlyTrendChart = ({ data }) => {
     };
 
     return (
-        <div style={{
+        <div className="Insight_BarChart" style={{
             width: '100%',
             height: 220,
             padding: '15px',

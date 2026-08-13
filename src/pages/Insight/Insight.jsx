@@ -319,42 +319,18 @@ const Insight = () => {
     };
 
     const renderGrid = (title, color, data, maxVal, totalVal) => (
-        <div style={{
-            display: "grid",
-            gridTemplateColumns: "min-content min-content",
-            gridTemplateRows: "auto auto",
-            gap: "0px 5px",
-            alignItems: "end"
-        }}>
-
-            <div style={{
-                gridColumn: "1",
-                gridRow: "1",
-                color: color,
-                fontSize: "0.75rem",
-                fontWeight: "bold",
-                opacity: 0.5,
-                marginBottom: "0",
-                writingMode: "vertical-rl",
-                textOrientation: "mixed",
-                transform: "rotate(180deg)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center"
-            }}>
-                {title}
+        <div className="Insight_Kpi" style={{ "--insight-accent": color }}>
+            <div className="Insight_KpiHeader">
+                <span>{title}</span>
+                <strong>${formatCurrency(totalVal)}</strong>
             </div>
 
-            <div style={{
-                gridColumn: "2",
-                gridRow: "1",
-                display: "grid",
+            <div className="Insight_DotGrid" style={{
                 gridTemplateColumns: viewMode === 'yearly'
                     ? "repeat(4, 12px)"
                     : viewMode === 'alltime'
                         ? `repeat(${Math.min(Math.max(data.length, 1), 7)}, 12px)`
                         : "repeat(7, 12px)",
-                gap: "2px",
             }}>
                 {data.map((amount, index) => {
                     if (amount === null) {
@@ -382,11 +358,8 @@ const Insight = () => {
                             <div
                                 className="reveal-dot"
                                 style={{
-                                    width: "4px",
-                                    height: "4px",
-                                    borderRadius: "50%",
                                     backgroundColor: color,
-                                    "--to-opacity": finalOpacity, // Pass to CSS
+                                    "--to-opacity": finalOpacity,
                                     animationDelay: `${delay}s`,
                                 }}
                             />
@@ -394,20 +367,6 @@ const Insight = () => {
                     );
                 })}
             </div>
-
-            <div style={{
-                gridColumn: "2",
-                gridRow: "2",
-                justifySelf: "start",
-                marginTop: "5px",
-                color: color,
-                fontSize: "0.9rem",
-                fontWeight: "300",
-                opacity: 0.9
-            }}>
-                ${formatCurrency(totalVal)}
-            </div>
-
         </div>
     );
 
@@ -477,6 +436,15 @@ const Insight = () => {
         }
     }, [viewMode, transactions, allTransactions, year]);
 
+    const periodCaption = viewMode === 'alltime'
+        ? 'Full financial history'
+        : viewMode === 'yearly'
+            ? String(year)
+            : new Date(year, month).toLocaleDateString('en-CA', {
+                month: 'long',
+                year: 'numeric'
+            });
+
     return (
         <animated.div
             // Key forces remount on month change = Restart Animations
@@ -496,8 +464,16 @@ const Insight = () => {
                 height: "100%"
             }}
         >
+            <header className="Insight_Header">
+                <div>
+                    <span className="Insight_Eyebrow">Financial overview</span>
+                    <h1>Insights</h1>
+                </div>
+                <span className="Insight_PeriodCaption">{periodCaption}</span>
+            </header>
+
             {/* View Mode Toggle */}
-            <div style={{
+            <div className="Insight_PeriodToggle" style={{
                 display: 'flex',
                 gap: '10px',
                 margin: '10px 0 5px 0',
@@ -508,6 +484,7 @@ const Insight = () => {
             }}>
                 <ScalableElement
                     as="button"
+                    className={`Insight_PeriodButton ${viewMode === 'monthly' ? 'is-active' : ''}`}
                     onClick={() => setViewMode('monthly')}
                     style={{
                         background: 'radial-gradient(circle at 30% -20%, var(--Bc-3) -100%, var(--Ec-4) 65%)',
@@ -528,6 +505,7 @@ const Insight = () => {
                 </ScalableElement>
                 <ScalableElement
                     as="button"
+                    className={`Insight_PeriodButton ${viewMode === 'yearly' ? 'is-active' : ''}`}
                     onClick={() => setViewMode('yearly')}
                     style={{
                         background: 'radial-gradient(circle at 30% -20%, var(--Bc-3) -100%, var(--Ec-4) 65%)',
@@ -548,6 +526,7 @@ const Insight = () => {
                 </ScalableElement>
                 <ScalableElement
                     as="button"
+                    className={`Insight_PeriodButton ${viewMode === 'alltime' ? 'is-active' : ''}`}
                     onClick={() => setViewMode('alltime')}
                     style={{
                         background: 'radial-gradient(circle at 30% -20%, var(--Bc-3) -100%, var(--Ec-4) 65%)',
@@ -569,7 +548,7 @@ const Insight = () => {
                 </ScalableElement>
             </div>
 
-            <div style={{
+            <div className="Insight_Hero" style={{
                 width: "100%",
                 display: "flex",
                 flexDirection: "row",
@@ -578,7 +557,7 @@ const Insight = () => {
                 gap: "5px"
             }}>
                 {/* Balance Display */}
-                <div style={{
+                <div className="Insight_HeroCard" style={{
                     display: "flex",
                     flexDirection: "row",
                     alignItems: "center",
@@ -591,11 +570,14 @@ const Insight = () => {
                     width: "100%",
                     boxSizing: "border-box"
                 }}>
-                    <span style={{ fontSize: "0.9rem", color: "var(--Bc-2)", fontWeight: "bold" }}>Balance:</span>
+                    <div className="Insight_HeroCopy">
+                        <span>{viewMode === 'alltime' ? 'Net account value' : 'Cash-flow balance'}</span>
+                        <small>{periodCaption}</small>
+                    </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="Insight_HeroValue" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {percentageChange !== null && (
-                            <div style={{
+                            <div className={`Insight_ChangeBadge ${Number(percentageChange) >= 0 ? 'positive' : 'negative'}`} style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -625,7 +607,7 @@ const Insight = () => {
                 </div>
             </div>
 
-            <div style={{
+            <div className="Insight_KpiGrid" style={{
                 width: "100%",
                 display: "flex",
                 flexDirection: "row",
@@ -643,8 +625,8 @@ const Insight = () => {
                 {renderGrid("Invest", "#fff", dailyInvest, maxInvest, totalInvest)}
             </div>
 
-            <div style={{ width: "100%", flexShrink: 0 }}>
-                <div style={{
+            <section className="Insight_ChartCard" style={{ width: "100%", flexShrink: 0 }}>
+                <div className="Insight_SectionTitle" style={{
                     width: "100%",
                     paddingLeft: "10px",
                     fontSize: "0.8rem",
@@ -659,11 +641,11 @@ const Insight = () => {
                             : 'Monthly Trend'}
                 </div>
                 <InsightTrendChart data={chartData} />
-            </div>
+            </section>
 
             {periodTrendData.length > 0 && (
-                <div style={{ width: "100%", flexShrink: 0, marginTop: "10px" }}>
-                    <div style={{
+                <section className="Insight_ChartCard" style={{ width: "100%", flexShrink: 0, marginTop: "10px" }}>
+                    <div className="Insight_SectionTitle" style={{
                         width: "100%",
                         paddingLeft: "10px",
                         fontSize: "0.8rem",
@@ -674,12 +656,12 @@ const Insight = () => {
                         {periodTrendTitle}
                     </div>
                     <InsightMonthlyTrendChart data={periodTrendData} />
-                </div>
+                </section>
             )}
 
             {/* Expense Warning */}
             {anomalies.length > 0 && (
-                <div style={{
+                <section className="Insight_AnomalyCard" style={{
                     width: "100%",
                     marginTop: "5px",
                     marginBottom: "10px",
@@ -694,12 +676,15 @@ const Insight = () => {
                     boxSizing: "border-box",
                     textAlign: "left"
                 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--Gc-1)" }}>
-                        <span style={{ fontSize: "1.2rem" }}>⚠️</span>
-                        <span style={{ fontSize: "0.85rem", fontWeight: "bold" }}>Unusual Spending Detected</span>
+                    <div className="Insight_AnomalyHeader" style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--Gc-1)" }}>
+                        <span className="Insight_AnomalyIcon">!</span>
+                        <div>
+                            <strong>Unusual spending</strong>
+                            <small>Higher than your recent pattern</small>
+                        </div>
                     </div>
                     {anomalies.map((t, idx) => (
-                        <div
+                        <div className="Insight_AnomalyItem"
                             key={t.id || `${t.Timestamp}-${t.Amount}-${idx}`}
                             style={{
                                 display: "flex",
@@ -712,7 +697,7 @@ const Insight = () => {
                                 borderTop: idx > 0 ? "1px solid rgba(255,255,255,0.08)" : "none"
                             }}
                         >
-                            <div style={{ display: "flex", flexDirection: "column", gap: "3px", minWidth: 0 }}>
+                            <div className="Insight_AnomalyCopy" style={{ display: "flex", flexDirection: "column", gap: "3px", minWidth: 0 }}>
                                 <strong style={{ color: "var(--Ac-1)", fontSize: "0.82rem", overflowWrap: "anywhere" }}>
                                     {getTransactionDisplayReason(t.Reason, t.Label)}
                                 </strong>
@@ -729,7 +714,7 @@ const Insight = () => {
                             </span>
                         </div>
                     ))}
-                </div>
+                </section>
             )}
 
             {/* Category Breakdown */}

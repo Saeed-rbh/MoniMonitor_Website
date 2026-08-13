@@ -50,8 +50,8 @@ const InsightCategoryBreakdown = ({ transactions }) => {
     const visibleExpenseStats = showAllExpenses ? expenseStats : expenseStats.slice(0, 3);
 
     const RenderList = ({ title, data, colorVar, emptyMsg }) => (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <h3 style={{
+        <div className="Insight_BreakdownGroup" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <h3 className="Insight_SectionTitle" style={{
                 margin: '0',
                 paddingLeft: '5px',
                 textAlign: 'left',
@@ -66,7 +66,7 @@ const InsightCategoryBreakdown = ({ transactions }) => {
                 {title}
             </h3>
 
-            <div style={{
+            <div className="Insight_BreakdownCard" style={{
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '8px',
@@ -79,15 +79,15 @@ const InsightCategoryBreakdown = ({ transactions }) => {
                     <span style={{ fontSize: '0.8rem', color: 'var(--Ac-1)', fontStyle: 'italic', opacity: 0.5 }}>{emptyMsg}</span>
                 ) : (
                     data.map((item, idx) => (
-                        <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-                                <span style={{ color: 'var(--Ac-1)', fontWeight: 'normal' }}>{item.label}</span>
-                                <span style={{ fontWeight: '300', color: colorVar }}>
+                        <div className="Insight_BreakdownItem" key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <div className="Insight_BreakdownRow" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                                <span className="Insight_BreakdownLabel" style={{ color: 'var(--Ac-1)', fontWeight: 'normal' }}>{item.label}</span>
+                                <span className="Insight_BreakdownAmount" style={{ fontWeight: '300', color: colorVar }}>
                                     ${formatCurrency(item.amount)} <span style={{ opacity: 0.7, fontSize: '0.7rem', color: '#fff' }}>({Math.round(item.percentage)}%)</span>
                                 </span>
                             </div>
                             {/* Progress Bar */}
-                            <div style={{ width: '100%', height: '4px', background: 'var(--Bc-3)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div className="Insight_BreakdownTrack" style={{ width: '100%', height: '4px', background: 'var(--Bc-3)', borderRadius: '2px', overflow: 'hidden' }}>
                                 <div style={{
                                     width: `${item.percentage}%`,
                                     height: '100%',
@@ -101,6 +101,7 @@ const InsightCategoryBreakdown = ({ transactions }) => {
                 {expenseStats.length > 3 && (
                     <button
                         type="button"
+                        className="Insight_MoreButton"
                         onClick={() => setShowAllExpenses((current) => !current)}
                         style={{
                             alignSelf: 'center',
@@ -124,7 +125,7 @@ const InsightCategoryBreakdown = ({ transactions }) => {
     if (!transactions || transactions.length === 0) return null;
 
     return (
-        <div style={{
+        <div className="Insight_Breakdown" style={{
             width: '100%',
             display: 'flex',
             flexDirection: 'column',
