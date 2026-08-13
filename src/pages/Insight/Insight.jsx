@@ -6,13 +6,26 @@ import InsightMonthlyTrendChart from "./InsightMonthlyTrendChart";
 import { animated, useSpring, easings } from "@react-spring/web";
 import { ScalableElement } from "../../utils/tools";
 import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
+import { getPortfolioAPI } from "../../services/apiService";
 import { getSavingEffect } from "../../services/transactionService";
+import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 import { buildAllTimeInsightData } from "./insightPeriodData";
 
 const Insight = () => {
     // Access global transaction data from context
     const { transactionsData: transactions, allTransactions, whichMonth, isDateClicked, isMoreClicked } = useTransactions();
     const [viewMode, setViewMode] = React.useState('monthly');
+    const [portfolio, setPortfolio] = React.useState(null);
+
+    React.useEffect(() => {
+        let active = true;
+        getPortfolioAPI().then((data) => {
+            if (active) setPortfolio(data);
+        });
+        return () => {
+            active = false;
+        };
+    }, [allTransactions]);
 
     const scaleStyle = useSpring({
         position: "relative",
@@ -153,7 +166,12 @@ const Insight = () => {
     const totalExpense = useMemo(() => dailyExpense.reduce((a, b) => a + (b || 0), 0), [dailyExpense]);
     const totalInvest = useMemo(() => dailyInvest.reduce((a, b) => a + (b || 0), 0), [dailyInvest]);
 
-    const totalBalance = viewMode === 'alltime' ? accountBalance : totalIncome - totalExpense;
+    const portfolioNetValue = Number(portfolio?.totalValueMinor);
+    const totalBalance = viewMode === 'alltime'
+        ? Number.isFinite(portfolioNetValue)
+            ? portfolioNetValue / 100
+            : accountBalance
+        : totalIncome - totalExpense;
 
     // --- Balance Comparison Logic ---
     const percentageChange = useMemo(() => {
@@ -665,9 +683,34 @@ const Insight = () => {
                         <span style={{ fontSize: "0.85rem", fontWeight: "bold" }}>Unusual Spending Detected</span>
                     </div>
                     {anomalies.map((t, idx) => (
-                        <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "var(--Ac-3)", paddingLeft: "28px" }}>
-                            <span>{t.Label || "Expense"}</span>
-                            <span style={{ fontWeight: "600", color: "var(--Gc-1)" }}>${Number(t.Amount).toLocaleString()}</span>
+                        <div
+                            key={t.id || `${t.Timestamp}-${t.Amount}-${idx}`}
+                            style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                gap: "12px",
+                                fontSize: "0.8rem",
+                                color: "var(--Ac-3)",
+                                padding: "8px 0 8px 28px",
+                                borderTop: idx > 0 ? "1px solid rgba(255,255,255,0.08)" : "none"
+                            }}
+                        >
+                            <div style={{ display: "flex", flexDirection: "column", gap: "3px", minWidth: 0 }}>
+                                <strong style={{ color: "var(--Ac-1)", fontSize: "0.82rem", overflowWrap: "anywhere" }}>
+                                    {getTransactionDisplayReason(t.Reason, t.Label)}
+                                </strong>
+                                <span style={{ fontSize: "0.7rem", opacity: 0.75 }}>
+                                    {[t.Label || "Expense", t.Account, t.Timestamp && new Date(t.Timestamp).toLocaleDateString("en-CA", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric"
+                                    })].filter(Boolean).join(" · ")}
+                                </span>
+                            </div>
+                            <span style={{ fontWeight: "600", color: "var(--Gc-1)", whiteSpace: "nowrap" }}>
+                                ${Number(t.Amount).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
                         </div>
                     ))}
                 </div>
