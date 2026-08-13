@@ -14,11 +14,10 @@ const TransactionFilter = ({
   const sortItems = React.useMemo(() => {
     let items;
     // If in a specific Category Context (Income, Expense, Save&Invest), show only Time filters
-    if (["Income", "Expense", "Save&Invest"].includes(isMoreClicked)) {
+    if (["Income", "Expense", "Save&Invest", "Internal"].includes(isMoreClicked)) {
       items = ["All", "daily", "monthly", "Today"];
     } else {
-      // If in Balance (Main) Context, show Categories + Time filters
-      items = ["All", "Income", "Expense", "Save&Invest", "daily", "monthly", "Today"];
+      items = ["All", "Income", "Expense", "Save&Invest", "Internal", "daily", "monthly", "Today"];
     }
     return onManageAccounts ? ["Accounts", ...items] : items;
   }, [isMoreClicked, onManageAccounts]);

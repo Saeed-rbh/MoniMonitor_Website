@@ -7,9 +7,11 @@ import { useCustomSpring, useWindowHeight } from "../../utils/tools";
 import ChooseTransactionMonth from "./ChooseTransactionMonth";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import "./Transactions.css";
-
-const isSaveInvestTransaction = (transaction) =>
-  ["Saving", "Save&Invest", "Investment"].includes(transaction?.Category);
+import {
+  isInternalTransfer,
+  isSaveInvestTransaction,
+  uniqueInternalTransfers,
+} from "../../services/transactionService";
 
 const TransactionList = ({
   isMoreClicked,
@@ -26,26 +28,22 @@ const TransactionList = ({
   onManageAccounts,
   setShowTransaction,
 }) => {
-  const filteredTransactions =
-    isMoreClicked === "Balance"
-      ? Transactions
-      : Transactions.filter((transaction) =>
-        isMoreClicked === "Save&Invest"
-          ? isSaveInvestTransaction(transaction)
-          : transaction.Category === isMoreClicked
-      );
+  const filteredTransactions = React.useMemo(() => {
+    if (isMoreClicked === "Internal") return uniqueInternalTransfers(Transactions);
+    if (isMoreClicked === "Save&Invest") return Transactions.filter(isSaveInvestTransaction);
+    return Transactions.filter((transaction) => transaction.Category === isMoreClicked);
+  }, [Transactions, isMoreClicked]);
 
   const WindowHeight = useWindowHeight(100);
 
   const [sortby, setSortby] = useState("All");
   const [isCalendarClicked, setIsCalendarClicked] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(0);
-  const ITEMS_PER_PAGE = 30;
+  const ITEMS_PER_BATCH = 40;
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_BATCH);
 
-  // Reset page when settings or search change
   useEffect(() => {
-    setCurrentPage(0);
+    setVisibleCount(ITEMS_PER_BATCH);
   }, [whichMonth, isMoreClicked, sortby, searchQuery]);
 
   // Apply search query filter
@@ -60,12 +58,33 @@ const TransactionList = ({
     );
   }, [filteredTransactions, searchQuery]);
 
-  // Calculate paginated subset
-  const pageCount = Math.ceil(searchedTransactions.length / ITEMS_PER_PAGE);
-  const paginatedTransactions = React.useMemo(() => {
-    const start = currentPage * ITEMS_PER_PAGE;
-    return searchedTransactions.slice(start, start + ITEMS_PER_PAGE);
-  }, [searchedTransactions, currentPage]);
+  const sortedTransactions = React.useMemo(() => searchedTransactions
+    .filter((transaction) => {
+      if (sortby === "All") return true;
+      if (["Income", "Expense"].includes(sortby)) return transaction.Category === sortby;
+      if (sortby === "Save&Invest") return isSaveInvestTransaction(transaction);
+      if (sortby === "Internal") return isInternalTransfer(transaction);
+      if (sortby === "Today") {
+        const transactionDate = new Date(transaction.Timestamp);
+        const today = new Date();
+        return transactionDate.getDate() === today.getDate() &&
+          transactionDate.getMonth() === today.getMonth() &&
+          transactionDate.getFullYear() === today.getFullYear();
+      }
+      if (sortby === "daily") return transaction.Frequency === "Daily";
+      if (sortby === "monthly") return transaction.Frequency === "Monthly";
+      return true;
+    })
+    .reverse(), [searchedTransactions, sortby]);
+
+  const visibleTransactions = React.useMemo(
+    () => sortedTransactions.slice(0, visibleCount),
+    [sortedTransactions, visibleCount]
+  );
+  const hasMoreTransactions = visibleCount < sortedTransactions.length;
+  const loadMoreTransactions = React.useCallback(() => {
+    setVisibleCount((current) => Math.min(current + ITEMS_PER_BATCH, sortedTransactions.length));
+  }, [sortedTransactions.length]);
 
   const { totalAmount, currentMonth, currentYear, labelDistribution } =
     React.useMemo(() => {
@@ -79,24 +98,22 @@ const TransactionList = ({
       }
 
       const calculatedTotal =
-        isMoreClicked === "Balance"
-          ? selectedData.totalExpense +
-          selectedData.totalIncome +
-          selectedData.totalSaving
+        isMoreClicked === "Internal"
+          ? selectedData.totalInternal || 0
           : isMoreClicked === "Income"
             ? selectedData.totalIncome
             : isMoreClicked === "Expense"
               ? selectedData.totalExpense
-              : selectedData.totalSaving;
+              : selectedData.totalSaveInvest ?? selectedData.totalSaving;
 
       const rawDistribution =
-        isMoreClicked === "Balance"
-          ? selectedData.labelDistribution
+        isMoreClicked === "Internal"
+          ? selectedData.labelDistributionInternal
           : isMoreClicked === "Income"
             ? selectedData.labelDistributionIncome
             : isMoreClicked === "Expense"
               ? selectedData.labelDistributionExpense
-              : selectedData.labelDistributionSaving;
+              : selectedData.labelDistributionSaveInvest ?? selectedData.labelDistributionSaving;
 
       let sortedData = [];
       if (rawDistribution) {
@@ -224,7 +241,7 @@ const TransactionList = ({
     if (monthlyMainRef.current) {
       monthlyMainRef.current.scrollTop = 0;
     }
-  }, [whichMonth]);
+  }, [whichMonth, isMoreClicked, sortby, searchQuery]);
 
   const dataAvailabilityLength = Object.entries(dataAvailability).length;
 
@@ -272,7 +289,7 @@ const TransactionList = ({
     width:
       isMoreClicked === "Expense"
         ? `25px`
-        : isMoreClicked === "Income" || isMoreClicked === "Balance"
+        : isMoreClicked === "Income" || isMoreClicked === "Internal"
           ? `15px`
           : `65px`,
     position: `absolute`,
@@ -285,13 +302,13 @@ const TransactionList = ({
   const TransactionList_Line2 = useSpring({
     width:
       Math.abs(
-        isMoreClicked === "Balance"
-          ? selectedData.netTotal
+        isMoreClicked === "Internal"
+          ? selectedData.totalInternal || 0
           : isMoreClicked === "Income"
             ? selectedData.totalIncome
             : isMoreClicked === "Expense"
               ? selectedData.totalExpense
-              : selectedData.totalSaving
+              : selectedData.totalSaveInvest ?? selectedData.totalSaving
       ).toFixed(2).length *
       8 +
       5,
@@ -353,6 +370,7 @@ const TransactionList = ({
                   Income: Transactions.some((t) => t.Category === "Income"),
                   Expense: Transactions.some((t) => t.Category === "Expense"),
                   "Save&Invest": Transactions.some(isSaveInvestTransaction),
+                  Internal: Transactions.some(isInternalTransfer),
                   Today: filteredTransactions.some((t) => {
                     const d = new Date(t.Timestamp);
                     const now = new Date();
@@ -389,12 +407,13 @@ const TransactionList = ({
             >
               {selectedData && Object.keys(selectedData).length !== 0 && (
                 <TransactionListMonthly
+                  key={`${whichMonth}-${isMoreClicked}-${sortby}-${searchQuery}`}
                   swipedIndex={swipedIndex}
                   handleUnSwipe={handleUnSwipe}
                   handleSwipe={handleSwipe}
                   handleTransactionClick={handleTransactionClick}
                   useCustomSpring={useCustomSpring}
-                  transactions={paginatedTransactions}
+                  transactions={visibleTransactions}
                   netTotal={selectedData.netTotal}
                   percentageChange={selectedData.percentageChange}
                   month={selectedData.month}
@@ -407,56 +426,12 @@ const TransactionList = ({
                   setOpen={setOpen}
                   setShowTransaction={setShowTransaction}
                   height={transactionListHeight}
+                  hasMore={hasMoreTransactions}
+                  onLoadMore={loadMoreTransactions}
                 />
               )}
             </animated.div>
 
-            {/* Pagination Controls */}
-            {pageCount > 1 && (
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "8px 20px",
-                borderTop: "1px solid rgba(255, 255, 255, 0.05)",
-                background: "rgba(0, 0, 0, 0.2)",
-                borderRadius: "0 0 20px 20px"
-              }}>
-                <button
-                  disabled={currentPage === 0}
-                  onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
-                  style={{
-                    border: "1px solid var(--Bc-3)",
-                    background: "rgba(255, 255, 255, 0.02)",
-                    color: currentPage === 0 ? "rgba(255, 255, 255, 0.2)" : "var(--Ac-1)",
-                    borderRadius: "20px",
-                    padding: "4px 12px",
-                    fontSize: "0.75rem",
-                    cursor: currentPage === 0 ? "default" : "pointer"
-                  }}
-                >
-                  Previous
-                </button>
-                <span style={{ fontSize: "0.75rem", color: "var(--Ac-3)" }}>
-                  Page {currentPage + 1} of {pageCount}
-                </span>
-                <button
-                  disabled={currentPage >= pageCount - 1}
-                  onClick={() => setCurrentPage(prev => Math.min(pageCount - 1, prev + 1))}
-                  style={{
-                    border: "1px solid var(--Bc-3)",
-                    background: "rgba(255, 255, 255, 0.02)",
-                    color: currentPage >= pageCount - 1 ? "rgba(255, 255, 255, 0.2)" : "var(--Ac-1)",
-                    borderRadius: "20px",
-                    padding: "4px 12px",
-                    fontSize: "0.75rem",
-                    cursor: currentPage >= pageCount - 1 ? "default" : "pointer"
-                  }}
-                >
-                  Next
-                </button>
-              </div>
-            )}
           </animated.div>
         </div>
       }

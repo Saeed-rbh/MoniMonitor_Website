@@ -2,14 +2,8 @@ import React from "react";
 import MoneyEntryAmount from "./MoneyEntryAmount.jsx";
 import { useNavigate } from "react-router-dom";
 import BlurFade from "@/components/ui/blur-fade";
-import { getPortfolioAPI } from '../../services/apiService';
 
 const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
-  const [portfolio, setPortfolio] = React.useState(null);
-
-  React.useEffect(() => {
-    getPortfolioAPI().then(setPortfolio);
-  }, []);
   const totalStyle = {
     color:
       Transactions.netTotal > 0
@@ -60,11 +54,10 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
               setIsMoreClicked={setIsMoreClicked}
               transaction={Transactions}
               redirectClick={redirectClick}
-              portfolio={portfolio}
               index={1}
             />
             <MoneyEntryAmount
-              type="Balance"
+              type="Internal"
               setIsMoreClicked={setIsMoreClicked}
               transaction={Transactions}
               redirectClick={redirectClick}

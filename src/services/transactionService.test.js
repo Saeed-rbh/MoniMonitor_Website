@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { getNetAmounts, getSavingEffect, groupTransactionsByMonth } from "./transactionService";
+import {
+  getNetAmounts,
+  getSavingEffect,
+  groupTransactionsByMonth,
+  isSaveInvestTransaction,
+  uniqueInternalTransfers,
+} from "./transactionService";
 
 describe("getNetAmounts", () => {
   it("keeps months older than the newest transaction in the dashboard series", () => {
@@ -70,5 +76,29 @@ describe("groupTransactionsByMonth", () => {
       Account: "TFSA",
       AccountFlow: "OUT",
     })).toBe(0);
+  });
+
+  it("tracks monthly investments separately from net TFSA contributions", () => {
+    const result = groupTransactionsByMonth([
+      { Amount: 25, Category: "Investment", Label: "Investment", Reason: "Bought VFV", Timestamp: "2026-08-12T12:00:00Z" },
+      { Amount: 100, Category: "Saving", Label: "Internal Transfer", Reason: "Internal transfer: RBC Chequing -> Future [XFER-5]", Account: "Future", Timestamp: "2026-08-12T12:00:00Z" },
+    ]);
+
+    expect(result["2026-08"]).toMatchObject({
+      totalSaving: 0,
+      totalSaveInvest: 25,
+    });
+    expect(isSaveInvestTransaction(result["2026-08"].transactions[0])).toBe(true);
+    expect(isSaveInvestTransaction(result["2026-08"].transactions[1])).toBe(false);
+  });
+
+  it("deduplicates paired internal-transfer ledger entries", () => {
+    const transfers = [
+      { id: 1, Amount: 810.22, Reason: "Internal transfer: RBC Chequing -> RBC Visa [XFER-6]", ReferenceNumber: "XFER-6" },
+      { id: 2, Amount: 810.22, Reason: "Internal transfer: RBC Chequing -> RBC Visa [XFER-6]", ReferenceNumber: "XFER-6" },
+      { id: 3, Amount: 25, Reason: "Internal transfer: RBC Chequing -> unresolved account [counterpart not matched]" },
+    ];
+
+    expect(uniqueInternalTransfers(transfers).map(({ id }) => id)).toEqual([1, 3]);
   });
 });

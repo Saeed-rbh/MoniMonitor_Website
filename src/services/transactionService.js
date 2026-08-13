@@ -26,6 +26,24 @@ const parseInternalTransfer = (reason) => {
   return match ? { source: match[1], destination: match[2] } : null;
 };
 
+export const isInternalTransfer = (transaction) =>
+  /^Internal transfer:/i.test(String(transaction?.Reason || "").trim());
+
+export const getInternalTransferKey = (transaction) => {
+  const reference = String(transaction?.ReferenceNumber || "").trim();
+  if (reference) return `reference:${reference.toLowerCase()}`;
+
+  const reason = String(transaction?.Reason || "");
+  const embeddedReference = reason.match(/\[(XFER-[^\]]+)\]/i)?.[1];
+  if (embeddedReference) return `reference:${embeddedReference.toLowerCase()}`;
+
+  if (transaction?.id !== undefined && transaction?.id !== null) {
+    return `transaction:${transaction.id}`;
+  }
+
+  return [transaction?.Timestamp, transaction?.Amount, reason].join("|").toLowerCase();
+};
+
 export const getSavingEffect = (transaction) => {
   const amount = Number(transaction?.Amount || 0);
   if (!Number.isFinite(amount)) return 0;
@@ -49,6 +67,27 @@ export const getSavingEffect = (transaction) => {
   if (destination.includes("tfsa")) return amount;
   if (source.includes("tfsa")) return -amount;
   return 0;
+};
+
+export const getSaveInvestActivity = (transaction) => {
+  const amount = Number(transaction?.Amount || 0);
+  if (!Number.isFinite(amount)) return 0;
+  if (transaction?.Category === "Investment") return Math.abs(amount);
+  return Math.abs(getSavingEffect(transaction));
+};
+
+export const isSaveInvestTransaction = (transaction) =>
+  getSaveInvestActivity(transaction) > 0;
+
+export const uniqueInternalTransfers = (transactions) => {
+  const seen = new Set();
+  return (transactions || []).filter((transaction) => {
+    if (!isInternalTransfer(transaction)) return false;
+    const key = getInternalTransferKey(transaction);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 };
 
 const fillMissingMonths = (data) => {
@@ -137,6 +176,8 @@ export const groupTransactionsByMonth = (transactions) => {
         totalExpense: 0,
         totalIncome: 0,
         totalSaving: 0,
+        totalSaveInvest: 0,
+        totalInternal: 0,
         netTotal: 0,
         month: months[date.getMonth()],
         year: year,
@@ -144,39 +185,60 @@ export const groupTransactionsByMonth = (transactions) => {
         labelDistributionExpense: {},
         labelDistributionIncome: {},
         labelDistributionSaving: {},
+        labelDistributionSaveInvest: {},
+        labelDistributionInternal: {},
         labelDistribution: {},
+        internalTransferKeys: new Set(),
       };
     }
 
     groupedTransactions[key].transactions.push(transaction);
     const label = transaction.Label;
+    const amount = Number(transaction.Amount);
+
+    if (isInternalTransfer(transaction)) {
+      const transferKey = getInternalTransferKey(transaction);
+      if (!groupedTransactions[key].internalTransferKeys.has(transferKey)) {
+        groupedTransactions[key].internalTransferKeys.add(transferKey);
+        groupedTransactions[key].totalInternal += amount;
+        if (label) {
+          groupedTransactions[key].labelDistributionInternal[label] =
+            (groupedTransactions[key].labelDistributionInternal[label] || 0) + amount;
+        }
+      }
+    }
 
     if (transaction.Category === "Expense") {
-      groupedTransactions[key].totalExpense += Number(transaction.Amount);
-      groupedTransactions[key].netTotal -= Number(transaction.Amount);
+      groupedTransactions[key].totalExpense += amount;
+      groupedTransactions[key].netTotal -= amount;
       if (label) {
         groupedTransactions[key].labelDistributionExpense[label] =
           (groupedTransactions[key].labelDistributionExpense[label] || 0) +
-          Number(transaction.Amount);
+          amount;
       }
     } else if (transaction.Category === "Income") {
-      groupedTransactions[key].totalIncome += Number(transaction.Amount);
-      groupedTransactions[key].netTotal += Number(transaction.Amount);
+      groupedTransactions[key].totalIncome += amount;
+      groupedTransactions[key].netTotal += amount;
       if (label) {
         groupedTransactions[key].labelDistributionIncome[label] =
           (groupedTransactions[key].labelDistributionIncome[label] || 0) +
-          Number(transaction.Amount);
+          amount;
       }
     } else {
       const savingEffect = getSavingEffect(transaction);
+      const saveInvestActivity = getSaveInvestActivity(transaction);
       // Only money crossing the TFSA boundary affects savings. Other internal
       // transfers and trades remain visible activity but have no cash-flow effect.
       groupedTransactions[key].totalSaving += savingEffect;
+      groupedTransactions[key].totalSaveInvest += saveInvestActivity;
       groupedTransactions[key].netTotal -= savingEffect;
       if (label) {
         groupedTransactions[key].labelDistributionSaving[label] =
           (groupedTransactions[key].labelDistributionSaving[label] || 0) +
           savingEffect;
+        groupedTransactions[key].labelDistributionSaveInvest[label] =
+          (groupedTransactions[key].labelDistributionSaveInvest[label] || 0) +
+          saveInvestActivity;
       }
     }
   });
@@ -204,6 +266,18 @@ export const groupTransactionsByMonth = (transactions) => {
       savingAmount,
       labelSaving
     );
+
+    groupedTransactions[key].labelDistributionSaveInvest = LabelDistribution(
+      groupedTransactions[key].totalSaveInvest,
+      groupedTransactions[key].labelDistributionSaveInvest
+    );
+
+    groupedTransactions[key].labelDistributionInternal = LabelDistribution(
+      groupedTransactions[key].totalInternal,
+      groupedTransactions[key].labelDistributionInternal
+    );
+
+    delete groupedTransactions[key].internalTransferKeys;
 
     const netTotal =
       groupedTransactions[key].totalExpense +

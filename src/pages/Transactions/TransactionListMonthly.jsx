@@ -2,9 +2,6 @@ import React, { useMemo, useCallback } from "react";
 import TransactionListItem from "./TransactionListItem";
 import { FixedSizeList as List } from "react-window"; // For virtualization
 
-const isSaveInvestTransaction = (transaction) =>
-  ["Saving", "Save&Invest", "Investment"].includes(transaction?.Category);
-
 const TransactionListMonthly = ({
   MainIndex,
   swipedIndex,
@@ -12,51 +9,14 @@ const TransactionListMonthly = ({
   handleSwipe,
   handleTransactionClick,
   transactions,
-  sortby,
   isAddClicked,
   setOpen,
   setShowTransaction,
   height,
+  hasMore,
+  onLoadMore,
 }) => {
-  // Memoize the filtered transactions
-  const filteredTransactions = useMemo(() => {
-    const filtered = transactions
-      .filter((transaction) => {
-        if (sortby === "All") return true;
-
-        // Strict Category Matching
-        if (["Income", "Expense", "Save&Invest"].includes(sortby)) {
-          return sortby === "Save&Invest"
-            ? isSaveInvestTransaction(transaction)
-            : transaction.Category === sortby;
-        }
-
-        // Date Matching
-        if (sortby === "Today") {
-          const transDate = new Date(transaction.Timestamp);
-          const today = new Date();
-          return (
-            transDate.getDate() === today.getDate() &&
-            transDate.getMonth() === today.getMonth() &&
-            transDate.getFullYear() === today.getFullYear()
-          );
-        }
-
-        // Recurrence Filtering (Frequency)
-        if (sortby === "daily") {
-          return transaction.Frequency === "Daily";
-        }
-
-        if (sortby === "monthly") {
-          return transaction.Frequency === "Monthly";
-        }
-
-        return true;
-      })
-      .reverse();
-
-    return filtered;
-  }, [transactions, sortby]);
+  const filteredTransactions = useMemo(() => transactions || [], [transactions]);
 
   // Memoize the handleSwipe, handleUnSwipe, and handleTransactionClick to avoid re-creating functions
   const memoizedHandleSwipe = useCallback(
@@ -110,6 +70,12 @@ const TransactionListMonthly = ({
             itemCount={filteredTransactions.length}
             itemSize={55}
             className="TransactionList_TransactionList"
+            itemKey={(index) => filteredTransactions[index]?.id ?? index}
+            onItemsRendered={({ visibleStopIndex }) => {
+              if (hasMore && visibleStopIndex >= filteredTransactions.length - 5) {
+                onLoadMore?.();
+              }
+            }}
           >
             {Row}
           </List>

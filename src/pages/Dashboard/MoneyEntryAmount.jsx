@@ -16,7 +16,6 @@ const MoneyEntryAmount = ({
   setIsMoreClicked,
   redirectClick,
   index,
-  portfolio,
 }) => {
   const BannerAmount =
     type === "Income"
@@ -24,8 +23,8 @@ const MoneyEntryAmount = ({
       : type === "Expense"
         ? transaction.totalExpense
         : type === "Save&Invest"
-          ? (portfolio?.accountCount ? portfolio.totalValueMinor / 100 : transaction.totalSaving)
-          : transaction.netTotal;
+          ? (transaction.totalSaveInvest ?? transaction.totalSaving ?? 0)
+          : (transaction.totalInternal ?? 0);
 
   const amountStyle = {
     height: "100%",
@@ -87,7 +86,7 @@ const MoneyEntryAmount = ({
   const height = useWindowHeight(0);
 
   const widthFactor =
-    type === "Save&Invest" ? 1.12 : type === "Balance" ? 0.88 : 1;
+    type === "Save&Invest" ? 1.12 : type === "Internal" ? 0.88 : 1;
   const heightFactor = Math.min(height / 660, 1);
 
   const scaleStyle = useSpring({
@@ -136,18 +135,13 @@ const MoneyEntryAmount = ({
         <div className="MoneyEntry_Balance">
           <h2>
             {type === 'Save&Invest'
-              ? portfolio?.accountCount ? 'Portfolio value' : 'Total contributed'
-              : type === 'Balance'
-                ? 'Total'
+              ? 'This month'
+              : type === 'Internal'
+                ? 'This month moved'
               : "Total Amount"}
             :
           </h2>
           <h1>
-            {type === "Balance"
-              ? formatNetTotal(BannerAmount) > 0
-                ? "+"
-                : "-"
-              : ""}
             ${formatNetTotal(BannerAmount).replace("-", "")}
           </h1>
         </div>
