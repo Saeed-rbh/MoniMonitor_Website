@@ -33,7 +33,7 @@ const getEffectiveCompletedMonth = (monthStr) => {
   return { targetMonth: monthStr, isAutoAdjusted: false };
 };
 
-const MonthlyAiBrief = ({ month, transactions = [] }) => {
+const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) => {
   const [brief, setBrief] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,12 +59,23 @@ const MonthlyAiBrief = ({ month, transactions = [] }) => {
     return () => { requestVersion.current += 1; };
   }, [load]);
 
+  const allTxList = useMemo(() => {
+    if (!allTransactions) return transactions || [];
+    let list = [];
+    Object.values(allTransactions).forEach((monthData) => {
+      if (Array.isArray(monthData?.transactions)) {
+        list = list.concat(monthData.transactions);
+      }
+    });
+    return list.length > 0 ? list : (transactions || []);
+  }, [allTransactions, transactions]);
+
   const transactionMap = useMemo(
-    () => new Map(transactions.map((transaction) => [String(transaction.id), transaction])),
-    [transactions]
+    () => new Map(allTxList.map((transaction) => [String(transaction.id), transaction])),
+    [allTxList]
   );
   const evidenceTransactions = useMemo(() => {
-    if (!selectedInsight) return [];
+    if (!selectedInsight || !selectedInsight.evidence?.transactionIds) return [];
     return selectedInsight.evidence.transactionIds
       .map((id) => transactionMap.get(String(id)))
       .filter(Boolean)

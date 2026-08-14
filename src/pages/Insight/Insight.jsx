@@ -667,6 +667,7 @@ const Insight = () => {
                 <MonthlyAiBrief
                     month={`${year}-${String(month + 1).padStart(2, '0')}`}
                     transactions={transactions || []}
+                    allTransactions={allTransactions}
                 />
             )}
 
