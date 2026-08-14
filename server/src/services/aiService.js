@@ -12,7 +12,7 @@ const {
 
 const AI_API_KEY = process.env.AI_API_KEY;
 const ai = AI_API_KEY ? new GoogleGenAI({ apiKey: AI_API_KEY }) : null;
-const MODEL_NAME = 'gemini-3.1-flash-lite';
+const MODEL_NAME = 'gemini-2.5-flash';
 const MIN_REQUEST_INTERVAL_MS = 4200;
 const MAX_RATE_LIMIT_RETRIES = 3;
 const MAX_RESPONSE_ATTEMPTS = 2;
@@ -326,9 +326,72 @@ ${JSON.stringify(safeCandidates)}
     return selections.length ? { selections } : null;
 }
 
+const AISynthesisItemSchema = z.object({
+    id: z.string().trim().min(1).max(80),
+    title: z.string().trim().min(1).max(100),
+    fact: z.string().trim().min(1).max(350),
+    action: z.string().trim().min(1).max(250),
+    confidence: z.enum(['high', 'medium']).optional().default('high'),
+    evidenceTransactionIds: z.array(z.number().int()).optional().default([]),
+});
+
+const AISynthesisResponseSchema = z.object({
+    insights: z.array(AISynthesisItemSchema).min(1).max(4),
+}).strict();
+
+async function synthesizeMonthlyInsightsWithGemini(richData) {
+    if (!ai) return null;
+    const prompt = `
+You are an expert personal finance analyst & behavioral coach analyzing a user's monthly financial ledger for ${richData.month}.
+Your goal is to provide 3 distinct, deeply insightful, non-obvious, and helpful financial observations with specific actionable takeaways.
+
+Uncover non-obvious patterns that a user wouldn't notice on their own, such as:
+1. Micro-transaction accumulation (e.g. small frequent purchases under $25 compounding quietly over the month).
+2. Day-of-week timing surges (e.g. weekend spending concentration vs weekday baseline).
+3. Burn rate & spending velocity (e.g. daily spending pace vs historical average).
+4. Category concentration & overhead ratio (e.g. fixed recurring costs vs discretionary flexibility).
+5. Unusual single transactions or merchant repetition density.
+
+CRITICAL RULES:
+- State exact dollar amounts and percentages based strictly on the provided financial summary data. Do NOT make up numbers.
+- Provide 1 specific, non-preachy, actionable recommendation for each insight.
+- Attach "evidenceTransactionIds" using real transaction IDs from the candidate evidence or transactions list provided.
+- Return ONLY JSON matching:
+{
+  "insights": [
+    {
+      "id": "short-slug-id",
+      "title": "3-6 word engaging title",
+      "fact": "1-2 sentence compelling non-obvious observation with exact numbers",
+      "action": "1 sentence actionable recommendation",
+      "confidence": "high",
+      "evidenceTransactionIds": [101, 102]
+    }
+  ]
+}
+
+Monthly Financial Data:
+${JSON.stringify(richData)}
+`;
+
+    try {
+        const response = await generateContentWithQuotaProtection({
+            model: MODEL_NAME,
+            contents: prompt,
+            config: { responseMimeType: 'application/json' },
+        });
+        const parsed = AISynthesisResponseSchema.parse(JSON.parse(response.text));
+        return parsed.insights;
+    } catch (error) {
+        console.warn('[Monthly AI synthesis] Gemini error:', error.message);
+        return null;
+    }
+}
+
 module.exports = {
     parseEmailWithGemini,
     rankMonthlyInsightCandidates,
+    synthesizeMonthlyInsightsWithGemini,
     parseAIResponseText,
     normalizeNullablePositiveNumber,
     minimizeEmailForAI,

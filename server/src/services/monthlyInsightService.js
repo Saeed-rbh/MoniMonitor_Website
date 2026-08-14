@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { getDb } = require('../database/db');
 const { getSavingEffectMinor } = require('./transactionClassification');
-const { rankMonthlyInsightCandidates } = require('./aiService');
+const { rankMonthlyInsightCandidates, synthesizeMonthlyInsightsWithGemini } = require('./aiService');
 
 const cache = new Map();
 const MONTH_PATTERN = /^\d{4}-\d{2}$/;
@@ -204,39 +204,137 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
     const cacheKey = `${userId}:${month}:${dataHash}`;
     if (!options.refresh && cache.has(cacheKey)) return cache.get(cacheKey);
 
-    let ranking = null;
-    // Pending email means the month's ledger is still incomplete, so wait before
-    // asking AI to prioritize it. Broad categories remain visible as a quality
-    // warning, but they do not invalidate the verified amounts below.
+    let selectedInsights = null;
+    let source = 'deterministic';
+
     if (analysis.dataQuality.pendingEmails === 0 && analysis.candidates.length) {
+        const currentMonthTxs = transactions.filter((t) => String(t.Timestamp || '').slice(0, 7) === month);
+        const expenses = currentMonthTxs.filter(isExpense);
+
+        // Micro purchases <= $25
+        const microTxs = expenses.filter((t) => amountMinor(t) <= 2500);
+        const microSumMinor = microTxs.reduce((sum, t) => sum + amountMinor(t), 0);
+
+        // Weekend vs Weekday
+        const weekendTxs = expenses.filter((t) => {
+            const day = new Date(t.Timestamp).getUTCDay();
+            return day === 0 || day === 6;
+        });
+        const weekendSumMinor = weekendTxs.reduce((sum, t) => sum + amountMinor(t), 0);
+
+        // Top repeated merchants
+        const merchantCounts = {};
+        expenses.forEach((t) => {
+            const name = t.Reason || t.Label || 'Merchant';
+            const m = merchantCounts[name] || { count: 0, sumMinor: 0, ids: [] };
+            m.count += 1;
+            m.sumMinor += amountMinor(t);
+            m.ids.push(t.id);
+            merchantCounts[name] = m;
+        });
+        const topRepeatedMerchants = Object.entries(merchantCounts)
+            .filter(([, data]) => data.count >= 2)
+            .sort((a, b) => b[1].sumMinor - a[1].sumMinor)
+            .slice(0, 5)
+            .map(([name, data]) => ({
+                merchant: name,
+                count: data.count,
+                spent: money(data.sumMinor),
+                transactionIds: data.ids,
+            }));
+
+        const richData = {
+            month,
+            latestDay: analysis.latestDay,
+            summary: {
+                income: money(analysis.summary.incomeMinor),
+                expenses: money(analysis.summary.expenseMinor),
+                savingsContribution: money(analysis.summary.savingMinor),
+                netCashFlow: money(analysis.summary.netCashFlowMinor),
+                totalTransactions: analysis.summary.transactionCount,
+            },
+            microPurchases: {
+                count: microTxs.length,
+                totalSpent: money(microSumMinor),
+                percentOfTotalExpenses: analysis.summary.expenseMinor ? Math.round((microSumMinor / analysis.summary.expenseMinor) * 100) : 0,
+                sampleTransactionIds: microTxs.map((t) => t.id).slice(0, 10),
+            },
+            weekendSpending: {
+                count: weekendTxs.length,
+                totalSpent: money(weekendSumMinor),
+                percentOfTotalExpenses: analysis.summary.expenseMinor ? Math.round((weekendSumMinor / analysis.summary.expenseMinor) * 100) : 0,
+                sampleTransactionIds: weekendTxs.map((t) => t.id).slice(0, 10),
+            },
+            topRepeatedMerchants,
+            deterministicCandidates: analysis.candidates.map((c) => ({
+                id: c.id,
+                title: c.title,
+                fact: c.fact,
+                evidenceTransactionIds: c.evidence.transactionIds,
+            })),
+        };
+
         try {
-            ranking = await rankMonthlyInsightCandidates(analysis.candidates);
+            const rawSynthesized = await synthesizeMonthlyInsightsWithGemini(richData);
+            if (rawSynthesized && rawSynthesized.length) {
+                selectedInsights = rawSynthesized.map((item) => ({
+                    id: item.id,
+                    type: 'ai_synthesis',
+                    title: item.title,
+                    fact: item.fact,
+                    action: item.action,
+                    confidence: item.confidence || 'high',
+                    evidence: {
+                        transactionIds: item.evidenceTransactionIds || [],
+                        count: (item.evidenceTransactionIds || []).length,
+                    },
+                }));
+                source = 'ai-synthesized';
+            }
         } catch (error) {
-            console.warn('[Monthly insights] AI ranking unavailable; using deterministic ranking:', error.message);
+            console.warn('[Monthly insights] Gemini synthesis error; attempting ranking fallback:', error.message);
         }
-    }
-    const byId = new Map(analysis.candidates.map((candidate) => [candidate.id, candidate]));
-    const selected = [];
-    for (const choice of ranking?.selections || []) {
-        const candidate = byId.get(choice.id);
-        if (!candidate || selected.some((item) => item.id === candidate.id)) continue;
-        selected.push({ ...candidate, action: candidate.actions[choice.actionIndex] || candidate.actions[0] });
-        if (selected.length === 3) break;
-    }
-    for (const candidate of analysis.candidates) {
-        if (selected.length === 3) break;
-        if (!selected.some((item) => item.id === candidate.id)) {
-            selected.push({ ...candidate, action: candidate.actions[0] });
+
+        // Fallback to ranking or deterministic candidates if Gemini synthesis was skipped/failed
+        if (!selectedInsights) {
+            let ranking = null;
+            try {
+                ranking = await rankMonthlyInsightCandidates(analysis.candidates);
+            } catch (error) {
+                console.warn('[Monthly insights] AI ranking fallback unavailable; using deterministic candidates:', error.message);
+            }
+            const byId = new Map(analysis.candidates.map((candidate) => [candidate.id, candidate]));
+            const selected = [];
+            for (const choice of ranking?.selections || []) {
+                const candidate = byId.get(choice.id);
+                if (!candidate || selected.some((item) => item.id === candidate.id)) continue;
+                selected.push({ ...candidate, action: candidate.actions[choice.actionIndex] || candidate.actions[0] });
+                if (selected.length === 3) break;
+            }
+            for (const candidate of analysis.candidates) {
+                if (selected.length === 3) break;
+                if (!selected.some((item) => item.id === candidate.id)) {
+                    selected.push({ ...candidate, action: candidate.actions[0] });
+                }
+            }
+            selectedInsights = selected.map(({ actions, priority, ...insight }) => insight);
+            source = ranking ? 'ai-ranked' : 'deterministic';
         }
+    } else {
+        selectedInsights = analysis.candidates.map(({ actions, priority, ...insight }) => ({
+            ...insight,
+            action: actions[0],
+        })).slice(0, 3);
     }
+
     const result = {
         month,
         generatedAt: new Date().toISOString(),
         dataHash,
-        source: ranking ? 'ai-ranked' : 'deterministic',
+        source,
         summary: analysis.summary,
         dataQuality: analysis.dataQuality,
-        insights: selected.map(({ actions, priority, ...insight }) => insight),
+        insights: selectedInsights,
     };
     cache.set(cacheKey, result);
     return result;

@@ -125,7 +125,7 @@ const MonthlyAiBrief = ({ month, transactions = [] }) => {
           <div>
             <strong>{healthy ? "Verified data" : "Data review needed"}</strong>
             <span>{healthy
-              ? `${brief.summary.transactionCount} transactions checked · ${brief.source === "ai-ranked" ? "AI prioritized" : "safe ranking"}`
+              ? `${brief.summary.transactionCount} transactions checked · ${brief.source === "ai-synthesized" ? "AI synthesized" : brief.source === "ai-ranked" ? "AI prioritized" : "safe ranking"}`
               : brief.dataQuality.issues.join(" · ")}
             </span>
           </div>
