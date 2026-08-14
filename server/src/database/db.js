@@ -102,6 +102,12 @@ async function getDb() {
                     label TEXT NOT NULL,
                     UNIQUE(userId, pattern)
                 );
+
+                CREATE TABLE IF NOT EXISTS rate_limits (
+                    bucketKey TEXT PRIMARY KEY,
+                    count INTEGER NOT NULL,
+                    startedAt INTEGER NOT NULL
+                );
             `);
             const userColumns = await db.all("PRAGMA table_info(users)");
             if (!userColumns.some((column) => column.name === "profilePhotoUrl")) {

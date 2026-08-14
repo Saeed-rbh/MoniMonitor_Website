@@ -135,6 +135,13 @@ const ExpenseSchema = z.object({
     }
 });
 
+const MonthlyInsightRankingSchema = z.object({
+    selections: z.array(z.object({
+        id: z.string().trim().min(1).max(80),
+        actionIndex: z.number().int().min(0).max(2),
+    }).strict()).min(1).max(3),
+}).strict();
+
 const ErrorSchema = z.object({ error: z.string() });
 
 function minimizeEmailForAI(emailBody) {
@@ -288,8 +295,40 @@ ${minimizedEmail}
     return null;
 }
 
+async function rankMonthlyInsightCandidates(candidates = []) {
+    if (!ai || !candidates.length) return null;
+    const safeCandidates = candidates.map((candidate) => ({
+        id: candidate.id,
+        type: candidate.type,
+        verifiedFact: candidate.fact,
+        confidence: candidate.confidence,
+        actions: candidate.actions,
+    }));
+    const prompt = `
+You are ranking verified personal-finance observations for a private monthly dashboard.
+The application calculated every amount. Do not calculate, rewrite, or add financial facts.
+Choose up to three distinct candidate ids that are most useful and non-redundant.
+For each selected id, choose one actionIndex (0, 1, or 2) from that candidate's supplied actions.
+Prefer specific behavior changes over generic encouragement. Do not provide investment, tax, or legal advice.
+Return only JSON matching: {"selections":[{"id":"candidate-id","actionIndex":0}]}.
+
+Candidates:
+${JSON.stringify(safeCandidates)}
+`;
+    const response = await generateContentWithQuotaProtection({
+        model: MODEL_NAME,
+        contents: prompt,
+        config: { responseMimeType: 'application/json' },
+    });
+    const parsed = MonthlyInsightRankingSchema.parse(JSON.parse(response.text));
+    const validIds = new Set(candidates.map((candidate) => candidate.id));
+    const selections = parsed.selections.filter((selection) => validIds.has(selection.id));
+    return selections.length ? { selections } : null;
+}
+
 module.exports = {
     parseEmailWithGemini,
+    rankMonthlyInsightCandidates,
     parseAIResponseText,
     normalizeNullablePositiveNumber,
     minimizeEmailForAI,

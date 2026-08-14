@@ -8,6 +8,7 @@ import { ScalableElement } from "../../utils/tools";
 import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
 import { getPortfolioAPI } from "../../services/apiService";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
+import MonthlyAiBrief from "./MonthlyAiBrief";
 import {
     buildAllTimeInsightData,
     buildInvestmentValueTimeline,
@@ -661,6 +662,13 @@ const Insight = () => {
                 {/* Invest Grid */}
                 {renderGrid("Invest", "#fff", dailyInvest, maxInvest, displayedInvestTotal)}
             </div>
+
+            {viewMode === 'monthly' && (
+                <MonthlyAiBrief
+                    month={`${year}-${String(month + 1).padStart(2, '0')}`}
+                    transactions={transactions || []}
+                />
+            )}
 
             <section className="Insight_ChartCard" style={{ width: "100%", flexShrink: 0 }}>
                 <div className="Insight_SectionTitle" style={{

@@ -10,16 +10,22 @@ const { createRateLimit } = require("./src/middleware/rateLimit");
 const { parseTransaction, transactionUpdateSchema } = require("./src/validation/transaction");
 const { validateTelegramInitData, normalizeTelegramPhotoUrl } = require("./src/services/telegramAuthService");
 const backupService = require("./src/services/backupService");
+const { getMonthlyInsightBrief } = require("./src/services/monthlyInsightService");
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = Number(process.env.PORT || 3001);
 const isProduction = process.env.NODE_ENV === "production";
 
-if (!process.env.JWT_SECRET && isProduction) {
-    throw new Error("JWT_SECRET must be configured in production");
+if (!process.env.JWT_SECRET) {
+    if (isProduction) {
+        throw new Error("JWT_SECRET must be configured in production");
+    } else {
+        console.warn("[WARNING] JWT_SECRET is not configured in environment. Using static development fallback key.");
+    }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(48).toString("hex");
+const JWT_SECRET = process.env.JWT_SECRET || "monimonitor_development_jwt_secret_key_change_in_prod";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "8h";
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_USER_ID = process.env.TELEGRAM_USER_ID || process.env.TELEGRAM_CHAT_ID;
@@ -29,16 +35,31 @@ const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:3000,http:
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+if (isProduction || process.env.ENFORCE_HTTPS === "true") {
+    app.use((req, res, next) => {
+        const isHttps = req.secure || req.headers["x-forwarded-proto"] === "https";
+        if (!isHttps && req.headers.host) {
+            return res.redirect(301, `https://${req.headers.host}${req.url}`);
+        }
+        next();
+    });
+}
+
 app.disable("x-powered-by");
 app.use((req, res, next) => {
-    res.set({
+    const headers = {
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY",
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-    });
+    };
+    if (isProduction || process.env.ENFORCE_HTTPS === "true") {
+        headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    }
+    res.set(headers);
     next();
 });
+
 app.use(cors({
     origin(origin, callback) {
         if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
@@ -50,7 +71,7 @@ app.use(cors({
 app.use(express.json({ limit: "100kb" }));
 
 const authRateLimit = createRateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
-
+const insightRateLimit = createRateLimit({ windowMs: 60 * 60 * 1000, max: 30 });
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -452,6 +473,19 @@ app.get("/summary", authenticateToken, async (req, res) => {
 app.get("/accounts", authenticateToken, async (req, res) => {
     try {
         return res.json(await dbService.getAccountsForUser(req.user.userId));
+    } catch (error) {
+        return sendValidationError(res, error);
+    }
+});
+
+app.get("/insights/monthly", authenticateToken, insightRateLimit, async (req, res) => {
+    if (!validMonth(req.query.month)) {
+        return res.status(400).json({ error: "month must be YYYY-MM" });
+    }
+    try {
+        return res.json(await getMonthlyInsightBrief(req.user.userId, req.query.month, {
+            refresh: req.query.refresh === "true",
+        }));
     } catch (error) {
         return sendValidationError(res, error);
     }

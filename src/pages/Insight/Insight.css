@@ -410,6 +410,347 @@
     font-weight: 600;
 }
 
+.MonthlyAiBrief {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 16px;
+    border: 1px solid var(--Bc-3);
+    border-radius: 22px;
+    background: none;
+    color: var(--Ac-1);
+}
+
+.MonthlyAiBrief_Header,
+.MonthlyAiBrief_TitleRow,
+.MonthlyAiBrief_Quality,
+.MonthlyAiBrief_Item,
+.MonthlyAiBrief_EvidenceRow {
+    display: flex;
+}
+
+.MonthlyAiBrief_Header {
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.MonthlyAiBrief_Header>div {
+    text-align: left;
+}
+
+.MonthlyAiBrief_Eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--Bc-1);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+
+.MonthlyAiBrief_Eyebrow svg {
+    width: 14px;
+    height: 14px;
+}
+
+.MonthlyAiBrief_Header h2 {
+    margin: 5px 0 0;
+    color: var(--Ac-1);
+    font-size: 1.05rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+}
+
+.MonthlyAiBrief_Header>button {
+    display: grid;
+    width: 34px;
+    height: 34px;
+    flex: 0 0 34px;
+    padding: 0;
+    place-items: center;
+    border: 1px solid var(--Bc-3);
+    border-radius: 50%;
+    background: none;
+    color: var(--Bc-1);
+    cursor: pointer;
+}
+
+.MonthlyAiBrief_Header>button svg {
+    width: 15px;
+    height: 15px;
+}
+
+.MonthlyAiBrief_Header>button:disabled {
+    cursor: wait;
+    opacity: 0.5;
+}
+
+.MonthlyAiBrief_Quality {
+    align-items: center;
+    gap: 9px;
+    margin-top: 14px;
+    padding: 10px 0;
+    border-block: 1px solid var(--Ac-4);
+    text-align: left;
+}
+
+.MonthlyAiBrief_Quality>svg {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 19px;
+}
+
+.MonthlyAiBrief_Quality.healthy>svg {
+    color: var(--Fc-1);
+}
+
+.MonthlyAiBrief_Quality.review>svg {
+    color: var(--Gc-1);
+}
+
+.MonthlyAiBrief_Quality>div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.MonthlyAiBrief_Quality strong {
+    font-size: 0.72rem;
+    font-weight: 650;
+}
+
+.MonthlyAiBrief_Quality span {
+    color: var(--Ac-3);
+    font-size: 0.66rem;
+    line-height: 1.4;
+}
+
+.MonthlyAiBrief_List {
+    display: flex;
+    flex-direction: column;
+}
+
+.MonthlyAiBrief_Item {
+    align-items: flex-start;
+    gap: 11px;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--Ac-4);
+    text-align: left;
+}
+
+.MonthlyAiBrief_Number {
+    display: grid;
+    width: 27px;
+    height: 27px;
+    flex: 0 0 27px;
+    place-items: center;
+    border: 1px solid var(--Bc-3);
+    border-radius: 50%;
+    color: var(--Bc-1);
+    font-size: 0.62rem;
+    font-weight: 700;
+}
+
+.MonthlyAiBrief_Copy {
+    min-width: 0;
+    flex: 1;
+}
+
+.MonthlyAiBrief_TitleRow {
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.MonthlyAiBrief_TitleRow h3 {
+    margin: 3px 0 0;
+    font-size: 0.83rem;
+    font-weight: 650;
+}
+
+.MonthlyAiBrief_TitleRow span {
+    color: var(--Ac-3);
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.MonthlyAiBrief_Copy p {
+    margin: 7px 0;
+    color: var(--Ac-2);
+    font-size: 0.72rem;
+    line-height: 1.55;
+}
+
+.MonthlyAiBrief_Action {
+    color: var(--Ac-2);
+    font-size: 0.7rem;
+    line-height: 1.5;
+}
+
+.MonthlyAiBrief_Action strong {
+    margin-right: 4px;
+    color: var(--Bc-1);
+    font-weight: 700;
+}
+
+.MonthlyAiBrief_Copy>button {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    margin: 9px 0 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--Bc-1);
+    font-size: 0.66rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.MonthlyAiBrief_Copy>button svg {
+    width: 13px;
+    height: 13px;
+}
+
+.MonthlyAiBrief>footer {
+    padding-top: 12px;
+    color: var(--Ac-3);
+    font-size: 0.6rem;
+    line-height: 1.5;
+    text-align: left;
+}
+
+.MonthlyAiBrief_Loading {
+    display: flex;
+    min-height: 74px;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    color: var(--Ac-3);
+    font-size: 0.7rem;
+}
+
+.MonthlyAiBrief_Loading svg {
+    width: 16px;
+    color: var(--Bc-1);
+}
+
+.is-spinning {
+    animation: monthly-ai-spin 0.8s linear infinite;
+}
+
+@keyframes monthly-ai-spin {
+    to { transform: rotate(360deg); }
+}
+
+.MonthlyAiBrief_EvidenceSheet {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 100%;
+    padding: 48px 16px 30px;
+    color: var(--Ac-1);
+}
+
+.MonthlyAiBrief_EvidenceSheet>header {
+    padding-bottom: 16px;
+    text-align: left;
+}
+
+.MonthlyAiBrief_EvidenceSheet>header>span {
+    color: var(--Bc-1);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+}
+
+.MonthlyAiBrief_EvidenceSheet h1 {
+    margin: 6px 0;
+    font-size: 1.3rem;
+}
+
+.MonthlyAiBrief_EvidenceSheet header p {
+    margin: 0;
+    color: var(--Ac-3);
+    font-size: 0.72rem;
+    line-height: 1.55;
+}
+
+.MonthlyAiBrief_EvidenceList {
+    border-top: 1px solid var(--Ac-4);
+}
+
+.MonthlyAiBrief_EvidenceRow {
+    align-items: center;
+    gap: 10px;
+    padding: 13px 0;
+    border-bottom: 1px solid var(--Ac-4);
+}
+
+.MonthlyAiBrief_EvidenceIcon {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    place-items: center;
+    border: 1px solid var(--Bc-3);
+    border-radius: 50%;
+    color: var(--Bc-1);
+}
+
+.MonthlyAiBrief_EvidenceIcon svg {
+    width: 15px;
+    height: 15px;
+}
+
+.MonthlyAiBrief_EvidenceCopy {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    gap: 3px;
+    text-align: left;
+}
+
+.MonthlyAiBrief_EvidenceCopy strong {
+    overflow: hidden;
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.MonthlyAiBrief_EvidenceCopy span {
+    overflow: hidden;
+    color: var(--Ac-3);
+    font-size: 0.62rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.MonthlyAiBrief_EvidenceAmount {
+    flex: 0 0 auto;
+    font-size: 0.74rem;
+    font-weight: 650;
+}
+
+.MonthlyAiBrief_EvidenceAmount.in {
+    color: var(--Fc-1);
+}
+
+.MonthlyAiBrief_EvidenceAmount.out {
+    color: var(--Gc-1);
+}
+
+.MonthlyAiBrief_EmptyEvidence {
+    color: var(--Ac-3);
+    font-size: 0.72rem;
+    text-align: left;
+}
+
 @media (max-width: 360px) {
     .Insight_Container {
         padding-inline: 9px !important;

@@ -11,8 +11,6 @@ const handleExpiredSession = (response) => {
     localStorage.removeItem("profilePhotoUrl");
     localStorage.removeItem("joinedAt");
 
-    // Telegram's in-app browser keeps its own storage. Returning to the login
-    // route lets LoginPage exchange fresh Telegram initData for a new token.
     if (window.location.pathname !== "/login") window.location.replace("/login");
     return true;
 };
@@ -192,12 +190,6 @@ export const createGoalAPI = async (goal) => {
     return response.ok ? response.json() : null;
 };
 
-export const GetLabel = async ({ record_entry }) => {
-    // Keep mock for OpenAI for now or update if backend has endpoint
-    console.log("Mocking GetLabel for:", record_entry);
-    return "Expense";
-};
-
 export const updateGoalAPI = async (id, updates) => {
     const token = localStorage.getItem("token");
     if (!token) return null;
@@ -210,6 +202,36 @@ export const deleteGoalAPI = async (id) => {
     if (!token) return false;
     const response = await fetch(apiUrl(`/goals/${id}`), { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
     return response.ok;
+};
+
+export const GetLabel = async ({ record_entry }) => {
+    if (!record_entry) return "Other";
+    if (record_entry.Label && record_entry.Label !== "Auto Detect") {
+        return record_entry.Label;
+    }
+    if (record_entry.Category === "Income") return "Income";
+    if (record_entry.Category === "Saving") return "Savings";
+    return "Expense";
+};
+
+export const getMonthlyAiBriefAPI = async (month, refresh = false) => {
+    try {
+        const token = localStorage.getItem("token");
+        if (!token) return null;
+        const params = new URLSearchParams({ month });
+        if (refresh) params.set("refresh", "true");
+        const response = await fetch(apiUrl(`/insights/monthly?${params}`), {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+            handleExpiredSession(response);
+            return null;
+        }
+        return response.json();
+    } catch (error) {
+        console.error("Error fetching monthly AI brief:", error);
+        return null;
+    }
 };
 
 const backupRequest = async (path = "", options = {}) => {
@@ -259,6 +281,7 @@ export const restoreBackupAPI = async (fileName) => {
     });
     return response ? response.json() : null;
 };
+
 const portfolioRequest = async (path = '', options = {}) => {
     const token = localStorage.getItem('token');
     if (!token) return null;
