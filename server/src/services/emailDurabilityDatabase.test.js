@@ -40,4 +40,46 @@ test('resets the discovery cursor safely when IMAP UIDVALIDITY changes', async (
     const state = await dbService.prepareEmailSync('owner@example.com:INBOX', 'new-generation');
     assert.equal(state.initialSync, true);
     assert.equal(state.lastDiscoveredUid, 0);
+    assert.equal(state.adoptLegacyProcessed, false);
+});
+
+test('adopts legacy processed UIDs only during the first durable mailbox migration', async () => {
+    const mailboxKey = 'legacy-owner@example.com:INBOX';
+    const uidValidity = 'legacy-generation';
+    await dbService.markEmailProcessed(700);
+
+    const initial = await dbService.prepareEmailSync(mailboxKey, uidValidity);
+    assert.equal(initial.adoptLegacyProcessed, true);
+    await dbService.enqueueDiscoveredEmails(mailboxKey, uidValidity, [700, 701], {
+        adoptLegacyProcessed: initial.adoptLegacyProcessed,
+    });
+
+    const pending = await dbService.getPendingEmails(mailboxKey, uidValidity);
+    assert.deepEqual(pending.map((item) => item.uid), [701]);
+    assert.equal(await dbService.isEmailProcessed(700, mailboxKey, uidValidity), true);
+});
+
+test('prevents a crash retry from inserting the same source email twice', async () => {
+    const db = await dbService.getDb();
+    const userId = 'email-idempotency-user';
+    await db.run(
+        'INSERT INTO users (id, username, password, createdAt) VALUES (?, ?, ?, ?)',
+        [userId, 'email-idempotency', 'not-used', new Date().toISOString()]
+    );
+    const transaction = {
+        userId,
+        Amount: 12.34,
+        Category: 'Expense',
+        Label: 'Dining',
+        Reason: 'Example Cafe',
+        Timestamp: '2026-08-13T12:00:00.000Z',
+        Type: 'Credit Card',
+        Account: '****1234',
+        BankName: 'Example Bank',
+        SourceEmailKey: 'owner@example.com:INBOX:123:900',
+    };
+
+    const id = await dbService.addTransaction(transaction);
+    assert.equal((await dbService.getTransactionBySourceEmailKey(userId, transaction.SourceEmailKey)).id, id);
+    await assert.rejects(() => dbService.addTransaction(transaction), /UNIQUE constraint failed/);
 });

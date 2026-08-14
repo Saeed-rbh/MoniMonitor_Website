@@ -52,6 +52,7 @@ async function getDb() {
                     PortfolioSymbol TEXT,
                     PortfolioQuantity REAL,
                     PortfolioPrice REAL,
+                    SourceEmailKey TEXT,
                     FOREIGN KEY (userId) REFERENCES users(id)
                 );
 
@@ -128,6 +129,7 @@ async function getDb() {
             if (!hasColumn("PortfolioToSymbol")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioToSymbol TEXT");
             if (!hasColumn("PortfolioToQuantity")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioToQuantity REAL");
             if (!hasColumn("AccountFlow")) await db.exec("ALTER TABLE transactions ADD COLUMN AccountFlow TEXT");
+            if (!hasColumn("SourceEmailKey")) await db.exec("ALTER TABLE transactions ADD COLUMN SourceEmailKey TEXT");
             await db.run("UPDATE transactions SET AmountMinor = ROUND(Amount * 100) WHERE AmountMinor IS NULL");
 
             await db.exec(`
@@ -280,6 +282,8 @@ async function getDb() {
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_timestamp ON transactions(userId, Timestamp DESC);
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_category ON transactions(userId, Category);
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_reference ON transactions(userId, ReferenceNumber);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_source_email
+                    ON transactions(SourceEmailKey) WHERE SourceEmailKey IS NOT NULL;
                 CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(userId);
                 CREATE INDEX IF NOT EXISTS idx_email_ingestion_pending
                     ON email_ingestion_queue(mailboxKey, uidValidity, status, uid);

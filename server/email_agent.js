@@ -131,7 +131,12 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             allowBeforeSnapshot = false,
             suppressNotifications = false,
             accountCutoffs = null,
+            sourceEmailKey = null,
         } = options;
+        if (sourceEmailKey && await dbService.getTransactionBySourceEmailKey(USER_ID, sourceEmailKey)) {
+            console.log(`[${idInfo}] Transaction was already saved for this email; completing the queue item.`);
+            return true;
+        }
         const receivedTime = new Date(receivedAt || 0).getTime();
         if (!allowBeforeSnapshot && Number.isFinite(receivedTime) && receivedTime < new Date(SNAPSHOT_CAPTURED_AT).getTime()) {
             console.log(`[${idInfo}] Email predates the financial snapshot; marking processed without analysis.`);
@@ -186,6 +191,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         console.log(`[${idInfo}] Successfully extracted expense:`, expenseData);
         expenseData.userId = USER_ID;
         expenseData.ReceivedAt = receivedAt || new Date().toISOString();
+        expenseData.SourceEmailKey = sourceEmailKey;
 
         if (!expenseData.Timestamp) {
             expenseData.Timestamp = new Date().toISOString();

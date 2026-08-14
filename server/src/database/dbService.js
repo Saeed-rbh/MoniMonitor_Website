@@ -111,8 +111,9 @@ async function addTransaction(transaction) {
             (userId, Amount, AmountMinor, Currency, Category, Label, Reason, Timestamp, ReceivedAt,
              Type, Account, BankName, ReferenceNumber, Frequency, TelegramMessageId, PortfolioAction,
              PortfolioAccountId, PortfolioConfidence, PortfolioSymbol, PortfolioQuantity, PortfolioPrice,
-             BalanceAccountConfidence, PortfolioAccountNumber, PortfolioToSymbol, PortfolioToQuantity, AccountFlow)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             BalanceAccountConfidence, PortfolioAccountNumber, PortfolioToSymbol, PortfolioToQuantity, AccountFlow,
+             SourceEmailKey)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             transaction.userId,
             (Number.isSafeInteger(transaction.AmountMinor) ? transaction.AmountMinor : toMinorUnits(transaction.Amount)) / 100,
@@ -140,6 +141,7 @@ async function addTransaction(transaction) {
             transaction.PortfolioToSymbol || null,
             transaction.PortfolioToQuantity || null,
             transaction.AccountFlow || null,
+            transaction.SourceEmailKey || null,
         ]
     );
     return result.lastID;
@@ -225,6 +227,15 @@ async function findDuplicateTransaction(userId, amount, category, datePrefix, re
                        THEN 0 ELSE 1 END, id
          LIMIT 1`,
         [userId, amountMinor, category, datePrefix + '%', reason, account || null]
+    ));
+}
+
+async function getTransactionBySourceEmailKey(userId, sourceEmailKey) {
+    if (!sourceEmailKey) return null;
+    const db = await getDb();
+    return withDisplayAmount(await db.get(
+        'SELECT * FROM transactions WHERE userId = ? AND SourceEmailKey = ?',
+        [userId, sourceEmailKey]
     ));
 }
 
@@ -1045,7 +1056,13 @@ async function prepareEmailSync(mailboxKey, uidValidity) {
              VALUES (?, ?, 0, ?, ?)`,
             [normalizedMailboxKey, normalizedUidValidity, now, now]
         );
-        return { mailboxKey: normalizedMailboxKey, uidValidity: normalizedUidValidity, lastDiscoveredUid: 0, initialSync: true };
+        return {
+            mailboxKey: normalizedMailboxKey,
+            uidValidity: normalizedUidValidity,
+            lastDiscoveredUid: 0,
+            initialSync: true,
+            adoptLegacyProcessed: true,
+        };
     }
     if (String(current.uidValidity) !== normalizedUidValidity) {
         await db.run(
@@ -1054,25 +1071,42 @@ async function prepareEmailSync(mailboxKey, uidValidity) {
              WHERE mailboxKey = ?`,
             [normalizedUidValidity, now, now, normalizedMailboxKey]
         );
-        return { mailboxKey: normalizedMailboxKey, uidValidity: normalizedUidValidity, lastDiscoveredUid: 0, initialSync: true };
+        return {
+            mailboxKey: normalizedMailboxKey,
+            uidValidity: normalizedUidValidity,
+            lastDiscoveredUid: 0,
+            initialSync: true,
+            adoptLegacyProcessed: false,
+        };
     }
-    return { ...current, lastDiscoveredUid: Number(current.lastDiscoveredUid || 0), initialSync: false };
+    return {
+        ...current,
+        lastDiscoveredUid: Number(current.lastDiscoveredUid || 0),
+        initialSync: false,
+        adoptLegacyProcessed: false,
+    };
 }
 
-async function enqueueDiscoveredEmails(mailboxKey, uidValidity, uids) {
+async function enqueueDiscoveredEmails(mailboxKey, uidValidity, uids, options = {}) {
     const normalizedUids = [...new Set((uids || []).map(normalizeEmailUid))].sort((left, right) => left - right);
     if (!normalizedUids.length) return 0;
 
     const db = await getDb();
     const now = new Date().toISOString();
+    const adoptLegacyProcessed = options.adoptLegacyProcessed === true;
     await db.run('BEGIN IMMEDIATE');
     try {
         for (const uid of normalizedUids) {
+            const legacyProcessed = adoptLegacyProcessed && Boolean(await db.get(
+                'SELECT uid FROM processed_emails WHERE uid = ?',
+                [uid]
+            ));
             await db.run(
                 `INSERT OR IGNORE INTO email_ingestion_queue
-                    (mailboxKey, uidValidity, uid, status, attempts, discoveredAt)
-                 VALUES (?, ?, ?, 'pending', 0, ?)`,
-                [mailboxKey, String(uidValidity), uid, now]
+                    (mailboxKey, uidValidity, uid, status, attempts, discoveredAt, processedAt)
+                 VALUES (?, ?, ?, ?, 0, ?, ?)`,
+                [mailboxKey, String(uidValidity), uid, legacyProcessed ? 'processed' : 'pending',
+                    now, legacyProcessed ? now : null]
             );
         }
         await db.run(
@@ -1250,6 +1284,7 @@ module.exports = {
     getAllTransactionsForUser,
     addTransaction,
     getTransactionById,
+    getTransactionBySourceEmailKey,
     updateTransaction,
     updateTransactionForUser,
     deleteTransaction,

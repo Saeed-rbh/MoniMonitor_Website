@@ -118,8 +118,10 @@ class ImapService {
             .map(Number)
             .filter((uid) => Number.isSafeInteger(uid) && uid > state.lastDiscoveredUid);
         if (newUids.length) {
-            await database.enqueueDiscoveredEmails(this.mailboxKey, uidValidity, newUids);
-            console.log(`Discovered ${newUids.length} new email(s) for durable processing.`);
+            await database.enqueueDiscoveredEmails(this.mailboxKey, uidValidity, newUids, {
+                adoptLegacyProcessed: state.adoptLegacyProcessed,
+            });
+            console.log(`Discovered ${newUids.length} email(s) for durable synchronization.`);
         }
         return uidValidity;
     }
@@ -142,7 +144,8 @@ class ImapService {
             const parsedMail = await simpleParser(message.source);
             const emailBody = parsedMail.text || parsedMail.html || '';
             const receivedAt = parsedMail.date ? parsedMail.date.toISOString() : new Date().toISOString();
-            const success = await this.onNewEmail(emailBody, `Email UID ${uid}`, receivedAt);
+            const sourceEmailKey = `${this.mailboxKey}:${uidValidity}:${uid}`;
+            const success = await this.onNewEmail(emailBody, `Email UID ${uid}`, receivedAt, { sourceEmailKey });
 
             if (success) {
                 await database.markEmailProcessed(uid, this.mailboxKey, uidValidity);
