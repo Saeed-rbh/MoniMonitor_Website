@@ -307,6 +307,9 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
             const isConsecutiveIncrease = cur.totalMinor > p1.totalMinor && p1.totalMinor > p2.totalMinor && p2.totalMinor > 0;
             return {
                 merchant: name,
+                currentMonthSpentMinor: cur.totalMinor,
+                previousMonthSpentMinor: p1.totalMinor,
+                diffMinor,
                 currentMonthSpent: money(cur.totalMinor),
                 currentMonthCount: cur.count,
                 previousMonthSpent: money(p1.totalMinor),
@@ -317,7 +320,7 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
                 isConsecutiveIncrease,
                 transactionIds: cur.ids,
             };
-        }).sort((a, b) => b.currentMonthCount - a.currentMonthCount);
+        });
 
         // Category MoM trends
         const categoryTrends = Object.entries(curCategoriesMap).map(([label, cur]) => {
@@ -328,6 +331,9 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
                 : null;
             return {
                 categoryLabel: label,
+                currentMonthSpentMinor: cur.totalMinor,
+                previousMonthSpentMinor: p1.totalMinor,
+                diffMinor,
                 currentMonthSpent: money(cur.totalMinor),
                 previousMonthSpent: money(p1.totalMinor),
                 dollarChangeVsLastMonth: money(diffMinor),
@@ -336,23 +342,103 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
             };
         });
 
-        // Compact transaction ledger for Gemini
-        const transactionLedger = currentMonthTxs.map((t) => ({
-            id: t.id,
-            amount: money(amountMinor(t)),
-            amountMinor: amountMinor(t),
-            category: t.Category,
-            label: t.Label || 'Other',
-            merchant: t.Reason || t.Label || 'Merchant',
-            day: new Date(t.Timestamp).getUTCDate(),
-            dayOfWeek: dayOfWeekMap[new Date(t.Timestamp).getUTCDay()],
-            isRecurring: Boolean(t.Frequency && t.Frequency !== 'OneTime'),
-        }));
+        // Candidate 1: Real MoM Increasing Merchant or Category
+        const increasingMerchants = merchantTrends
+            .filter((m) => m.diffMinor > 0 && m.previousMonthSpentMinor > 0)
+            .sort((a, b) => b.diffMinor - a.diffMinor);
+        
+        const candidate1 = increasingMerchants[0]
+            ? {
+                type: 'MoM_Increase',
+                merchantOrCategory: increasingMerchants[0].merchant,
+                currentMonthSpent: increasingMerchants[0].currentMonthSpent,
+                previousMonthSpent: increasingMerchants[0].previousMonthSpent,
+                dollarChange: increasingMerchants[0].dollarChangeVsLastMonth,
+                percentChange: increasingMerchants[0].percentChangeVsLastMonth,
+                isConsecutiveIncrease: increasingMerchants[0].isConsecutiveIncrease,
+                transactionIds: increasingMerchants[0].transactionIds,
+            }
+            : {
+                type: 'MoM_Increase',
+                merchantOrCategory: categoryTrends[0]?.categoryLabel || 'Expenses',
+                currentMonthSpent: categoryTrends[0]?.currentMonthSpent || money(analysis.summary.expenseMinor),
+                previousMonthSpent: categoryTrends[0]?.previousMonthSpent || '$0.00',
+                dollarChange: categoryTrends[0]?.dollarChangeVsLastMonth || '$0.00',
+                percentChange: categoryTrends[0]?.percentChangeVsLastMonth || '0%',
+                transactionIds: categoryTrends[0]?.transactionIds || [],
+            };
+
+        // Candidate 2: Real MoM Decreasing Merchant or Category Shift
+        const decreasingMerchants = merchantTrends
+            .filter((m) => m.diffMinor < 0 && m.previousMonthSpentMinor > 0)
+            .sort((a, b) => a.diffMinor - b.diffMinor);
+
+        const decreasingCategories = categoryTrends
+            .filter((c) => c.diffMinor < 0 && c.previousMonthSpentMinor > 0)
+            .sort((a, b) => a.diffMinor - b.diffMinor);
+
+        const candidate2 = decreasingMerchants[0]
+            ? {
+                type: 'MoM_Decrease',
+                merchantOrCategory: decreasingMerchants[0].merchant,
+                currentMonthSpent: decreasingMerchants[0].currentMonthSpent,
+                previousMonthSpent: decreasingMerchants[0].previousMonthSpent,
+                dollarChange: decreasingMerchants[0].dollarChangeVsLastMonth,
+                percentChange: decreasingMerchants[0].percentChangeVsLastMonth,
+                transactionIds: decreasingMerchants[0].transactionIds,
+            }
+            : decreasingCategories[0]
+            ? {
+                type: 'MoM_Decrease',
+                merchantOrCategory: decreasingCategories[0].categoryLabel,
+                currentMonthSpent: decreasingCategories[0].currentMonthSpent,
+                previousMonthSpent: decreasingCategories[0].previousMonthSpent,
+                dollarChange: decreasingCategories[0].dollarChangeVsLastMonth,
+                percentChange: decreasingCategories[0].percentChangeVsLastMonth,
+                transactionIds: decreasingCategories[0].transactionIds,
+            }
+            : {
+                type: 'MoM_Baseline',
+                merchantOrCategory: 'Overall Expenses',
+                currentMonthSpent: money(analysis.summary.expenseMinor),
+                previousMonthSpent: '$0.00',
+                dollarChange: '$0.00',
+                percentChange: '0%',
+                transactionIds: expenses.slice(0, 5).map((t) => t.id),
+            };
+
+        // Candidate 3: Pre-Calculated Fun Fact
+        const daysInMonthSoFar = analysis.latestDay || 1;
+        const totalHoursSoFar = daysInMonthSoFar * 24;
+        const totalExpenseCount = expenses.length || 1;
+        const hoursPerPurchase = Math.round((totalHoursSoFar / totalExpenseCount) * 10) / 10;
+
+        const microTxs = expenses.filter((t) => amountMinor(t) <= 2000);
+        const microSumMinor = microTxs.reduce((sum, t) => sum + amountMinor(t), 0);
+
+        let candidate3;
+        if (microTxs.length >= 4) {
+            candidate3 = {
+                type: 'FunFact_MicroPurchases',
+                funFactTopic: 'Micro-purchases under $20',
+                details: `${microTxs.length} small purchases under $20 added up to ${money(microSumMinor)} this month (${Math.round((microSumMinor / (analysis.summary.expenseMinor || 1)) * 100)}% of total expenses)`,
+                transactionIds: microTxs.map((t) => t.id).slice(0, 10),
+            };
+        } else {
+            candidate3 = {
+                type: 'FunFact_PurchaseFrequency',
+                funFactTopic: 'Purchase Frequency',
+                details: `You made ${expenses.length} purchases across ${daysInMonthSoFar} days — averaging one purchase every ${hoursPerPurchase} hours!`,
+                transactionIds: expenses.slice(0, 10).map((t) => t.id),
+            };
+        }
 
         const richData = {
             month,
             previousMonthsKeys: [prevMonth1Key, prevMonth2Key],
-            latestDay: analysis.latestDay,
+            Candidate1_MoM_Increase: candidate1,
+            Candidate2_MoM_Decrease: candidate2,
+            Candidate3_FunFact: candidate3,
             summary: {
                 income: money(analysis.summary.incomeMinor),
                 expenses: money(analysis.summary.expenseMinor),
@@ -361,15 +447,6 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
                 totalTransactions: analysis.summary.transactionCount,
                 expenseCount: expenses.length,
             },
-            merchantTrends,
-            categoryTrends,
-            microPurchasesUnder20: {
-                count: microTxs.length,
-                totalSpent: money(microSumMinor),
-                percentOfExpenses: analysis.summary.expenseMinor ? Math.round((microSumMinor / analysis.summary.expenseMinor) * 100) : 0,
-                transactionIds: microTxs.map((t) => t.id),
-            },
-            transactionLedger,
         };
 
         try {

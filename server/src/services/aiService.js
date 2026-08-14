@@ -342,28 +342,29 @@ const AISynthesisResponseSchema = z.object({
 async function synthesizeMonthlyInsightsWithGemini(richData) {
     if (!ai) return null;
     const prompt = `
-You are a friendly personal finance assistant & behavioral analyst reviewing a user's monthly financial ledger for ${richData.month} alongside historical data from previous months (${richData.previousMonthsKeys?.join(', ') || 'prior months'}).
+You are a friendly personal finance assistant & behavioral analyst reviewing a user's monthly financial ledger for ${richData.month} alongside historical data from previous months.
 
-Your job is to generate EXACTLY 3 insights following this required 3-part structure:
+Your job is to synthesize the provided pre-computed financial candidates into EXACTLY 3 insights:
 
-INSIGHT 1: Month-over-Month Merchant or Habit Shift (Behavior Change)
-- Identify a merchant or habit where spending is INCREASING or DECREASING compared to previous month(s) (e.g. "Your Tim Hortons spending has been increasing for 2 consecutive months — up +38% ($52) compared to last month").
-- Use exact figures, dollar changes, and percentage deltas from merchantTrends or categoryTrends in the dataset.
+INSIGHT 1: Month-over-Month Behavior Shift (Increase)
+- Synthesize Candidate 1 (MoM Increase): Explain how spending on this specific merchant or category changed compared to the previous month using exact figures, dollar deltas, and percentage changes.
+- Provide 1 clear, helpful micro-action.
 
-INSIGHT 2: Second Month-over-Month Behavioral Trend / Category Shift
-- Identify another significant category or spending shift compared to last month (e.g. "Dining out increased by $120 (+28%) vs last month, while Groceries stayed steady").
-- Use exact figures and percentage deltas from the dataset.
+INSIGHT 2: Month-over-Month Behavior Shift (Decrease or Category Delta)
+- Synthesize Candidate 2 (MoM Decrease/Shift): Explain how spending on this category or merchant dropped or shifted compared to the previous month using exact figures and percentage deltas.
+- Provide 1 clear, helpful micro-action.
 
 INSIGHT 3: One Fun Fact (Surprising & Lighthearted Discovery)
-- A fun, surprising, lighthearted, or quirky discovery about their spending pattern this month!
-- Title MUST start with "Fun Fact:" (e.g., "Fun Fact: Coffee vs Internet" or "Fun Fact: Tim Hortons Frequency").
-- Fact examples: "Fun Fact: You spent $94 on coffee this month — more than your $80 home internet bill!" or "Fun Fact: You visited Tim Hortons 16 times this month — that's an average of once every 45 hours!".
+- Synthesize Candidate 3 (Fun Fact Candidate): A lighthearted, surprising, or quirky discovery about their spending (e.g. coffee vs internet, purchase frequency per hour, micro-leakage accumulation, or category ratio).
+- Title MUST start with "Fun Fact:" (e.g., "Fun Fact: Coffee vs Internet" or "Fun Fact: Micro-Purchase Density").
+- Provide 1 lighthearted action or tip.
 
-STRICT RULES:
-1. State exact dollar amounts, counts, and percentage changes calculated strictly from the provided dataset. Do NOT make up numbers.
-2. For Insights 1 and 2, provide 1 specific, helpful actionable takeaway ("action"). For Insight 3 (Fun Fact), provide a lighthearted action or tip.
-3. Map "evidenceTransactionIds" to real transaction IDs from the dataset that prove each insight.
-4. Return ONLY a valid JSON object matching:
+STRICT CONSTRAINTS:
+1. DO NOT mention brands like "Apple" or "Tim Hortons" UNLESS they are explicitly present in Candidate 1, Candidate 2, or Candidate 3 of the input data.
+2. DO NOT state generic top-spender facts. Only write about the exact pre-computed candidates provided.
+3. State exact dollar amounts and percentage changes calculated strictly from the input data. Do NOT make up numbers.
+4. Attach "evidenceTransactionIds" using real transaction IDs from Candidate 1, 2, or 3.
+5. Return ONLY a valid JSON object matching:
 {
   "insights": [
     {
@@ -377,7 +378,7 @@ STRICT RULES:
   ]
 }
 
-Monthly Financial Data & Historical MoM Comparison:
+Pre-Computed Financial Candidates & Historical Ledger:
 ${JSON.stringify(richData)}
 `;
 
