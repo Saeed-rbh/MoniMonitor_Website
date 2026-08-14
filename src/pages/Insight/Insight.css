@@ -410,16 +410,26 @@
     font-weight: 600;
 }
 
-/* ─── Monthly AI Brief ──────────────────────────────────────────── */
+/* ─── Monthly AI Brief — Smooth Ambient AI Aesthetics ────────────── */
 
-@property --ai-angle {
-    syntax: '<angle>';
-    initial-value: 0deg;
-    inherits: false;
+@keyframes ai-ambient-flow {
+    0%, 100% {
+        background-position: 0% 50%;
+        border-color: color-mix(in srgb, var(--Bc-1) 35%, var(--Ac-4));
+    }
+    50% {
+        background-position: 100% 50%;
+        border-color: color-mix(in srgb, #b48cdc 35%, var(--Ac-4));
+    }
 }
 
-@keyframes ai-border-spin {
-    to { --ai-angle: 360deg; }
+@keyframes ai-title-shimmer {
+    0%, 100% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
 }
 
 @keyframes ai-spark-pulse {
@@ -437,12 +447,6 @@
     to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes ai-hue-shift {
-    0%   { filter: hue-rotate(0deg); }
-    50%  { filter: hue-rotate(40deg); }
-    100% { filter: hue-rotate(0deg); }
-}
-
 .MonthlyAiBrief {
     box-sizing: border-box;
     position: relative;
@@ -450,23 +454,22 @@
     padding: 16px;
     border-radius: 22px;
     color: var(--Ac-1);
-    /* animated gradient border — subtle opacity */
-    background:
-        linear-gradient(var(--Ec-4, #111), var(--Ec-4, #111)) padding-box,
-        conic-gradient(
-            from var(--ai-angle),
-            rgba(212,157,129,0.0)   0%,
-            rgba(212,157,129,0.35) 20%,
-            rgba(180,140,220,0.25) 40%,
-            rgba(100,180,255,0.22) 60%,
-            rgba(212,157,129,0.35) 80%,
-            rgba(212,157,129,0.0)  100%
-        ) border-box;
-    border: 1.5px solid transparent;
-    animation: ai-border-spin 6s linear infinite;
+    border: 1px solid var(--Bc-3);
+    /* Smooth, non-distracting ambient background gradient flow */
+    background: linear-gradient(
+        135deg,
+        rgba(212, 157, 129, 0.06) 0%,
+        var(--Ec-4, #111116) 45%,
+        rgba(180, 140, 220, 0.06) 75%,
+        var(--Ec-4, #111116) 100%
+    );
+    background-size: 200% 200%;
+    animation: ai-ambient-flow 12s ease-in-out infinite;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
 }
 
-/* Subtle inner colour glow that slowly shifts hue */
+/* Soft ambient flare at top */
 .MonthlyAiBrief::before {
     content: '';
     position: absolute;
@@ -474,11 +477,10 @@
     border-radius: 22px;
     pointer-events: none;
     background: radial-gradient(
-        ellipse 70% 50% at 50% 0%,
-        rgba(212, 157, 129, 0.06) 0%,
-        transparent 70%
+        ellipse 90% 45% at 50% 0%,
+        rgba(212, 157, 129, 0.08) 0%,
+        transparent 75%
     );
-    animation: ai-hue-shift 8s ease-in-out infinite;
     z-index: 0;
 }
 
@@ -486,7 +488,6 @@
     position: relative;
     z-index: 1;
 }
-
 
 .MonthlyAiBrief_Header,
 .MonthlyAiBrief_TitleRow,
@@ -507,29 +508,41 @@
 }
 
 .MonthlyAiBrief_Eyebrow {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--Bc-1);
     font-size: 0.65rem;
     font-weight: 700;
     letter-spacing: 0.09em;
     text-transform: uppercase;
+    /* Smooth animated gradient text */
+    background: linear-gradient(90deg, var(--Bc-1), #e8c0a8, #d4a5ec, var(--Bc-1));
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: ai-title-shimmer 7s ease-in-out infinite;
 }
 
 .MonthlyAiBrief_Eyebrow svg {
     width: 14px;
     height: 14px;
+    flex-shrink: 0;
+    color: var(--Bc-1);
     animation: ai-spark-pulse 2.4s ease-in-out infinite;
-    filter: drop-shadow(0 0 4px var(--Bc-1));
+    filter: drop-shadow(0 0 4px rgba(212, 157, 129, 0.5));
 }
 
 .MonthlyAiBrief_Header h2 {
     margin: 5px 0 0;
-    color: var(--Ac-1);
     font-size: 1.05rem;
     font-weight: 650;
     letter-spacing: -0.02em;
+    /* Smooth title color shift */
+    background: linear-gradient(90deg, var(--Ac-1) 0%, #f4dcd0 40%, #e2c6f5 70%, var(--Ac-1) 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: ai-title-shimmer 9s ease-in-out infinite;
 }
 
 .MonthlyAiBrief_Header>button {
