@@ -103,7 +103,7 @@ const MoreOpen = ({
         >
           <RxCross2 />
         </ScalableElement>
-        {feed()}
+        {!!isClicked && feed()}
       </div>
     </motion.div>
   );

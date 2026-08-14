@@ -437,6 +437,12 @@
     to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes ai-hue-shift {
+    0%   { filter: hue-rotate(0deg); }
+    50%  { filter: hue-rotate(40deg); }
+    100% { filter: hue-rotate(0deg); }
+}
+
 .MonthlyAiBrief {
     box-sizing: border-box;
     position: relative;
@@ -444,21 +450,43 @@
     padding: 16px;
     border-radius: 22px;
     color: var(--Ac-1);
-    /* animated gradient border via conic-gradient */
+    /* animated gradient border — subtle opacity */
     background:
         linear-gradient(var(--Ec-4, #111), var(--Ec-4, #111)) padding-box,
         conic-gradient(
             from var(--ai-angle),
             rgba(212,157,129,0.0)   0%,
-            rgba(212,157,129,0.55) 20%,
-            rgba(180,140,220,0.4)  40%,
-            rgba(100,180,255,0.35) 60%,
-            rgba(212,157,129,0.55) 80%,
+            rgba(212,157,129,0.35) 20%,
+            rgba(180,140,220,0.25) 40%,
+            rgba(100,180,255,0.22) 60%,
+            rgba(212,157,129,0.35) 80%,
             rgba(212,157,129,0.0)  100%
         ) border-box;
     border: 1.5px solid transparent;
-    animation: ai-border-spin 5s linear infinite;
+    animation: ai-border-spin 6s linear infinite;
 }
+
+/* Subtle inner colour glow that slowly shifts hue */
+.MonthlyAiBrief::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 22px;
+    pointer-events: none;
+    background: radial-gradient(
+        ellipse 70% 50% at 50% 0%,
+        rgba(212, 157, 129, 0.06) 0%,
+        transparent 70%
+    );
+    animation: ai-hue-shift 8s ease-in-out infinite;
+    z-index: 0;
+}
+
+.MonthlyAiBrief > * {
+    position: relative;
+    z-index: 1;
+}
+
 
 .MonthlyAiBrief_Header,
 .MonthlyAiBrief_TitleRow,
