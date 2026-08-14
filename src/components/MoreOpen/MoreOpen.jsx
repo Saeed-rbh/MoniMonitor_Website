@@ -1,5 +1,5 @@
-import React, { useRef } from "react";
-import { motion, useDragControls } from "framer-motion";
+import React from "react";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { RxCross2 } from "react-icons/rx";
 import { ScalableElement } from "../../utils/tools";
 import { useNavigate } from "react-router-dom";
@@ -23,97 +23,74 @@ const MoreOpen = ({
     if (handleCloseAddTransaction) handleCloseAddTransaction();
   };
 
-  const handleAnimationComplete = (definition) => {
-    if (definition === "hidden" && toRedirect) {
+  const handleExitComplete = () => {
+    if (toRedirect) {
       redirect(toRedirect);
     }
   };
 
-  const variants = {
-    hidden: {
-      y: "100%",
-      opacity: 0,
-      transition: {
-        type: "tween",
-        ease: "easeInOut",
-        duration: 0.3
-      },
-      transitionEnd: {
-        display: "none",
-        visibility: "hidden"
-      }
-    },
-    visible: {
-      y: 0,
-      opacity: 1,
-      display: "flex",
-      visibility: "visible",
-      transition: {
-        type: "tween",
-        ease: "easeInOut",
-        duration: 0.4
-      }
-    }
-  };
-
   return (
-    <motion.div
-      className="MoreOpen_Main"
-      initial="hidden"
-      animate={!!isClicked ? "visible" : "hidden"}
-      variants={variants}
-      onAnimationComplete={handleAnimationComplete}
-      style={{
-        zIndex: zIndex,
-        height: `calc(100vh - ${MoreOpenHeight}px)`,
-        bottom: 0,
-        position: "fixed",
-        left: 0,
-        right: 0,
-        margin: "0 auto",
-        width: "100%",
-        maxHeight: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        pointerEvents: !!isClicked ? "auto" : "none", // Disable interaction when hidden
-      }}
-      drag="y"
-      dragControls={controls}
-      dragListener={false}
-      dragConstraints={{ top: 0, bottom: 0 }}
-      dragElastic={{ top: 0, bottom: 0.2 }}
-      onDragEnd={(event, info) => {
-        if (info.offset.y > 100 || info.velocity.y > 200) {
-          handleClose();
-        }
-      }}
-    >
-      <div
-        className="MoreOpen_Wall"
-        style={{
-          background: "var(--Ec-2)",
-          overflow: overflow,
-          width: "100%",
-          maxWidth: "var(--app-max-width)",
-          boxSizing: "border-box",
-          height: "100%",
-        }}
-      >
-        <div
-          aria-hidden="true"
-          className="MoreOpen_DragHandle"
-          onPointerDown={(event) => controls.start(event)}
-        />
-        <ScalableElement
-          as="div"
-          className="MoreOpen_Close"
-          onClick={handleClose}
+    <AnimatePresence onExitComplete={handleExitComplete}>
+      {!!isClicked && (
+        <motion.div
+          key="more-open-sheet"
+          className="MoreOpen_Main"
+          initial={{ y: "100%", opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: "100%", opacity: 0 }}
+          transition={{ type: "tween", ease: "easeInOut", duration: 0.35 }}
+          style={{
+            zIndex: zIndex,
+            height: `calc(100vh - ${MoreOpenHeight}px)`,
+            bottom: 0,
+            position: "fixed",
+            left: 0,
+            right: 0,
+            margin: "0 auto",
+            width: "100%",
+            maxHeight: "100vh",
+            display: "flex",
+            justifyContent: "center",
+          }}
+          drag="y"
+          dragControls={controls}
+          dragListener={false}
+          dragConstraints={{ top: 0, bottom: 0 }}
+          dragElastic={{ top: 0, bottom: 0.2 }}
+          onDragEnd={(event, info) => {
+            if (info.offset.y > 100 || info.velocity.y > 200) {
+              handleClose();
+            }
+          }}
         >
-          <RxCross2 />
-        </ScalableElement>
-        {!!isClicked && feed()}
-      </div>
-    </motion.div>
+          <div
+            className="MoreOpen_Wall"
+            style={{
+              background: "var(--Ec-2)",
+              overflow: overflow,
+              width: "100%",
+              maxWidth: "var(--app-max-width)",
+              boxSizing: "border-box",
+              height: "100%",
+            }}
+          >
+            <div
+              aria-hidden="true"
+              className="MoreOpen_DragHandle"
+              onPointerDown={(event) => controls.start(event)}
+            />
+            <ScalableElement
+              as="div"
+              className="MoreOpen_Close"
+              onClick={handleClose}
+            >
+              <RxCross2 />
+            </ScalableElement>
+            {feed()}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 
