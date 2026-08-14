@@ -12,7 +12,7 @@ const {
 
 const AI_API_KEY = process.env.AI_API_KEY;
 const ai = AI_API_KEY ? new GoogleGenAI({ apiKey: AI_API_KEY }) : null;
-const MODEL_NAME = 'gemini-2.5-flash';
+const MODEL_NAME = 'gemini-3.5-flash-lite';
 const MIN_REQUEST_INTERVAL_MS = 4200;
 const MAX_RATE_LIMIT_RETRIES = 3;
 const MAX_RESPONSE_ATTEMPTS = 2;
