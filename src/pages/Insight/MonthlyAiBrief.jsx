@@ -16,6 +16,23 @@ const transactionDirection = (transaction) => {
   return transaction?.Category === "Income" ? "in" : "out";
 };
 
+const getEffectiveCompletedMonth = (monthStr) => {
+  if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) return { targetMonth: monthStr, isAutoAdjusted: false };
+  const now = new Date();
+  const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  
+  const lastDayOfCurrentMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const isLastDay = now.getDate() === lastDayOfCurrentMonth;
+
+  if (monthStr === currentMonthStr && !isLastDay) {
+    const prevDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, '0')}`;
+    return { targetMonth: prevMonthStr, isAutoAdjusted: true };
+  }
+
+  return { targetMonth: monthStr, isAutoAdjusted: false };
+};
+
 const MonthlyAiBrief = ({ month, transactions = [] }) => {
   const [brief, setBrief] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,15 +40,17 @@ const MonthlyAiBrief = ({ month, transactions = [] }) => {
   const [selectedInsight, setSelectedInsight] = useState(null);
   const requestVersion = useRef(0);
 
+  const { targetMonth, isAutoAdjusted } = useMemo(() => getEffectiveCompletedMonth(month), [month]);
+
   const load = useCallback(async (refresh = false) => {
     const version = ++requestVersion.current;
     refresh ? setRefreshing(true) : setLoading(true);
-    const result = await getMonthlyAiBriefAPI(month, refresh);
+    const result = await getMonthlyAiBriefAPI(targetMonth, refresh);
     if (version !== requestVersion.current) return;
     if (result) setBrief(result);
     setLoading(false);
     setRefreshing(false);
-  }, [month]);
+  }, [targetMonth]);
 
   useEffect(() => {
     setBrief(null);
@@ -113,7 +132,12 @@ const MonthlyAiBrief = ({ month, transactions = [] }) => {
         <header className="MonthlyAiBrief_Header">
           <div>
             <span className="MonthlyAiBrief_Eyebrow"><Sparkles aria-hidden="true" /> Monthly AI brief</span>
-            <h2>{new Date(`${month}-01T12:00:00`).toLocaleDateString("en-CA", { month: "long", year: "numeric" })}</h2>
+            <h2>{new Date(`${targetMonth}-01T12:00:00`).toLocaleDateString("en-CA", { month: "long", year: "numeric" })} Brief</h2>
+            {isAutoAdjusted && (
+              <span style={{ fontSize: "0.64rem", color: "var(--Ac-3)", marginTop: "2px", display: "block" }}>
+                Completed month · Compared with prior months
+              </span>
+            )}
           </div>
           <button type="button" onClick={() => load(true)} disabled={refreshing} aria-label="Refresh monthly AI brief">
             <RefreshCw className={refreshing ? "is-spinning" : ""} aria-hidden="true" />
