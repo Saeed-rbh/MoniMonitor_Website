@@ -210,38 +210,64 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
     if (analysis.dataQuality.pendingEmails === 0 && analysis.candidates.length) {
         const currentMonthTxs = transactions.filter((t) => String(t.Timestamp || '').slice(0, 7) === month);
         const expenses = currentMonthTxs.filter(isExpense);
+        const income = currentMonthTxs.filter(isIncome);
+        const sortedExpenses = [...expenses].sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
 
-        // Micro purchases <= $25
-        const microTxs = expenses.filter((t) => amountMinor(t) <= 2500);
+        // Micro purchases <= $20
+        const microTxs = sortedExpenses.filter((t) => amountMinor(t) <= 2000);
         const microSumMinor = microTxs.reduce((sum, t) => sum + amountMinor(t), 0);
 
-        // Weekend vs Weekday
-        const weekendTxs = expenses.filter((t) => {
-            const day = new Date(t.Timestamp).getUTCDay();
-            return day === 0 || day === 6;
-        });
-        const weekendSumMinor = weekendTxs.reduce((sum, t) => sum + amountMinor(t), 0);
+        // Day of week breakdown (0 = Sun, 6 = Sat)
+        const dayOfWeekMap = { 0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat' };
+        const dayTotals = { Sun: 0, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0 };
+        const dayCounts = { Sun: 0, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0 };
+        let weekendSum = 0;
+        let weekdaySum = 0;
+        const weekendIds = [];
+        const weekdayIds = [];
 
-        // Top repeated merchants
-        const merchantCounts = {};
-        expenses.forEach((t) => {
-            const name = t.Reason || t.Label || 'Merchant';
-            const m = merchantCounts[name] || { count: 0, sumMinor: 0, ids: [] };
-            m.count += 1;
-            m.sumMinor += amountMinor(t);
-            m.ids.push(t.id);
-            merchantCounts[name] = m;
+        sortedExpenses.forEach((t) => {
+            const dow = new Date(t.Timestamp).getUTCDay();
+            const dayName = dayOfWeekMap[dow];
+            const amt = amountMinor(t);
+            dayTotals[dayName] += amt;
+            dayCounts[dayName] += 1;
+            if (dow === 0 || dow === 6) {
+                weekendSum += amt;
+                weekendIds.push(t.id);
+            } else {
+                weekdaySum += amt;
+                weekdayIds.push(t.id);
+            }
         });
-        const topRepeatedMerchants = Object.entries(merchantCounts)
-            .filter(([, data]) => data.count >= 2)
-            .sort((a, b) => b[1].sumMinor - a[1].sumMinor)
-            .slice(0, 5)
-            .map(([name, data]) => ({
-                merchant: name,
-                count: data.count,
-                spent: money(data.sumMinor),
-                transactionIds: data.ids,
-            }));
+
+        // Payday velocity: calculate expenses that occur within 5 days after each income deposit
+        const postPaydayTxs = [];
+        let postPaydaySumMinor = 0;
+        income.forEach((inc) => {
+            const incTime = new Date(inc.Timestamp).getTime();
+            const fiveDaysLater = incTime + (5 * 24 * 60 * 60 * 1000);
+            sortedExpenses.forEach((exp) => {
+                const expTime = new Date(exp.Timestamp).getTime();
+                if (expTime >= incTime && expTime <= fiveDaysLater && !postPaydayTxs.some(t => t.id === exp.id)) {
+                    postPaydayTxs.push(exp);
+                    postPaydaySumMinor += amountMinor(exp);
+                }
+            });
+        });
+
+        // Compact transaction ledger for Gemini
+        const transactionLedger = currentMonthTxs.map((t) => ({
+            id: t.id,
+            amount: money(amountMinor(t)),
+            amountMinor: amountMinor(t),
+            category: t.Category,
+            label: t.Label || 'Other',
+            merchant: t.Reason || t.Label || 'Merchant',
+            day: new Date(t.Timestamp).getUTCDate(),
+            dayOfWeek: dayOfWeekMap[new Date(t.Timestamp).getUTCDay()],
+            isRecurring: Boolean(t.Frequency && t.Frequency !== 'OneTime'),
+        }));
 
         const richData = {
             month,
@@ -252,26 +278,30 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
                 savingsContribution: money(analysis.summary.savingMinor),
                 netCashFlow: money(analysis.summary.netCashFlowMinor),
                 totalTransactions: analysis.summary.transactionCount,
+                expenseCount: expenses.length,
             },
-            microPurchases: {
+            microPurchasesUnder20: {
                 count: microTxs.length,
                 totalSpent: money(microSumMinor),
-                percentOfTotalExpenses: analysis.summary.expenseMinor ? Math.round((microSumMinor / analysis.summary.expenseMinor) * 100) : 0,
-                sampleTransactionIds: microTxs.map((t) => t.id).slice(0, 10),
+                percentOfExpenses: analysis.summary.expenseMinor ? Math.round((microSumMinor / analysis.summary.expenseMinor) * 100) : 0,
+                transactionIds: microTxs.map((t) => t.id),
             },
-            weekendSpending: {
-                count: weekendTxs.length,
-                totalSpent: money(weekendSumMinor),
-                percentOfTotalExpenses: analysis.summary.expenseMinor ? Math.round((weekendSumMinor / analysis.summary.expenseMinor) * 100) : 0,
-                sampleTransactionIds: weekendTxs.map((t) => t.id).slice(0, 10),
+            paydayBurnVelocity: {
+                incomeDepositCount: income.length,
+                expensesWithin5DaysOfPaydayCount: postPaydayTxs.length,
+                expensesWithin5DaysOfPaydayTotal: money(postPaydaySumMinor),
+                percentOfTotalExpenses: analysis.summary.expenseMinor ? Math.round((postPaydaySumMinor / analysis.summary.expenseMinor) * 100) : 0,
+                transactionIds: postPaydayTxs.map((t) => t.id),
             },
-            topRepeatedMerchants,
-            deterministicCandidates: analysis.candidates.map((c) => ({
-                id: c.id,
-                title: c.title,
-                fact: c.fact,
-                evidenceTransactionIds: c.evidence.transactionIds,
-            })),
+            dayOfWeekPattern: {
+                weekendTotalSpent: money(weekendSum),
+                weekdayTotalSpent: money(weekdaySum),
+                weekendPercent: analysis.summary.expenseMinor ? Math.round((weekendSum / analysis.summary.expenseMinor) * 100) : 0,
+                weekendTransactionIds: weekendIds,
+                dayTotalsFormatted: Object.fromEntries(Object.entries(dayTotals).map(([k, v]) => [k, money(v)])),
+                dayCounts,
+            },
+            transactionLedger,
         };
 
         try {

@@ -342,35 +342,39 @@ const AISynthesisResponseSchema = z.object({
 async function synthesizeMonthlyInsightsWithGemini(richData) {
     if (!ai) return null;
     const prompt = `
-You are an expert personal finance analyst & behavioral coach analyzing a user's monthly financial ledger for ${richData.month}.
-Your goal is to provide 3 distinct, deeply insightful, non-obvious, and helpful financial observations with specific actionable takeaways.
+You are a brilliant behavioral finance analyst reviewing a user's monthly financial ledger for ${richData.month}.
+The user already knows their obvious big purchases and top store names (e.g. "You spent a lot at Apple" or "Dining is your #1 expense"). DO NOT GIVE TRIVIAL OR OBVIOUS STATEMENTS LIKE THAT. The user explicitly finds top-merchant and top-category summaries boring and useless.
 
-Uncover non-obvious patterns that a user wouldn't notice on their own, such as:
-1. Micro-transaction accumulation (e.g. small frequent purchases under $25 compounding quietly over the month).
-2. Day-of-week timing surges (e.g. weekend spending concentration vs weekday baseline).
-3. Burn rate & spending velocity (e.g. daily spending pace vs historical average).
-4. Category concentration & overhead ratio (e.g. fixed recurring costs vs discretionary flexibility).
-5. Unusual single transactions or merchant repetition density.
+Your job is to uncover 3 SUBTLE, HIDDEN, NON-OBVIOUS behavioral patterns, mathematical anomalies, or structural financial trends that a person would NOT easily notice by just skimming their bank statement.
 
-CRITICAL RULES:
-- State exact dollar amounts and percentages based strictly on the provided financial summary data. Do NOT make up numbers.
-- Provide 1 specific, non-preachy, actionable recommendation for each insight.
-- Attach "evidenceTransactionIds" using real transaction IDs from the candidate evidence or transactions list provided.
-- Return ONLY JSON matching:
+EXAMPLES OF NON-OBVIOUS INSIGHTS TO DETECT IN THE DATA:
+1. **Payday Velocity / Front-Loading**: "64% of your total spending occurred within 5 days of receiving your income deposit, creating an artificial cash crunch for the rest of the month."
+2. **Frictionless Micro-Leakage**: "You made 14 small purchases under $20 that totaled $215 — accounting for 12% of all expenses without a single major item."
+3. **Day-of-Week Impulse Clustering**: "Fridays and Saturdays account for 58% of all non-essential purchases, while Mon-Thu spending remains strictly controlled."
+4. **Fixed Overhead Ratio**: "Fixed recurring charges swallow 45% of your income before any flexible spending begins, leaving a tight $X/day discretionary runway."
+5. **Transaction Frequency Acceleration**: "Your spending frequency accelerated to 1.8 transactions/day in the second half of the month vs 0.6 in the first half."
+6. **Merchant Dispersion Volatility**: "You visited 19 distinct merchants for small one-off items, indicating high impulse exploration."
+
+STRICT RULES:
+1. NEVER state obvious facts like "Your top merchant is X" or "Your highest expense category is Y".
+2. State exact dollar amounts, transaction counts, and percentages calculated strictly from the provided dataset. Do NOT make up numbers.
+3. For each insight, provide 1 highly specific, actionable, behavioral micro-adjustment (the "action").
+4. Map "evidenceTransactionIds" to real transaction IDs from the dataset that prove the insight.
+5. Return ONLY a valid JSON object matching:
 {
   "insights": [
     {
-      "id": "short-slug-id",
-      "title": "3-6 word engaging title",
-      "fact": "1-2 sentence compelling non-obvious observation with exact numbers",
-      "action": "1 sentence actionable recommendation",
+      "id": "descriptive-slug-id",
+      "title": "3-5 word engaging, analytical title",
+      "fact": "1-2 sentence non-obvious observation with exact metrics",
+      "action": "1 sentence specific micro-actionable takeaway",
       "confidence": "high",
       "evidenceTransactionIds": [101, 102]
     }
   ]
 }
 
-Monthly Financial Data:
+Full Monthly Ledger & Computed Behavioral Metrics:
 ${JSON.stringify(richData)}
 `;
 
