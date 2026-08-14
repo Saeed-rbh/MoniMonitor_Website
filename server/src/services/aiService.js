@@ -342,39 +342,42 @@ const AISynthesisResponseSchema = z.object({
 async function synthesizeMonthlyInsightsWithGemini(richData) {
     if (!ai) return null;
     const prompt = `
-You are a brilliant behavioral finance analyst reviewing a user's monthly financial ledger for ${richData.month}.
-The user already knows their obvious big purchases and top store names (e.g. "You spent a lot at Apple" or "Dining is your #1 expense"). DO NOT GIVE TRIVIAL OR OBVIOUS STATEMENTS LIKE THAT. The user explicitly finds top-merchant and top-category summaries boring and useless.
+You are a friendly personal finance assistant & behavioral analyst reviewing a user's monthly financial ledger for ${richData.month} alongside historical data from previous months (${richData.previousMonthsKeys?.join(', ') || 'prior months'}).
 
-Your job is to uncover 3 SUBTLE, HIDDEN, NON-OBVIOUS behavioral patterns, mathematical anomalies, or structural financial trends that a person would NOT easily notice by just skimming their bank statement.
+Your job is to generate EXACTLY 3 insights following this required 3-part structure:
 
-EXAMPLES OF NON-OBVIOUS INSIGHTS TO DETECT IN THE DATA:
-1. **Payday Velocity / Front-Loading**: "64% of your total spending occurred within 5 days of receiving your income deposit, creating an artificial cash crunch for the rest of the month."
-2. **Frictionless Micro-Leakage**: "You made 14 small purchases under $20 that totaled $215 — accounting for 12% of all expenses without a single major item."
-3. **Day-of-Week Impulse Clustering**: "Fridays and Saturdays account for 58% of all non-essential purchases, while Mon-Thu spending remains strictly controlled."
-4. **Fixed Overhead Ratio**: "Fixed recurring charges swallow 45% of your income before any flexible spending begins, leaving a tight $X/day discretionary runway."
-5. **Transaction Frequency Acceleration**: "Your spending frequency accelerated to 1.8 transactions/day in the second half of the month vs 0.6 in the first half."
-6. **Merchant Dispersion Volatility**: "You visited 19 distinct merchants for small one-off items, indicating high impulse exploration."
+INSIGHT 1: Month-over-Month Merchant or Habit Shift (Behavior Change)
+- Identify a merchant or habit where spending is INCREASING or DECREASING compared to previous month(s) (e.g. "Your Tim Hortons spending has been increasing for 2 consecutive months — up +38% ($52) compared to last month").
+- Use exact figures, dollar changes, and percentage deltas from merchantTrends or categoryTrends in the dataset.
+
+INSIGHT 2: Second Month-over-Month Behavioral Trend / Category Shift
+- Identify another significant category or spending shift compared to last month (e.g. "Dining out increased by $120 (+28%) vs last month, while Groceries stayed steady").
+- Use exact figures and percentage deltas from the dataset.
+
+INSIGHT 3: One Fun Fact (Surprising & Lighthearted Discovery)
+- A fun, surprising, lighthearted, or quirky discovery about their spending pattern this month!
+- Title MUST start with "Fun Fact:" (e.g., "Fun Fact: Coffee vs Internet" or "Fun Fact: Tim Hortons Frequency").
+- Fact examples: "Fun Fact: You spent $94 on coffee this month — more than your $80 home internet bill!" or "Fun Fact: You visited Tim Hortons 16 times this month — that's an average of once every 45 hours!".
 
 STRICT RULES:
-1. NEVER state obvious facts like "Your top merchant is X" or "Your highest expense category is Y".
-2. State exact dollar amounts, transaction counts, and percentages calculated strictly from the provided dataset. Do NOT make up numbers.
-3. For each insight, provide 1 highly specific, actionable, behavioral micro-adjustment (the "action").
-4. Map "evidenceTransactionIds" to real transaction IDs from the dataset that prove the insight.
-5. Return ONLY a valid JSON object matching:
+1. State exact dollar amounts, counts, and percentage changes calculated strictly from the provided dataset. Do NOT make up numbers.
+2. For Insights 1 and 2, provide 1 specific, helpful actionable takeaway ("action"). For Insight 3 (Fun Fact), provide a lighthearted action or tip.
+3. Map "evidenceTransactionIds" to real transaction IDs from the dataset that prove each insight.
+4. Return ONLY a valid JSON object matching:
 {
   "insights": [
     {
-      "id": "descriptive-slug-id",
-      "title": "3-5 word engaging, analytical title",
-      "fact": "1-2 sentence non-obvious observation with exact metrics",
-      "action": "1 sentence specific micro-actionable takeaway",
+      "id": "slug-id",
+      "title": "3-5 word title",
+      "fact": "1-2 sentence observation with exact metrics",
+      "action": "1 sentence takeaway",
       "confidence": "high",
       "evidenceTransactionIds": [101, 102]
     }
   ]
 }
 
-Full Monthly Ledger & Computed Behavioral Metrics:
+Monthly Financial Data & Historical MoM Comparison:
 ${JSON.stringify(richData)}
 `;
 

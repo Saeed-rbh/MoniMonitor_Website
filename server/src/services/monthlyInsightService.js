@@ -256,6 +256,86 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
             });
         });
 
+        // Month-over-Month (MoM) Trend Calculations
+        const prevMonth1Key = monthRange(month, 1).key;
+        const prevMonth2Key = monthRange(month, 2).key;
+
+        const prev1Txs = transactions.filter((t) => String(t.Timestamp || '').slice(0, 7) === prevMonth1Key);
+        const prev2Txs = transactions.filter((t) => String(t.Timestamp || '').slice(0, 7) === prevMonth2Key);
+
+        function getMerchantTotalsMap(txList) {
+            const map = {};
+            txList.filter(isExpense).forEach((t) => {
+                const name = t.Reason || t.Label || 'Merchant';
+                const entry = map[name] || { totalMinor: 0, count: 0, ids: [] };
+                entry.totalMinor += amountMinor(t);
+                entry.count += 1;
+                entry.ids.push(t.id);
+                map[name] = entry;
+            });
+            return map;
+        }
+
+        function getCategoryTotalsMap(txList) {
+            const map = {};
+            txList.filter(isExpense).forEach((t) => {
+                const label = t.Label || t.Category || 'Other';
+                const entry = map[label] || { totalMinor: 0, count: 0, ids: [] };
+                entry.totalMinor += amountMinor(t);
+                entry.count += 1;
+                entry.ids.push(t.id);
+                map[label] = entry;
+            });
+            return map;
+        }
+
+        const curMerchantsMap = getMerchantTotalsMap(currentMonthTxs);
+        const p1MerchantsMap = getMerchantTotalsMap(prev1Txs);
+        const p2MerchantsMap = getMerchantTotalsMap(prev2Txs);
+
+        const curCategoriesMap = getCategoryTotalsMap(currentMonthTxs);
+        const p1CategoriesMap = getCategoryTotalsMap(prev1Txs);
+
+        // Merchant MoM trends
+        const merchantTrends = Object.entries(curMerchantsMap).map(([name, cur]) => {
+            const p1 = p1MerchantsMap[name] || { totalMinor: 0, count: 0, ids: [] };
+            const p2 = p2MerchantsMap[name] || { totalMinor: 0, count: 0, ids: [] };
+            const diffMinor = cur.totalMinor - p1.totalMinor;
+            const percentChange = p1.totalMinor
+                ? Math.round(((cur.totalMinor - p1.totalMinor) / p1.totalMinor) * 100)
+                : null;
+            const isConsecutiveIncrease = cur.totalMinor > p1.totalMinor && p1.totalMinor > p2.totalMinor && p2.totalMinor > 0;
+            return {
+                merchant: name,
+                currentMonthSpent: money(cur.totalMinor),
+                currentMonthCount: cur.count,
+                previousMonthSpent: money(p1.totalMinor),
+                previousMonthCount: p1.count,
+                twoMonthsAgoSpent: money(p2.totalMinor),
+                dollarChangeVsLastMonth: money(diffMinor),
+                percentChangeVsLastMonth: percentChange !== null ? `${percentChange > 0 ? '+' : ''}${percentChange}%` : 'New merchant this month',
+                isConsecutiveIncrease,
+                transactionIds: cur.ids,
+            };
+        }).sort((a, b) => b.currentMonthCount - a.currentMonthCount);
+
+        // Category MoM trends
+        const categoryTrends = Object.entries(curCategoriesMap).map(([label, cur]) => {
+            const p1 = p1CategoriesMap[label] || { totalMinor: 0, count: 0, ids: [] };
+            const diffMinor = cur.totalMinor - p1.totalMinor;
+            const percentChange = p1.totalMinor
+                ? Math.round(((cur.totalMinor - p1.totalMinor) / p1.totalMinor) * 100)
+                : null;
+            return {
+                categoryLabel: label,
+                currentMonthSpent: money(cur.totalMinor),
+                previousMonthSpent: money(p1.totalMinor),
+                dollarChangeVsLastMonth: money(diffMinor),
+                percentChangeVsLastMonth: percentChange !== null ? `${percentChange > 0 ? '+' : ''}${percentChange}%` : 'New category this month',
+                transactionIds: cur.ids,
+            };
+        });
+
         // Compact transaction ledger for Gemini
         const transactionLedger = currentMonthTxs.map((t) => ({
             id: t.id,
@@ -271,6 +351,7 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
 
         const richData = {
             month,
+            previousMonthsKeys: [prevMonth1Key, prevMonth2Key],
             latestDay: analysis.latestDay,
             summary: {
                 income: money(analysis.summary.incomeMinor),
@@ -280,26 +361,13 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
                 totalTransactions: analysis.summary.transactionCount,
                 expenseCount: expenses.length,
             },
+            merchantTrends,
+            categoryTrends,
             microPurchasesUnder20: {
                 count: microTxs.length,
                 totalSpent: money(microSumMinor),
                 percentOfExpenses: analysis.summary.expenseMinor ? Math.round((microSumMinor / analysis.summary.expenseMinor) * 100) : 0,
                 transactionIds: microTxs.map((t) => t.id),
-            },
-            paydayBurnVelocity: {
-                incomeDepositCount: income.length,
-                expensesWithin5DaysOfPaydayCount: postPaydayTxs.length,
-                expensesWithin5DaysOfPaydayTotal: money(postPaydaySumMinor),
-                percentOfTotalExpenses: analysis.summary.expenseMinor ? Math.round((postPaydaySumMinor / analysis.summary.expenseMinor) * 100) : 0,
-                transactionIds: postPaydayTxs.map((t) => t.id),
-            },
-            dayOfWeekPattern: {
-                weekendTotalSpent: money(weekendSum),
-                weekdayTotalSpent: money(weekdaySum),
-                weekendPercent: analysis.summary.expenseMinor ? Math.round((weekendSum / analysis.summary.expenseMinor) * 100) : 0,
-                weekendTransactionIds: weekendIds,
-                dayTotalsFormatted: Object.fromEntries(Object.entries(dayTotals).map(([k, v]) => [k, money(v)])),
-                dayCounts,
             },
             transactionLedger,
         };
