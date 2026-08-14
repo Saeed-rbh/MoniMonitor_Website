@@ -140,7 +140,7 @@ async function performBackup(reason) {
     const filePath = path.join(BACKUP_DIRECTORY, fileName);
     const db = await getDb();
 
-    await db.exec('PRAGMA wal_checkpoint(PASSIVE)');
+    await db.exec('PRAGMA wal_checkpoint(RESTART)');
     try {
         await db.exec(`VACUUM INTO '${quoteSqlString(filePath)}'`);
         await verifyBackupFile(filePath);

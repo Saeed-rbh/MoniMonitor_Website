@@ -158,20 +158,6 @@ export const groupTransactionsByMonth = (transactions) => {
   );
 
   sortedTransactions.forEach((transaction) => {
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
     const date = new Date(transaction.Timestamp);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0"); // Ensure month is two digits
@@ -186,7 +172,7 @@ export const groupTransactionsByMonth = (transactions) => {
         totalSaveInvest: 0,
         totalInternal: 0,
         netTotal: 0,
-        month: months[date.getMonth()],
+        month: monthsNames[date.getMonth()],
         year: year,
         percentageChange: null,
         labelDistributionExpense: {},

@@ -9,8 +9,10 @@ dist-ssr
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+server/*.sqlite*
 server/archive/
 server/backups/
+build_log*.txt
 
 # amplify
 .amplify

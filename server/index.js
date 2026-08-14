@@ -561,6 +561,14 @@ app.use((error, _req, res, _next) => {
     return res.status(500).json({ error: "Unexpected server error" });
 });
 
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+    console.error("Uncaught Exception thrown:", error);
+});
+
 if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`API server listening on http://localhost:${PORT}`);
