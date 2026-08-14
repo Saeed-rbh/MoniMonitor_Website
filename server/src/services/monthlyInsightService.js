@@ -413,9 +413,6 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
         const totalExpenseCount = expenses.length || 1;
         const hoursPerPurchase = Math.round((totalHoursSoFar / totalExpenseCount) * 10) / 10;
 
-        const microTxs = expenses.filter((t) => amountMinor(t) <= 2000);
-        const microSumMinor = microTxs.reduce((sum, t) => sum + amountMinor(t), 0);
-
         let candidate3;
         if (microTxs.length >= 4) {
             candidate3 = {
