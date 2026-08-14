@@ -52,6 +52,7 @@ app.use((req, res, next) => {
         "X-Frame-Options": "DENY",
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http: https: ws: wss:;",
     };
     if (isProduction || process.env.ENFORCE_HTTPS === "true") {
         headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";

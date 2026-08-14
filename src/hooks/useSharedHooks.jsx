@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { fetchAllTransactionData, getSelectedMonthData } from "../services/transactionService";
 
 const emptyDisplayData = {
@@ -8,36 +8,56 @@ const emptyDisplayData = {
   transactions: [],
   allTransactions: {},
   isLoading: true,
+  isOffline: typeof navigator !== "undefined" ? !navigator.onLine : false,
   error: null,
+  refetch: () => {},
 };
 
 export const useTransactionData = (whichMonth, userId) => {
   const [fullData, setFullData] = useState(null);
+  const [isOffline, setIsOffline] = useState(typeof navigator !== "undefined" ? !navigator.onLine : false);
   const [displayData, setDisplayData] = useState(emptyDisplayData);
 
   useEffect(() => {
-    let active = true;
-    const loadAllData = async () => {
-      setDisplayData((current) => ({ ...current, isLoading: true, error: null }));
-      try {
-        const data = await fetchAllTransactionData();
-        if (active) setFullData(data);
-      } catch (error) {
-        if (active) {
-          setFullData(null);
-          setDisplayData({ ...emptyDisplayData, isLoading: false, error });
-        }
-      }
-    };
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
 
-    if (userId) loadAllData();
-    else {
-      setFullData({ totalTransactions: {}, Availability: [], netAmounts: {} });
-      setDisplayData({ ...emptyDisplayData, isLoading: false });
+    if (typeof window !== "undefined") {
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
     }
 
-    return () => { active = false; };
-  }, [userId]);
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      }
+    };
+  }, []);
+
+  const loadAllData = useCallback(async (retryCount = 0) => {
+    setDisplayData((current) => ({ ...current, isLoading: true, error: null }));
+    try {
+      const data = await fetchAllTransactionData();
+      setFullData(data);
+    } catch (error) {
+      if (retryCount < 2) {
+        setTimeout(() => loadAllData(retryCount + 1), 2000 * (retryCount + 1));
+      } else {
+        setFullData(null);
+        setDisplayData((prev) => ({ ...prev, isLoading: false, error }));
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (userId) {
+      loadAllData();
+    } else {
+      setFullData({ totalTransactions: {}, Availability: [], netAmounts: {} });
+      setDisplayData({ ...emptyDisplayData, isLoading: false, isOffline });
+    }
+  }, [userId, loadAllData, isOffline]);
 
   useEffect(() => {
     if (!fullData) return;
@@ -49,9 +69,11 @@ export const useTransactionData = (whichMonth, userId) => {
       transactions,
       allTransactions: fullData.totalTransactions || {},
       isLoading: false,
+      isOffline,
       error: null,
+      refetch: loadAllData,
     });
-  }, [whichMonth, fullData]);
+  }, [whichMonth, fullData, loadAllData, isOffline]);
 
   return displayData;
 };

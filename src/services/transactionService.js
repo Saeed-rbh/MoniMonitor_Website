@@ -101,11 +101,10 @@ const fillMissingMonths = (data) => {
   if (!data || data.length === 0) return [];
 
   const startDate = parse(data[0][0], "yyyy-MM", new Date());
-  const endDate = new Date(); // Current date
+  const endDate = new Date();
   let currentDate = startDate;
 
   const dateSet = new Set(data.map((item) => item[0]));
-
   const filledData = [];
 
   while (
@@ -136,9 +135,9 @@ const LabelDistribution = (amount, labels) => {
 
   labelPercentages.sort((a, b) => {
     if (b.percentage !== a.percentage) {
-      return b.percentage - a.percentage; // Sort by percentage descending
+      return b.percentage - a.percentage;
     } else {
-      return a.label.localeCompare(b.label); // Maintain stability by label name
+      return a.label.localeCompare(b.label);
     }
   });
 
@@ -160,7 +159,7 @@ export const groupTransactionsByMonth = (transactions) => {
   sortedTransactions.forEach((transaction) => {
     const date = new Date(transaction.Timestamp);
     const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0"); // Ensure month is two digits
+    const month = String(date.getMonth() + 1).padStart(2, "0");
     const key = `${year}-${month}`;
 
     if (!groupedTransactions[key]) {
@@ -220,8 +219,6 @@ export const groupTransactionsByMonth = (transactions) => {
     } else {
       const savingEffect = getSavingEffect(transaction);
       const saveInvestActivity = getSaveInvestActivity(transaction);
-      // Only money crossing the TFSA boundary affects savings. Other internal
-      // transfers and trades remain visible activity but have no cash-flow effect.
       groupedTransactions[key].totalSaving += savingEffect;
       groupedTransactions[key].totalSaveInvest += saveInvestActivity;
       groupedTransactions[key].netTotal -= savingEffect;
@@ -236,7 +233,6 @@ export const groupTransactionsByMonth = (transactions) => {
     }
   });
 
-  // Determine top labels and sort by percentage (with stability)
   Object.keys(groupedTransactions)?.forEach((key) => {
     const expenseAmount = groupedTransactions[key].totalExpense;
     const labelExpense = groupedTransactions[key].labelDistributionExpense;
@@ -315,10 +311,8 @@ export const groupTransactionsByMonth = (transactions) => {
 
 const getMonthDataAvailability = (data) => {
   const availability = {};
-
   let counter = Object.entries(data).length;
 
-  // Populate availability with true for months with data
   Object.entries(data)?.forEach((item) => {
     const timestamp = item[0];
     const [year, month] = timestamp.split("-");
@@ -343,8 +337,6 @@ export const getNetAmounts = (Transactions) => {
   const TransObject = Object.keys(Transactions);
   const allMonths = [...TransObject];
 
-  // The dashboard needs the complete history. Starting at the newest key made
-  // every older imported month disappear from the main chart.
   const earliestMonth = allMonths.reduce((earliest, month) => {
     if (!earliest || month < earliest) {
       return month;
@@ -390,6 +382,7 @@ export const getNetAmounts = (Transactions) => {
     acc[month] = {
       income: incomeTotal,
       Expense: expenseTotal,
+      expense: expenseTotal,
       saving: savingTotal,
       net: netTotal,
       month: monthsNames[Number(month.split("-")[1]) - 1],
@@ -403,7 +396,6 @@ export const getNetAmounts = (Transactions) => {
 export const fetchAllTransactionData = async () => {
   let allTransactions = await GetDataFromDB();
   if (!Array.isArray(allTransactions)) allTransactions = [];
-
 
   const totalTransactions = groupTransactionsByMonth(allTransactions);
 
