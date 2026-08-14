@@ -55,7 +55,7 @@ const MonthlyAiBrief = ({ month, transactions = [] }) => {
   const evidenceFeed = () => (
     <main className="MonthlyAiBrief_EvidenceSheet">
       <header>
-        <span>Verified evidence</span>
+        <span>Supporting data</span>
         <h1>{selectedInsight?.title}</h1>
         <p>{selectedInsight?.fact}</p>
       </header>
@@ -85,9 +85,24 @@ const MonthlyAiBrief = ({ month, transactions = [] }) => {
   );
 
   if (loading) {
-    return <section className="MonthlyAiBrief MonthlyAiBrief_Loading" aria-label="Loading monthly AI brief">
-      <Sparkles aria-hidden="true" /><span>Reviewing verified monthly patterns…</span>
-    </section>;
+    return (
+      <section className="MonthlyAiBrief MonthlyAiBrief_Loading" aria-label="Loading monthly AI brief" aria-live="polite">
+        <div className="ai-skeleton-header">
+          <Sparkles className="MonthlyAiBrief_Spark" aria-hidden="true" />
+          <div className="ai-skeleton-line short" />
+        </div>
+        <div className="ai-skeleton-block">
+          <div className="ai-skeleton-line medium" />
+          <div className="ai-skeleton-line long" />
+          <div className="ai-skeleton-line full" />
+        </div>
+        <div className="ai-skeleton-block">
+          <div className="ai-skeleton-line short" />
+          <div className="ai-skeleton-line long" />
+          <div className="ai-skeleton-line full" />
+        </div>
+      </section>
+    );
   }
   if (!brief) return null;
 
@@ -118,7 +133,7 @@ const MonthlyAiBrief = ({ month, transactions = [] }) => {
 
         <div className="MonthlyAiBrief_List">
           {brief.insights.map((insight, index) => (
-            <article key={insight.id} className="MonthlyAiBrief_Item">
+            <article key={insight.id} className="MonthlyAiBrief_Item" style={{ animationDelay: `${index * 80}ms` }}>
               <div className="MonthlyAiBrief_Number">{String(index + 1).padStart(2, "0")}</div>
               <div className="MonthlyAiBrief_Copy">
                 <div className="MonthlyAiBrief_TitleRow">
