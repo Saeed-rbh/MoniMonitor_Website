@@ -32,18 +32,26 @@ const MoreOpen = ({
   const variants = {
     hidden: {
       y: "100%",
+      opacity: 0,
       transition: {
         type: "tween",
         ease: "easeInOut",
         duration: 0.3
+      },
+      transitionEnd: {
+        display: "none",
+        visibility: "hidden"
       }
     },
     visible: {
       y: 0,
+      opacity: 1,
+      display: "flex",
+      visibility: "visible",
       transition: {
         type: "tween",
         ease: "easeInOut",
-        duration: 0.5
+        duration: 0.4
       }
     }
   };
