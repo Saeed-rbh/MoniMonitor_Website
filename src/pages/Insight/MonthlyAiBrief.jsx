@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AlertCircle, ChevronRight, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import { getMonthlyAiBriefAPI } from "../../services/apiService";
+import { useTransactions } from "../../context/TransactionContext";
 import TransactionListItem from "../Transactions/TransactionListItem";
 import "../Transactions/Transactions.css";
 
@@ -27,6 +28,7 @@ const getEffectiveCompletedMonth = (monthStr) => {
 };
 
 const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) => {
+  const { isMoreClicked, setIsMoreClicked } = useTransactions();
   const [brief, setBrief] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -34,6 +36,16 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
   const requestVersion = useRef(0);
 
   const { targetMonth, isAutoAdjusted } = useMemo(() => getEffectiveCompletedMonth(month), [month]);
+
+  const handleOpenInsight = useCallback((insight) => {
+    setSelectedInsight(insight);
+    setIsMoreClicked(`AI_${insight.id}`);
+  }, [setIsMoreClicked]);
+
+  const handleCloseInsight = useCallback(() => {
+    setSelectedInsight(null);
+    setIsMoreClicked(null);
+  }, [setIsMoreClicked]);
 
   const load = useCallback(async (refresh = false) => {
     const version = ++requestVersion.current;
@@ -47,10 +59,13 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
 
   useEffect(() => {
     setBrief(null);
-    setSelectedInsight(null);
+    handleCloseInsight();
     load(false);
-    return () => { requestVersion.current += 1; };
-  }, [load]);
+    return () => {
+      requestVersion.current += 1;
+      setIsMoreClicked(null);
+    };
+  }, [load, handleCloseInsight, setIsMoreClicked]);
 
   const allTxList = useMemo(() => {
     if (!allTransactions) return transactions || [];
@@ -205,7 +220,7 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
                 <p>{insight.fact}</p>
                 <div className="MonthlyAiBrief_Action"><strong>Try</strong> {insight.action}</div>
                 {insight.evidence.count > 0 && (
-                  <button type="button" onClick={() => setSelectedInsight(insight)}>
+                  <button type="button" onClick={() => handleOpenInsight(insight)}>
                     View {insight.evidence.count} supporting transaction{insight.evidence.count === 1 ? "" : "s"}
                     <ChevronRight aria-hidden="true" />
                   </button>
@@ -219,7 +234,7 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
 
       <MoreOpen
         isClicked={selectedInsight}
-        setIsClicked={setSelectedInsight}
+        setIsClicked={handleCloseInsight}
         feed={evidenceFeed}
         MoreOpenHeight={75}
         overflow="hidden"
