@@ -131,7 +131,7 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
                 const value = Math.round(item.quantity * itemPriceMicros / 10000);
                 const updated = new Date(item.updatedAt).toLocaleDateString();
                 return <div key={item.id} style={{ ...styles.row, borderTop: '1px solid var(--Bc-4)', padding: '10px 0' }}>
-                    <div style={{ minWidth: 0 }}><strong>{item.symbol}</strong>{item.name && <span style={styles.secondary}> · {item.name}</span>}<div style={styles.secondary}>{item.quantity} shares × {unitMoney(itemPriceMicros, item.currency)} · Updated {updated}</div></div>
+                    <div style={{ minWidth: 0 }}><strong>{item.symbol}</strong>{item.name && <span style={styles.secondary}> · {item.name}</span>}<div style={styles.secondary}>{Number(Number(item.quantity || 0).toFixed(4))} shares × {unitMoney(itemPriceMicros, item.currency)} · Updated {updated}</div></div>
                     <div style={{ textAlign: 'right' }}><strong>{money(value, item.currency)}</strong><div><button type='button' onClick={() => editHolding(item)} style={{ ...styles.button, padding: '4px 7px' }}>Edit</button> <button type='button' onClick={async () => {
                         if (window.confirm(`Remove ${item.symbol} from ${account.name}?`) && await deleteInvestmentHoldingAPI(account.id, item.id)) {
                             setStatus('Holding removed.'); onRefresh();

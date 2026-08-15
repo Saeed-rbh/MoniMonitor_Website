@@ -16,6 +16,37 @@ const shortDate = (value) => value
   ? new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
   : "No activity";
 
+const generateSvgPath = (points, width = 160, height = 48, padding = 5) => {
+  if (!points || points.length < 2) {
+    if (points && points.length === 1) {
+      return `M 0,${height / 2} L ${width},${height / 2}`;
+    }
+    return "";
+  }
+  const minVal = Math.min(...points);
+  const maxVal = Math.max(...points);
+  const range = maxVal - minVal || 1;
+  const usableHeight = height - padding * 2;
+
+  const coords = points.map((val, idx) => {
+    const x = (idx / (points.length - 1)) * width;
+    const y = height - padding - ((val - minVal) / range) * usableHeight;
+    return [x, y];
+  });
+
+  let d = `M ${coords[0][0].toFixed(1)},${coords[0][1].toFixed(1)}`;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const [x0, y0] = coords[i];
+    const [x1, y1] = coords[i + 1];
+    const cpx1 = (x0 + (x1 - x0) / 2).toFixed(1);
+    const cpy1 = y0.toFixed(1);
+    const cpx2 = (x0 + (x1 - x0) / 2).toFixed(1);
+    const cpy2 = y1.toFixed(1);
+    d += ` C ${cpx1},${cpy1} ${cpx2},${cpy2} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+  }
+  return d;
+};
+
 const SaveInvestInsights = () => {
   const navigate = useNavigate();
   const { allTransactions } = useTransactions();
@@ -42,6 +73,27 @@ const SaveInvestInsights = () => {
   const holdingsMinor = Number(portfolio?.holdingsValueMinor || 0);
   const activeAccounts = statistics.filter((item) => item.transactionCount > 0).length;
 
+  const trendPoints = useMemo(() => {
+    if (!allTransactions) return [];
+    const monthKeys = Object.keys(allTransactions)
+      .filter((k) => /^\d{4}-\d{2}$/.test(k))
+      .sort();
+    if (monthKeys.length === 0) return [];
+
+    let runningBalance = 0;
+    const points = [];
+    monthKeys.forEach((key) => {
+      const monthData = allTransactions[key];
+      const inc = Number(monthData?.totalIncome || 0);
+      const exp = Number(monthData?.totalExpense || 0);
+      runningBalance += (inc - exp);
+      points.push(runningBalance);
+    });
+    return points;
+  }, [allTransactions]);
+
+  const trendPath = useMemo(() => generateSvgPath(trendPoints), [trendPoints]);
+
   return (
     <main className="SaveInvestInsights AccountsOverview">
       <header className="SaveInvestInsights_Header">
@@ -56,12 +108,38 @@ const SaveInvestInsights = () => {
       </header>
 
       <section className="SaveInvestInsights_Hero">
-        <span>Net account value</span>
-        <h2>{portfolio ? money(netValueMinor, currency) : "—"}</h2>
-        <div className="SaveInvestInsights_HeroMeta">
-          <span>{money(assetsMinor, currency)} assets</span>
-          <span>{money(debtMinor, currency)} debt</span>
+        <div className="SaveInvestInsights_HeroContent">
+          <span>Net account value</span>
+          <h2>{portfolio ? money(netValueMinor, currency) : "—"}</h2>
+          <div className="SaveInvestInsights_HeroMeta">
+            <span>{money(assetsMinor, currency)} assets</span>
+            <span>{money(debtMinor, currency)} debt</span>
+          </div>
         </div>
+        {trendPath && (
+          <div className="SaveInvestInsights_HeroTrend" aria-label="All-time net value trend">
+            <svg viewBox="0 0 160 48" className="AccountsHero_TrendSvg" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="heroTrendGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="var(--Bc-1)" stopOpacity="0.75" />
+                  <stop offset="100%" stopColor="#4ade80" stopOpacity="1" />
+                </linearGradient>
+                <filter id="heroTrendGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="rgba(212, 157, 129, 0.45)" />
+                </filter>
+              </defs>
+              <path
+                d={trendPath}
+                fill="none"
+                stroke="url(#heroTrendGrad)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                filter="url(#heroTrendGlow)"
+              />
+            </svg>
+          </div>
+        )}
       </section>
 
       <section className="SaveInvestInsights_MetricGrid AccountsOverview_Metrics">
@@ -212,6 +290,8 @@ const SaveInvestInsights = () => {
                           const itemGainPct = itemCost > 0 ? ((itemGain / itemCost) * 100).toFixed(1) : "0.0";
                           const itemShare = totalVal > 0 ? ((itemVal / totalVal) * 100).toFixed(1) : "0.0";
 
+                          const formattedQuantity = Number(Number(item.quantity || 0).toFixed(4)).toString();
+
                           return (
                             <div key={item.id} className="AccountsOverview_HoldingRow">
                               <div className="AccountsOverview_HoldingInfo">
@@ -220,7 +300,7 @@ const SaveInvestInsights = () => {
                                   {item.name && <span className="name">· {item.name}</span>}
                                 </div>
                                 <div className="AccountsOverview_HoldingSub">
-                                  {item.quantity} units @ {new Intl.NumberFormat(undefined, { style: "currency", currency: account.currency, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(itemPriceMicros / 1000000)}
+                                  {formattedQuantity} units @ {new Intl.NumberFormat(undefined, { style: "currency", currency: account.currency, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(itemPriceMicros / 1000000)}
                                 </div>
                               </div>
                               <div className="AccountsOverview_HoldingVal">
