@@ -1,3 +1,11 @@
+.MoreOpen_Backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
 .MoreOpen_Main {
   position: fixed;
   display: flex;
@@ -27,7 +35,10 @@
   box-sizing: border-box;
   border-radius: 36px 36px 0 0;
   padding: 10px 5px;
-  border: 1px solid var(--Ac-3);
+  background: #111318;
+  background: linear-gradient(180deg, #171a22 0%, #0d0f14 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.65);
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior-y: contain;

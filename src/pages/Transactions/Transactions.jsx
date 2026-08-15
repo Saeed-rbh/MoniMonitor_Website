@@ -82,6 +82,7 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
         setOpen={setOpen}
         setShowTransaction={setAddTransaction}
         onTransactionClick={(tx) => setViewingTx(tx)}
+        isDetailOpen={viewingTx !== null}
         onManageAccounts={
           activeCategory === "Save&Invest" ? handleManageAccounts : null
         }
@@ -94,6 +95,7 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
     whichMonth,
     availabilityData,
     isAddClicked,
+    viewingTx,
     handleManageAccounts,
   ]);
 

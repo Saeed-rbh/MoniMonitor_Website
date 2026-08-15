@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import TransactionListMonthly from "./TransactionListMonthly";
 import TransactionModification from "./TransactionModification";
-import { useSpring, animated } from "@react-spring/web";
+import { useSpring, animated, easings } from "@react-spring/web";
 import TransactionFilter from "./transactionFilter";
 import { useCustomSpring, useWindowHeight } from "../../utils/tools";
 import ChooseTransactionMonth from "./ChooseTransactionMonth";
@@ -28,6 +28,7 @@ const TransactionList = ({
   onManageAccounts,
   setShowTransaction,
   onTransactionClick,
+  isDetailOpen = false,
 }) => {
   const filteredTransactions = React.useMemo(() => {
     if (isMoreClicked === "Internal") return uniqueInternalTransfers(Transactions);
@@ -227,19 +228,15 @@ const TransactionList = ({
               : "var(--Gc-2)",
   };
 
+  const isBlurred = Boolean(
+    isDetailOpen || isAddClicked !== null || isCalendarClicked || transactionClickAnim
+  );
+
   const ClickBlurStyle = useSpring({
-    from: {
-      filter: transactionClickAnim ? "blur(0px)" : "blur(10px)",
-      opacity: transactionClickAnim ? "1" : "0.7",
-      scale: transactionClickAnim ? 1 : 0.9,
-      height: "calc(100vh - 50px))",
-    },
-    to: {
-      filter: transactionClickAnim ? "blur(10px)" : "blur(0px)",
-      opacity: transactionClickAnim ? "0.7" : "1",
-      scale: transactionClickAnim ? 0.9 : 1,
-      height: "calc(100vh - 50px))",
-    },
+    filter: isBlurred ? "blur(10px)" : "blur(0px)",
+    opacity: isBlurred ? 0.45 : 1,
+    scale: isBlurred ? 0.92 : 1,
+    config: { duration: 250, easing: easings.easeInOutQuad },
   });
 
   useEffect(() => {

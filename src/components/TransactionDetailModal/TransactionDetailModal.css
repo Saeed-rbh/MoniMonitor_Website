@@ -3,7 +3,7 @@
   width: 100%;
   height: 100%;
   overflow-y: auto;
-  padding: 15px 18px 30px;
+  padding: 12px 18px 24px;
   color: var(--Ac-1);
   text-align: left;
   -webkit-overflow-scrolling: touch;
@@ -14,53 +14,91 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 10px 0 16px;
+  padding: 4px 0 12px;
 }
 
 .TxDetail_IconBox {
   display: grid;
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   place-items: center;
-  border-radius: 20px;
-  background: var(--Ac-5);
-  border: 1px solid var(--Bc-3);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--Bc-1);
-  margin-bottom: 12px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease;
+}
+
+.TxDetail_IconBox.income,
+.TxDetail_IconBox.in {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+.TxDetail_IconBox.expense,
+.TxDetail_IconBox.out {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.3);
+  color: #f43f5e;
+}
+
+.TxDetail_IconBox.saveinvest,
+.TxDetail_IconBox.saving {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #3b82f6;
 }
 
 .TxDetail_IconBox svg {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
 }
 
 .TxDetail_BadgeRow {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .TxDetail_CategoryBadge,
 .TxDetail_LabelBadge {
-  font-size: 0.64rem;
+  font-size: 0.65rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: var(--Ac-4);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--Ac-2);
 }
 
-.TxDetail_CategoryBadge {
-  background: rgba(212, 157, 129, 0.15);
-  color: var(--Bc-1);
+.TxDetail_CategoryBadge.income {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+.TxDetail_CategoryBadge.expense {
+  background: rgba(244, 63, 94, 0.15);
+  border-color: rgba(244, 63, 94, 0.3);
+  color: #fb7185;
+}
+
+.TxDetail_CategoryBadge.saveinvest {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #60a5fa;
 }
 
 .TxDetail_Reason {
-  margin: 0 0 8px;
-  font-size: 1.35rem;
+  margin: 0 0 4px;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--Ac-1);
@@ -69,29 +107,29 @@
 }
 
 .TxDetail_Amount {
-  font-size: 1.75rem;
+  font-size: 1.65rem;
   font-weight: 800;
   letter-spacing: -0.03em;
   margin-top: 2px;
 }
 
 .TxDetail_Amount.in {
-  color: var(--Fc-1);
+  color: #10b981;
 }
 
 .TxDetail_Amount.out {
-  color: var(--Gc-1);
+  color: #f43f5e;
 }
 
 .TxDetail_Card {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px 16px;
-  border-radius: 20px;
-  background: var(--Ac-5);
-  border: 1px solid var(--Ac-4);
-  margin-top: 8px;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  margin-top: 4px;
 }
 
 .TxDetail_Row {
@@ -99,8 +137,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--Ac-4);
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .TxDetail_Row:last-child {
@@ -117,18 +155,22 @@
 }
 
 .TxDetail_RowIcon {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
   color: var(--Bc-1);
 }
 
 .TxDetail_RowRight {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--Ac-1);
   text-align: right;
-  max-width: 60%;
+  max-width: 62%;
   word-break: break-word;
+}
+
+.TxDetail_RowRight.status-verified {
+  color: #34d399;
 }
 
 .TxDetail_EditBtn {
@@ -136,18 +178,19 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  margin-top: 14px;
-  padding: 13px 20px;
-  border-radius: 20px;
-  border: 1px solid var(--Bc-3);
-  background: radial-gradient(circle at 30% -20%, var(--Bc-3) -100%, var(--Ec-4) 65%);
+  margin-top: 12px;
+  padding: 12px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(135deg, rgba(212, 157, 129, 0.25) 0%, rgba(212, 157, 129, 0.1) 100%);
   color: var(--Bc-1);
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   font-weight: 650;
   cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   transition: transform 0.15s ease, background 0.2s ease;
 }
 
 .TxDetail_EditBtn:active {
-  transform: scale(0.97);
+  transform: scale(0.98);
 }

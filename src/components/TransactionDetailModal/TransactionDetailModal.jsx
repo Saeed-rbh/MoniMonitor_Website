@@ -47,16 +47,16 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null }) => {
   const category = transaction.Category || "Expense";
   const label = transaction.Label || category;
   const account = transaction.Account || transaction.BankName || transaction.AccountName || "Personal Account";
-  const frequency = transaction.Frequency || (transaction.Type === "Monthly" ? "Monthly" : "One-Time");
+  const frequency = transaction.Frequency || (transaction.Type === "Monthly" ? "Monthly Recurring" : "One-Time");
 
   const feed = () => (
     <div className="TxDetail_Sheet">
       <div className="TxDetail_Header">
-        <div className="TxDetail_IconBox">
+        <div className={`TxDetail_IconBox ${direction} ${category.toLowerCase().replace(/[^a-z0-9]/g, '')}`}>
           {getTransactionIcon(category, label)}
         </div>
         <div className="TxDetail_BadgeRow">
-          <span className="TxDetail_CategoryBadge">{category}</span>
+          <span className={`TxDetail_CategoryBadge ${category.toLowerCase().replace(/[^a-z0-9]/g, '')}`}>{category}</span>
           {label && label !== category && (
             <span className="TxDetail_LabelBadge">{label}</span>
           )}
@@ -105,7 +105,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null }) => {
             <FiCheckCircle className="TxDetail_RowIcon" />
             <span>Status</span>
           </div>
-          <strong className="TxDetail_RowRight" style={{ color: "var(--Fc-1)" }}>Verified & Recorded</strong>
+          <strong className="TxDetail_RowRight status-verified">Verified & Recorded</strong>
         </div>
       </div>
 
@@ -126,9 +126,10 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null }) => {
       isClicked={Boolean(transaction)}
       setIsClicked={onClose}
       feed={feed}
-      MoreOpenHeight={75}
+      sheetHeight="56dvh"
       zIndex={125}
       overflow="hidden"
+      showBackdrop={true}
     />
   );
 };
