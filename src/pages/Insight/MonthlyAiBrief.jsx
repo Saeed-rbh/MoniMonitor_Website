@@ -5,6 +5,7 @@ import { getMonthlyAiBriefAPI } from "../../services/apiService";
 import { useTransactions } from "../../context/TransactionContext";
 import { getTransactionIcon } from "../../components/Categories";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
+import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 
 const money = (minor) => new Intl.NumberFormat("en-CA", {
   style: "currency", currency: "CAD", maximumFractionDigits: 2,
@@ -33,6 +34,7 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedInsight, setSelectedInsight] = useState(null);
+  const [viewingTx, setViewingTx] = useState(null);
   const requestVersion = useRef(0);
 
   const { targetMonth, isAutoAdjusted } = useMemo(() => getEffectiveCompletedMonth(month), [month]);
@@ -148,7 +150,14 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
             : Math.round(Number(transaction.Amount || 0) * 100);
 
           return (
-            <article className="AiEvidence_Card" key={transaction.id ?? `${transaction.Timestamp}-${index}`}>
+            <article
+              className="AiEvidence_Card"
+              key={transaction.id ?? `${transaction.Timestamp}-${index}`}
+              onClick={() => setViewingTx(transaction)}
+              style={{ cursor: "pointer" }}
+              role="button"
+              tabIndex={0}
+            >
               <div className="AiEvidence_Left">
                 <div className="AiEvidence_Icon" aria-hidden="true">
                   {getTransactionIcon(transaction.Category, transaction.Label)}
@@ -203,21 +212,26 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
       </section>
     );
   }
-  if (!brief) return null;
+
+  if (!brief || !brief.insights || brief.insights.length === 0) {
+    return null;
+  }
 
   const healthy = brief.dataQuality.status === "healthy";
+
   return (
     <>
-      <section className="MonthlyAiBrief">
+      <section className="MonthlyAiBrief" aria-label="Monthly financial intelligence brief">
         <header className="MonthlyAiBrief_Header">
           <div>
-            <span className="MonthlyAiBrief_Eyebrow"><Sparkles aria-hidden="true" /> Monthly AI brief</span>
-            <h2>{new Date(`${targetMonth}-01T12:00:00`).toLocaleDateString("en-CA", { month: "long", year: "numeric" })} Brief</h2>
-            {isAutoAdjusted && (
-              <span style={{ fontSize: "0.64rem", color: "var(--Ac-3)", marginTop: "2px", display: "block" }}>
-                Completed month · Compared with prior months
-              </span>
-            )}
+            <span className="MonthlyAiBrief_Eyebrow">
+              <Sparkles aria-hidden="true" />
+              MONTHLY AI INTELLIGENCE BRIEF
+            </span>
+            <h2>
+              {new Date(`${targetMonth}-01T12:00:00`).toLocaleDateString("en-CA", { month: "long", year: "numeric" })} Brief
+              {isAutoAdjusted ? " · Completed month" : ""}
+            </h2>
           </div>
           <button type="button" onClick={() => load(true)} disabled={refreshing} aria-label="Refresh monthly AI brief">
             <RefreshCw className={refreshing ? "is-spinning" : ""} aria-hidden="true" />
@@ -265,6 +279,11 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
         feed={evidenceFeed}
         MoreOpenHeight={75}
         overflow="hidden"
+      />
+
+      <TransactionDetailModal
+        transaction={viewingTx}
+        onClose={() => setViewingTx(null)}
       />
     </>
   );

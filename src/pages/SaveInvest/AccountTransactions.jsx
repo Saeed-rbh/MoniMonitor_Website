@@ -6,6 +6,7 @@ import { useTransactions } from "../../context/TransactionContext";
 import { getPortfolioAPI } from "../../services/apiService";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 import { getAccountTransactions } from "./accountStatistics";
+import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import "./SaveInvestInsights.css";
 
 const ITEMS_PER_PAGE = 40;
@@ -49,6 +50,7 @@ const AccountTransactions = () => {
   const [portfolio, setPortfolio] = useState(null);
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
   const [open, setOpen] = useState(true);
+  const [viewingTx, setViewingTx] = useState(null);
   const sentinelRef = useRef(null);
 
   useEffect(() => {
@@ -120,7 +122,14 @@ const AccountTransactions = () => {
                   const direction = transactionDirection(transaction);
                   const reason = getTransactionDisplayReason(transaction.Reason, transaction.Label);
                   return (
-                    <article className="AccountTransactions_Row" key={transaction.id ?? `${transaction.Timestamp}-${index}`}>
+                    <article
+                      className="AccountTransactions_Row"
+                      key={transaction.id ?? `${transaction.Timestamp}-${index}`}
+                      onClick={() => setViewingTx(transaction)}
+                      style={{ cursor: "pointer" }}
+                      role="button"
+                      tabIndex={0}
+                    >
                       <div className="AccountTransactions_Icon" aria-hidden="true">
                         {getTransactionIcon(transaction.Category, transaction.Label)}
                       </div>
@@ -148,14 +157,20 @@ const AccountTransactions = () => {
   );
 
   return (
-    <MoreOpen
-      isClicked={open}
-      setIsClicked={setOpen}
-      feed={accountFeed}
-      MoreOpenHeight={75}
-      toRedirect="/Accounts"
-      overflow="hidden"
-    />
+    <>
+      <MoreOpen
+        isClicked={open}
+        setIsClicked={setOpen}
+        feed={accountFeed}
+        MoreOpenHeight={75}
+        toRedirect="/Accounts"
+        overflow="hidden"
+      />
+      <TransactionDetailModal
+        transaction={viewingTx}
+        onClose={() => setViewingTx(null)}
+      />
+    </>
   );
 };
 

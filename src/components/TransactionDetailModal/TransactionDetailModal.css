@@ -1,0 +1,132 @@
+.TxDetail_Sheet {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  padding: 15px 18px 30px;
+  color: var(--Ac-1);
+  text-align: left;
+  -webkit-overflow-scrolling: touch;
+}
+
+.TxDetail_Header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px 0 16px;
+}
+
+.TxDetail_IconBox {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: 20px;
+  background: var(--Ac-5);
+  border: 1px solid var(--Bc-3);
+  color: var(--Bc-1);
+  margin-bottom: 12px;
+}
+
+.TxDetail_IconBox svg {
+  width: 28px;
+  height: 28px;
+}
+
+.TxDetail_BadgeRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.TxDetail_CategoryBadge,
+.TxDetail_LabelBadge {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--Ac-4);
+  color: var(--Ac-2);
+}
+
+.TxDetail_CategoryBadge {
+  background: rgba(212, 157, 129, 0.15);
+  color: var(--Bc-1);
+}
+
+.TxDetail_Reason {
+  margin: 0 0 8px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--Ac-1);
+  max-width: 90%;
+  word-break: break-word;
+}
+
+.TxDetail_Amount {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-top: 2px;
+}
+
+.TxDetail_Amount.in {
+  color: var(--Fc-1);
+}
+
+.TxDetail_Amount.out {
+  color: var(--Gc-1);
+}
+
+.TxDetail_Card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: var(--Ac-5);
+  border: 1px solid var(--Ac-4);
+  margin-top: 8px;
+}
+
+.TxDetail_Row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--Ac-4);
+}
+
+.TxDetail_Row:last-child {
+  border-bottom: none;
+}
+
+.TxDetail_RowLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--Ac-3);
+  font-size: 0.76rem;
+  font-weight: 500;
+}
+
+.TxDetail_RowIcon {
+  width: 15px;
+  height: 15px;
+  color: var(--Bc-1);
+}
+
+.TxDetail_RowRight {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--Ac-1);
+  text-align: right;
+  max-width: 60%;
+  word-break: break-word;
+}
