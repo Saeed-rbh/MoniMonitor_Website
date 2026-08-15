@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { RxCross2 } from "react-icons/rx";
 import { ScalableElement } from "../../utils/tools";
@@ -29,28 +30,31 @@ const MoreOpen = ({
     }
   };
 
-  return (
+  const content = (
     <AnimatePresence onExitComplete={handleExitComplete}>
       {!!isClicked && (
         <motion.div
           key="more-open-sheet"
           className="MoreOpen_Main"
-          initial={{ y: "100%", opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: "100%", opacity: 0 }}
-          transition={{ type: "tween", ease: "easeInOut", duration: 0.35 }}
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "tween", ease: "easeInOut", duration: 0.32 }}
           style={{
             zIndex: zIndex,
-            height: `calc(100vh - ${MoreOpenHeight}px)`,
+            height: `calc(100dvh - ${MoreOpenHeight}px)`,
             bottom: 0,
             position: "fixed",
             left: 0,
             right: 0,
             margin: "0 auto",
             width: "100%",
-            maxHeight: "100vh",
+            maxWidth: "var(--app-max-width)",
+            maxHeight: "100dvh",
             display: "flex",
-            justifyContent: "center",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            alignItems: "center",
           }}
           drag="y"
           dragControls={controls}
@@ -92,6 +96,8 @@ const MoreOpen = ({
       )}
     </AnimatePresence>
   );
+
+  return typeof document !== "undefined" ? createPortal(content, document.body) : content;
 };
 
 export default MoreOpen;
