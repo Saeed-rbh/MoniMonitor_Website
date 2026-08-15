@@ -193,6 +193,11 @@ const TransactionList = ({
   };
 
   const handleTransactionClick = (transaction) => {
+    if (onTransactionClick) {
+      onTransactionClick(transaction);
+      return;
+    }
+
     setIsAddClicked(transaction.Category);
 
     setAddTransaction({

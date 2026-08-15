@@ -208,6 +208,7 @@ const TransactionListItem = ({
         <animated.li
           {...bind()}
           style={swipeStyle}
+          onClick={() => { if (onClick) onClick(); }}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
@@ -227,7 +228,6 @@ const TransactionListItem = ({
             <animated.span>{ModifyLabel}</animated.span>
             <div className="transaction-Description">
               <h4>{truncateDescription(displayReason)}</h4>
-
               <h3>
                 {hasValidDate ? dateArray[2] : "--"} | <span>{weekdayName}</span> - {clockTime}
               </h3>
