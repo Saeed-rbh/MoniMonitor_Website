@@ -82,35 +82,75 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
       .sort((left, right) => new Date(right.Timestamp) - new Date(left.Timestamp));
   }, [selectedInsight, transactionMap]);
 
+  const evidenceTotalMinor = useMemo(() => {
+    return evidenceTransactions.reduce((sum, tx) => {
+      const amt = Number.isFinite(Number(tx?.AmountMinor))
+        ? Number(tx.AmountMinor)
+        : Math.round(Number(tx?.Amount || 0) * 100);
+      return sum + amt;
+    }, 0);
+  }, [evidenceTransactions]);
+
   const evidenceFeed = () => (
-    <main className="MonthlyAiBrief_EvidenceSheet">
-      <header>
-        <span>Supporting data</span>
-        <h1>{selectedInsight?.title}</h1>
-        <p>{selectedInsight?.fact}</p>
-      </header>
-      <div className="MonthlyAiBrief_EvidenceList">
-        {evidenceTransactions.map((transaction) => {
-          const direction = transactionDirection(transaction);
-          return (
-            <article key={transaction.id} className="MonthlyAiBrief_EvidenceRow">
-              <div className="MonthlyAiBrief_EvidenceIcon">
-                {getTransactionIcon(transaction.Category, transaction.Label)}
-              </div>
-              <div className="MonthlyAiBrief_EvidenceCopy">
-                <strong>{getTransactionDisplayReason(transaction.Reason, transaction.Label)}</strong>
-                <span>{[transaction.Label, transaction.Account, new Date(transaction.Timestamp).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" })].filter(Boolean).join(" · ")}</span>
-              </div>
-              <strong className={`MonthlyAiBrief_EvidenceAmount ${direction}`}>
-                {direction === "in" ? "+" : "−"}{money(transaction.AmountMinor ?? Math.round(Number(transaction.Amount || 0) * 100))}
-              </strong>
-            </article>
-          );
-        })}
-        {!evidenceTransactions.length && (
-          <p className="MonthlyAiBrief_EmptyEvidence">No transaction rows are needed for this observation.</p>
+    <main className="SaveInvestInsights AccountTransactions AccountTransactions_Sheet" style={{ width: "100%", height: "100%", overflowY: "auto", boxSizing: "border-box", paddingBottom: "30px" }}>
+      <header className="SaveInvestInsights_Header AccountTransactions_Header" style={{ paddingRight: "64px" }}>
+        <div>
+          <span className="SaveInvestInsights_Eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
+            <Sparkles style={{ width: 12, height: 12 }} /> SUPPORTING DATA
+          </span>
+          <h1 style={{ fontSize: "1.25rem", margin: "3px 0" }}>{selectedInsight?.title}</h1>
+          <p style={{ fontSize: "0.72rem", color: "var(--Ac-2)", lineHeight: "1.4" }}>{selectedInsight?.fact}</p>
+        </div>
+        {evidenceTransactions.length > 0 && (
+          <div className="AccountsOverview_Balance" style={{ marginTop: "4px" }}>
+            <strong>{money(evidenceTotalMinor)}</strong>
+            <small>total</small>
+          </div>
         )}
-      </div>
+      </header>
+
+      <section className="SaveInvestInsights_Card AccountTransactions_ListCard" style={{ marginTop: "12px", marginBottom: "30px" }}>
+        <div className="SaveInvestInsights_CardHeader">
+          <div>
+            <h2>Verified transactions</h2>
+            <p>{evidenceTransactions.length} transaction{evidenceTransactions.length === 1 ? "" : "s"} linked to this insight</p>
+          </div>
+        </div>
+
+        <div className="AccountTransactions_List">
+          {evidenceTransactions.map((transaction, index) => {
+            const direction = transactionDirection(transaction);
+            const reason = getTransactionDisplayReason(transaction.Reason, transaction.Label);
+            const txDate = transaction.Timestamp
+              ? new Date(transaction.Timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+              : "Date unrecorded";
+            const txAmtMinor = Number.isFinite(Number(transaction.AmountMinor))
+              ? Number(transaction.AmountMinor)
+              : Math.round(Number(transaction.Amount || 0) * 100);
+
+            return (
+              <article className="AccountTransactions_Row" key={transaction.id ?? `${transaction.Timestamp}-${index}`}>
+                <div className="AccountTransactions_Icon" aria-hidden="true">
+                  {getTransactionIcon(transaction.Category, transaction.Label)}
+                </div>
+                <div className="AccountTransactions_Reason">
+                  <strong>{reason || "Transaction"}</strong>
+                  <span>{[transaction.Label, transaction.Account, txDate].filter(Boolean).join(" · ")}</span>
+                </div>
+                <div className={`AccountTransactions_Amount ${direction}`}>
+                  <strong>{direction === "in" ? "+" : "−"}{money(txAmtMinor)}</strong>
+                  <span>{direction === "in" ? "in" : "out"}</span>
+                </div>
+              </article>
+            );
+          })}
+          {!evidenceTransactions.length && (
+            <div className="SaveInvestInsights_Empty" style={{ padding: "24px 0" }}>
+              No supporting transactions found for this insight.
+            </div>
+          )}
+        </div>
+      </section>
     </main>
   );
 
@@ -195,7 +235,7 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
         setIsClicked={setSelectedInsight}
         feed={evidenceFeed}
         MoreOpenHeight={75}
-        overflow="auto"
+        overflow="hidden"
       />
     </>
   );
