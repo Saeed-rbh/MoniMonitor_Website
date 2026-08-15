@@ -105,6 +105,16 @@ const SaveInvestInsights = () => {
               ? Math.min(100, (displayValueMinor / comparisonTotal) * 100)
               : 0;
 
+            const canHoldInvestments = !["Chequing", "Credit Card"].includes(account.accountType);
+            const hasHoldings = Boolean((account.holdings && account.holdings.length > 0) || Number(account.holdingsValueMinor || 0) > 0);
+            const isInvestmentAccount = canHoldInvestments || hasHoldings;
+
+            const cashVal = Number(account.cashMinor || 0);
+            const holdingsVal = Number(account.holdingsValueMinor || 0);
+            const totalVal = cashVal + holdingsVal;
+            const cashShare = totalVal > 0 ? (cashVal / totalVal) * 100 : (cashVal > 0 ? 100 : 0);
+            const holdingsShare = totalVal > 0 ? (holdingsVal / totalVal) * 100 : (holdingsVal > 0 ? 100 : 0);
+
             return (
               <article
                 className="SaveInvestInsights_Account AccountsOverview_Account"
@@ -148,6 +158,88 @@ const SaveInvestInsights = () => {
                   {share.toFixed(1)}% of {isDebt ? "total debt" : "total assets"}
                 </div>
 
+                {/* Asset Breakdown for Investment / Holdings Accounts (TFSA, Crypto, RRSP, Brokerage, etc.) */}
+                {isInvestmentAccount && (
+                  <div className="AccountsOverview_AssetBreakdown" onClick={(e) => e.stopPropagation()}>
+                    <div className="AccountsOverview_AssetHeader">
+                      <span className="AccountsOverview_AssetTitle">Asset Breakdown</span>
+                      <span className="AccountsOverview_TotalVal">Total: {money(totalVal, account.currency)}</span>
+                    </div>
+
+                    <div className="AccountsOverview_AssetBar" aria-hidden="true">
+                      <span className="cash" style={{ width: `${cashShare}%` }} title={`Cash: ${cashShare.toFixed(1)}%`} />
+                      <span className="holdings" style={{ width: `${holdingsShare}%` }} title={`Holdings: ${holdingsShare.toFixed(1)}%`} />
+                    </div>
+
+                    <div className="AccountsOverview_AssetLegend">
+                      <div className="AccountsOverview_LegendItem">
+                        <span className="dot cash" />
+                        <div>
+                          <span className="label">Cash</span>
+                          <strong>{money(cashVal, account.currency)} <small>({cashShare.toFixed(1)}%)</small></strong>
+                        </div>
+                      </div>
+                      <div className="AccountsOverview_LegendItem">
+                        <span className="dot holdings" />
+                        <div>
+                          <span className="label">Holdings</span>
+                          <strong>{money(holdingsVal, account.currency)} <small>({holdingsShare.toFixed(1)}%)</small></strong>
+                        </div>
+                      </div>
+                      {Number(account.gainLossMinor || 0) !== 0 && (
+                        <div className="AccountsOverview_LegendItem">
+                          <span className="label">Stock Gain/Loss</span>
+                          <strong className={Number(account.gainLossMinor || 0) >= 0 ? "positive" : "negative"}>
+                            {Number(account.gainLossMinor || 0) >= 0 ? "+" : ""}{money(account.gainLossMinor, account.currency)}
+                          </strong>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Detailed Holdings List */}
+                    {account.holdings && account.holdings.length > 0 && (
+                      <div className="AccountsOverview_HoldingsList">
+                        <div className="AccountsOverview_HoldingsHeader">
+                          <span>Holdings ({account.holdings.length})</span>
+                          <span>Value & Share</span>
+                        </div>
+                        {account.holdings.map((item) => {
+                          const itemPriceMicros = Number.isSafeInteger(item.priceMicros) ? item.priceMicros : item.priceMinor * 10000;
+                          const itemCostMicros = Number.isSafeInteger(item.averageCostMicros) ? item.averageCostMicros : item.averageCostMinor * 10000;
+                          const itemVal = Math.round((item.quantity * itemPriceMicros) / 10000);
+                          const itemCost = Math.round((item.quantity * itemCostMicros) / 10000);
+                          const itemGain = itemVal - itemCost;
+                          const itemGainPct = itemCost > 0 ? ((itemGain / itemCost) * 100).toFixed(1) : "0.0";
+                          const itemShare = totalVal > 0 ? ((itemVal / totalVal) * 100).toFixed(1) : "0.0";
+
+                          return (
+                            <div key={item.id} className="AccountsOverview_HoldingRow">
+                              <div className="AccountsOverview_HoldingInfo">
+                                <div className="AccountsOverview_SymbolBadge">
+                                  <strong>{item.symbol}</strong>
+                                  {item.name && <span className="name">· {item.name}</span>}
+                                </div>
+                                <div className="AccountsOverview_HoldingSub">
+                                  {item.quantity} units @ {new Intl.NumberFormat(undefined, { style: "currency", currency: account.currency, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(itemPriceMicros / 1000000)}
+                                </div>
+                              </div>
+                              <div className="AccountsOverview_HoldingVal">
+                                <strong>{money(itemVal, account.currency)}</strong>
+                                <div className="AccountsOverview_HoldingMeta">
+                                  <span className="share">{itemShare}% of account</span>
+                                  <span className={`gain ${itemGain >= 0 ? "positive" : "negative"}`}>
+                                    {itemGain >= 0 ? "+" : ""}{money(itemGain, account.currency)} ({itemGainPct}%)
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="SaveInvestInsights_AccountSummary AccountsOverview_Stats">
                   <span>
                     Money in
@@ -173,19 +265,6 @@ const SaveInvestInsights = () => {
                   <span>First activity <strong>{shortDate(stats.firstActivity)}</strong></span>
                   <span>Latest activity <strong>{shortDate(stats.latestActivity)}</strong></span>
                 </div>
-
-                {(Number(account.holdingsValueMinor || 0) > 0 || account.holdings?.length) && (
-                  <div className="AccountsOverview_InvestmentStats">
-                    <span>Cash <strong>{money(account.cashMinor, account.currency)}</strong></span>
-                    <span>Holdings <strong>{money(account.holdingsValueMinor, account.currency)}</strong></span>
-                    <span>
-                      Gain/loss
-                      <strong className={Number(account.gainLossMinor || 0) >= 0 ? "positive" : "negative"}>
-                        {Number(account.gainLossMinor || 0) >= 0 ? "+" : ""}{money(account.gainLossMinor, account.currency)}
-                      </strong>
-                    </span>
-                  </div>
-                )}
               </article>
             );
           })}

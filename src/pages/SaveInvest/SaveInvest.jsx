@@ -87,6 +87,12 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
         price: decimalInput(item.priceMicros, item.priceMinor),
     });
 
+    const cashVal = Number(account.cashMinor || 0);
+    const holdingsVal = Number(account.holdingsValueMinor || 0);
+    const totalVal = cashVal + holdingsVal;
+    const cashShare = totalVal > 0 ? (cashVal / totalVal) * 100 : (cashVal > 0 ? 100 : 0);
+    const holdingsShare = totalVal > 0 ? (holdingsVal / totalVal) * 100 : (holdingsVal > 0 ? 100 : 0);
+
     return <section style={styles.card}>
         <div style={styles.row}>
             <div>
@@ -99,10 +105,19 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
         </div>
 
         <div style={{ ...styles.grid, marginTop: '14px' }}>
-            <div><span style={styles.secondary}>{isCreditCard ? 'Balance owed' : 'Cash balance'}</span><strong style={{ display: 'block' }}>{money(account.cashMinor, account.currency)}</strong></div>
-            {canHoldInvestments && <div><span style={styles.secondary}>Stocks</span><strong style={{ display: 'block' }}>{money(account.holdingsValueMinor, account.currency)}</strong></div>}
+            <div><span style={styles.secondary}>{isCreditCard ? 'Balance owed' : 'Cash balance'}</span><strong style={{ display: 'block' }}>{money(account.cashMinor, account.currency)} {canHoldInvestments && <small style={styles.secondary}>({cashShare.toFixed(1)}%)</small>}</strong></div>
+            {canHoldInvestments && <div><span style={styles.secondary}>Holdings value</span><strong style={{ display: 'block' }}>{money(account.holdingsValueMinor, account.currency)} <small style={styles.secondary}>({holdingsShare.toFixed(1)}%)</small></strong></div>}
             {canHoldInvestments && <div><span style={styles.secondary}>Stock gain/loss</span><strong style={{ display: 'block', color: account.gainLossMinor >= 0 ? 'var(--Fc-1)' : 'var(--Gc-2)' }}>{account.gainLossMinor >= 0 ? '+' : ''}{money(account.gainLossMinor, account.currency)}</strong></div>}
         </div>
+
+        {canHoldInvestments && (
+            <div style={{ marginTop: '10px' }}>
+                <div style={{ display: 'flex', width: '100%', height: '6px', borderRadius: '999px', overflow: 'hidden', background: 'var(--Ac-4)' }}>
+                    <span style={{ width: `${cashShare}%`, background: 'linear-gradient(90deg, #4ade80, #22c55e)' }} title={`Cash: ${cashShare.toFixed(1)}%`} />
+                    <span style={{ width: `${holdingsShare}%`, background: 'linear-gradient(90deg, var(--Bc-1), #b48cdc)' }} title={`Holdings: ${holdingsShare.toFixed(1)}%`} />
+                </div>
+            </div>
+        )}
 
         <div style={{ ...styles.row, marginTop: '14px', alignItems: 'end' }}>
             <label style={{ flex: 1 }}><span style={styles.secondary}>Available cash</span><input aria-label={`${account.name} cash balance`} type='number' min='0' step='0.01' value={cash} onChange={(event) => setCash(event.target.value)} style={styles.field} /></label>

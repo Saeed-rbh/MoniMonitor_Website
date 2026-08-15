@@ -549,6 +549,202 @@
   color: var(--Gc-1);
 }
 
+/* ─── Accounts Overview — Asset Breakdown (Cash vs Holdings) ───── */
+
+.AccountsOverview_AssetBreakdown {
+  margin-top: 11px;
+  padding: 11px 12px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--Ac-4) 70%, transparent);
+  border: 1px solid var(--Bc-4);
+}
+
+.AccountsOverview_AssetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.64rem;
+  color: var(--Ac-2);
+}
+
+.AccountsOverview_AssetTitle {
+  font-weight: 600;
+  color: var(--Bc-1);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.AccountsOverview_TotalVal {
+  font-weight: 550;
+  color: var(--Ac-1);
+}
+
+.AccountsOverview_AssetBar {
+  display: flex;
+  width: 100%;
+  height: 6px;
+  margin-top: 7px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--Ac-4);
+}
+
+.AccountsOverview_AssetBar span.cash {
+  height: 100%;
+  background: linear-gradient(90deg, #4ade80, #22c55e);
+  transition: width 300ms ease;
+}
+
+.AccountsOverview_AssetBar span.holdings {
+  height: 100%;
+  background: linear-gradient(90deg, var(--Bc-1), #b48cdc);
+  transition: width 300ms ease;
+}
+
+.AccountsOverview_AssetLegend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.AccountsOverview_LegendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.6rem;
+}
+
+.AccountsOverview_LegendItem .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.AccountsOverview_LegendItem .dot.cash {
+  background: #22c55e;
+}
+
+.AccountsOverview_LegendItem .dot.holdings {
+  background: #b48cdc;
+}
+
+.AccountsOverview_LegendItem .label {
+  color: var(--Ac-3);
+  font-size: 0.58rem;
+  display: block;
+}
+
+.AccountsOverview_LegendItem strong {
+  color: var(--Ac-1);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.AccountsOverview_LegendItem strong small {
+  color: var(--Ac-2);
+  font-weight: 400;
+}
+
+.AccountsOverview_HoldingsList {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--Bc-4);
+}
+
+.AccountsOverview_HoldingsHeader {
+  display: flex;
+  justify-content: space-between;
+  color: var(--Ac-3);
+  font-size: 0.57rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.AccountsOverview_HoldingRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--Ac-4) 50%, transparent);
+}
+
+.AccountsOverview_HoldingRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.AccountsOverview_HoldingInfo {
+  min-width: 0;
+}
+
+.AccountsOverview_SymbolBadge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--Ac-1);
+}
+
+.AccountsOverview_SymbolBadge strong {
+  font-weight: 650;
+  color: var(--Bc-1);
+}
+
+.AccountsOverview_SymbolBadge .name {
+  color: var(--Ac-2);
+  font-size: 0.62rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.AccountsOverview_HoldingSub {
+  color: var(--Ac-3);
+  font-size: 0.57rem;
+  margin-top: 1px;
+}
+
+.AccountsOverview_HoldingVal {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.AccountsOverview_HoldingVal strong {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--Ac-1);
+}
+
+.AccountsOverview_HoldingMeta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 1px;
+  font-size: 0.57rem;
+}
+
+.AccountsOverview_HoldingMeta .share {
+  color: var(--Ac-3);
+}
+
+.AccountsOverview_HoldingMeta .gain.positive {
+  color: var(--Fc-1);
+}
+
+.AccountsOverview_HoldingMeta .gain.negative {
+  color: var(--Gc-1);
+}
+
 .AccountTransactions_Header {
   align-items: flex-end;
   padding: 28px 58px 14px 4px;
