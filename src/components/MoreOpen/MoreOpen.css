@@ -1,9 +1,9 @@
 .MoreOpen_Backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .MoreOpen_Main {
@@ -35,10 +35,10 @@
   box-sizing: border-box;
   border-radius: 36px 36px 0 0;
   padding: 10px 5px;
-  background: #111318;
-  background: linear-gradient(180deg, #171a22 0%, #0d0f14 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.65);
+  background: var(--Ec-2);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid var(--Ac-3);
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior-y: contain;
@@ -73,16 +73,20 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  width: 50px;
-  height: 50px;
+  width: 44px;
+  height: 44px;
   background: var(--Ac-4);
   border: 1px solid var(--Ac-3);
   border-radius: 100%;
   cursor: pointer;
-  right: 0;
-  color: var(--Bc-2);
-  font-size: 1.5rem;
   right: 15px;
   top: 15px;
+  color: var(--Bc-2);
+  font-size: 1.4rem;
   z-index: 50;
+  transition: transform 0.15s ease;
+}
+
+.MoreOpen_Close:active {
+  transform: scale(0.92);
 }

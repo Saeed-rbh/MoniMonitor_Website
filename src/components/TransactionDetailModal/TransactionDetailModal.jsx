@@ -126,7 +126,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null }) => {
       isClicked={Boolean(transaction)}
       setIsClicked={onClose}
       feed={feed}
-      sheetHeight="56dvh"
+      sheetHeight="auto"
       zIndex={125}
       overflow="hidden"
       showBackdrop={true}

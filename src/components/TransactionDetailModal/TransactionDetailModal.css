@@ -1,12 +1,10 @@
 .TxDetail_Sheet {
   box-sizing: border-box;
   width: 100%;
-  height: 100%;
-  overflow-y: auto;
-  padding: 12px 18px 24px;
+  padding: 10px 16px 20px;
   color: var(--Ac-1);
+  font-family: "Noto Sans", sans-serif;
   text-align: left;
-  -webkit-overflow-scrolling: touch;
 }
 
 .TxDetail_Header {
@@ -14,42 +12,41 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 4px 0 12px;
+  padding: 6px 0 14px;
 }
 
 .TxDetail_IconBox {
   display: grid;
-  width: 52px;
-  height: 52px;
+  width: 54px;
+  height: 54px;
   place-items: center;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  background: var(--Ac-4);
+  border: 1px solid var(--Bc-3);
   color: var(--Bc-1);
   margin-bottom: 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-  transition: transform 0.2s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .TxDetail_IconBox.income,
 .TxDetail_IconBox.in {
-  background: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.3);
-  color: #10b981;
+  background: var(--Fc-4);
+  border-color: var(--Fc-3);
+  color: var(--Fc-1);
 }
 
 .TxDetail_IconBox.expense,
 .TxDetail_IconBox.out {
-  background: rgba(244, 63, 94, 0.12);
-  border-color: rgba(244, 63, 94, 0.3);
-  color: #f43f5e;
+  background: var(--Gc-4);
+  border-color: var(--Gc-3);
+  color: var(--Gc-1);
 }
 
 .TxDetail_IconBox.saveinvest,
 .TxDetail_IconBox.saving {
-  background: rgba(59, 130, 246, 0.12);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: #3b82f6;
+  background: var(--Cc-4);
+  border-color: var(--Cc-3);
+  color: var(--Cc-1);
 }
 
 .TxDetail_IconBox svg {
@@ -73,31 +70,31 @@
   text-transform: uppercase;
   padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--Ac-4);
+  border: 1px solid var(--Ac-3);
   color: var(--Ac-2);
 }
 
 .TxDetail_CategoryBadge.income {
-  background: rgba(16, 185, 129, 0.15);
-  border-color: rgba(16, 185, 129, 0.3);
-  color: #34d399;
+  background: var(--Fc-4);
+  border-color: var(--Fc-3);
+  color: var(--Fc-1);
 }
 
 .TxDetail_CategoryBadge.expense {
-  background: rgba(244, 63, 94, 0.15);
-  border-color: rgba(244, 63, 94, 0.3);
-  color: #fb7185;
+  background: var(--Gc-4);
+  border-color: var(--Gc-3);
+  color: var(--Gc-1);
 }
 
 .TxDetail_CategoryBadge.saveinvest {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.3);
-  color: #60a5fa;
+  background: var(--Cc-4);
+  border-color: var(--Cc-3);
+  color: var(--Cc-1);
 }
 
 .TxDetail_Reason {
-  margin: 0 0 4px;
+  margin: 2px 0 6px;
   font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -114,22 +111,22 @@
 }
 
 .TxDetail_Amount.in {
-  color: #10b981;
+  color: var(--Fc-1);
 }
 
 .TxDetail_Amount.out {
-  color: #f43f5e;
+  color: var(--Gc-1);
 }
 
 .TxDetail_Card {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 10px 14px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  margin-top: 4px;
+  padding: 10px 16px;
+  border-radius: 20px;
+  background: var(--Ac-5);
+  border: 1px solid var(--Ac-3);
+  margin-top: 6px;
 }
 
 .TxDetail_Row {
@@ -138,7 +135,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--Ac-4);
 }
 
 .TxDetail_Row:last-child {
@@ -149,8 +146,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--Ac-3);
-  font-size: 0.76rem;
+  color: var(--Ac-2);
+  font-size: 0.78rem;
   font-weight: 500;
 }
 
@@ -161,7 +158,7 @@
 }
 
 .TxDetail_RowRight {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   font-weight: 600;
   color: var(--Ac-1);
   text-align: right;
@@ -170,7 +167,7 @@
 }
 
 .TxDetail_RowRight.status-verified {
-  color: #34d399;
+  color: var(--Fc-1);
 }
 
 .TxDetail_EditBtn {
@@ -178,19 +175,19 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  margin-top: 12px;
-  padding: 12px 18px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: linear-gradient(135deg, rgba(212, 157, 129, 0.25) 0%, rgba(212, 157, 129, 0.1) 100%);
+  margin-top: 14px;
+  padding: 13px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--Bc-3);
+  background: radial-gradient(circle at 30% -20%, var(--Bc-3) -100%, var(--Ec-4) 65%);
   color: var(--Bc-1);
-  font-size: 0.84rem;
+  font-size: 0.85rem;
   font-weight: 650;
+  font-family: "Noto Sans", sans-serif;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   transition: transform 0.15s ease, background 0.2s ease;
 }
 
 .TxDetail_EditBtn:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }

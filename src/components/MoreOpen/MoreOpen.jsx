@@ -32,7 +32,10 @@ const MoreOpen = ({
     }
   };
 
-  const calculatedHeight = sheetHeight || `calc(100dvh - ${MoreOpenHeight}px)`;
+  const isAutoHeight = sheetHeight === "auto" || sheetHeight === "fit-content";
+  const calculatedHeight = isAutoHeight
+    ? "auto"
+    : (sheetHeight || `calc(100dvh - ${MoreOpenHeight}px)`);
 
   const content = (
     <AnimatePresence onExitComplete={handleExitComplete}>
@@ -60,6 +63,7 @@ const MoreOpen = ({
             style={{
               zIndex: zIndex,
               height: calculatedHeight,
+              maxHeight: "92dvh",
               bottom: 0,
               position: "fixed",
               left: 0,
@@ -67,7 +71,6 @@ const MoreOpen = ({
               margin: "0 auto",
               width: "100%",
               maxWidth: "var(--app-max-width)",
-              maxHeight: "100dvh",
               display: "flex",
               flexDirection: "column",
               justifyContent: "flex-end",
@@ -91,7 +94,8 @@ const MoreOpen = ({
                 width: "100%",
                 maxWidth: "var(--app-max-width)",
                 boxSizing: "border-box",
-                height: "100%",
+                height: isAutoHeight ? "auto" : "100%",
+                maxHeight: "92dvh",
               }}
             >
               <div
