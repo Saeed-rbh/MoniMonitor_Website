@@ -1,20 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, ChevronRight, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
-import { getTransactionIcon } from "../../components/Categories";
 import { getMonthlyAiBriefAPI } from "../../services/apiService";
-import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
+import TransactionListItem from "../Transactions/TransactionListItem";
+import "../Transactions/Transactions.css";
 
 const money = (minor) => new Intl.NumberFormat("en-CA", {
   style: "currency", currency: "CAD", maximumFractionDigits: 2,
 }).format(Number(minor || 0) / 100);
-
-const transactionDirection = (transaction) => {
-  const flow = String(transaction?.AccountFlow || "").toUpperCase();
-  if (flow === "IN") return "in";
-  if (flow === "OUT") return "out";
-  return transaction?.Category === "Income" ? "in" : "out";
-};
 
 const getEffectiveCompletedMonth = (monthStr) => {
   if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) return { targetMonth: monthStr, isAutoAdjusted: false };
@@ -92,66 +85,60 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
   }, [evidenceTransactions]);
 
   const evidenceFeed = () => (
-    <main className="SaveInvestInsights AccountTransactions AccountTransactions_Sheet" style={{ width: "100%", height: "100%", overflowY: "auto", boxSizing: "border-box", paddingBottom: "30px" }}>
-      <header className="SaveInvestInsights_Header AccountTransactions_Header" style={{ paddingRight: "64px" }}>
-        <div>
-          <span className="SaveInvestInsights_Eyebrow" style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-            <Sparkles style={{ width: 12, height: 12 }} /> SUPPORTING DATA
-          </span>
-          <h1 style={{ fontSize: "1.25rem", margin: "3px 0" }}>{selectedInsight?.title}</h1>
-          <p style={{ fontSize: "0.72rem", color: "var(--Ac-2)", lineHeight: "1.4" }}>{selectedInsight?.fact}</p>
+    <div
+      className="TransactionList_Main"
+      style={{ width: "100%", height: "100%", position: "relative" }}
+    >
+      <div className="TransactionList_Wall" style={{ height: "100%", width: "100%", paddingTop: "25px" }}>
+        <div className="TransactionList_TopLine"></div>
+        <div className="TransactionList_Title" style={{ width: "100%", paddingRight: "60px", boxSizing: "border-box" }}>
+          <p style={{ color: "var(--Bc-2)", cursor: "default" }}>
+            <span>{selectedInsight?.title || "Supporting Data"}</span>
+            <div className="TransactionList_TitleMonth">
+              {new Date(`${targetMonth}-01T12:00:00`).toLocaleDateString("en-CA", { month: "short", year: "numeric" })}
+            </div>
+          </p>
+          <h1>
+            Total:{" "}
+            <span style={{ color: "var(--Bc-2)" }}>
+              ${(evidenceTotalMinor / 100).toFixed(2)}
+            </span>
+          </h1>
         </div>
-        {evidenceTransactions.length > 0 && (
-          <div className="AccountsOverview_Balance" style={{ marginTop: "4px" }}>
-            <strong>{money(evidenceTotalMinor)}</strong>
-            <small>total</small>
+
+        {selectedInsight?.fact && (
+          <div style={{ width: "calc(100% - 10px)", margin: "-4px 0 14px", color: "var(--Ac-2)", fontSize: "0.74rem", lineHeight: "1.4", textAlign: "left", paddingLeft: "4px" }}>
+            {selectedInsight.fact}
           </div>
         )}
-      </header>
 
-      <section className="SaveInvestInsights_Card AccountTransactions_ListCard" style={{ marginTop: "12px", marginBottom: "30px" }}>
-        <div className="SaveInvestInsights_CardHeader">
-          <div>
-            <h2>Verified transactions</h2>
-            <p>{evidenceTransactions.length} transaction{evidenceTransactions.length === 1 ? "" : "s"} linked to this insight</p>
+        <div
+          className="TransactionList_MonthlyMain"
+          style={{ width: "100%", flex: 1, overflowY: "auto", minHeight: 0 }}
+        >
+          <div className="TransactionList_Monthly">
+            {evidenceTransactions.map((transaction, index) => (
+              <TransactionListItem
+                key={transaction.id ?? `${transaction.Timestamp}-${index}`}
+                index={index}
+                icon={transaction.icon}
+                description={transaction.Reason}
+                type={transaction.Type}
+                time={transaction.Timestamp}
+                amount={transaction.Amount}
+                category={transaction.Category}
+                label={transaction.Label}
+              />
+            ))}
+            {evidenceTransactions.length === 0 && (
+              <div style={{ textAlign: "center", padding: "30px 20px", color: "var(--Ac-2)", fontSize: "0.85rem" }}>
+                No supporting transactions found
+              </div>
+            )}
           </div>
         </div>
-
-        <div className="AccountTransactions_List">
-          {evidenceTransactions.map((transaction, index) => {
-            const direction = transactionDirection(transaction);
-            const reason = getTransactionDisplayReason(transaction.Reason, transaction.Label);
-            const txDate = transaction.Timestamp
-              ? new Date(transaction.Timestamp).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
-              : "Date unrecorded";
-            const txAmtMinor = Number.isFinite(Number(transaction.AmountMinor))
-              ? Number(transaction.AmountMinor)
-              : Math.round(Number(transaction.Amount || 0) * 100);
-
-            return (
-              <article className="AccountTransactions_Row" key={transaction.id ?? `${transaction.Timestamp}-${index}`}>
-                <div className="AccountTransactions_Icon" aria-hidden="true">
-                  {getTransactionIcon(transaction.Category, transaction.Label)}
-                </div>
-                <div className="AccountTransactions_Reason">
-                  <strong>{reason || "Transaction"}</strong>
-                  <span>{[transaction.Label, transaction.Account, txDate].filter(Boolean).join(" · ")}</span>
-                </div>
-                <div className={`AccountTransactions_Amount ${direction}`}>
-                  <strong>{direction === "in" ? "+" : "−"}{money(txAmtMinor)}</strong>
-                  <span>{direction === "in" ? "in" : "out"}</span>
-                </div>
-              </article>
-            );
-          })}
-          {!evidenceTransactions.length && (
-            <div className="SaveInvestInsights_Empty" style={{ padding: "24px 0" }}>
-              No supporting transactions found for this insight.
-            </div>
-          )}
-        </div>
-      </section>
-    </main>
+      </div>
+    </div>
   );
 
   if (loading) {
