@@ -27,6 +27,7 @@ const TransactionList = ({
   setOpen,
   onManageAccounts,
   setShowTransaction,
+  onTransactionClick,
 }) => {
   const filteredTransactions = React.useMemo(() => {
     if (isMoreClicked === "Internal") return uniqueInternalTransfers(Transactions);
@@ -114,7 +115,6 @@ const TransactionList = ({
             : isMoreClicked === "Expense"
               ? selectedData.labelDistributionExpense
               : selectedData.labelDistributionSaveInvest ?? selectedData.labelDistributionSaving;
-
       let sortedData = [];
       if (rawDistribution) {
         if (Array.isArray(rawDistribution)) {

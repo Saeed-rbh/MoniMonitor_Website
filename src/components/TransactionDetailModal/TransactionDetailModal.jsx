@@ -39,7 +39,7 @@ const formatFullDate = (timestamp) => {
   });
 };
 
-const TransactionDetailModal = ({ transaction, onClose }) => {
+const TransactionDetailModal = ({ transaction, onClose, onEdit = null }) => {
   if (!transaction) return null;
 
   const direction = getTxDirection(transaction);
@@ -108,6 +108,16 @@ const TransactionDetailModal = ({ transaction, onClose }) => {
           <strong className="TxDetail_RowRight" style={{ color: "var(--Fc-1)" }}>Verified & Recorded</strong>
         </div>
       </div>
+
+      {onEdit && (
+        <button
+          type="button"
+          className="TxDetail_EditBtn"
+          onClick={() => onEdit(transaction)}
+        >
+          Edit Transaction
+        </button>
+      )}
     </div>
   );
 

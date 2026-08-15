@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import AddTransactionFeed from "../../transactionFeedPage/AddTransactionFeed";
 import TransactionList from "./TransactionList";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
+import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import "./Transactions.css";
 import Notification from "../../components/Notification/Notification";
 
@@ -41,6 +42,7 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
     navigate("/Accounts/Manage");
   }, [navigate, onManageAccounts]);
   const [open, setOpen] = useState(false);
+  const [viewingTx, setViewingTx] = useState(null);
 
   const [isAddClicked, setIsAddClicked] = useState(null);
   const [addTransaction, setAddTransaction] = useState({
@@ -79,6 +81,7 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
         isAddClicked={isAddClicked}
         setOpen={setOpen}
         setShowTransaction={setAddTransaction}
+        onTransactionClick={(tx) => setViewingTx(tx)}
         onManageAccounts={
           activeCategory === "Save&Invest" ? handleManageAccounts : null
         }
@@ -116,7 +119,7 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
         MoreOpenHeight={75}
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
-        blur={isAddClicked !== null || isDateClicked}
+        blur={isAddClicked !== null || isDateClicked || viewingTx !== null}
         toRedirect={"/"}
       />
       {isAddClicked !== null && (
@@ -131,6 +134,25 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
           overflow={"hidden"}
         />
       )}
+      <TransactionDetailModal
+        transaction={viewingTx}
+        onClose={() => setViewingTx(null)}
+        onEdit={(tx) => {
+          setViewingTx(null);
+          setIsAddClicked(tx.Category || "Expense");
+          setAddTransaction({
+            id: tx.id,
+            Amount: tx.Amount,
+            Category: tx.Category,
+            Label: tx.Label,
+            Reason: tx.Reason,
+            Timestamp: tx.Timestamp,
+            Type: tx.Type,
+            Account: tx.Account,
+            BankName: tx.BankName,
+          });
+        }}
+      />
       {open && (
         <Notification
           addTransaction={addTransaction}
