@@ -289,7 +289,7 @@ const investmentAccountTypes = new Set([
 app.get("/settings", authenticateToken, async (req, res) => {
     try {
         return res.json(await dbService.getUserSettings(req.user.userId) || {
-            currency: "USD", timezone: null, notificationsEnabled: 1,
+            currency: "CAD", timezone: null, notificationsEnabled: 1,
         });
     } catch (error) { return sendValidationError(res, error); }
 });
@@ -311,7 +311,7 @@ app.get("/budgets", authenticateToken, async (req, res) => {
 });
 
 app.put("/budgets", authenticateToken, async (req, res) => {
-    const { category, month, amountMinor, currency = "USD" } = req.body || {};
+    const { category, month, amountMinor, currency = "CAD" } = req.body || {};
     if (typeof category !== "string" || category.trim().length < 1 || category.length > 100 || !validMonth(month) || !Number.isSafeInteger(amountMinor) || amountMinor < 0 || !validCurrency(currency)) {
         return res.status(400).json({ error: "Invalid budget" });
     }
@@ -325,7 +325,7 @@ app.get("/goals", authenticateToken, async (req, res) => {
 });
 
 app.post("/goals", authenticateToken, async (req, res) => {
-    const { name, targetMinor, currentMinor = 0, currency = "USD", targetDate = null } = req.body || {};
+    const { name, targetMinor, currentMinor = 0, currency = "CAD", targetDate = null } = req.body || {};
     if (typeof name !== "string" || name.trim().length < 1 || name.length > 120 || !Number.isSafeInteger(targetMinor) || targetMinor <= 0 || !Number.isSafeInteger(currentMinor) || currentMinor < 0 || !validCurrency(currency) || (targetDate !== null && (typeof targetDate !== "string" || targetDate.length > 32))) {
         return res.status(400).json({ error: "Invalid goal" });
     }
@@ -377,7 +377,7 @@ app.get('/portfolio', authenticateToken, async (req, res) => {
 });
 
 app.post('/portfolio/accounts', authenticateToken, async (req, res) => {
-    const { name, institution = null, accountType, currency = 'USD', cashMinor = 0 } = req.body || {};
+    const { name, institution = null, accountType, currency = 'CAD', cashMinor = 0 } = req.body || {};
     if (!validText(name) || !investmentAccountTypes.has(accountType) || !validCurrency(currency) ||
         !validMinorAmount(cashMinor) || (institution !== null && (typeof institution !== 'string' || institution.length > 120))) {
         return res.status(400).json({ error: 'Invalid investment account' });
@@ -435,7 +435,7 @@ app.put('/portfolio/accounts/:id/holdings', authenticateToken, async (req, res) 
         symbol, name = null, quantity, averageCostMinor = 0, priceMinor = 0,
         averageCostMicros = averageCostMinor * 10000,
         priceMicros = priceMinor * 10000,
-        currency = 'USD',
+        currency = 'CAD',
     } = req.body || {};
     const normalizedSymbol = typeof symbol === 'string' ? symbol.trim().toUpperCase() : '';
     if (!/^[A-Z0-9.\-]{1,15}$/.test(normalizedSymbol) || !validQuantity(quantity) ||

@@ -18,7 +18,7 @@ const Account = () => {
     const navigate = useNavigate();
 
     // Settings State
-    const [currency, setCurrency] = useState("USD");
+    const [currency, setCurrency] = useState("CAD");
     const [theme, setTheme] = useState("Dark");
     const [notifications, setNotifications] = useState(true);
     const [backupStatus, setBackupStatus] = useState(null);
@@ -43,7 +43,7 @@ const Account = () => {
         Promise.all([getSettingsAPI(), getBackupStatusAPI()]).then(([settings, backups]) => {
             if (!active) return;
             if (settings) {
-                setCurrency(settings.currency || "USD");
+                setCurrency(settings.currency || "CAD");
                 setNotifications(Boolean(settings.notificationsEnabled));
             }
             if (backups) setBackupStatus(backups);

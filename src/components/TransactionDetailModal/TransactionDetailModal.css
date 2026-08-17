@@ -12,19 +12,19 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 6px 0 14px;
+  padding: 4px 0 10px;
 }
 
 .TxDetail_IconBox {
   display: grid;
-  width: 54px;
-  height: 54px;
+  width: 44px;
+  height: 44px;
   place-items: center;
-  border-radius: 20px;
+  border-radius: 14px;
   background: var(--Ac-4);
   border: 1px solid var(--Bc-3);
   color: var(--Bc-1);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
@@ -50,8 +50,8 @@
 }
 
 .TxDetail_IconBox svg {
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
 }
 
 .TxDetail_BadgeRow {
@@ -59,7 +59,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .TxDetail_CategoryBadge,
@@ -68,7 +68,7 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: 999px;
   background: var(--Ac-4);
   border: 1px solid var(--Ac-3);
@@ -94,20 +94,20 @@
 }
 
 .TxDetail_Reason {
-  margin: 2px 0 6px;
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  margin: 2px 0 3px;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
   color: var(--Ac-1);
   max-width: 90%;
   word-break: break-word;
 }
 
 .TxDetail_Amount {
-  font-size: 1.65rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  margin-top: 2px;
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  margin-top: 1px;
 }
 
 .TxDetail_Amount.in {

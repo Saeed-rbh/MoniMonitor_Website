@@ -8,7 +8,7 @@ const Finance = () => {
     const month = useMemo(() => new Date().toISOString().slice(0, 7), []);
     const [budgets, setBudgets] = useState([]);
     const [goals, setGoals] = useState([]);
-    const [currency, setCurrency] = useState("USD");
+    const [currency, setCurrency] = useState("CAD");
     const [category, setCategory] = useState("Groceries");
     const [budgetAmount, setBudgetAmount] = useState("");
     const [goalName, setGoalName] = useState("");

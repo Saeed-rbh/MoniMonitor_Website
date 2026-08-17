@@ -117,7 +117,7 @@ const InsightFacts = ({ transactions, allTransactions, viewMode, currentDate }) 
 
     if (!stats) return null;
 
-    const formatCurrency = (val) => Number(val).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    const formatCurrency = (val) => Number(val).toLocaleString('en-CA', { style: 'currency', currency: 'CAD' });
 
     // Helper to format date nicely "Mon, Dec 25"
     const formatDate = (dateObj) => {

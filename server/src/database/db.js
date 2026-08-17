@@ -123,7 +123,7 @@ async function getDb() {
             const transactionColumns = await db.all("PRAGMA table_info(transactions)");
             const hasColumn = (name) => transactionColumns.some((column) => column.name === name);
             if (!hasColumn("AmountMinor")) await db.exec("ALTER TABLE transactions ADD COLUMN AmountMinor INTEGER");
-            if (!hasColumn("Currency")) await db.exec("ALTER TABLE transactions ADD COLUMN Currency TEXT NOT NULL DEFAULT 'USD'");
+            if (!hasColumn("Currency")) await db.exec("ALTER TABLE transactions ADD COLUMN Currency TEXT NOT NULL DEFAULT 'CAD'");
             if (!hasColumn("PortfolioAction")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioAction TEXT");
             if (!hasColumn("PortfolioAccountId")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioAccountId INTEGER");
             if (!hasColumn("PortfolioConfidence")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioConfidence TEXT");
@@ -136,7 +136,7 @@ async function getDb() {
             await db.exec(`
                 CREATE TABLE IF NOT EXISTS user_settings (
                     userId TEXT PRIMARY KEY,
-                    currency TEXT NOT NULL DEFAULT 'USD',
+                    currency TEXT NOT NULL DEFAULT 'CAD',
                     timezone TEXT,
                     notificationsEnabled INTEGER NOT NULL DEFAULT 1,
                     updatedAt TEXT NOT NULL,
@@ -149,7 +149,7 @@ async function getDb() {
                     category TEXT NOT NULL,
                     month TEXT NOT NULL,
                     amountMinor INTEGER NOT NULL CHECK(amountMinor >= 0),
-                    currency TEXT NOT NULL DEFAULT 'USD',
+                    currency TEXT NOT NULL DEFAULT 'CAD',
                     UNIQUE(userId, category, month),
                     FOREIGN KEY (userId) REFERENCES users(id)
                 );
@@ -160,7 +160,7 @@ async function getDb() {
                     name TEXT NOT NULL,
                     targetMinor INTEGER NOT NULL CHECK(targetMinor > 0),
                     currentMinor INTEGER NOT NULL DEFAULT 0 CHECK(currentMinor >= 0),
-                    currency TEXT NOT NULL DEFAULT 'USD',
+                    currency TEXT NOT NULL DEFAULT 'CAD',
                     targetDate TEXT,
                     createdAt TEXT NOT NULL,
                     FOREIGN KEY (userId) REFERENCES users(id)
@@ -173,7 +173,7 @@ async function getDb() {
                     institution TEXT,
                     accountType TEXT NOT NULL,
                     accountRef TEXT,
-                    currency TEXT NOT NULL DEFAULT 'USD',
+                    currency TEXT NOT NULL DEFAULT 'CAD',
                     cashMinor INTEGER NOT NULL DEFAULT 0 CHECK(cashMinor >= 0),
                     createdAt TEXT NOT NULL,
                     updatedAt TEXT NOT NULL,
@@ -191,7 +191,7 @@ async function getDb() {
                     averageCostMicros INTEGER NOT NULL DEFAULT 0 CHECK(averageCostMicros >= 0),
                     priceMinor INTEGER NOT NULL DEFAULT 0 CHECK(priceMinor >= 0),
                     priceMicros INTEGER NOT NULL DEFAULT 0 CHECK(priceMicros >= 0),
-                    currency TEXT NOT NULL DEFAULT 'USD',
+                    currency TEXT NOT NULL DEFAULT 'CAD',
                     updatedAt TEXT NOT NULL,
                     UNIQUE(accountId, symbol),
                     FOREIGN KEY (userId) REFERENCES users(id),

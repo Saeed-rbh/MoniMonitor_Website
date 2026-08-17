@@ -11,14 +11,14 @@ import {
 } from '../../services/apiService';
 
 const accountTypes = ['Chequing', 'Savings', 'Credit Card', 'TFSA', 'RRSP', 'Brokerage', '401(k)', 'IRA', 'Other'];
-const emptyAccount = { name: '', institution: '', accountType: 'Savings', cash: '', currency: 'USD' };
+const emptyAccount = { name: '', institution: '', accountType: 'Savings', cash: '', currency: 'CAD' };
 const emptyHolding = { symbol: '', name: '', quantity: '', averageCost: '', price: '' };
 const toMinor = (value) => Math.round(Number(value || 0) * 100);
-const money = (minor, currency = 'USD') => new Intl.NumberFormat(undefined, {
+const money = (minor, currency = 'CAD') => new Intl.NumberFormat(undefined, {
     style: 'currency', currency, maximumFractionDigits: 2,
 }).format(Number(minor || 0) / 100);
 
-const unitMoney = (micros, currency = 'USD') => new Intl.NumberFormat(undefined, {
+const unitMoney = (micros, currency = 'CAD') => new Intl.NumberFormat(undefined, {
     style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 4,
 }).format(Number(micros || 0) / 1000000);
 const decimalInput = (micros, minor) =>
@@ -200,7 +200,7 @@ const SaveInvest = () => {
 
         <section style={{ ...styles.card, background: 'linear-gradient(135deg, var(--Bc-4), var(--Ac-4))' }}>
             <span style={styles.secondary}>Net account value</span>
-            <h2 style={{ fontSize: '2rem', margin: '3px 0 12px' }}>{money(portfolio.totalValueMinor, portfolio.accounts[0]?.currency || 'USD')}</h2>
+            <h2 style={{ fontSize: '2rem', margin: '3px 0 12px' }}>{money(portfolio.totalValueMinor, portfolio.accounts[0]?.currency || 'CAD')}</h2>
             <div style={styles.grid}>
                 <div><span style={styles.secondary}>Cash</span><strong style={{ display: 'block' }}>{money(portfolio.totalCashMinor)}</strong></div>
                 <div><span style={styles.secondary}>Stocks</span><strong style={{ display: 'block' }}>{money(portfolio.holdingsValueMinor)}</strong></div>
@@ -227,7 +227,7 @@ const SaveInvest = () => {
                         <div style={styles.secondary}>{new Date(activity.occurredAt).toLocaleString()} {activity.referenceNumber ? `· Ref ${activity.referenceNumber}` : ''}</div>
                     </div>
                     <strong style={{ color: applied ? 'var(--Fc-1)' : 'var(--Ac-2)', whiteSpace: 'nowrap' }}>
-                        {applied ? withdrawal ? '-' : '+' : ''}{money(activity.amountMinor, activity.currency || 'USD')}
+                        {applied ? withdrawal ? '-' : '+' : ''}{money(activity.amountMinor, activity.currency || 'CAD')}
                     </strong>
                 </div>;
             })}

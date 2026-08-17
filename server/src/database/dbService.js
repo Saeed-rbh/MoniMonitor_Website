@@ -118,7 +118,7 @@ async function addTransaction(transaction) {
             transaction.userId,
             (Number.isSafeInteger(transaction.AmountMinor) ? transaction.AmountMinor : toMinorUnits(transaction.Amount)) / 100,
             Number.isSafeInteger(transaction.AmountMinor) ? transaction.AmountMinor : toMinorUnits(transaction.Amount),
-            transaction.Currency || 'USD',
+            transaction.Currency || 'CAD',
             transaction.Category,
             transaction.Label,
             transaction.Reason,
