@@ -41,16 +41,28 @@ const transactionDate = (value) => {
     });
 };
 
+const clientBriefCache = new Map();
+
 const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) => {
   const { isMoreClicked, setIsMoreClicked } = useTransactions();
-  const [brief, setBrief] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { targetMonth, isAutoAdjusted } = useMemo(() => getEffectiveCompletedMonth(month), [month]);
+
+  const [brief, setBrief] = useState(() => {
+    if (clientBriefCache.has(targetMonth)) {
+      return clientBriefCache.get(targetMonth);
+    }
+    try {
+      const stored = sessionStorage.getItem(`moni_brief_${targetMonth}`);
+      if (stored) return JSON.parse(stored);
+    } catch (_e) {}
+    return null;
+  });
+
+  const [loading, setLoading] = useState(() => !clientBriefCache.has(targetMonth));
   const [refreshing, setRefreshing] = useState(false);
   const [selectedInsight, setSelectedInsight] = useState(null);
   const [viewingTx, setViewingTx] = useState(null);
   const requestVersion = useRef(0);
-
-  const { targetMonth, isAutoAdjusted } = useMemo(() => getEffectiveCompletedMonth(month), [month]);
 
   const handleOpenInsight = useCallback((insight) => {
     setSelectedInsight(insight);
@@ -64,23 +76,59 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
 
   const load = useCallback(async (refresh = false) => {
     const version = ++requestVersion.current;
-    refresh ? setRefreshing(true) : setLoading(true);
+    const hasCached = clientBriefCache.has(targetMonth);
+
+    if (refresh) {
+      setRefreshing(true);
+    } else if (!hasCached) {
+      setLoading(true);
+    }
+
     const result = await getMonthlyAiBriefAPI(targetMonth, refresh);
     if (version !== requestVersion.current) return;
-    if (result) setBrief(result);
+
+    if (result) {
+      clientBriefCache.set(targetMonth, result);
+      try {
+        sessionStorage.setItem(`moni_brief_${targetMonth}`, JSON.stringify(result));
+      } catch (_e) {}
+      setBrief(result);
+    }
+
     setLoading(false);
     setRefreshing(false);
   }, [targetMonth]);
 
   useEffect(() => {
-    setBrief(null);
+    // Check cache first for instant display
+    if (clientBriefCache.has(targetMonth)) {
+      setBrief(clientBriefCache.get(targetMonth));
+      setLoading(false);
+    } else {
+      try {
+        const stored = sessionStorage.getItem(`moni_brief_${targetMonth}`);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          clientBriefCache.set(targetMonth, parsed);
+          setBrief(parsed);
+          setLoading(false);
+        } else {
+          setBrief(null);
+          setLoading(true);
+        }
+      } catch (_e) {
+        setBrief(null);
+        setLoading(true);
+      }
+    }
+
     handleCloseInsight();
     load(false);
     return () => {
       requestVersion.current += 1;
       setIsMoreClicked(null);
     };
-  }, [load, handleCloseInsight, setIsMoreClicked]);
+  }, [targetMonth, load, handleCloseInsight, setIsMoreClicked]);
 
   const allTxList = useMemo(() => {
     if (!allTransactions) return transactions || [];

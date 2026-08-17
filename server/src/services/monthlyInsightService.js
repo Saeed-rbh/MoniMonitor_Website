@@ -202,7 +202,23 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
     const analysis = buildMonthlyAnalysis(transactions, month, { pendingEmails: pending?.count || 0 });
     const dataHash = hashAnalysis(analysis);
     const cacheKey = `${userId}:${month}:${dataHash}`;
-    if (!options.refresh && cache.has(cacheKey)) return cache.get(cacheKey);
+    if (!options.refresh) {
+        if (cache.has(cacheKey)) return cache.get(cacheKey);
+
+        const dbRecord = await db.get(
+            `SELECT briefJson FROM monthly_ai_briefs WHERE userId = ? AND month = ? AND dataHash = ?`,
+            [userId, month, dataHash]
+        );
+        if (dbRecord?.briefJson) {
+            try {
+                const parsed = JSON.parse(dbRecord.briefJson);
+                cache.set(cacheKey, parsed);
+                return parsed;
+            } catch (_err) {
+                // Fall through to generation if corrupted
+            }
+        }
+    }
 
     let selectedInsights = null;
     let source = 'deterministic';
@@ -509,6 +525,14 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
         insights: selectedInsights,
     };
     cache.set(cacheKey, result);
+
+    await db.run(
+        `INSERT INTO monthly_ai_briefs (userId, month, dataHash, briefJson, createdAt)
+         VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(userId, month, dataHash) DO UPDATE SET briefJson = excluded.briefJson, createdAt = excluded.createdAt`,
+        [userId, month, dataHash, JSON.stringify(result), new Date().toISOString()]
+    ).catch((err) => console.warn('[Monthly insights] DB persistence error:', err.message));
+
     return result;
 }
 

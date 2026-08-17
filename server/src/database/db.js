@@ -130,11 +130,6 @@ async function getDb() {
             if (!hasColumn("PortfolioSymbol")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioSymbol TEXT");
             if (!hasColumn("PortfolioQuantity")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioQuantity REAL");
             if (!hasColumn("PortfolioPrice")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioPrice REAL");
-            if (!hasColumn("BalanceAccountConfidence")) await db.exec("ALTER TABLE transactions ADD COLUMN BalanceAccountConfidence TEXT");
-            if (!hasColumn("PortfolioAccountNumber")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioAccountNumber TEXT");
-            if (!hasColumn("PortfolioToSymbol")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioToSymbol TEXT");
-            if (!hasColumn("PortfolioToQuantity")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioToQuantity REAL");
-            if (!hasColumn("AccountFlow")) await db.exec("ALTER TABLE transactions ADD COLUMN AccountFlow TEXT");
             if (!hasColumn("SourceEmailKey")) await db.exec("ALTER TABLE transactions ADD COLUMN SourceEmailKey TEXT");
             await db.run("UPDATE transactions SET AmountMinor = ROUND(Amount * 100) WHERE AmountMinor IS NULL");
 
@@ -241,6 +236,16 @@ async function getDb() {
                     FOREIGN KEY (userId) REFERENCES users(id),
                     FOREIGN KEY (accountId) REFERENCES investment_accounts(id) ON DELETE CASCADE,
                     FOREIGN KEY (sourceTransactionId) REFERENCES transactions(id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS monthly_ai_briefs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    userId TEXT NOT NULL,
+                    month TEXT NOT NULL,
+                    dataHash TEXT NOT NULL,
+                    briefJson TEXT NOT NULL,
+                    createdAt TEXT NOT NULL,
+                    UNIQUE(userId, month, dataHash)
                 );
             `);
             const investmentAccountColumns = await db.all('PRAGMA table_info(investment_accounts)');
