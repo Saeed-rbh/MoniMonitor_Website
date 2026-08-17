@@ -395,10 +395,6 @@ const TransactionList = ({
                 setSortby={setSortby}
                 loaded={Boolean(onManageAccounts) || filteredTransactions.length !== 0}
                 isMoreClicked={isMoreClicked}
-                transactions={filteredTransactions}
-                dataAvailability={dataAvailability}
-                setWhichMonth={setWhichMonth}
-                whichMonth={whichMonth}
                 onManageAccounts={onManageAccounts}
               />
 

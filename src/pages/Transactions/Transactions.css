@@ -487,9 +487,44 @@
   height: -moz-fit-content;
   height: fit-content;
   margin: 0;
-  padding: 0;
+  padding: 0 0 20px 0;
   border-radius: 30px;
   overflow-x: hidden;
+}
+
+.TransactionList_TimelineSection {
+  width: 100%;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.TransactionList_TimelineHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 8px 6px 8px;
+  width: 100%;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.TransactionList_TimelineTitle {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--Bc-1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.TransactionList_TimelineCount {
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--Ac-3);
+  letter-spacing: 0.02em;
 }
 
 .TransactionList_MonthlyTitle {
