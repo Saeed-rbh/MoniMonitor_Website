@@ -335,6 +335,7 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
       <TransactionDetailModal
         transaction={viewingTx}
         onClose={() => setViewingTx(null)}
+        onTransactionUpdated={(tx) => setViewingTx(tx)}
       />
     </>
   );

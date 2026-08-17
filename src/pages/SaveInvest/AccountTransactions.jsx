@@ -169,6 +169,7 @@ const AccountTransactions = () => {
       <TransactionDetailModal
         transaction={viewingTx}
         onClose={() => setViewingTx(null)}
+        onTransactionUpdated={(tx) => setViewingTx(tx)}
       />
     </>
   );

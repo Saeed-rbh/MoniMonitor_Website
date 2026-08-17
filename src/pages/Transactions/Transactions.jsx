@@ -139,6 +139,7 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
       <TransactionDetailModal
         transaction={viewingTx}
         onClose={() => setViewingTx(null)}
+        onTransactionUpdated={(tx) => setViewingTx(tx)}
         onEdit={(tx) => {
           setViewingTx(null);
           setIsAddClicked(tx.Category || "Expense");

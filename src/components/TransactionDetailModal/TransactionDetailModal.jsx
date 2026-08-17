@@ -1,9 +1,18 @@
-import React from "react";
-import { FiCalendar, FiCreditCard, FiTag, FiRepeat, FiCheckCircle } from "react-icons/fi";
-import { getTransactionIcon } from "../Categories";
+import React, { useState, useEffect, useCallback } from "react";
+import { FiCalendar, FiCreditCard, FiTag, FiRepeat, FiCheckCircle, FiCheck } from "react-icons/fi";
+import { getTransactionIcon, CATEGORY_GROUPS } from "../Categories";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
+import { updateTransactionAPI } from "../../services/apiService";
+import { useTransactions } from "../../context/TransactionContext";
 import MoreOpen from "../MoreOpen/MoreOpen";
 import "./TransactionDetailModal.css";
+
+const CATEGORY_OPTIONS = [
+  { key: "Expense", label: "Expense", badgeClass: "expense" },
+  { key: "Income", label: "Income", badgeClass: "income" },
+  { key: "Save&Invest", label: "Save & Invest", badgeClass: "saveinvest" },
+  { key: "Internal", label: "Internal", badgeClass: "internal" },
+];
 
 const money = (transaction) => {
   const minor = Number.isFinite(Number(transaction?.AmountMinor))
@@ -39,15 +48,72 @@ const formatFullDate = (timestamp) => {
   });
 };
 
-const TransactionDetailModal = ({ transaction, onClose, onEdit = null }) => {
-  if (!transaction) return null;
+const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransactionUpdated = null }) => {
+  const { monthData } = useTransactions();
+  const [currentTx, setCurrentTx] = useState(transaction);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(null);
 
-  const direction = getTxDirection(transaction);
-  const reason = getTransactionDisplayReason(transaction.Reason, transaction.Label);
-  const category = transaction.Category || "Expense";
-  const label = transaction.Label || category;
-  const account = transaction.Account || transaction.BankName || transaction.AccountName || "Personal Account";
-  const frequency = transaction.Frequency || (transaction.Type === "Monthly" ? "Monthly Recurring" : "One-Time");
+  useEffect(() => {
+    setCurrentTx(transaction);
+    setSaveStatus(null);
+  }, [transaction]);
+
+  const handleSelectCategory = useCallback(async (newCategory, newLabel = null) => {
+    if (!currentTx?.id) return;
+    
+    // Normalize category
+    const targetCategory = newCategory;
+    const availableLabels = CATEGORY_GROUPS[targetCategory] || [];
+    const targetLabel = newLabel || (availableLabels.length > 0 ? availableLabels[0][0] : targetCategory);
+
+    const updatedTx = {
+      ...currentTx,
+      Category: targetCategory,
+      Label: targetLabel,
+    };
+
+    // Optimistic local update
+    setCurrentTx(updatedTx);
+    setIsSaving(true);
+    setSaveStatus("saving");
+
+    try {
+      const res = await updateTransactionAPI(currentTx.id, {
+        Category: targetCategory,
+        Label: targetLabel,
+      });
+
+      if (res && res.status !== "error") {
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus(null), 2000);
+        monthData?.refetch?.();
+        if (onTransactionUpdated) {
+          onTransactionUpdated(updatedTx);
+        }
+      } else {
+        setSaveStatus("error");
+        setTimeout(() => setSaveStatus(null), 2500);
+      }
+    } catch (_err) {
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus(null), 2500);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [currentTx, monthData, onTransactionUpdated]);
+
+  if (!transaction || !currentTx) return null;
+
+  const direction = getTxDirection(currentTx);
+  const reason = getTransactionDisplayReason(currentTx.Reason, currentTx.Label);
+  const category = currentTx.Category || "Expense";
+  const label = currentTx.Label || category;
+  const account = currentTx.Account || currentTx.BankName || currentTx.AccountName || "Personal Account";
+  const frequency = currentTx.Frequency || (currentTx.Type === "Monthly" ? "Monthly Recurring" : "One-Time");
+
+  const normalizedCategory = category === "Saving" || category === "Investment" ? "Save&Invest" : category;
+  const subcategories = (CATEGORY_GROUPS[normalizedCategory] || []).map(([name]) => name);
 
   const feed = () => (
     <div className="TxDetail_Sheet">
@@ -63,8 +129,65 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null }) => {
         </div>
         <h2 className="TxDetail_Reason">{reason || "Transaction"}</h2>
         <div className={`TxDetail_Amount ${direction}`}>
-          <span>{direction === "in" ? "+" : "−"}{money(transaction)}</span>
+          <span>{direction === "in" ? "+" : "−"}{money(currentTx)}</span>
         </div>
+      </div>
+
+      {/* Category Pills Section */}
+      <div className="TxDetail_CategorySection">
+        <div className="TxDetail_CategorySectionHeader">
+          <span className="TxDetail_SectionTitle">
+            <FiTag className="TxDetail_RowIcon" /> Change Category
+          </span>
+          {saveStatus === "saving" && <span className="TxDetail_StatusText saving">Saving...</span>}
+          {saveStatus === "saved" && (
+            <span className="TxDetail_StatusText saved">
+              <FiCheck style={{ marginRight: 3 }} /> Updated
+            </span>
+          )}
+        </div>
+
+        {/* Main Category Pills */}
+        <div className="TxDetail_PillRow">
+          {CATEGORY_OPTIONS.map((opt) => {
+            const isActive = normalizedCategory === opt.key;
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                className={`TxDetail_CategoryPill ${opt.badgeClass} ${isActive ? "active" : ""}`}
+                onClick={() => handleSelectCategory(opt.key)}
+                disabled={isSaving}
+              >
+                {isActive && <FiCheck className="TxDetail_PillCheck" />}
+                <span>{opt.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Subcategory Label Micro-Pills */}
+        {subcategories.length > 0 && (
+          <div className="TxDetail_SubcategoryWrapper">
+            <div className="TxDetail_SubcategoryPills">
+              {subcategories.map((subName) => {
+                const isSubActive = String(label).toLowerCase() === String(subName).toLowerCase();
+                return (
+                  <button
+                    key={subName}
+                    type="button"
+                    className={`TxDetail_SubPill ${isSubActive ? "active" : ""}`}
+                    onClick={() => handleSelectCategory(normalizedCategory, subName)}
+                    disabled={isSaving}
+                  >
+                    {isSubActive && <FiCheck className="TxDetail_SubPillCheck" />}
+                    <span>{subName}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="TxDetail_Card">
@@ -73,7 +196,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null }) => {
             <FiCalendar className="TxDetail_RowIcon" />
             <span>Date & Time</span>
           </div>
-          <strong className="TxDetail_RowRight">{formatFullDate(transaction.Timestamp)}</strong>
+          <strong className="TxDetail_RowRight">{formatFullDate(currentTx.Timestamp)}</strong>
         </div>
 
         <div className="TxDetail_Row">
@@ -82,14 +205,6 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null }) => {
             <span>Account</span>
           </div>
           <strong className="TxDetail_RowRight">{account}</strong>
-        </div>
-
-        <div className="TxDetail_Row">
-          <div className="TxDetail_RowLeft">
-            <FiTag className="TxDetail_RowIcon" />
-            <span>Category</span>
-          </div>
-          <strong className="TxDetail_RowRight">{category} {label && label !== category ? `· ${label}` : ""}</strong>
         </div>
 
         <div className="TxDetail_Row">
@@ -113,9 +228,9 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null }) => {
         <button
           type="button"
           className="TxDetail_EditBtn"
-          onClick={() => onEdit(transaction)}
+          onClick={() => onEdit(currentTx)}
         >
-          Edit Transaction
+          Edit Full Details
         </button>
       )}
     </div>
