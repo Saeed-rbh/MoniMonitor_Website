@@ -271,17 +271,17 @@
 .TransactionList_TransactionList li.TransactionList_ItemRow {
   position: relative;
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   width: 100%;
-  height: 62px;
-  min-height: 62px;
-  padding: 8px 6px;
+  height: 52px;
+  min-height: 52px;
+  padding: 4px 6px;
   box-sizing: border-box;
   border-top: 1px solid var(--Ac-4);
   background: transparent;
-  border-radius: 14px;
+  border-radius: 12px;
   cursor: pointer;
   z-index: 100;
   transition: background 0.15s ease;
@@ -477,6 +477,25 @@
   margin-right: 3px;
 }
 
+.TransactionList_TransactionList li.TransactionList_ItemRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 52px;
+  min-height: 52px;
+  padding: 4px 6px;
+  box-sizing: border-box;
+  border-top: 1px solid var(--Ac-4);
+  background: transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  z-index: 100;
+  transition: background 0.15s ease;
+}
+
 .TransactionList_Monthly {
   position: relative;
   display: flex;
@@ -487,14 +506,14 @@
   height: -moz-fit-content;
   height: fit-content;
   margin: 0;
-  padding: 0 0 20px 0;
+  padding: 0 0 15px 0;
   border-radius: 30px;
   overflow-x: hidden;
 }
 
 .TransactionList_TimelineSection {
   width: 100%;
-  margin-bottom: 14px;
+  margin-bottom: 6px;
   display: flex;
   flex-direction: column;
 }
@@ -503,25 +522,25 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 8px 6px 8px;
+  padding: 8px 6px 2px 6px;
   width: 100%;
   box-sizing: border-box;
   user-select: none;
 }
 
 .TransactionList_TimelineTitle {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--Bc-1);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .TransactionList_TimelineCount {
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 500;
   color: var(--Ac-3);
   letter-spacing: 0.02em;
