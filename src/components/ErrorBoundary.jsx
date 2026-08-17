@@ -50,20 +50,31 @@ class ErrorBoundary extends Component {
             Reload Page
           </button>
 
-          {isDev && this.state.error && (
-            <pre style={{
-              marginTop: "2rem",
+          {this.state.error && (
+            <div style={{
+              marginTop: "1.5rem",
               padding: "1rem",
               borderRadius: "0.5rem",
-              backgroundColor: "#1e293b",
-              color: "#ef4444",
+              backgroundColor: "rgba(0, 0, 0, 0.4)",
+              color: "#ff6b6b",
               maxWidth: "100%",
+              width: "100%",
+              boxSizing: "border-box",
               overflowX: "auto",
               textAlign: "left",
-              fontSize: "0.875rem"
+              fontSize: "0.8rem",
+              fontFamily: "monospace"
             }}>
-              {this.state.error.toString()}
-            </pre>
+              <strong>Error:</strong> {this.state.error.toString()}
+              {this.state.error.stack && (
+                <details style={{ marginTop: "0.5rem", color: "#94a3b8" }}>
+                  <summary style={{ cursor: "pointer" }}>Stack trace</summary>
+                  <pre style={{ whiteSpace: "pre-wrap", fontSize: "0.7rem", marginTop: "0.5rem" }}>
+                    {this.state.error.stack}
+                  </pre>
+                </details>
+              )}
+            </div>
           )}
         </div>
       );

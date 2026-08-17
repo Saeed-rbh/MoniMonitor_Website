@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { fetchAllTransactionData, getSelectedMonthData } from "../services/transactionService";
 
 const emptyDisplayData = {
@@ -17,6 +17,11 @@ export const useTransactionData = (whichMonth, userId) => {
   const [fullData, setFullData] = useState(null);
   const [isOffline, setIsOffline] = useState(typeof navigator !== "undefined" ? !navigator.onLine : false);
   const [displayData, setDisplayData] = useState(emptyDisplayData);
+  const fullDataRef = useRef(fullData);
+  fullDataRef.current = fullData;
+
+  const prevIsOfflineRef = useRef(isOffline);
+  const prevUserIdRef = useRef(null);
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
@@ -38,7 +43,7 @@ export const useTransactionData = (whichMonth, userId) => {
   const loadAllData = useCallback(async (retryCount = 0) => {
     setDisplayData((current) => ({
       ...current,
-      isLoading: !fullData,
+      isLoading: !fullDataRef.current,
       error: null,
     }));
     try {
@@ -51,15 +56,24 @@ export const useTransactionData = (whichMonth, userId) => {
         setDisplayData((prev) => ({ ...prev, isLoading: false, error }));
       }
     }
-  }, [fullData]);
+  }, []);
 
   useEffect(() => {
     if (userId) {
-      loadAllData();
+      const cameBackOnline = prevIsOfflineRef.current && !isOffline;
+      const userChanged = prevUserIdRef.current !== userId;
+      prevUserIdRef.current = userId;
+
+      if (userChanged || cameBackOnline || fullDataRef.current === null) {
+        loadAllData();
+      }
     } else {
-      setFullData({ totalTransactions: {}, Availability: [], netAmounts: {} });
+      prevUserIdRef.current = null;
+      setFullData(null);
       setDisplayData({ ...emptyDisplayData, isLoading: false, isOffline });
     }
+    prevIsOfflineRef.current = isOffline;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, loadAllData, isOffline]);
 
   useEffect(() => {

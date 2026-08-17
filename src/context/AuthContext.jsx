@@ -42,34 +42,52 @@ export const AuthProvider = ({ children }) => {
         const userId = storage?.getItem("userId");
         const profilePhotoUrl = storage?.getItem("profilePhotoUrl");
         const joinedAt = storage?.getItem("joinedAt");
-        if (token && username) setUser({ username, userId, profilePhotoUrl, joinedAt, token });
-        setLoading(false);
+
+        if (token && username) {
+            setUser({ username, userId, profilePhotoUrl, joinedAt, token });
+        }
 
         const webApp = window.Telegram?.WebApp;
-        if (!token || !username || !webApp?.initData) return;
+        const initData = webApp?.initData;
 
-        let cancelled = false;
-        webApp.ready();
-        webApp.expand();
+        // When running inside Telegram WebApp with initData, perform auto-login / refresh
+        if (initData) {
+            let cancelled = false;
+            try {
+                webApp.ready();
+                webApp.expand();
+            } catch (e) {
+                console.warn(e);
+            }
 
-        fetch(apiUrl("/telegram-auth"), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ initData: webApp.initData }),
-        })
-            .then(async (response) => {
-                if (!response.ok) throw new Error("Unable to refresh Telegram profile");
-                return response.json();
+            fetch(apiUrl("/telegram-auth"), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ initData }),
             })
-            .then((data) => {
-                if (!cancelled) setUser(persistSession(data.user, data.accessToken));
-            })
-            .catch(() => {
-                // Keep the existing website session; normal API authentication will
-                // redirect to login if its token has also expired.
-            });
+                .then(async (response) => {
+                    if (!response.ok) {
+                        const err = await response.json().catch(() => ({}));
+                        throw new Error(err.error || "Unable to refresh Telegram profile");
+                    }
+                    return response.json();
+                })
+                .then((data) => {
+                    if (!cancelled && data?.user && data?.accessToken) {
+                        setUser(persistSession(data.user, data.accessToken));
+                    }
+                })
+                .catch((err) => {
+                    console.error("Telegram auth error:", err);
+                })
+                .finally(() => {
+                    if (!cancelled) setLoading(false);
+                });
 
-        return () => { cancelled = true; };
+            return () => { cancelled = true; };
+        }
+
+        setLoading(false);
     }, []);
 
     const login = (userData, token) => {
