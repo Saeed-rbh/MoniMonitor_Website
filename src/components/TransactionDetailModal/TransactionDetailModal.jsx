@@ -7,12 +7,7 @@ import { useTransactions } from "../../context/TransactionContext";
 import MoreOpen from "../MoreOpen/MoreOpen";
 import "./TransactionDetailModal.css";
 
-const CATEGORY_OPTIONS = [
-  { key: "Expense", label: "Expense", badgeClass: "expense" },
-  { key: "Income", label: "Income", badgeClass: "income" },
-  { key: "Save&Invest", label: "Save & Invest", badgeClass: "saveinvest" },
-  { key: "Internal", label: "Internal", badgeClass: "internal" },
-];
+
 
 const money = (transaction) => {
   const minor = Number.isFinite(Number(transaction?.AmountMinor))
@@ -59,18 +54,14 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
     setSaveStatus(null);
   }, [transaction]);
 
-  const handleSelectCategory = useCallback(async (newCategory, newLabel = null) => {
+  const handleSelectReason = useCallback(async (newLabel) => {
     if (!currentTx?.id) return;
     
-    // Normalize category
-    const targetCategory = newCategory;
-    const availableLabels = CATEGORY_GROUPS[targetCategory] || [];
-    const targetLabel = newLabel || (availableLabels.length > 0 ? availableLabels[0][0] : targetCategory);
-
+    const targetCategory = currentTx.Category || "Expense";
     const updatedTx = {
       ...currentTx,
       Category: targetCategory,
-      Label: targetLabel,
+      Label: newLabel,
     };
 
     // Optimistic local update
@@ -81,7 +72,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
     try {
       const res = await updateTransactionAPI(currentTx.id, {
         Category: targetCategory,
-        Label: targetLabel,
+        Label: newLabel,
       });
 
       if (res && res.status !== "error") {
@@ -133,11 +124,11 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
         </div>
       </div>
 
-      {/* Category Pills Section */}
+      {/* Reason / Category Pills Section */}
       <div className="TxDetail_CategorySection">
         <div className="TxDetail_CategorySectionHeader">
           <span className="TxDetail_SectionTitle">
-            <FiTag className="TxDetail_RowIcon" /> Change Category
+            <FiTag className="TxDetail_RowIcon" /> Reason
           </span>
           {saveStatus === "saving" && <span className="TxDetail_StatusText saving">Saving...</span>}
           {saveStatus === "saved" && (
@@ -147,47 +138,24 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
           )}
         </div>
 
-        {/* Main Category Pills */}
-        <div className="TxDetail_PillRow">
-          {CATEGORY_OPTIONS.map((opt) => {
-            const isActive = normalizedCategory === opt.key;
+        {/* Reason Pills */}
+        <div className="TxDetail_ReasonPills">
+          {subcategories.map((subName) => {
+            const isSubActive = String(label).toLowerCase() === String(subName).toLowerCase();
             return (
               <button
-                key={opt.key}
+                key={subName}
                 type="button"
-                className={`TxDetail_CategoryPill ${opt.badgeClass} ${isActive ? "active" : ""}`}
-                onClick={() => handleSelectCategory(opt.key)}
+                className={`TxDetail_ReasonPill ${category.toLowerCase().replace(/[^a-z0-9]/g, '')} ${isSubActive ? "active" : ""}`}
+                onClick={() => handleSelectReason(subName)}
                 disabled={isSaving}
               >
-                {isActive && <FiCheck className="TxDetail_PillCheck" />}
-                <span>{opt.label}</span>
+                {isSubActive && <FiCheck className="TxDetail_PillCheck" />}
+                <span>{subName}</span>
               </button>
             );
           })}
         </div>
-
-        {/* Subcategory Label Micro-Pills */}
-        {subcategories.length > 0 && (
-          <div className="TxDetail_SubcategoryWrapper">
-            <div className="TxDetail_SubcategoryPills">
-              {subcategories.map((subName) => {
-                const isSubActive = String(label).toLowerCase() === String(subName).toLowerCase();
-                return (
-                  <button
-                    key={subName}
-                    type="button"
-                    className={`TxDetail_SubPill ${isSubActive ? "active" : ""}`}
-                    onClick={() => handleSelectCategory(normalizedCategory, subName)}
-                    disabled={isSaving}
-                  >
-                    {isSubActive && <FiCheck className="TxDetail_SubPillCheck" />}
-                    <span>{subName}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       <div className="TxDetail_Card">

@@ -162,14 +162,22 @@
   color: var(--Fc-1);
 }
 
-.TxDetail_PillRow {
+.TxDetail_ReasonPills {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
+  max-height: 140px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 2px 0;
 }
 
-.TxDetail_CategoryPill {
+.TxDetail_ReasonPills::-webkit-scrollbar {
+  display: none;
+}
+
+.TxDetail_ReasonPill {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -179,47 +187,51 @@
   background: var(--Ac-4);
   color: var(--Ac-2);
   font-size: 0.74rem;
-  font-weight: 650;
+  font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   user-select: none;
+  white-space: nowrap;
 }
 
-.TxDetail_CategoryPill:hover {
+.TxDetail_ReasonPill:hover {
   border-color: var(--Bc-2);
   color: var(--Ac-1);
   transform: translateY(-1px);
 }
 
-.TxDetail_CategoryPill:active {
+.TxDetail_ReasonPill:active {
   transform: scale(0.96);
 }
 
-.TxDetail_CategoryPill.active {
+.TxDetail_ReasonPill.active {
   color: var(--Ac-1);
+  font-weight: 700;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
-.TxDetail_CategoryPill.expense.active {
+.TxDetail_ReasonPill.expense.active {
   background: var(--Gc-4);
   border-color: var(--Gc-2);
   color: var(--Gc-1);
 }
 
-.TxDetail_CategoryPill.income.active {
+.TxDetail_ReasonPill.income.active {
   background: var(--Fc-4);
   border-color: var(--Fc-2);
   color: var(--Fc-1);
 }
 
-.TxDetail_CategoryPill.saveinvest.active {
+.TxDetail_ReasonPill.saveinvest.active,
+.TxDetail_ReasonPill.saving.active,
+.TxDetail_ReasonPill.investment.active {
   background: var(--Cc-4);
   border-color: var(--Cc-2);
   color: var(--Cc-1);
 }
 
-.TxDetail_CategoryPill.internal.active {
+.TxDetail_ReasonPill.internal.active {
   background: var(--Bc-4);
   border-color: var(--Bc-2);
   color: var(--Bc-1);
@@ -228,67 +240,6 @@
 .TxDetail_PillCheck {
   width: 12px;
   height: 12px;
-}
-
-.TxDetail_SubcategoryWrapper {
-  margin-top: 2px;
-  padding-top: 6px;
-  border-top: 1px solid var(--Ac-4);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.TxDetail_SubcategoryWrapper::-webkit-scrollbar {
-  display: none;
-}
-
-.TxDetail_SubcategoryPills {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  flex-wrap: wrap;
-  max-height: 100px;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.TxDetail_SubPill {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px 8px;
-  border-radius: 8px;
-  border: 1px solid var(--Ac-4);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--Ac-2);
-  font-size: 0.68rem;
-  font-weight: 550;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.TxDetail_SubPill:hover {
-  background: var(--Ac-4);
-  color: var(--Ac-1);
-}
-
-.TxDetail_SubPill:active {
-  transform: scale(0.95);
-}
-
-.TxDetail_SubPill.active {
-  background: var(--Ac-3);
-  border-color: var(--Bc-2);
-  color: var(--Ac-1);
-  font-weight: 650;
-}
-
-.TxDetail_SubPillCheck {
-  width: 10px;
-  height: 10px;
-  color: var(--Fc-1);
 }
 
 .TxDetail_Card {
