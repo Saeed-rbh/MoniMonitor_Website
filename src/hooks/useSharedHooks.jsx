@@ -36,7 +36,11 @@ export const useTransactionData = (whichMonth, userId) => {
   }, []);
 
   const loadAllData = useCallback(async (retryCount = 0) => {
-    setDisplayData((current) => ({ ...current, isLoading: true, error: null }));
+    setDisplayData((current) => ({
+      ...current,
+      isLoading: !fullData,
+      error: null,
+    }));
     try {
       const data = await fetchAllTransactionData();
       setFullData(data);
@@ -44,11 +48,10 @@ export const useTransactionData = (whichMonth, userId) => {
       if (retryCount < 2) {
         setTimeout(() => loadAllData(retryCount + 1), 2000 * (retryCount + 1));
       } else {
-        setFullData(null);
         setDisplayData((prev) => ({ ...prev, isLoading: false, error }));
       }
     }
-  }, []);
+  }, [fullData]);
 
   useEffect(() => {
     if (userId) {

@@ -46,36 +46,39 @@ const formatFullDate = (timestamp) => {
 const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransactionUpdated = null }) => {
   const { monthData } = useTransactions();
   const [currentTx, setCurrentTx] = useState(transaction);
+  const [selectedLabel, setSelectedLabel] = useState(transaction?.Label || transaction?.Category || "");
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
 
   useEffect(() => {
     setCurrentTx(transaction);
+    setSelectedLabel(transaction?.Label || transaction?.Category || "");
     setSaveStatus(null);
   }, [transaction]);
 
-  const handleSelectReason = useCallback(async (newLabel) => {
-    if (!currentTx?.id) return;
+  const hasChanges = Boolean(selectedLabel && selectedLabel !== (currentTx?.Label || currentTx?.Category));
+
+  const handleSaveReason = useCallback(async () => {
+    if (!currentTx?.id || !selectedLabel) return;
     
     const targetCategory = currentTx.Category || "Expense";
     const updatedTx = {
       ...currentTx,
       Category: targetCategory,
-      Label: newLabel,
+      Label: selectedLabel,
     };
 
-    // Optimistic local update
-    setCurrentTx(updatedTx);
     setIsSaving(true);
     setSaveStatus("saving");
 
     try {
       const res = await updateTransactionAPI(currentTx.id, {
         Category: targetCategory,
-        Label: newLabel,
+        Label: selectedLabel,
       });
 
       if (res && res.status !== "error") {
+        setCurrentTx(updatedTx);
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus(null), 2000);
         monthData?.refetch?.();
@@ -92,14 +95,14 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
     } finally {
       setIsSaving(false);
     }
-  }, [currentTx, monthData, onTransactionUpdated]);
+  }, [currentTx, selectedLabel, monthData, onTransactionUpdated]);
 
   if (!transaction || !currentTx) return null;
 
   const direction = getTxDirection(currentTx);
-  const reason = getTransactionDisplayReason(currentTx.Reason, currentTx.Label);
+  const reason = getTransactionDisplayReason(currentTx.Reason, selectedLabel || currentTx.Label);
   const category = currentTx.Category || "Expense";
-  const label = currentTx.Label || category;
+  const displayLabel = selectedLabel || currentTx.Label || category;
   const account = currentTx.Account || currentTx.BankName || currentTx.AccountName || "Personal Account";
   const frequency = currentTx.Frequency || (currentTx.Type === "Monthly" ? "Monthly Recurring" : "One-Time");
 
@@ -110,12 +113,12 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
     <div className="TxDetail_Sheet">
       <div className="TxDetail_Header">
         <div className={`TxDetail_IconBox ${direction} ${category.toLowerCase().replace(/[^a-z0-9]/g, '')}`}>
-          {getTransactionIcon(category, label)}
+          {getTransactionIcon(category, displayLabel)}
         </div>
         <div className="TxDetail_BadgeRow">
           <span className={`TxDetail_CategoryBadge ${category.toLowerCase().replace(/[^a-z0-9]/g, '')}`}>{category}</span>
-          {label && label !== category && (
-            <span className="TxDetail_LabelBadge">{label}</span>
+          {displayLabel && displayLabel !== category && (
+            <span className="TxDetail_LabelBadge">{displayLabel}</span>
           )}
         </div>
         <h2 className="TxDetail_Reason">{reason || "Transaction"}</h2>
@@ -124,16 +127,25 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
         </div>
       </div>
 
-      {/* Reason / Category Pills Section */}
+      {/* Reason / Category Pills Section with explicit Save */}
       <div className="TxDetail_CategorySection">
         <div className="TxDetail_CategorySectionHeader">
           <span className="TxDetail_SectionTitle">
             <FiTag className="TxDetail_RowIcon" /> Reason
           </span>
-          {saveStatus === "saving" && <span className="TxDetail_StatusText saving">Saving...</span>}
-          {saveStatus === "saved" && (
+          {hasChanges && (
+            <button
+              type="button"
+              className="TxDetail_SavePillBtn"
+              onClick={handleSaveReason}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving..." : saveStatus === "saved" ? "✓ Saved" : "Save"}
+            </button>
+          )}
+          {!hasChanges && saveStatus === "saved" && (
             <span className="TxDetail_StatusText saved">
-              <FiCheck style={{ marginRight: 3 }} /> Updated
+              <FiCheck style={{ marginRight: 3 }} /> Saved
             </span>
           )}
         </div>
@@ -141,13 +153,16 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
         {/* Reason Pills */}
         <div className="TxDetail_ReasonPills">
           {subcategories.map((subName) => {
-            const isSubActive = String(label).toLowerCase() === String(subName).toLowerCase();
+            const isSubActive = String(selectedLabel).toLowerCase() === String(subName).toLowerCase();
             return (
               <button
                 key={subName}
                 type="button"
                 className={`TxDetail_ReasonPill ${category.toLowerCase().replace(/[^a-z0-9]/g, '')} ${isSubActive ? "active" : ""}`}
-                onClick={() => handleSelectReason(subName)}
+                onClick={() => {
+                  setSelectedLabel(subName);
+                  setSaveStatus(null);
+                }}
                 disabled={isSaving}
               >
                 {isSubActive && <FiCheck className="TxDetail_PillCheck" />}

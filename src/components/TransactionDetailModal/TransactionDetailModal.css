@@ -162,6 +162,43 @@
   color: var(--Fc-1);
 }
 
+.TxDetail_SavePillBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--Bc-3);
+  background: radial-gradient(circle at 30% -20%, var(--Bc-3) -100%, var(--Ec-4) 65%);
+  color: var(--Bc-1);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.TxDetail_SavePillBtn:hover {
+  border-color: var(--Bc-2);
+  transform: translateY(-1px);
+}
+
+.TxDetail_SavePillBtn:active {
+  transform: scale(0.95);
+}
+
+.TxDetail_SavePillBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 .TxDetail_ReasonPills {
   display: flex;
   align-items: center;
