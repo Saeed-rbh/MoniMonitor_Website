@@ -68,7 +68,7 @@ const TransactionListMonthly = ({
           <List
             height={height}
             itemCount={filteredTransactions.length}
-            itemSize={55}
+            itemSize={64}
             className="TransactionList_TransactionList"
             itemKey={(index) => filteredTransactions[index]?.id ?? index}
             onItemsRendered={({ visibleStopIndex }) => {

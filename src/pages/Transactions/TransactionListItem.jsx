@@ -5,6 +5,28 @@ import { ScalableElement } from "../../utils/tools";
 import { getTransactionIcon } from "../../components/Categories";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 
+const formatMoney = (val) => {
+  const num = Number(val || 0);
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    maximumFractionDigits: 2,
+  }).format(Math.abs(num));
+};
+
+const formatTransactionDate = (value) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "Unknown date"
+    : date.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+};
+
 const TransactionListItem = ({
   description,
   time,
@@ -20,6 +42,8 @@ const TransactionListItem = ({
 }) => {
   const ModifyLabel = getTransactionIcon(category, label);
   const displayReason = getTransactionDisplayReason(description, label);
+  const isIncome = category === "Income" || type === "Income" || String(type || "").toLowerCase() === "credit";
+  const direction = isIncome ? "in" : "out";
 
   const [visibleButton, setVisibleButton] = useState("M");
   const [showLeftActions, setLeftShowActions] = useState(false);
@@ -62,19 +86,6 @@ const TransactionListItem = ({
     },
     { axis: "x", filterTaps: true }
   );
-
-  const [datePart = "", timePart = ""] = String(time || "").split(/[T ]/);
-  const dateArray = datePart.split("-");
-  const date = new Date(
-    Number(dateArray[0]),
-    Number(dateArray[1]) - 1,
-    Number(dateArray[2])
-  );
-  const hasValidDate = dateArray.length === 3 && !Number.isNaN(date.getTime());
-  const weekdayName = hasValidDate
-    ? new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(date)
-    : "Unknown date";
-  const clockTime = timePart ? timePart.slice(0, 5) : "--:--";
 
   const [finalDel, setFinalDel] = useState(false);
   const handleDelRest = () => {
@@ -164,28 +175,21 @@ const TransactionListItem = ({
             : visibleButton === "RR" && !resetMod
               ? "translateX(380px)"
               : "translateX(0px)",
-    // Let the browser own vertical gestures so the virtualized list scrolls on
-    // mobile. The x-axis drag handler still receives horizontal swipe gestures.
     touchAction: "pan-y",
-    marginTop: finalDel || finalMod ? -55 : 0,
+    marginTop: finalDel || finalMod ? -62 : 0,
     opacity: finalDel || finalMod ? 0 : 1,
-    scale: isScaled && !isSwiped ? 0.9 : 1,
-    width: "calc(100% - 10px)",
-    height: "55px",
-    display: "flex",
-    justifyContent: "space-between",
+    scale: isScaled && !isSwiped ? 0.98 : 1,
+    width: "100%",
+    height: "62px",
+    minHeight: "62px",
+    display: "grid",
+    gridTemplateColumns: "42px minmax(0, 1fr) auto",
     alignItems: "center",
+    gap: "9px",
+    boxSizing: "border-box",
     onRest: () => handlecomplete(),
     onResolve: () => handleResolve(),
   });
-
-  const truncateDescription = (description, maxLength = 30) => {
-    if (description.length > maxLength) {
-      return description.substring(0, maxLength - 3) + "...";
-    } else {
-      return description.padEnd(maxLength, " ");
-    }
-  };
 
   useEffect(() => {
     if (isAddClicked === null) {
@@ -195,18 +199,12 @@ const TransactionListItem = ({
     }
   }, [isAddClicked]);
 
-  const color =
-    category === "Income"
-      ? "var(--Fc-2)"
-      : category === "Expense"
-        ? "var(--Gc-2)"
-        : "var(--Ac-2)";
-
   return (
     <>
       {!isdeleted && (
         <animated.li
           {...bind()}
+          className="AccountTransactions_Row TransactionList_ItemRow"
           style={swipeStyle}
           onClick={() => { if (onClick) onClick(); }}
           onMouseDown={handleMouseDown}
@@ -224,16 +222,17 @@ const TransactionListItem = ({
               Modify
             </ScalableElement>
           )}
-          <animated.p>
-            <animated.span>{ModifyLabel}</animated.span>
-            <div className="transaction-Description">
-              <h4>{truncateDescription(displayReason)}</h4>
-              <h3>
-                {hasValidDate ? dateArray[2] : "--"} | <span>{weekdayName}</span> - {clockTime}
-              </h3>
-            </div>
-          </animated.p>
-          <animated.p style={{ color: color }}>${amount}</animated.p>
+          <div className="AccountTransactions_Icon" aria-hidden="true">
+            {ModifyLabel}
+          </div>
+          <div className="AccountTransactions_Reason">
+            <strong>{displayReason || "Transaction"}</strong>
+            <span>{formatTransactionDate(time)}</span>
+          </div>
+          <div className={`AccountTransactions_Amount ${direction}`}>
+            <strong>{direction === "in" ? "+" : "−"}{formatMoney(amount)}</strong>
+            <span>{direction === "in" ? "in" : "out"}</span>
+          </div>
           {showLeftActions && (
             <ScalableElement
               as="div"

@@ -439,3 +439,101 @@ body {
     opacity: 0.72;
   }
 }
+
+/* ─── Global Unified Transaction Row Design ──────────────────────────── */
+.AccountTransactions_Row {
+  min-height: 62px;
+  padding: 8px 6px;
+  border-top: 1px solid var(--Ac-4);
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  box-sizing: border-box;
+  width: 100%;
+  border-radius: 14px;
+  background: transparent;
+  transition: background 0.15s ease;
+  user-select: none;
+}
+
+.AccountTransactions_Row:active {
+  background: var(--Ac-4);
+}
+
+.AccountTransactions_Icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 13px;
+  background: var(--Ac-4);
+  color: var(--Bc-1);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.AccountTransactions_Icon svg {
+  width: 17px;
+  height: 17px;
+}
+
+.AccountTransactions_Reason {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.AccountTransactions_Reason strong {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  color: var(--Ac-1);
+  font-size: 0.76rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+}
+
+.AccountTransactions_Reason span {
+  display: block;
+  margin-top: 3px;
+  color: var(--Ac-3);
+  font-size: 0.57rem;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.AccountTransactions_Amount {
+  text-align: right;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.AccountTransactions_Amount strong {
+  display: block;
+  color: var(--Gc-1);
+  font-size: 0.75rem;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+}
+
+.AccountTransactions_Amount.in strong {
+  color: var(--Fc-1);
+}
+
+.AccountTransactions_Amount span {
+  display: block;
+  margin-top: 3px;
+  color: var(--Ac-3);
+  font-size: 0.57rem;
+  text-transform: lowercase;
+}

@@ -28,6 +28,19 @@ const getEffectiveCompletedMonth = (monthStr) => {
   return { targetMonth: monthStr, isAutoAdjusted: false };
 };
 
+const transactionDate = (value) => {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "Unknown date"
+    : date.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+};
+
 const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) => {
   const { isMoreClicked, setIsMoreClicked } = useTransactions();
   const [brief, setBrief] = useState(null);
@@ -151,33 +164,23 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
 
           return (
             <article
-              className="AiEvidence_Card"
+              className="AccountTransactions_Row"
               key={transaction.id ?? `${transaction.Timestamp}-${index}`}
               onClick={() => setViewingTx(transaction)}
               style={{ cursor: "pointer" }}
               role="button"
               tabIndex={0}
             >
-              <div className="AiEvidence_Left">
-                <div className="AiEvidence_Icon" aria-hidden="true">
-                  {getTransactionIcon(transaction.Category, transaction.Label)}
-                </div>
-                <div className="AiEvidence_Copy">
-                  <strong className="AiEvidence_Reason">{reason || "Transaction"}</strong>
-                  <span className="AiEvidence_Meta">
-                    {[
-                      formatTxDate(transaction.Timestamp),
-                      transaction.Account || transaction.BankName,
-                      transaction.Label || transaction.Category,
-                    ].filter(Boolean).join(" · ")}
-                  </span>
-                </div>
+              <div className="AccountTransactions_Icon" aria-hidden="true">
+                {getTransactionIcon(transaction.Category, transaction.Label)}
               </div>
-              <div className="AiEvidence_Right">
-                <strong className={`AiEvidence_Amount ${direction}`}>
-                  {direction === "in" ? "+" : "−"}{money(txAmtMinor)}
-                </strong>
-                <span className="AiEvidence_Tag">{transaction.Category || "Expense"}</span>
+              <div className="AccountTransactions_Reason">
+                <strong>{reason || "Transaction"}</strong>
+                <span>{transactionDate(transaction.Timestamp)}</span>
+              </div>
+              <div className={`AccountTransactions_Amount ${direction}`}>
+                <strong>{direction === "in" ? "+" : "−"}{money(txAmtMinor)}</strong>
+                <span>{direction === "in" ? "in" : "out"}</span>
               </div>
             </article>
           );
