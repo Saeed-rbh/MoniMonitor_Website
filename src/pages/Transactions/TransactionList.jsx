@@ -62,17 +62,45 @@ const TransactionList = ({
 
   const sortedTransactions = React.useMemo(() => searchedTransactions
     .filter((transaction) => {
+      if (!transaction || !transaction.Timestamp) return false;
       if (sortby === "All") return true;
       if (["Income", "Expense"].includes(sortby)) return transaction.Category === sortby;
       if (sortby === "Save&Invest") return isSaveInvestTransaction(transaction);
       if (sortby === "Internal") return isInternalTransfer(transaction);
+
+      const txDate = new Date(transaction.Timestamp);
+      if (Number.isNaN(txDate.getTime())) return false;
+
       if (sortby === "Today") {
-        const transactionDate = new Date(transaction.Timestamp);
         const today = new Date();
-        return transactionDate.getDate() === today.getDate() &&
-          transactionDate.getMonth() === today.getMonth() &&
-          transactionDate.getFullYear() === today.getFullYear();
+        return (
+          txDate.getDate() === today.getDate() &&
+          txDate.getMonth() === today.getMonth() &&
+          txDate.getFullYear() === today.getFullYear()
+        );
       }
+
+      if (sortby === "This Week") {
+        const now = new Date();
+        const day = now.getDay();
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(now);
+        monday.setDate(diff);
+        monday.setHours(0, 0, 0, 0);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        sunday.setHours(23, 59, 59, 999);
+        return txDate >= monday && txDate <= sunday;
+      }
+
+      if (sortby.startsWith("week:")) {
+        const [, startStr, endStr] = sortby.split(":");
+        const startTime = new Date(`${startStr}T00:00:00`).getTime();
+        const endTime = new Date(`${endStr}T23:59:59.999`).getTime();
+        const txTime = txDate.getTime();
+        return txTime >= startTime && txTime <= endTime;
+      }
+
       if (sortby === "daily") return transaction.Frequency === "Daily";
       if (sortby === "monthly") return transaction.Frequency === "Monthly";
       return true;
@@ -367,29 +395,11 @@ const TransactionList = ({
                 setSortby={setSortby}
                 loaded={Boolean(onManageAccounts) || filteredTransactions.length !== 0}
                 isMoreClicked={isMoreClicked}
+                transactions={filteredTransactions}
+                dataAvailability={dataAvailability}
+                setWhichMonth={setWhichMonth}
+                whichMonth={whichMonth}
                 onManageAccounts={onManageAccounts}
-                availabilityMap={{
-                  Income: Transactions.some((t) => t.Category === "Income"),
-                  Expense: Transactions.some((t) => t.Category === "Expense"),
-                  "Save&Invest": Transactions.some(isSaveInvestTransaction),
-                  Internal: Transactions.some(isInternalTransfer),
-                  Today: filteredTransactions.some((t) => {
-                    const d = new Date(t.Timestamp);
-                    const now = new Date();
-                    return (
-                      d.getDate() === now.getDate() &&
-                      d.getMonth() === now.getMonth() &&
-                      d.getFullYear() === now.getFullYear()
-                    );
-                  }),
-                  daily: filteredTransactions.some(
-                    (t) => t.Frequency === "Daily"
-                  ),
-                  monthly: filteredTransactions.some(
-                    (t) => t.Frequency === "Monthly"
-                  ),
-                  All: true,
-                }}
               />
 
             {/* Search Input Bar */}

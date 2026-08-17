@@ -1,47 +1,159 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useSprings, animated, useSpring } from "@react-spring/web";
 import { ScalableElement } from "../../utils/tools";
 import { useDrag } from "@use-gesture/react";
+
+const monthsFullNames = {
+  Jan: "January",
+  Feb: "February",
+  Mar: "March",
+  Apr: "April",
+  May: "May",
+  Jun: "June",
+  Jul: "July",
+  Aug: "August",
+  Sep: "September",
+  Oct: "October",
+  Nov: "November",
+  Dec: "December",
+};
+
+/**
+ * Dynamically extracts all distinct calendar weeks containing transactions
+ */
+export const getWeeksFromTransactions = (transactions = []) => {
+  if (!transactions || transactions.length === 0) return [];
+
+  const weekMap = new Map();
+
+  transactions.forEach((tx) => {
+    if (!tx.Timestamp) return;
+    const date = new Date(tx.Timestamp);
+    if (Number.isNaN(date.getTime())) return;
+
+    // Calculate Monday of the week (Monday = 1, Sunday = 0 -> 7)
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(date);
+    monday.setDate(diff);
+    monday.setHours(0, 0, 0, 0);
+
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    sunday.setHours(23, 59, 59, 999);
+
+    const startStr = monday.toISOString().slice(0, 10);
+    const endStr = sunday.toISOString().slice(0, 10);
+    const key = `week:${startStr}:${endStr}`;
+
+    if (!weekMap.has(key)) {
+      const startMonth = monday.toLocaleString("en-US", { month: "short" });
+      const endMonth = sunday.toLocaleString("en-US", { month: "short" });
+      const startDay = monday.getDate();
+      const endDay = sunday.getDate();
+
+      const label =
+        startMonth === endMonth
+          ? `${startMonth} ${startDay}–${endDay}`
+          : `${startMonth} ${startDay} – ${endMonth} ${endDay}`;
+
+      weekMap.set(key, { key, label, startTime: monday.getTime() });
+    }
+  });
+
+  return Array.from(weekMap.values()).sort((a, b) => b.startTime - a.startTime);
+};
+
+/**
+ * Extracts past available months from dataAvailability
+ */
+export const getAvailableMonths = (dataAvailability, whichMonth) => {
+  if (!dataAvailability) return [];
+  const list = [];
+
+  const entries = Array.isArray(dataAvailability)
+    ? dataAvailability
+    : Object.entries(dataAvailability);
+
+  entries.forEach(([year, monthsObj]) => {
+    if (!monthsObj || typeof monthsObj !== "object") return;
+    const months = Array.isArray(monthsObj) ? monthsObj[1] : monthsObj;
+    if (!months || typeof months !== "object") return;
+
+    Object.entries(months)
+      .reverse()
+      .forEach(([monthName, info]) => {
+        const isAvailable = Array.isArray(info) ? info[0] : Boolean(info);
+        const monthIndex = Array.isArray(info) ? info[1] : 0;
+        if (isAvailable && monthIndex !== whichMonth) {
+          list.push({
+            key: `month:${monthIndex}`,
+            label: monthsFullNames[monthName] || monthName,
+            monthIndex,
+          });
+        }
+      });
+  });
+
+  return list;
+};
 
 const TransactionFilter = ({
   sortby,
   setSortby,
   loaded,
   isMoreClicked,
-  availabilityMap,
-  onManageAccounts,
+  transactions = [],
+  dataAvailability = null,
+  setWhichMonth = null,
+  whichMonth = 0,
+  onManageAccounts = null,
 }) => {
-  const sortItems = React.useMemo(() => {
-    let items;
-    // If in a specific Category Context (Income, Expense, Save&Invest), show only Time filters
-    if (["Income", "Expense", "Save&Invest", "Internal"].includes(isMoreClicked)) {
-      items = ["All", "daily", "monthly", "Today"];
-    } else {
-      items = ["All", "Income", "Expense", "Save&Invest", "Internal", "daily", "monthly", "Today"];
+  const sortItems = useMemo(() => {
+    const items = [
+      { key: "All", label: "All", type: "preset" },
+      { key: "Today", label: "Today", type: "preset" },
+      { key: "This Week", label: "This Week", type: "preset" },
+    ];
+
+    // Add dynamic week ranges from current transactions
+    const weeks = getWeeksFromTransactions(transactions);
+    weeks.forEach((w) => {
+      items.push({ key: w.key, label: w.label, type: "week" });
+    });
+
+    // Add historical available months
+    const months = getAvailableMonths(dataAvailability, whichMonth);
+    months.forEach((m) => {
+      items.push({ key: m.key, label: m.label, type: "month", monthIndex: m.monthIndex });
+    });
+
+    if (onManageAccounts) {
+      return [{ key: "Accounts", label: "Accounts", type: "action" }, ...items];
     }
-    return onManageAccounts ? ["Accounts", ...items] : items;
-  }, [isMoreClicked, onManageAccounts]);
+
+    return items;
+  }, [transactions, dataAvailability, whichMonth, onManageAccounts]);
 
   const [scrollWidth, setScrollWidth] = useState(0);
   const [{ x }, api] = useSpring(() => ({ x: 0 }));
   const [currentX, setCurrentX] = useState(0);
-  const isScrolling = useRef(false); // Use ref for synchronous access
+  const isScrolling = useRef(false);
   const widthRef = useRef(null);
   const ParWidthRef = useRef(null);
 
   useEffect(() => {
     const parWidth = ParWidthRef.current ? ParWidthRef.current.offsetWidth : 0;
-    setScrollWidth(
-      widthRef.current ? widthRef.current.offsetWidth - parWidth + 20 : 0
-    );
-  }, [widthRef.current]);
+    const contentWidth = widthRef.current ? widthRef.current.scrollWidth : 0;
+    setScrollWidth(Math.max(0, contentWidth - parWidth + 30));
+  }, [sortItems]);
 
   const bind = useDrag(({ down, movement: [mx], memo = currentX, cancel }) => {
-    if (sortItems.length < 5) cancel();
+    if (scrollWidth <= 0) cancel();
 
     let newX = memo + mx;
-    if (newX > 0) return setCurrentX(0);
-    if (newX < -scrollWidth) return setCurrentX(-scrollWidth);
+    if (newX > 0) newX = 0;
+    if (newX < -scrollWidth) newX = -scrollWidth;
 
     if (down) {
       if (Math.abs(mx) > 5) {
@@ -61,35 +173,36 @@ const TransactionFilter = ({
     sortItems.length,
     (index) => {
       const item = sortItems[index];
-      // Default to true if availabilityMap is missing or item not in map (e.g., legacy behavior)
-      const isAvailable =
-        !availabilityMap ||
-        availabilityMap[item] === undefined ||
-        availabilityMap[item];
+      const isSelected = sortby === item.key;
 
       return {
-        filter: sortby === item ? "grayscale(0)" : "grayscale(1)",
-        color: sortby === item ? "var(--Bc-1)" : "var(--Ac-1)",
-        fontWeight: sortby === item ? "600" : "200",
-        outline:
-          sortby === item
-            ? "1px solid var(--Bc-3)"
-            : "1px solid var(--Bc-3)",
-        opacity: isAvailable ? 1 : 0.3,
-        pointerEvents: isAvailable ? "auto" : "none",
+        filter: isSelected ? "grayscale(0)" : "grayscale(1)",
+        color: isSelected ? "var(--Bc-1)" : "var(--Ac-1)",
+        fontWeight: isSelected ? "600" : "400",
+        background: isSelected
+          ? "radial-gradient(circle at 30% -20%, var(--Bc-3) -100%, var(--Ec-4) 65%)"
+          : "var(--Ac-5)",
+        outline: isSelected ? "1.5px solid var(--Bc-1)" : "1px solid var(--Ac-3)",
       };
     },
-    [sortby, sortItems, availabilityMap]
+    [sortby, sortItems]
   );
 
   const handleClick = (index) => {
     if (!isScrolling.current) {
       const item = sortItems[index];
-      if (item === "Accounts" && onManageAccounts) {
+      if (item.type === "action" && onManageAccounts) {
         onManageAccounts();
         return;
       }
-      setSortby(item);
+      if (item.type === "month") {
+        if (setWhichMonth) {
+          setWhichMonth(item.monthIndex);
+          setSortby("All");
+        }
+        return;
+      }
+      setSortby(item.key);
     }
   };
 
@@ -106,19 +219,20 @@ const TransactionFilter = ({
             style={{
               height: "40px",
               display: "flex",
-              transform: x.to((x) => `translateX(${x}px)`),
+              alignItems: "center",
+              transform: x.to((val) => `translateX(${val}px)`),
             }}
           >
             {springs.map((props, index) => (
               <ScalableElement
                 as="h1"
-                key={sortItems[index]}
+                key={sortItems[index].key}
                 style={{
                   ...props,
                 }}
                 onClick={() => handleClick(index)}
               >
-                {sortItems[index]}
+                {sortItems[index].label}
               </ScalableElement>
             ))}
           </animated.div>
