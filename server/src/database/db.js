@@ -242,12 +242,15 @@ async function getDb() {
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     userId TEXT NOT NULL,
                     month TEXT NOT NULL,
-                    dataHash TEXT NOT NULL,
+                    dataHash TEXT,
                     briefJson TEXT NOT NULL,
                     createdAt TEXT NOT NULL,
-                    UNIQUE(userId, month, dataHash)
+                    UNIQUE(userId, month)
                 );
             `);
+            await db.exec(`
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_monthly_ai_briefs_user_month ON monthly_ai_briefs(userId, month);
+            `).catch(() => {});
             const investmentAccountColumns = await db.all('PRAGMA table_info(investment_accounts)');
             if (!investmentAccountColumns.some((column) => column.name === 'accountRef')) {
                 await db.exec('ALTER TABLE investment_accounts ADD COLUMN accountRef TEXT');

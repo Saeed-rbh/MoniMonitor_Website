@@ -200,14 +200,13 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
     );
     const pending = await db.get(`SELECT COUNT(*) AS count FROM email_ingestion_queue WHERE status = 'pending'`);
     const analysis = buildMonthlyAnalysis(transactions, month, { pendingEmails: pending?.count || 0 });
-    const dataHash = hashAnalysis(analysis);
-    const cacheKey = `${userId}:${month}:${dataHash}`;
+    const cacheKey = `${userId}:${month}`;
     if (!options.refresh) {
         if (cache.has(cacheKey)) return cache.get(cacheKey);
 
         const dbRecord = await db.get(
-            `SELECT briefJson FROM monthly_ai_briefs WHERE userId = ? AND month = ? AND dataHash = ?`,
-            [userId, month, dataHash]
+            `SELECT briefJson FROM monthly_ai_briefs WHERE userId = ? AND month = ? ORDER BY id DESC LIMIT 1`,
+            [userId, month]
         );
         if (dbRecord?.briefJson) {
             try {
@@ -219,6 +218,8 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
             }
         }
     }
+
+    const dataHash = hashAnalysis(analysis);
 
     let selectedInsights = null;
     let source = 'deterministic';
@@ -529,7 +530,7 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
     await db.run(
         `INSERT INTO monthly_ai_briefs (userId, month, dataHash, briefJson, createdAt)
          VALUES (?, ?, ?, ?, ?)
-         ON CONFLICT(userId, month, dataHash) DO UPDATE SET briefJson = excluded.briefJson, createdAt = excluded.createdAt`,
+         ON CONFLICT(userId, month) DO UPDATE SET dataHash = excluded.dataHash, briefJson = excluded.briefJson, createdAt = excluded.createdAt`,
         [userId, month, dataHash, JSON.stringify(result), new Date().toISOString()]
     ).catch((err) => console.warn('[Monthly insights] DB persistence error:', err.message));
 
