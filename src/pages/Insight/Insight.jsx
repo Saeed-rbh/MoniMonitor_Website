@@ -1061,17 +1061,23 @@ const Insight = () => {
                             <Utensils size={13} strokeWidth={2.2} />
                         </div>
                         <span className="Insight_SquareBadge dining">
-                            {diningStats.diff.arrow && (
-                                <span style={{
-                                    color: diningStats.diff.isIncrease ? 'var(--Gc-1)' : 'var(--Fc-1)',
-                                    marginRight: '2px',
-                                    fontSize: '0.68rem',
-                                    lineHeight: 1
-                                }}>
-                                    {diningStats.diff.arrow}
-                                </span>
+                            {viewMode === 'alltime' ? (
+                                <span>{diningStats.count > 0 ? `${Math.round(diningStats.percentage)}%` : '0%'}</span>
+                            ) : (
+                                <>
+                                    {diningStats.diff.arrow && (
+                                        <span style={{
+                                            color: diningStats.diff.isIncrease ? 'var(--Gc-1)' : 'var(--Fc-1)',
+                                            marginRight: '2px',
+                                            fontSize: '0.68rem',
+                                            lineHeight: 1
+                                        }}>
+                                            {diningStats.diff.arrow}
+                                        </span>
+                                    )}
+                                    <span>{diningStats.diff.pct}%</span>
+                                </>
                             )}
-                            <span>{diningStats.diff.pct}%</span>
                         </span>
                     </div>
 
