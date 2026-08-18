@@ -674,7 +674,7 @@ const Insight = () => {
                                     {formatCompact(totalIncome)}
                                 </span>
                                 <div className="Insight_CashFlowLabel">
-                                    <span className="Insight_CashFlowDot" style={{ background: "var(--Fc-1)" }} />
+                                    <span className="Insight_CashFlowDot inflow" />
                                     <span>Inflow</span>
                                 </div>
                             </div>
@@ -683,7 +683,7 @@ const Insight = () => {
                                     {formatCompact(totalExpense)}
                                 </span>
                                 <div className="Insight_CashFlowLabel">
-                                    <span className="Insight_CashFlowDot" style={{ background: "var(--Gc-1)" }} />
+                                    <span className="Insight_CashFlowDot outflow" />
                                     <span>Outflow</span>
                                 </div>
                             </div>
@@ -725,7 +725,6 @@ const Insight = () => {
                                                             className="Insight_CashFlowPill inflow"
                                                             style={{
                                                                 height: `${inflowHeight}px`,
-                                                                background: "var(--Fc-1)",
                                                             }}
                                                         />
                                                     )}
@@ -734,20 +733,13 @@ const Insight = () => {
                                                             className="Insight_CashFlowPill outflow"
                                                             style={{
                                                                 height: `${outflowHeight}px`,
-                                                                background: "var(--Gc-1)",
-                                                                marginTop: inflowHeight > 0 ? "3px" : "0px",
+                                                                marginTop: inflowHeight > 0 ? "4px" : "0px",
                                                             }}
                                                         />
                                                     )}
                                                 </>
                                             ) : (
-                                                <div
-                                                    className="Insight_CashFlowPill empty"
-                                                    style={{
-                                                        height: "4px",
-                                                        background: "var(--Ac-4)",
-                                                    }}
-                                                />
+                                                <div className="Insight_CashFlowPill empty" />
                                             )}
                                         </div>
                                         <span className="Insight_CashFlowDayLabel">{day.label}</span>
