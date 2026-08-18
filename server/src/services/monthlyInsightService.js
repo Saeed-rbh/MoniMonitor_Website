@@ -382,6 +382,18 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
             };
         });
 
+        // Calculate habit metrics for the rich observation payload
+        const weekendShare = analysis.summary.expenseMinor > 0
+            ? Math.round((weekendSum / analysis.summary.expenseMinor) * 100)
+            : 0;
+        const postPaydayShare = analysis.summary.expenseMinor > 0
+            ? Math.round((postPaydaySumMinor / analysis.summary.expenseMinor) * 100)
+            : 0;
+        const sortedDays = Object.entries(dayTotals).sort((a, b) => b[1] - a[1]);
+        const topDay = sortedDays[0];
+        const diningMinor = curCategoriesMap['Dining']?.totalMinor || 0;
+        const groceriesMinor = curCategoriesMap['Groceries']?.totalMinor || 0;
+
         const richData = {
             targetMonth: month,
             summary: {
