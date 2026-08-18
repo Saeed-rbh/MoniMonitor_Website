@@ -1276,41 +1276,73 @@ async function detectAndMarkRecurring(userId, transactionId) {
 }
 
 // ─── Internal Transfer Auto-Detection ─────────────────────────────────────
-// Time window (ms) within which two transactions of the same amount are
-// considered part of the same self-transfer (e.g. Interac + RBC alerts).
+// Time window (ms) within which transactions of the same amount can form
+// a valid internal self-transfer group.
 const INTERNAL_PAIRING_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 /**
- * Returns true if an Internal transaction looks like a real bank/Interac
- * self e-Transfer notification (as opposed to a manually-imported or
- * portfolio "Internal transfer: X → Y" entry).
- *
- * We only auto-pair Internal transactions that:
- *   1. Came from an actual email (ReceivedAt IS NOT NULL), AND
- *   2. Were NOT created from a portfolio-style "Internal transfer: …" reason
- *      (those are ledger-only entries with no matching bank alert counterpart).
+ * Returns true if an Internal transaction is a genuine bank/Interac email alert
+ * (as opposed to a ledger-import "Internal transfer: X → Y [XFER-…]" entry).
  */
 function isEmailSourcedInternalTransfer(tx) {
     if (!tx.ReceivedAt) return false;
-    // Portfolio import entries have Reason like "Internal transfer: X → Y [XFER-…]"
     if (/^Internal transfer:/i.test(String(tx.Reason || ''))) return false;
     return true;
 }
 
+/** Normalised (BankName, Account) key for grouping transactions by account. */
+function normalizeAccountKey(bankName, account) {
+    return `${String(bankName || '').trim().toLowerCase()}|${String(account || '').trim().toLowerCase()}`;
+}
+
 /**
- * After saving any transaction, this function checks for internal-transfer
- * counterparts and reclassifies them automatically.
+ * After any transaction is saved, detect whether it is part of a multi-email
+ * internal self-transfer and reclassify the relevant counterparts.
  *
- * Scenario A — the saved transaction is already Internal (e.g. Interac alert
- * arrived first): look for same-amount Income/Expense companions within the
- * time window and flip them to Internal.
+ * ────────────────────────────────────────────────────────────────────────────
+ * VALID TRANSFER STRUCTURE
  *
- * Scenario B — the saved transaction is Income or Expense (e.g. RBC bank
- * alert arrived first): look for a same-amount email-sourced Internal companion
- * within the time window and flip the new transaction to Internal.
+ *   A valid internal transfer moves money from account A to account B and
+ *   generates up to three separate bank emails:
  *
- * Returns an array of reclassification records:
- *   [{ id, oldCategory, oldLabel, newCategory, newLabel }]
+ *     [A] Withdrawal / OUT   ← Expense alert from the source bank
+ *     [–] Interac notice     ← "E-Transfer - SAEED ARABHA" (no account, Internal)
+ *     [B] Deposit   / IN     ← Income alert from the destination bank
+ *
+ *   Key invariants:
+ *     1. Source account A ≠ destination account B.
+ *     2. The same account can appear at most ONCE in a transfer group
+ *        (either as source OR as destination, never both).
+ *        → If both an IN and an OUT come from the same account, only the IN
+ *          (deposit = destination leg) is paired; the OUT is left as Expense.
+ *     3. Without an Interac notification a bare OUT-from-A + IN-to-B pair
+ *        (different accounts, same amount, within window) is also valid.
+ *
+ * ────────────────────────────────────────────────────────────────────────────
+ * ALGORITHM (called for every new/updated transaction)
+ *
+ *   Step 1 – Collect siblings: all email-sourced transactions with the same
+ *             AmountMinor + Currency within the 2-hour window.
+ *
+ *   Step 2 – Identify the Interac notification (if present): Category=Internal,
+ *             email-sourced, Reason NOT "Internal transfer: …".
+ *
+ *   Step 3 – Group the reclassifiable bank alerts (Income/Expense, ReceivedAt
+ *             IS NOT NULL, not yet Internal) by account.
+ *
+ *   Step 4 – Choose at most one pairIN (destination) and one pairOUT (source):
+ *     • If all reclassifiable candidates are from the SAME account:
+ *         – An Interac notification must be present to confirm a self-transfer.
+ *         – Pair at most ONE: prefer IN (deposit) over OUT (withdrawal).
+ *     • If candidates span MULTIPLE accounts:
+ *         – Look for one clean IN account (only INs, no OUTs) and one clean
+ *           OUT account (only OUTs, no INs) that are different from each other.
+ *         – An Interac notification is NOT required here (bare OUT+IN pair is
+ *           sufficient evidence when the accounts differ).
+ *
+ *   Step 5 – Reclassify the selected pair to Internal/Internal Transfer.
+ *
+ * Returns [{id, oldCategory, oldLabel, newCategory, newLabel}] for each change.
  */
 async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     const db = await getDb();
@@ -1319,87 +1351,170 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
         [transactionId, userId]
     );
     if (!tx) return [];
+    if (!tx.ReceivedAt) return [];
 
-    const reclassified = [];
     const txTime = new Date(tx.Timestamp).getTime();
     if (!Number.isFinite(txTime)) return [];
 
-    if (tx.Category === 'Internal') {
-        // Only proceed if this Internal tx is a genuine bank-email-sourced alert
-        if (!isEmailSourcedInternalTransfer(tx)) return [];
+    // Only relevant for Interac Internal alerts or bank Income/Expense alerts
+    const isInterac = tx.Category === 'Internal' && isEmailSourcedInternalTransfer(tx);
+    const isBankAlert = tx.Category === 'Income' || tx.Category === 'Expense';
+    if (!isInterac && !isBankAlert) return [];
 
-        // Scenario A: find companion Income/Expense bank-alert rows
-        const candidates = await db.all(
-            `SELECT * FROM transactions
-             WHERE userId = ? AND AmountMinor = ? AND Currency = ?
-               AND Category IN ('Income', 'Expense')
-               AND ReceivedAt IS NOT NULL
-               AND id != ?`,
-            [userId, tx.AmountMinor, tx.Currency || 'CAD', transactionId]
-        );
+    const windowHours = INTERNAL_PAIRING_WINDOW_MS / 3600000;
 
-        for (const candidate of candidates) {
-            const candidateTime = new Date(candidate.Timestamp).getTime();
-            if (!Number.isFinite(candidateTime)) continue;
-            if (Math.abs(txTime - candidateTime) > INTERNAL_PAIRING_WINDOW_MS) continue;
+    // ── Step 1: collect all same-amount email-sourced siblings within window ──
+    const siblings = await db.all(
+        `SELECT * FROM transactions
+         WHERE userId = ? AND AmountMinor = ? AND Currency = ?
+           AND ReceivedAt IS NOT NULL
+           AND id != ?
+           AND ABS(JULIANDAY(Timestamp) - JULIANDAY(?)) * 24 <= ?`,
+        [userId, tx.AmountMinor, tx.Currency || 'CAD', transactionId, tx.Timestamp, windowHours]
+    );
 
-            await db.run(
-                `UPDATE transactions SET Category = 'Internal', Label = 'Internal Transfer'
-                 WHERE id = ? AND userId = ?`,
-                [candidate.id, userId]
-            );
-            console.log(
-                `[InternalPairing] Reclassified tx ${candidate.id} ` +
-                `(${candidate.Category}/${candidate.Label} $${candidate.Amount}) → Internal/Internal Transfer ` +
-                `(paired with Internal tx ${transactionId}).`
-            );
-            reclassified.push({
-                id: candidate.id,
-                oldCategory: candidate.Category,
-                oldLabel: candidate.Label,
-                newCategory: 'Internal',
-                newLabel: 'Internal Transfer',
-            });
+    // ── Step 2: identify the Interac notification (among siblings or tx itself) ──
+    const all = [tx, ...siblings];
+    const interac = all.find(t => t.Category === 'Internal' && isEmailSourcedInternalTransfer(t));
+
+    // ── Step 3: collect reclassifiable bank-alert siblings and occupied accounts ──
+    // Already-Internal bank-alert siblings (e.g. the RBC IN deposit that was
+    // reclassified in a previous pass) mark their accounts as "occupied" — no
+    // further transaction from the same account can be paired into this transfer.
+    const alreadyPairedBankAlertSiblings = siblings.filter(
+        s => s.Category === 'Internal' && s.ReceivedAt &&
+             !/^Internal transfer:/i.test(String(s.Reason || '')) &&
+             (interac ? s.id !== interac.id : true) &&
+             (s.AccountFlow === 'IN' || s.AccountFlow === 'OUT' || s.BankName !== 'Interac')
+    );
+    const occupiedAccountKeys = new Set(
+        alreadyPairedBankAlertSiblings.map(s => normalizeAccountKey(s.BankName, s.Account))
+    );
+
+    const candidates = siblings.filter(
+        s => (s.Category === 'Income' || s.Category === 'Expense') && s.ReceivedAt
+    );
+
+    if (candidates.length === 0) return [];
+
+    // Remove candidates whose account is already occupied by an existing Internal pairing
+    const availableCandidates = candidates.filter(
+        c => !occupiedAccountKeys.has(normalizeAccountKey(c.BankName, c.Account))
+    );
+
+    if (availableCandidates.length === 0) return [];
+
+    // ── Step 4: group candidates by account, then choose pairIN + pairOUT ────
+    const byAccount = new Map(); // normalizedKey → { key, ins: [], outs: [] }
+    for (const c of availableCandidates) {
+        const key = normalizeAccountKey(c.BankName, c.Account);
+        if (!byAccount.has(key)) byAccount.set(key, { key, ins: [], outs: [] });
+        const g = byAccount.get(key);
+        if (c.AccountFlow === 'OUT') g.outs.push(c);
+        else g.ins.push(c); // 'IN' or null → treat as deposit/destination leg
+    }
+
+    const accountGroups = [...byAccount.values()];
+    let pairIN  = null;
+    let pairOUT = null;
+
+    if (accountGroups.length === 1) {
+        // All reclassifiable candidates from the SAME account.
+        // Require an Interac notification to confirm this is actually a self-transfer
+        // (without Interac we can't distinguish a coincidental same-amount expense+income
+        // pair on the same account from a real internal transfer).
+        if (!interac) return [];
+
+        const [group] = accountGroups;
+        if (group.ins.length === 1 && group.outs.length === 0) {
+            pairIN = group.ins[0];
+        } else if (group.ins.length === 0 && group.outs.length === 1) {
+            pairOUT = group.outs[0];
+        } else if (group.ins.length >= 1) {
+            // Both IN and OUT present for the same account (the problem case:
+            // same-account deposit + withdrawal around the same time).
+            // Pair only the IN (deposit = destination leg). Leave the OUT as-is.
+            // Sort by closeness to the Interac notification time.
+            const interacTime = new Date(interac.Timestamp).getTime();
+            pairIN = group.ins.sort((a, b) =>
+                Math.abs(new Date(a.Timestamp).getTime() - interacTime) -
+                Math.abs(new Date(b.Timestamp).getTime() - interacTime)
+            )[0];
         }
-    } else if (tx.Category === 'Income' || tx.Category === 'Expense') {
-        // Only pair bank-email-sourced Income/Expense transactions
-        if (!tx.ReceivedAt) return [];
+        // Multiple INs with no OUTs → ambiguous → leave unpaired.
 
-        // Scenario B: look for a matching email-sourced Internal companion
-        const internalMatch = await db.get(
-            `SELECT * FROM transactions
-             WHERE userId = ? AND AmountMinor = ? AND Currency = ?
-               AND Category = 'Internal'
-               AND ReceivedAt IS NOT NULL
-               AND Reason NOT LIKE 'Internal transfer:%'
-               AND id != ?
-             ORDER BY ABS(JULIANDAY(Timestamp) - JULIANDAY(?)) ASC
-             LIMIT 1`,
-            [userId, tx.AmountMinor, tx.Currency || 'CAD', transactionId, tx.Timestamp]
-        );
+    } else {
+        // Candidates span MULTIPLE accounts.
+        // Look for one clean IN-only account and one clean OUT-only account.
+        // A bare OUT-from-A + IN-to-B pair is valid even without an Interac notification.
 
-        if (internalMatch) {
-            const matchTime = new Date(internalMatch.Timestamp).getTime();
-            if (Number.isFinite(matchTime) && Math.abs(txTime - matchTime) <= INTERNAL_PAIRING_WINDOW_MS) {
-                await db.run(
-                    `UPDATE transactions SET Category = 'Internal', Label = 'Internal Transfer'
-                     WHERE id = ? AND userId = ?`,
-                    [transactionId, userId]
-                );
-                console.log(
-                    `[InternalPairing] Reclassified tx ${transactionId} ` +
-                    `(${tx.Category}/${tx.Label} $${tx.Amount}) → Internal/Internal Transfer ` +
-                    `(paired with Internal tx ${internalMatch.id}).`
-                );
-                reclassified.push({
-                    id: transactionId,
-                    oldCategory: tx.Category,
-                    oldLabel: tx.Label,
-                    newCategory: 'Internal',
-                    newLabel: 'Internal Transfer',
-                });
+        // Find a single clean IN account (only INs, no OUTs on that account)
+        for (const group of accountGroups) {
+            if (!pairIN && group.ins.length === 1 && group.outs.length === 0) {
+                pairIN = group.ins[0];
+                break;
             }
         }
+        // Find a single clean OUT account (only OUTs, no INs) that differs from the IN account
+        for (const group of accountGroups) {
+            if (!pairOUT && group.outs.length === 1 && group.ins.length === 0) {
+                if (!pairIN || group.key !== normalizeAccountKey(pairIN.BankName, pairIN.Account)) {
+                    pairOUT = group.outs[0];
+                    break;
+                }
+            }
+        }
+
+        // If Interac is present but we still haven't found a pairIN, fall back to the
+        // nearest IN candidate from any account (Interac confirms it's a self-transfer).
+        if (!pairIN && interac) {
+            const interacTime = new Date(interac.Timestamp).getTime();
+            const allIns = accountGroups.flatMap(g => g.ins);
+            if (allIns.length === 1) {
+                pairIN = allIns[0];
+            } else if (allIns.length > 1) {
+                // Sort by closeness to Interac time and pick the nearest
+                const nearest = allIns.sort((a, b) =>
+                    Math.abs(new Date(a.Timestamp).getTime() - interacTime) -
+                    Math.abs(new Date(b.Timestamp).getTime() - interacTime)
+                )[0];
+                // Only pick if it's unambiguously the closest (not a tie)
+                const second = allIns[1];
+                const d1 = Math.abs(new Date(nearest.Timestamp).getTime() - interacTime);
+                const d2 = Math.abs(new Date(second.Timestamp).getTime() - interacTime);
+                if (d1 !== d2) pairIN = nearest;
+            }
+        }
+
+        // Require at least one of pairIN or pairOUT; and if both, ensure they come
+        // from different accounts (enforced by the loops above).
+        if (!pairIN && !pairOUT) return [];
+    }
+
+    // ── Step 5: reclassify the selected pair ──────────────────────────────────
+    const reclassified = [];
+    for (const candidate of [pairIN, pairOUT].filter(Boolean)) {
+        if (candidate.Category === 'Internal') continue; // already classified, skip
+
+        await db.run(
+            `UPDATE transactions SET Category = 'Internal', Label = 'Internal Transfer'
+             WHERE id = ? AND userId = ?`,
+            [candidate.id, userId]
+        );
+        console.log(
+            `[InternalPairing] Reclassified tx ${candidate.id} ` +
+            `(${candidate.Category}/${candidate.Label} $${candidate.Amount} ` +
+            `AccountFlow=${candidate.AccountFlow} ${candidate.BankName} ${candidate.Account}) ` +
+            `→ Internal/Internal Transfer ` +
+            `(paired with tx ${transactionId}${interac ? `, Interac tx ${interac.id}` : ''}).`
+        );
+        reclassified.push({
+            id: candidate.id,
+            oldCategory: candidate.Category,
+            oldLabel: candidate.Label,
+            newCategory: 'Internal',
+            newLabel: 'Internal Transfer',
+        });
     }
 
     return reclassified;
