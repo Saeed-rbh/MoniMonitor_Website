@@ -377,6 +377,44 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             }
         }
 
+        // Detect and reclassify Income/Expense transactions that are actually
+        // the bank-side legs of an internal self-transfer (e.g. RBC deposit +
+        // RBC withdrawal alerts that accompany an Interac self e-Transfer).
+        if (activeId) {
+            try {
+                const reclassified = await dbService.detectAndReclassifyInternalCounterparts(USER_ID, activeId);
+                for (const change of reclassified) {
+                    await writeAudit('internal_reclassification', 'success', {
+                        transactionId: change.id,
+                        triggeredByTransactionId: activeId,
+                        oldCategory: change.oldCategory,
+                        oldLabel: change.oldLabel,
+                        newCategory: change.newCategory,
+                        newLabel: change.newLabel,
+                    });
+                    // Update the Telegram message for the reclassified transaction
+                    if (!suppressNotifications) {
+                        try {
+                            const db = await dbService.getDb();
+                            const reclassifiedTx = await db.get(
+                                'SELECT * FROM transactions WHERE id = ? AND userId = ?',
+                                [change.id, USER_ID]
+                            );
+                            if (reclassifiedTx && reclassifiedTx.TelegramMessageId) {
+                                const updatedText = formatTransactionMessage(reclassifiedTx, 'updated');
+                                await editTelegramMessage(reclassifiedTx.TelegramMessageId, updatedText);
+                                console.log(`[InternalPairing] Updated Telegram message ${reclassifiedTx.TelegramMessageId} for tx ${change.id}.`);
+                            }
+                        } catch (telegramErr) {
+                            console.warn(`[InternalPairing] Could not update Telegram message for tx ${change.id}:`, telegramErr.message);
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error(`[${idInfo}] Error detecting internal counterparts:`, err.message);
+            }
+        }
+
         await writeAudit('email_processed', 'success', { messageId: idInfo, transactionId: activeId });
         return true;
     } catch (err) {

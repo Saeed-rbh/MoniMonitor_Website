@@ -1275,6 +1275,136 @@ async function detectAndMarkRecurring(userId, transactionId) {
     }
 }
 
+// ─── Internal Transfer Auto-Detection ─────────────────────────────────────
+// Time window (ms) within which two transactions of the same amount are
+// considered part of the same self-transfer (e.g. Interac + RBC alerts).
+const INTERNAL_PAIRING_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+/**
+ * Returns true if an Internal transaction looks like a real bank/Interac
+ * self e-Transfer notification (as opposed to a manually-imported or
+ * portfolio "Internal transfer: X → Y" entry).
+ *
+ * We only auto-pair Internal transactions that:
+ *   1. Came from an actual email (ReceivedAt IS NOT NULL), AND
+ *   2. Were NOT created from a portfolio-style "Internal transfer: …" reason
+ *      (those are ledger-only entries with no matching bank alert counterpart).
+ */
+function isEmailSourcedInternalTransfer(tx) {
+    if (!tx.ReceivedAt) return false;
+    // Portfolio import entries have Reason like "Internal transfer: X → Y [XFER-…]"
+    if (/^Internal transfer:/i.test(String(tx.Reason || ''))) return false;
+    return true;
+}
+
+/**
+ * After saving any transaction, this function checks for internal-transfer
+ * counterparts and reclassifies them automatically.
+ *
+ * Scenario A — the saved transaction is already Internal (e.g. Interac alert
+ * arrived first): look for same-amount Income/Expense companions within the
+ * time window and flip them to Internal.
+ *
+ * Scenario B — the saved transaction is Income or Expense (e.g. RBC bank
+ * alert arrived first): look for a same-amount email-sourced Internal companion
+ * within the time window and flip the new transaction to Internal.
+ *
+ * Returns an array of reclassification records:
+ *   [{ id, oldCategory, oldLabel, newCategory, newLabel }]
+ */
+async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
+    const db = await getDb();
+    const tx = await db.get(
+        'SELECT * FROM transactions WHERE id = ? AND userId = ?',
+        [transactionId, userId]
+    );
+    if (!tx) return [];
+
+    const reclassified = [];
+    const txTime = new Date(tx.Timestamp).getTime();
+    if (!Number.isFinite(txTime)) return [];
+
+    if (tx.Category === 'Internal') {
+        // Only proceed if this Internal tx is a genuine bank-email-sourced alert
+        if (!isEmailSourcedInternalTransfer(tx)) return [];
+
+        // Scenario A: find companion Income/Expense bank-alert rows
+        const candidates = await db.all(
+            `SELECT * FROM transactions
+             WHERE userId = ? AND AmountMinor = ? AND Currency = ?
+               AND Category IN ('Income', 'Expense')
+               AND ReceivedAt IS NOT NULL
+               AND id != ?`,
+            [userId, tx.AmountMinor, tx.Currency || 'CAD', transactionId]
+        );
+
+        for (const candidate of candidates) {
+            const candidateTime = new Date(candidate.Timestamp).getTime();
+            if (!Number.isFinite(candidateTime)) continue;
+            if (Math.abs(txTime - candidateTime) > INTERNAL_PAIRING_WINDOW_MS) continue;
+
+            await db.run(
+                `UPDATE transactions SET Category = 'Internal', Label = 'Internal Transfer'
+                 WHERE id = ? AND userId = ?`,
+                [candidate.id, userId]
+            );
+            console.log(
+                `[InternalPairing] Reclassified tx ${candidate.id} ` +
+                `(${candidate.Category}/${candidate.Label} $${candidate.Amount}) → Internal/Internal Transfer ` +
+                `(paired with Internal tx ${transactionId}).`
+            );
+            reclassified.push({
+                id: candidate.id,
+                oldCategory: candidate.Category,
+                oldLabel: candidate.Label,
+                newCategory: 'Internal',
+                newLabel: 'Internal Transfer',
+            });
+        }
+    } else if (tx.Category === 'Income' || tx.Category === 'Expense') {
+        // Only pair bank-email-sourced Income/Expense transactions
+        if (!tx.ReceivedAt) return [];
+
+        // Scenario B: look for a matching email-sourced Internal companion
+        const internalMatch = await db.get(
+            `SELECT * FROM transactions
+             WHERE userId = ? AND AmountMinor = ? AND Currency = ?
+               AND Category = 'Internal'
+               AND ReceivedAt IS NOT NULL
+               AND Reason NOT LIKE 'Internal transfer:%'
+               AND id != ?
+             ORDER BY ABS(JULIANDAY(Timestamp) - JULIANDAY(?)) ASC
+             LIMIT 1`,
+            [userId, tx.AmountMinor, tx.Currency || 'CAD', transactionId, tx.Timestamp]
+        );
+
+        if (internalMatch) {
+            const matchTime = new Date(internalMatch.Timestamp).getTime();
+            if (Number.isFinite(matchTime) && Math.abs(txTime - matchTime) <= INTERNAL_PAIRING_WINDOW_MS) {
+                await db.run(
+                    `UPDATE transactions SET Category = 'Internal', Label = 'Internal Transfer'
+                     WHERE id = ? AND userId = ?`,
+                    [transactionId, userId]
+                );
+                console.log(
+                    `[InternalPairing] Reclassified tx ${transactionId} ` +
+                    `(${tx.Category}/${tx.Label} $${tx.Amount}) → Internal/Internal Transfer ` +
+                    `(paired with Internal tx ${internalMatch.id}).`
+                );
+                reclassified.push({
+                    id: transactionId,
+                    oldCategory: tx.Category,
+                    oldLabel: tx.Label,
+                    newCategory: 'Internal',
+                    newLabel: 'Internal Transfer',
+                });
+            }
+        }
+    }
+
+    return reclassified;
+}
+
 module.exports = {
     getDb,
     createUser,
@@ -1322,5 +1452,6 @@ module.exports = {
     markEmailFailed,
     saveMerchantRule,
     getMerchantRuleForReason,
-    detectAndMarkRecurring
+    detectAndMarkRecurring,
+    detectAndReclassifyInternalCounterparts
 };
