@@ -574,32 +574,56 @@ const Insight = () => {
                     });
                 }
             });
-            hasPrevPeriod = foundPrevYear;
+        // Calculate daily average comparison for Dining vs previous period
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+        const currentDate = now.getDate();
+
+        let currentDaysCount = 1;
+        let prevDaysCount = 1;
+
+        if (viewMode === 'monthly') {
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const isCurrentMonth = year === currentYear && month === currentMonth;
+            currentDaysCount = isCurrentMonth ? Math.max(1, currentDate) : daysInMonth;
+
+            const prevYear = month === 0 ? year - 1 : year;
+            const prevMonth = month === 0 ? 11 : month - 1;
+            prevDaysCount = new Date(prevYear, prevMonth + 1, 0).getDate();
+        } else if (viewMode === 'yearly') {
+            const isCurrentYear = year === currentYear;
+            if (isCurrentYear) {
+                const startOfYear = new Date(year, 0, 1);
+                currentDaysCount = Math.max(1, Math.ceil((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24)));
+            } else {
+                currentDaysCount = 365;
+            }
+            prevDaysCount = 365;
         }
 
-        const formatDiffBadge = (currentAmt, prevAmt) => {
-            if (!hasPrevPeriod) {
-                return { text: 'New period', isIncrease: null };
+        const currentDiningDailyAvg = diningTotal / currentDaysCount;
+        const prevDiningDailyAvg = prevDiningTotal / prevDaysCount;
+
+        const formatDiningAvgBadge = () => {
+            if (!hasPrevPeriod || prevDiningDailyAvg === 0) {
+                if (currentDiningDailyAvg > 0) return { text: '▲ 100%', isIncrease: true };
+                return { text: '0%', isIncrease: null };
             }
-            const diff = currentAmt - prevAmt;
-            const periodLabel = viewMode === 'yearly' ? 'last yr' : 'last mo';
-            if (Math.abs(diff) < 0.5) {
-                return { text: `±$0 vs ${periodLabel}`, isIncrease: null };
+
+            const diff = currentDiningDailyAvg - prevDiningDailyAvg;
+            const pct = Math.round((diff / prevDiningDailyAvg) * 100);
+
+            if (pct === 0) {
+                return { text: '0%', isIncrease: null };
             }
-            if (diff > 0) {
-                return {
-                    text: `+$${Math.round(diff)} vs ${periodLabel}`,
-                    isIncrease: true,
-                };
+            if (pct > 0) {
+                return { text: `▲ ${pct}%`, isIncrease: true };
             }
-            return {
-                text: `-$${Math.round(Math.abs(diff))} vs ${periodLabel}`,
-                isIncrease: false,
-            };
+            return { text: `▼ ${Math.abs(pct)}%`, isIncrease: false };
         };
 
-        const diningDiff = formatDiffBadge(diningTotal, prevDiningTotal);
-        const shoppingDiff = formatDiffBadge(shoppingTotal, prevShoppingTotal);
+        const diningDiff = formatDiningAvgBadge();
 
         const totalExpenseSafe = Math.max(1, totalExpense);
 
@@ -618,7 +642,6 @@ const Insight = () => {
                 percentage: (shoppingTotal / totalExpenseSafe) * 100,
                 avg: shoppingCount > 0 ? shoppingTotal / shoppingCount : 0,
                 sparkline: buildSparkline(shoppingBuckets),
-                diff: shoppingDiff,
             },
         };
     }, [currentViewTransactions, totalExpense, allTransactions, viewMode, year, month]);
@@ -1076,8 +1099,8 @@ const Insight = () => {
                         <div className="Insight_SquareIconBadge shopping">
                             <ShoppingBag size={13} strokeWidth={2.2} />
                         </div>
-                        <span className={`Insight_SquareBadge ${shoppingStats.diff.isIncrease === true ? 'increase' : shoppingStats.diff.isIncrease === false ? 'decrease' : 'neutral'}`}>
-                            {shoppingStats.diff.text}
+                        <span className="Insight_SquareBadge shopping">
+                            {shoppingStats.count > 0 ? `${Math.round(shoppingStats.percentage)}% of spend` : '0%'}
                         </span>
                     </div>
 

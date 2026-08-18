@@ -1272,6 +1272,12 @@
     border: 1px solid rgba(48, 209, 88, 0.25);
 }
 
+.Insight_SquareBadge.shopping {
+    color: var(--Cc-1);
+    background: rgba(160, 143, 255, 0.12);
+    border: 1px solid rgba(160, 143, 255, 0.25);
+}
+
 .Insight_SquareBadge.neutral {
     color: var(--Ac-3);
     background: rgba(255, 255, 255, 0.06);
