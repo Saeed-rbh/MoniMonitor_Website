@@ -380,51 +380,40 @@ const AISynthesisResponseSchema = z.object({
 async function synthesizeMonthlyInsightsWithGemini(richData) {
     if (!ai) return null;
     const prompt = `
-You are a sharp personal finance analyst reviewing a user's ledger for ${richData.month} alongside their 6-month historical baseline.
+You are an observant personal financial intelligence analyst.
+Observe the user's real financial ledger and 6-month historical trends for ${richData.targetMonth || richData.month}.
 
-Generate EXACTLY 3 ultra-concise, visual-first insight cards with ZERO fluff or verbose essays:
+Do NOT follow a rigid formula or generic advice. Instead, thoroughly observe the provided 6-month transactions and historical summaries to find the 3 MOST UNEXPECTED trends, unusual patterns, or intriguing spending habits that:
+- Either NEED ATTENTION (e.g. concerning spikes, sneaky leakage, multi-month spending drift, new unvetted merchants, off-pattern recurring charges, or outsized category concentration).
+- OR are FUN / SURPRISING to know (e.g. food ratios like dining vs groceries, weekend spending momentum, post-payday velocity, micro-purchase accumulation, or peak spending day rhythms).
 
-INSIGHT 1: 6-Month Macro Trend & Trajectory
-- Synthesize Candidate 1 (6-Month Historical Baseline & Multi-Month Shift).
-- "metric": A punchy 2-4 word stat badge (e.g. "+38% vs 6-Mo Avg", "6-Month High: $2,850", or "3-Month Rise").
-- "title": 2-4 word clean title (e.g. "6-Month Spending Peak" or "Grocery Momentum").
-- "fact": EXACTLY 1 crisp sentence (max 15 words) with exact dollar amounts and percentage deltas.
-- "action": EXACTLY 1 micro-action (max 10 words).
+For each of the 3 discoveries, return:
+- "id": A short unique slug (e.g. "grocery-drift", "weekend-surge", "dining-ratio").
+- "metric": A punchy 2-4 word stat highlight badge (e.g. "+45% vs 6-Mo Avg", "2.4x Dining:Groceries", "Friday Peak Day", "$340 New Merchant").
+- "title": A 2-4 word clean, punchy title.
+- "fact": 1-2 concise, engaging sentences explaining the specific unexpected observation with exact dollar amounts and percentage shifts from the data.
+- "action": 1 practical, smart takeaway or lighthearted tip (max 12 words).
+- "confidence": "high" or "medium".
+- "evidenceTransactionIds": Real transaction IDs from the input dataset that substantiate this observation.
 
-INSIGHT 2: Unexpected Pattern & Anomaly Detection
-- Synthesize Candidate 2 (Unexpected Pattern: sudden new merchant, category concentration shift, or off-cycle recurring spike).
-- "metric": A punchy 2-4 word stat badge (e.g. "New Merchant: $340", "42% in Dining", or "8 Subscriptions").
-- "title": 2-4 word clean title (e.g. "Unusual Retail Spike" or "Subscription Surge").
-- "fact": EXACTLY 1 crisp sentence (max 15 words).
-- "action": EXACTLY 1 micro-action (max 10 words).
-
-INSIGHT 3: Behavioral Discovery & Rhythm
-- Synthesize Candidate 3 (Food ratio, weekend spending momentum, post-payday velocity, or micro-purchases).
-- "metric": A punchy 2-4 word stat badge (e.g. "2.4x Dining:Groceries", "62% Weekend Rush", or "52% Post-Payday").
-- "title": 2-4 word clean title (e.g. "Food Spending Ratio" or "Weekend Spending Rhythm").
-- "fact": EXACTLY 1 crisp sentence (max 15 words).
-- "action": EXACTLY 1 micro-action (max 10 words).
-
-STRICT RULES:
-1. NO long paragraphs. Keep "fact" strictly under 15 words.
-2. NO generic boilerplate advice. Only state numbers present in the input candidates.
-3. Attach real transaction IDs into "evidenceTransactionIds".
-4. Return ONLY valid JSON:
+STRICT CONSTRAINTS:
+1. Zero hallucination. Only state numbers, merchants, and dates directly present in the provided 6-month dataset.
+2. Return ONLY a valid JSON object matching:
 {
   "insights": [
     {
-      "id": "macro-trend",
-      "metric": "+38% vs 6-Mo Avg",
-      "title": "6-Month Spending Surge",
-      "fact": "Expenses reached $2,850 this month, 38% above your 6-month average of $2,065.",
-      "action": "Set a $2,200 spending ceiling for next month.",
+      "id": "slug-id",
+      "metric": "2-4 word stat badge",
+      "title": "2-4 word title",
+      "fact": "1-2 sentence unexpected observation with real numbers",
+      "action": "1 sentence takeaway or tip",
       "confidence": "high",
       "evidenceTransactionIds": [101, 102]
     }
   ]
 }
 
-Input Candidates & 6-Month Ledger Analysis:
+6-Month Ledger & Historical Dataset:
 ${JSON.stringify(richData)}
 `;
 

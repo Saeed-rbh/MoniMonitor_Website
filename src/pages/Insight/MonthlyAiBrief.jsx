@@ -24,28 +24,30 @@ const money = (minor) => new Intl.NumberFormat("en-CA", {
 const getInsightTheme = (insight, index) => {
   const title = (insight?.title || "").toLowerCase();
   const id = (insight?.id || "").toLowerCase();
+  const metric = (insight?.metric || "").toLowerCase();
+  const text = `${title} ${id} ${metric}`;
 
-  if (title.includes("fun fact") || id.includes("fun") || id.includes("fact") || title.includes("rhythm") || title.includes("density") || title.includes("ratio") || title.includes("weekend")) {
+  if (text.includes("fun") || text.includes("ratio") || text.includes("weekend") || text.includes("rhythm") || text.includes("coffee") || text.includes("habit") || text.includes("discovery") || text.includes("payday")) {
     return {
       type: "discovery",
-      label: "Discovery",
+      label: "Fun Discovery",
       icon: <Lightbulb size={12} strokeWidth={2.4} />,
       accentClass: "is-amber",
     };
   }
 
-  if (title.includes("increase") || title.includes("surge") || title.includes("rise") || title.includes("spike") || index === 0) {
+  if (text.includes("attention") || text.includes("spike") || text.includes("surge") || text.includes("drift") || text.includes("peak") || text.includes("high") || text.includes("leak") || text.includes("new merchant") || text.includes("alert")) {
     return {
-      type: "shift-up",
-      label: "Spending Shift",
+      type: "attention",
+      label: "Needs Attention",
       icon: <TrendingUp size={12} strokeWidth={2.4} />,
       accentClass: "is-coral",
     };
   }
 
-  if (title.includes("decrease") || title.includes("drop") || title.includes("cut") || title.includes("win") || title.includes("saved") || index === 1) {
+  if (text.includes("decrease") || text.includes("drop") || text.includes("cut") || text.includes("win") || text.includes("saved") || text.includes("low")) {
     return {
-      type: "shift-down",
+      type: "saving",
       label: "Spending Drop",
       icon: <TrendingDown size={12} strokeWidth={2.4} />,
       accentClass: "is-mint",
@@ -53,8 +55,8 @@ const getInsightTheme = (insight, index) => {
   }
 
   return {
-    type: "insight",
-    label: "Key Takeaway",
+    type: "pattern",
+    label: "Unexpected Pattern",
     icon: <Sparkles size={12} strokeWidth={2.4} />,
     accentClass: "is-purple",
   };

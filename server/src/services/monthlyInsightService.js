@@ -343,175 +343,71 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
             }
         }
 
-        let candidate1;
-        if (consecutiveCategoryTrend) {
-            candidate1 = {
-                type: '6Month_Consecutive_Rise',
-                topic: `${consecutiveCategoryTrend.category} 3-Month Momentum`,
-                summary: `${consecutiveCategoryTrend.category} spending has risen for 3 straight months (${consecutiveCategoryTrend.p2} → ${consecutiveCategoryTrend.p1} → ${consecutiveCategoryTrend.current}).`,
-                transactionIds: consecutiveCategoryTrend.ids,
-            };
-        } else if (isSixMonthHigh) {
-            candidate1 = {
-                type: '6Month_High',
-                topic: '6-Month Spending Peak',
-                summary: `This month's expenses (${money(analysis.summary.expenseMinor)}) are the highest in 6 months, ${deltaVs6MoAvg}% above your 6-month average of ${money(sixMoAvgMinor)}.`,
-                transactionIds: expenses.slice(0, 10).map(t => t.id),
-            };
-        } else if (isSixMonthLow) {
-            candidate1 = {
-                type: '6Month_Low',
-                topic: '6-Month Spending Low',
-                summary: `Spending this month (${money(analysis.summary.expenseMinor)}) is your lowest in 6 months, saving ${money(sixMoAvgMinor - analysis.summary.expenseMinor)} vs your 6-month norm.`,
-                transactionIds: expenses.slice(0, 10).map(t => t.id),
-            };
-        } else {
-            candidate1 = {
-                type: '6Month_Baseline',
-                topic: '6-Month Trajectory',
-                summary: `Monthly spend of ${money(analysis.summary.expenseMinor)} is ${Math.abs(deltaVs6MoAvg)}% ${deltaVs6MoAvg >= 0 ? 'above' : 'below'} your 6-month average of ${money(sixMoAvgMinor)}.`,
-                transactionIds: expenses.slice(0, 10).map(t => t.id),
-            };
-        }
+        // Format full category breakdown for the target month
+        const categoryBreakdown = Object.entries(curCategoriesMap).map(([category, info]) => ({
+            category,
+            totalSpent: money(info.totalMinor),
+            shareOfTotal: analysis.summary.expenseMinor > 0 ? `${Math.round((info.totalMinor / analysis.summary.expenseMinor) * 100)}%` : '0%',
+            transactionCount: info.count,
+            transactionIds: info.ids,
+        })).sort((a, b) => b.totalMinor - a.totalMinor);
 
-        const brandNewMerchants = Object.entries(curMerchantsMap)
-            .filter(([name, cur]) => !past6MoMerchantsMap[name] && cur.totalMinor >= 15000)
-            .sort((a, b) => b[1].totalMinor - a[1].totalMinor);
+        // Format top merchants & flag brand new merchants
+        const topMerchants = Object.entries(curMerchantsMap).map(([merchant, info]) => ({
+            merchant,
+            totalSpent: money(info.totalMinor),
+            transactionCount: info.count,
+            isNewInLast6Months: !past6MoMerchantsMap[merchant],
+            spentInPreviousMonth: money(p1MerchantsMap[merchant]?.totalMinor || 0),
+            transactionIds: info.ids,
+        })).sort((a, b) => b.transactionCount - a.transactionCount);
 
-        const topCategoryEntry = Object.entries(curCategoriesMap)
-            .map(([cat, cur]) => ({
-                category: cat,
-                totalMinor: cur.totalMinor,
-                share: analysis.summary.expenseMinor > 0 ? Math.round((cur.totalMinor / analysis.summary.expenseMinor) * 100) : 0,
-                ids: cur.ids,
-            }))
-            .sort((a, b) => b.totalMinor - a.totalMinor)[0];
+        // Compact transaction list for exact citation & evidence
+        const transactionSnippet = expenses.map(t => ({
+            id: t.id,
+            date: String(t.Timestamp || '').slice(0, 10),
+            dayOfWeek: dayOfWeekMap[new Date(t.Timestamp).getUTCDay()],
+            merchant: t.Reason || t.Label,
+            category: t.Label || t.Category,
+            amount: money(amountMinor(t)),
+        }));
 
-        let candidate2;
-        if (brandNewMerchants.length > 0) {
-            const [name, info] = brandNewMerchants[0];
-            candidate2 = {
-                type: 'Unexpected_NewMerchant',
-                topic: `New Merchant: ${name}`,
-                summary: `Spent ${money(info.totalMinor)} at ${name} with zero prior spending recorded across the last 6 months.`,
-                transactionIds: info.ids,
+        // Past 6 months monthly summary
+        const historicalMonthlySummary = past6Months.map(m => {
+            const catMap = getCategoryTotalsMap(m.txs);
+            return {
+                month: m.month,
+                totalExpenses: money(m.totalMinor),
+                topCategories: Object.entries(catMap).map(([cat, cur]) => `${cat}: ${money(cur.totalMinor)}`).slice(0, 5),
             };
-        } else if (topCategoryEntry && topCategoryEntry.share >= 38) {
-            candidate2 = {
-                type: 'Unexpected_CategoryConcentration',
-                topic: `${topCategoryEntry.category} Concentration`,
-                summary: `${topCategoryEntry.category} absorbed ${topCategoryEntry.share}% of your total budget this month (${money(topCategoryEntry.totalMinor)}).`,
-                transactionIds: topCategoryEntry.ids,
-            };
-        } else {
-            const incMerchants = Object.entries(curMerchantsMap)
-                .map(([name, cur]) => ({
-                    name,
-                    diffMinor: cur.totalMinor - (p1MerchantsMap[name]?.totalMinor || 0),
-                    curTotal: cur.totalMinor,
-                    ids: cur.ids,
-                }))
-                .filter(m => m.diffMinor > 2000)
-                .sort((a, b) => b.diffMinor - a.diffMinor);
-
-            if (incMerchants.length > 0) {
-                candidate2 = {
-                    type: 'Unexpected_MerchantShift',
-                    topic: `${incMerchants[0].name} Surge`,
-                    summary: `Spending at ${incMerchants[0].name} increased by ${money(incMerchants[0].diffMinor)} compared to last month (${money(incMerchants[0].curTotal)} total).`,
-                    transactionIds: incMerchants[0].ids,
-                };
-            } else {
-                candidate2 = {
-                    type: 'Unexpected_BalancedPattern',
-                    topic: 'Stable Expense Spread',
-                    summary: `Expenses were evenly distributed across ${Object.keys(curCategoriesMap).length} categories with no unexpected merchant spikes.`,
-                    transactionIds: expenses.slice(0, 5).map(t => t.id),
-                };
-            }
-        }
-
-        const diningMinor = curCategoriesMap['Dining']?.totalMinor || 0;
-        const groceriesMinor = curCategoriesMap['Groceries']?.totalMinor || 0;
-        const diningTxIds = curCategoriesMap['Dining']?.ids || [];
-        const weekendShare = analysis.summary.expenseMinor > 0
-            ? Math.round((weekendSum / analysis.summary.expenseMinor) * 100)
-            : 0;
-        const postPaydayShare = analysis.summary.expenseMinor > 0
-            ? Math.round((postPaydaySumMinor / analysis.summary.expenseMinor) * 100)
-            : 0;
-
-        const sortedDays = Object.entries(dayTotals).sort((a, b) => b[1] - a[1]);
-        const topDay = sortedDays[0];
-
-        let candidate3;
-        if (diningMinor > 0 && groceriesMinor > 0 && Math.abs(diningMinor - groceriesMinor) > 2000) {
-            const ratio = (diningMinor / groceriesMinor).toFixed(1);
-            if (Number(ratio) >= 1.4) {
-                candidate3 = {
-                    type: 'FunFact_FoodRatio',
-                    funFactTopic: 'Dining Out vs Groceries',
-                    details: `You spent $${ratio} on dining out for every $1.00 spent on groceries (${money(diningMinor)} vs ${money(groceriesMinor)}).`,
-                    transactionIds: diningTxIds.slice(0, 10),
-                };
-            }
-        }
-
-        if (!candidate3 && weekendShare >= 42 && weekendIds.length >= 3) {
-            candidate3 = {
-                type: 'FunFact_WeekendRush',
-                funFactTopic: 'Weekend Spending Momentum',
-                details: `${weekendShare}% of your total monthly spending (${money(weekendSum)}) occurred on Saturdays & Sundays across ${weekendIds.length} purchases.`,
-                transactionIds: weekendIds.slice(0, 10),
-            };
-        } else if (!candidate3 && postPaydayShare >= 45 && postPaydayTxs.length >= 3) {
-            candidate3 = {
-                type: 'FunFact_PaydayVelocity',
-                funFactTopic: 'Post-Payday Sprint',
-                details: `${postPaydayShare}% of your expenses (${money(postPaydaySumMinor)}) happened within 5 days of receiving your income.`,
-                transactionIds: postPaydayTxs.map((t) => t.id).slice(0, 10),
-            };
-        } else if (!candidate3 && microTxs.length >= 5) {
-            candidate3 = {
-                type: 'FunFact_MicroPurchases',
-                funFactTopic: 'Micro-purchases under $20',
-                details: `${microTxs.length} small purchases under $20 quietly added up to ${money(microSumMinor)} (${Math.round((microSumMinor / (analysis.summary.expenseMinor || 1)) * 100)}% of total expenses).`,
-                transactionIds: microTxs.map((t) => t.id).slice(0, 10),
-            };
-        } else if (!candidate3 && topDay && topDay[1] > 0 && dayCounts[topDay[0]] >= 2) {
-            candidate3 = {
-                type: 'FunFact_PeakDay',
-                funFactTopic: `${topDay[0]} Peak Day`,
-                details: `${topDay[0]}s were your highest spending day of the week, totaling ${money(topDay[1])} across ${dayCounts[topDay[0]]} purchases.`,
-                transactionIds: sortedExpenses.filter((t) => dayOfWeekMap[new Date(t.Timestamp).getUTCDay()] === topDay[0]).map((t) => t.id).slice(0, 10),
-            };
-        } else if (!candidate3) {
-            const daysInMonthSoFar = analysis.latestDay || 1;
-            const hoursPerPurchase = Math.round(((daysInMonthSoFar * 24) / (expenses.length || 1)) * 10) / 10;
-            candidate3 = {
-                type: 'FunFact_PurchaseFrequency',
-                funFactTopic: 'Purchase Rhythm',
-                details: `You made ${expenses.length} purchases across ${daysInMonthSoFar} days — averaging one purchase every ${hoursPerPurchase} hours.`,
-                transactionIds: expenses.slice(0, 10).map(t => t.id),
-            };
-        }
+        });
 
         const richData = {
-            month,
-            past6MonthsKeys: past6Months.map(m => m.month),
-            Candidate1_SixMonthTrend: candidate1,
-            Candidate2_UnexpectedPattern: candidate2,
-            Candidate3_BehaviorDiscovery: candidate3,
+            targetMonth: month,
             summary: {
-                income: money(analysis.summary.incomeMinor),
-                expenses: money(analysis.summary.expenseMinor),
-                sixMonthAverageExpenses: money(sixMoAvgMinor),
-                deltaVsSixMonthAvg: `${deltaVs6MoAvg > 0 ? '+' : ''}${deltaVs6MoAvg}%`,
-                savingsContribution: money(analysis.summary.savingMinor),
+                totalExpenses: money(analysis.summary.expenseMinor),
+                totalIncome: money(analysis.summary.incomeMinor),
                 netCashFlow: money(analysis.summary.netCashFlowMinor),
+                sixMonthAverageExpenses: money(sixMoAvgMinor),
+                deltaVsSixMonthAverage: `${deltaVs6MoAvg > 0 ? '+' : ''}${deltaVs6MoAvg}%`,
+                isSixMonthSpendingPeak: isSixMonthHigh,
+                isSixMonthSpendingLow: isSixMonthLow,
                 totalTransactions: analysis.summary.transactionCount,
                 expenseCount: expenses.length,
             },
+            habitsAndRhythms: {
+                weekendSpendingShare: `${weekendShare}% of expenses (${money(weekendSum)}) on Sat/Sun across ${weekendIds.length} txns`,
+                topDayOfWeek: topDay ? `${topDay[0]} (${money(topDay[1])} across ${dayCounts[topDay[0]]} txns)` : 'N/A',
+                postPaydayVelocity: `${postPaydayShare}% spent within 5 days of payday (${money(postPaydaySumMinor)})`,
+                microPurchasesUnder20: `${microTxs.length} small purchases totaling ${money(microSumMinor)}`,
+                diningVsGroceriesRatio: diningMinor > 0 && groceriesMinor > 0
+                    ? `${(diningMinor / groceriesMinor).toFixed(1)}x ($${money(diningMinor)} dining vs $${money(groceriesMinor)} groceries)`
+                    : null,
+            },
+            categories: categoryBreakdown,
+            merchants: topMerchants.slice(0, 15),
+            past6MonthsHistory: historicalMonthlySummary,
+            transactions: transactionSnippet,
         };
 
         try {
