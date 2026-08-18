@@ -72,7 +72,7 @@ app.use(cors({
 app.use(express.json({ limit: "100kb" }));
 
 const authRateLimit = createRateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
-const insightRateLimit = createRateLimit({ windowMs: 60 * 60 * 1000, max: 30 });
+const insightRateLimit = createRateLimit({ windowMs: 60 * 60 * 1000, max: 180 });
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;

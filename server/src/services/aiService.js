@@ -363,19 +363,38 @@ ${JSON.stringify(safeCandidates)}
     return selections.length ? { selections } : null;
 }
 
+function extractJsonFromText(rawText) {
+    if (!rawText) return null;
+    let clean = String(rawText).trim();
+    if (clean.startsWith('```')) {
+        clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    }
+    try {
+        return JSON.parse(clean);
+    } catch (_e) {
+        const match = clean.match(/\{[\s\S]*\}/);
+        if (match) {
+            try {
+                return JSON.parse(match[0]);
+            } catch (_err) {}
+        }
+        return null;
+    }
+}
+
 const AISynthesisItemSchema = z.object({
-    id: z.string().trim().min(1).max(80),
-    metric: z.string().trim().min(1).max(40).optional().default(''),
-    title: z.string().trim().min(1).max(100),
-    fact: z.string().trim().min(1).max(250),
-    action: z.string().trim().min(1).max(150),
-    confidence: z.enum(['high', 'medium']).optional().default('high'),
-    evidenceTransactionIds: z.array(z.number().int()).optional().default([]),
+    id: z.string().trim().min(1).max(120).optional().default(() => `insight-${Math.random().toString(36).slice(2, 7)}`),
+    metric: z.string().trim().max(100).optional().default(''),
+    title: z.string().trim().min(1).max(250),
+    fact: z.string().trim().min(1).max(1000),
+    action: z.string().trim().max(500).optional().default(''),
+    confidence: z.string().optional().default('high'),
+    evidenceTransactionIds: z.array(z.coerce.number().int()).optional().default([]),
 });
 
 const AISynthesisResponseSchema = z.object({
-    insights: z.array(AISynthesisItemSchema).min(1).max(4),
-}).strict();
+    insights: z.array(AISynthesisItemSchema).min(1).max(5),
+});
 
 async function synthesizeMonthlyInsightsWithGemini(richData) {
     if (!ai) return null;
@@ -423,7 +442,9 @@ ${JSON.stringify(richData)}
             contents: prompt,
             config: { responseMimeType: 'application/json' },
         });
-        const parsed = AISynthesisResponseSchema.parse(JSON.parse(response.text));
+        const rawJson = extractJsonFromText(response?.text);
+        if (!rawJson) throw new Error('Could not parse JSON from Gemini response');
+        const parsed = AISynthesisResponseSchema.parse(rawJson);
         return parsed.insights;
     } catch (error) {
         console.warn('[Monthly AI synthesis] Gemini error:', error.message);

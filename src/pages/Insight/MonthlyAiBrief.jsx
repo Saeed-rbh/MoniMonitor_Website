@@ -127,27 +127,34 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
 
   const load = useCallback(async (refresh = false) => {
     const version = ++requestVersion.current;
-    const hasCached = clientBriefCache.has(targetMonth);
 
     if (refresh) {
       setRefreshing(true);
-    } else if (!hasCached) {
+      clientBriefCache.delete(targetMonth);
+      try {
+        sessionStorage.removeItem(`moni_brief_${targetMonth}`);
+      } catch (_e) {}
+    } else if (!clientBriefCache.has(targetMonth)) {
       setLoading(true);
     }
 
-    const result = await getMonthlyAiBriefAPI(targetMonth, refresh);
-    if (version !== requestVersion.current) return;
+    try {
+      const result = await getMonthlyAiBriefAPI(targetMonth, refresh);
+      if (version !== requestVersion.current) return;
 
-    if (result) {
-      clientBriefCache.set(targetMonth, result);
-      try {
-        sessionStorage.setItem(`moni_brief_${targetMonth}`, JSON.stringify(result));
-      } catch (_e) {}
-      setBrief(result);
+      if (result && Array.isArray(result.insights)) {
+        clientBriefCache.set(targetMonth, result);
+        try {
+          sessionStorage.setItem(`moni_brief_${targetMonth}`, JSON.stringify(result));
+        } catch (_e) {}
+        setBrief({ ...result });
+      }
+    } finally {
+      if (version === requestVersion.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-
-    setLoading(false);
-    setRefreshing(false);
   }, [targetMonth]);
 
   useEffect(() => {
