@@ -481,73 +481,141 @@ const Insight = () => {
         }
     }, [viewMode, transactions, allTransactions, year]);
 
-    const monthlyCashFlowData = useMemo(() => {
-        const today = new Date();
-        const baseDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        const months = [];
+    const cashFlowBarData = useMemo(() => {
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+        const currentDate = now.getDate();
 
-        // Build 12-month date intervals for investment timeline
-        const monthEndTimes = [];
-        for (let i = 11; i >= 0; i--) {
-            const d = new Date(baseDate.getFullYear(), baseDate.getMonth() - i, 1);
-            const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-            monthEndTimes.push(nextMonth.getTime() - 1);
-        }
+        let items = [];
 
-        const startPeriodDate = new Date(baseDate.getFullYear(), baseDate.getMonth() - 11, 1);
-        const investValues = getRebasedInvestmentPeriodValues(
-            investmentTimeline,
-            startPeriodDate,
-            monthEndTimes
-        );
+        if (viewMode === 'monthly') {
+            // MONTHLY: Last 12 days
+            const daysInCurrentMonth = new Date(year, month + 1, 0).getDate();
+            const isViewingCurrentMonth = year === currentYear && month === currentMonth;
 
-        let previousInvest = 0;
-        for (let i = 11; i >= 0; i--) {
-            const idx = 11 - i;
-            const d = new Date(baseDate.getFullYear(), baseDate.getMonth() - i, 1);
-            const mYear = d.getFullYear();
-            const mMonth = d.getMonth();
-            const key = `${mYear}-${String(mMonth + 1).padStart(2, '0')}`;
+            const anchorDay = isViewingCurrentMonth ? Math.min(daysInCurrentMonth, currentDate) : daysInCurrentMonth;
+            const startDay = Math.max(1, anchorDay - 11);
+            const endDay = Math.min(daysInCurrentMonth, startDay + 11);
+            const actualStartDay = Math.max(1, endDay - 11);
 
-            const monthShort = d.toLocaleString('en-US', { month: 'short' });
-            const monthInitial = monthShort.charAt(0);
+            const monthShort = new Date(year, month).toLocaleString('en-US', { month: 'short' });
 
-            let mIncome = 0;
-            let mExpense = 0;
+            for (let d = actualStartDay; d <= endDay; d++) {
+                const dayIndex = paddingDays + (d - 1);
+                const income = dailyIncome[dayIndex] || 0;
+                const expense = dailyExpense[dayIndex] || 0;
+                const prevInvest = d > 1 ? (dailyInvest[paddingDays + (d - 2)] || 0) : 0;
+                const currInvest = dailyInvest[dayIndex] || 0;
+                const investDelta = Math.max(0, currInvest - prevInvest);
 
-            if (allTransactions && allTransactions[key]) {
-                mIncome = Number(allTransactions[key].totalIncome || 0);
-                mExpense = Number(allTransactions[key].totalExpense || 0);
+                const isCurrent = isViewingCurrentMonth && d === currentDate;
+                const isSelected = isCurrent || (!isViewingCurrentMonth && d === endDay);
+
+                items.push({
+                    key: `day-${d}`,
+                    shortLabel: String(d),
+                    fullLabel: `${monthShort} ${d}, ${year}`,
+                    inflow: income,
+                    outflow: expense,
+                    invest: investDelta,
+                    isCurrent,
+                    isSelected,
+                });
+            }
+        } else if (viewMode === 'yearly') {
+            // YEARLY: 12 months of the year
+            const isViewingCurrentYear = year === currentYear;
+            let prevInvestVal = 0;
+
+            for (let m = 0; m < 12; m++) {
+                const d = new Date(year, m, 1);
+                const key = `${year}-${String(m + 1).padStart(2, '0')}`;
+                const monthShort = d.toLocaleString('en-US', { month: 'short' });
+                const monthInitial = monthShort.charAt(0);
+
+                let mIncome = 0;
+                let mExpense = 0;
+
+                if (allTransactions && allTransactions[key]) {
+                    mIncome = Number(allTransactions[key].totalIncome || 0);
+                    mExpense = Number(allTransactions[key].totalExpense || 0);
+                }
+
+                const currInvest = dailyInvest[m] || 0;
+                const investDelta = Math.max(0, currInvest - prevInvestVal);
+                prevInvestVal = currInvest;
+
+                const isCurrent = isViewingCurrentYear && m === currentMonth;
+                const isSelected = isCurrent || (!isViewingCurrentYear && m === 11);
+
+                items.push({
+                    key,
+                    shortLabel: monthInitial,
+                    fullLabel: `${monthShort} ${year}`,
+                    inflow: mIncome,
+                    outflow: mExpense,
+                    invest: investDelta,
+                    isCurrent,
+                    isSelected,
+                });
+            }
+        } else {
+            // ALL TIME: Last 12 years
+            const startYear = currentYear - 11;
+            const yearEndTimes = [];
+            for (let y = startYear; y <= currentYear; y++) {
+                yearEndTimes.push(new Date(y + 1, 0, 1).getTime() - 1);
             }
 
-            const cumulativeInvest = investValues[idx] || 0;
-            const periodInvest = Math.max(0, cumulativeInvest - previousInvest);
-            previousInvest = cumulativeInvest;
+            const allTimeInvestValues = getRebasedInvestmentPeriodValues(
+                investmentTimeline,
+                new Date(startYear, 0, 1),
+                yearEndTimes
+            );
 
-            const isCurrentMonth = mYear === today.getFullYear() && mMonth === today.getMonth();
-            const isSelectedMonth = mYear === year && mMonth === month;
+            let prevYearInvest = 0;
+            for (let y = startYear; y <= currentYear; y++) {
+                const yIdx = y - startYear;
+                let yIncome = 0;
+                let yExpense = 0;
 
-            months.push({
-                key,
-                year: mYear,
-                monthIndex: mMonth,
-                shortLabel: monthInitial,
-                fullLabel: `${monthShort} ${mYear}`,
-                inflow: mIncome,
-                outflow: mExpense,
-                invest: periodInvest,
-                isCurrentMonth,
-                isSelectedMonth,
-            });
+                if (allTransactions) {
+                    Object.entries(allTransactions).forEach(([key, val]) => {
+                        const [tYear] = key.split('-').map(Number);
+                        if (tYear === y && val) {
+                            yIncome += Number(val.totalIncome || 0);
+                            yExpense += Number(val.totalExpense || 0);
+                        }
+                    });
+                }
+
+                const currYearInvest = allTimeInvestValues[yIdx] || 0;
+                const investDelta = Math.max(0, currYearInvest - prevYearInvest);
+                prevYearInvest = currYearInvest;
+
+                const isCurrent = y === currentYear;
+
+                items.push({
+                    key: `year-${y}`,
+                    shortLabel: `'${String(y).slice(-2)}`,
+                    fullLabel: String(y),
+                    inflow: yIncome,
+                    outflow: yExpense,
+                    invest: investDelta,
+                    isCurrent,
+                    isSelected: isCurrent,
+                });
+            }
         }
 
-        const maxMonthTotal = Math.max(
-            ...months.map((m) => m.inflow + m.outflow + m.invest),
+        const maxPeriodTotal = Math.max(
+            ...items.map((it) => it.inflow + it.outflow + it.invest),
             1
         );
 
-        return { months, maxMonthTotal };
-    }, [allTransactions, investmentTimeline, year, month]);
+        return { items, maxPeriodTotal };
+    }, [viewMode, year, month, paddingDays, dailyIncome, dailyExpense, dailyInvest, allTransactions, investmentTimeline]);
 
     const periodCaption = viewMode === 'alltime'
         ? 'Full financial history'
@@ -582,7 +650,6 @@ const Insight = () => {
                     <span className="Insight_Eyebrow">Financial overview</span>
                     <h1>Insights</h1>
                 </div>
-                <span className="Insight_PeriodCaption">{periodCaption}</span>
             </header>
 
             {/* View Mode Toggle */}
@@ -733,9 +800,9 @@ const Insight = () => {
                             </div>
                         </div>
 
-                        {/* Right: 12-Month Pill Bar Chart (Income on top, then Expense, then Invest) */}
+                        {/* Right: Multi-Mode Pill Bar Chart (12 Days on Monthly, 12 Months on Yearly, 12 Years on All Time) */}
                         <div className="Insight_CashFlowChart">
-                            {monthlyCashFlowData.months.map((m, idx) => {
+                            {cashFlowBarData.items.map((m, idx) => {
                                 const maxChartHeight = 66;
                                 const hasData = m.inflow > 0 || m.outflow > 0 || m.invest > 0;
                                 const totalForMonth = m.inflow + m.outflow + m.invest;
@@ -745,7 +812,7 @@ const Insight = () => {
                                 let investHeight = 0;
 
                                 if (hasData) {
-                                    const scaledHeight = (totalForMonth / monthlyCashFlowData.maxMonthTotal) * maxChartHeight;
+                                    const scaledHeight = (totalForMonth / cashFlowBarData.maxPeriodTotal) * maxChartHeight;
                                     const usableHeight = Math.max(scaledHeight, 12);
                                     const activeCount = (m.inflow > 0 ? 1 : 0) + (m.outflow > 0 ? 1 : 0) + (m.invest > 0 ? 1 : 0);
 
@@ -763,11 +830,11 @@ const Insight = () => {
                                 }
 
                                 const tooltip = `${m.fullLabel}: Income $${formatCurrency(m.inflow)} · Expense $${formatCurrency(m.outflow)}${m.invest > 0 ? ` · Invest $${formatCurrency(m.invest)}` : ''}`;
-                                const isHighlighted = m.isSelectedMonth || m.isCurrentMonth;
+                                const isHighlighted = m.isSelected || m.isCurrent;
 
                                 return (
                                     <div
-                                        key={idx}
+                                        key={m.key || idx}
                                         className={`Insight_CashFlowCol ${isHighlighted ? 'is-active' : ''}`}
                                         title={tooltip}
                                     >
