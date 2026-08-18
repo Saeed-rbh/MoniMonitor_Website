@@ -733,36 +733,36 @@ const Insight = () => {
                             </div>
                         </div>
 
-                        {/* Right: 12-Month Pill Bar Chart (Invest on top, then Inflow, then Outflow) */}
+                        {/* Right: 12-Month Pill Bar Chart (Income on top, then Expense, then Invest) */}
                         <div className="Insight_CashFlowChart">
                             {monthlyCashFlowData.months.map((m, idx) => {
-                                const maxChartHeight = 56;
+                                const maxChartHeight = 66;
                                 const hasData = m.inflow > 0 || m.outflow > 0 || m.invest > 0;
                                 const totalForMonth = m.inflow + m.outflow + m.invest;
 
-                                let investHeight = 0;
                                 let inflowHeight = 0;
                                 let outflowHeight = 0;
+                                let investHeight = 0;
 
                                 if (hasData) {
                                     const scaledHeight = (totalForMonth / monthlyCashFlowData.maxMonthTotal) * maxChartHeight;
-                                    const usableHeight = Math.max(scaledHeight, 10);
-                                    const activeCount = (m.invest > 0 ? 1 : 0) + (m.inflow > 0 ? 1 : 0) + (m.outflow > 0 ? 1 : 0);
+                                    const usableHeight = Math.max(scaledHeight, 12);
+                                    const activeCount = (m.inflow > 0 ? 1 : 0) + (m.outflow > 0 ? 1 : 0) + (m.invest > 0 ? 1 : 0);
 
                                     if (activeCount > 1) {
-                                        investHeight = m.invest > 0 ? Math.max(Math.round((m.invest / totalForMonth) * usableHeight), 4) : 0;
                                         inflowHeight = m.inflow > 0 ? Math.max(Math.round((m.inflow / totalForMonth) * usableHeight), 4) : 0;
                                         outflowHeight = m.outflow > 0 ? Math.max(Math.round((m.outflow / totalForMonth) * usableHeight), 4) : 0;
-                                    } else if (m.invest > 0) {
-                                        investHeight = Math.max(Math.round(usableHeight), 6);
+                                        investHeight = m.invest > 0 ? Math.max(Math.round((m.invest / totalForMonth) * usableHeight), 4) : 0;
                                     } else if (m.inflow > 0) {
                                         inflowHeight = Math.max(Math.round(usableHeight), 6);
-                                    } else {
+                                    } else if (m.outflow > 0) {
                                         outflowHeight = Math.max(Math.round(usableHeight), 6);
+                                    } else {
+                                        investHeight = Math.max(Math.round(usableHeight), 6);
                                     }
                                 }
 
-                                const tooltip = `${m.fullLabel}: Inflow $${formatCurrency(m.inflow)} · Outflow $${formatCurrency(m.outflow)}${m.invest > 0 ? ` · Invest $${formatCurrency(m.invest)}` : ''}`;
+                                const tooltip = `${m.fullLabel}: Income $${formatCurrency(m.inflow)} · Expense $${formatCurrency(m.outflow)}${m.invest > 0 ? ` · Invest $${formatCurrency(m.invest)}` : ''}`;
                                 const isHighlighted = m.isSelectedMonth || m.isCurrentMonth;
 
                                 return (
@@ -774,20 +774,11 @@ const Insight = () => {
                                         <div className="Insight_CashFlowBarContainer">
                                             {hasData ? (
                                                 <>
-                                                    {investHeight > 0 && (
-                                                        <div
-                                                            className="Insight_CashFlowPill invest"
-                                                            style={{
-                                                                height: `${investHeight}px`,
-                                                            }}
-                                                        />
-                                                    )}
                                                     {inflowHeight > 0 && (
                                                         <div
                                                             className="Insight_CashFlowPill inflow"
                                                             style={{
                                                                 height: `${inflowHeight}px`,
-                                                                marginTop: investHeight > 0 ? "3px" : "0px",
                                                             }}
                                                         />
                                                     )}
@@ -796,7 +787,16 @@ const Insight = () => {
                                                             className="Insight_CashFlowPill outflow"
                                                             style={{
                                                                 height: `${outflowHeight}px`,
-                                                                marginTop: (investHeight > 0 || inflowHeight > 0) ? "3px" : "0px",
+                                                                marginTop: inflowHeight > 0 ? "3px" : "0px",
+                                                            }}
+                                                        />
+                                                    )}
+                                                    {investHeight > 0 && (
+                                                        <div
+                                                            className="Insight_CashFlowPill invest"
+                                                            style={{
+                                                                height: `${investHeight}px`,
+                                                                marginTop: (inflowHeight > 0 || outflowHeight > 0) ? "3px" : "0px",
                                                             }}
                                                         />
                                                     )}
