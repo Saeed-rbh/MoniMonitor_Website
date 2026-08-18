@@ -1,5 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ChevronRight, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  ChevronRight,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+  TrendingDown,
+  Lightbulb,
+  Zap,
+} from "lucide-react";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import { getMonthlyAiBriefAPI } from "../../services/apiService";
 import { useTransactions } from "../../context/TransactionContext";
@@ -10,6 +20,45 @@ import TransactionDetailModal from "../../components/TransactionDetailModal/Tran
 const money = (minor) => new Intl.NumberFormat("en-CA", {
   style: "currency", currency: "CAD", maximumFractionDigits: 2,
 }).format(Number(minor || 0) / 100);
+
+const getInsightTheme = (insight, index) => {
+  const title = (insight?.title || "").toLowerCase();
+  const id = (insight?.id || "").toLowerCase();
+
+  if (title.includes("fun fact") || id.includes("fun") || id.includes("fact") || title.includes("rhythm") || title.includes("density") || title.includes("ratio") || title.includes("weekend")) {
+    return {
+      type: "discovery",
+      label: "Discovery",
+      icon: <Lightbulb size={12} strokeWidth={2.4} />,
+      accentClass: "is-amber",
+    };
+  }
+
+  if (title.includes("increase") || title.includes("surge") || title.includes("rise") || title.includes("spike") || index === 0) {
+    return {
+      type: "shift-up",
+      label: "Spending Shift",
+      icon: <TrendingUp size={12} strokeWidth={2.4} />,
+      accentClass: "is-coral",
+    };
+  }
+
+  if (title.includes("decrease") || title.includes("drop") || title.includes("cut") || title.includes("win") || title.includes("saved") || index === 1) {
+    return {
+      type: "shift-down",
+      label: "Spending Drop",
+      icon: <TrendingDown size={12} strokeWidth={2.4} />,
+      accentClass: "is-mint",
+    };
+  }
+
+  return {
+    type: "insight",
+    label: "Key Takeaway",
+    icon: <Sparkles size={12} strokeWidth={2.4} />,
+    accentClass: "is-purple",
+  };
+};
 
 const getEffectiveCompletedMonth = (monthStr) => {
   if (!monthStr || !/^\d{4}-\d{2}$/.test(monthStr)) return { targetMonth: monthStr, isAutoAdjusted: false };
@@ -342,26 +391,51 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
           )}
         </div>
 
-        <div className="MonthlyAiBrief_List">
-          {brief.insights.map((insight, index) => (
-            <article key={insight.id} className="MonthlyAiBrief_Item" style={{ animationDelay: `${index * 80}ms` }}>
-              <div className="MonthlyAiBrief_Number">{String(index + 1).padStart(2, "0")}</div>
-              <div className="MonthlyAiBrief_Copy">
-                <div className="MonthlyAiBrief_TitleRow">
-                  <h3>{insight.title}</h3>
-                  <span>{insight.confidence}</span>
+        <div className="MonthlyAiBrief_Grid">
+          {brief.insights.map((insight, index) => {
+            const theme = getInsightTheme(insight, index);
+            const cleanTitle = (insight.title || "").replace(/^fun fact:\s*/i, "");
+            const hasEvidence = insight.evidence?.count > 0;
+
+            return (
+              <article
+                key={insight.id || index}
+                className={`MonthlyAiBrief_Card ${theme.accentClass} ${hasEvidence ? "is-clickable" : ""}`}
+                style={{ animationDelay: `${index * 90}ms` }}
+                onClick={hasEvidence ? () => handleOpenInsight(insight) : undefined}
+                role={hasEvidence ? "button" : undefined}
+                tabIndex={hasEvidence ? 0 : undefined}
+              >
+                {/* Header Badge Row */}
+                <div className="MonthlyAiCard_Header">
+                  <div className="MonthlyAiCard_Badge">
+                    {theme.icon}
+                    <span>{theme.label}</span>
+                  </div>
+                  {hasEvidence && (
+                    <span className="MonthlyAiCard_EvidenceTag">
+                      {insight.evidence.count} {insight.evidence.count === 1 ? 'txn' : 'txns'}
+                      <ChevronRight size={11} strokeWidth={2.4} />
+                    </span>
+                  )}
                 </div>
-                <p>{insight.fact}</p>
-                <div className="MonthlyAiBrief_Action"><strong>Try</strong> {insight.action}</div>
-                {insight.evidence.count > 0 && (
-                  <button type="button" onClick={() => handleOpenInsight(insight)}>
-                    View {insight.evidence.count} supporting transaction{insight.evidence.count === 1 ? "" : "s"}
-                    <ChevronRight aria-hidden="true" />
-                  </button>
+
+                {/* Title */}
+                <h3 className="MonthlyAiCard_Title">{cleanTitle}</h3>
+
+                {/* Body Fact */}
+                <p className="MonthlyAiCard_Fact">{insight.fact}</p>
+
+                {/* Compact Action Pill */}
+                {insight.action && (
+                  <div className="MonthlyAiCard_ActionBox">
+                    <span className="MonthlyAiCard_ActionTag">Action</span>
+                    <span className="MonthlyAiCard_ActionText">{insight.action}</span>
+                  </div>
                 )}
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
         <footer>Amounts are calculated by MoniMonitor. AI only prioritizes verified observations and suggested actions.</footer>
       </section>

@@ -1143,93 +1143,164 @@
     border-color: rgba(255, 69, 58, 0.40);
 }
 
-.MonthlyAiBrief_List {
+/* Modern AI Intelligence Cards */
+.MonthlyAiBrief_Grid {
     display: flex;
     flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+    width: 100%;
 }
 
-.MonthlyAiBrief_Item {
-    align-items: flex-start;
-    gap: 11px;
-    padding: 15px 0;
-    border-bottom: 1px solid var(--Ac-4);
+.MonthlyAiBrief_Card {
+    display: flex;
+    flex-direction: column;
+    padding: 13px 14px;
+    border-radius: 16px;
+    border: 1px solid var(--Ac-4);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.03) 0%, rgba(20, 21, 26, 0.5) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     text-align: left;
+    transition: all 180ms ease;
+    box-sizing: border-box;
+    position: relative;
     animation: ai-fade-in 0.4s ease-out both;
 }
 
-.MonthlyAiBrief_Number {
-    display: grid;
-    width: 27px;
-    height: 27px;
-    flex: 0 0 27px;
-    place-items: center;
-    border: 1px solid var(--Bc-3);
-    border-radius: 50%;
-    color: var(--Bc-1);
-    font-size: 0.62rem;
-    font-weight: 700;
+.MonthlyAiBrief_Card.is-clickable {
+    cursor: pointer;
+    user-select: none;
 }
 
-.MonthlyAiBrief_Copy {
-    min-width: 0;
-    flex: 1;
+.MonthlyAiBrief_Card.is-clickable:hover {
+    transform: translateY(-1.5px);
+    border-color: rgba(212, 157, 129, 0.35);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(25, 26, 32, 0.7) 100%);
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.35);
 }
 
-.MonthlyAiBrief_TitleRow {
+.MonthlyAiBrief_Card.is-clickable:active {
+    transform: scale(0.99);
+}
+
+/* Card Accent Varieties */
+.MonthlyAiBrief_Card.is-coral {
+    border-left: 3px solid var(--Gc-1);
+}
+
+.MonthlyAiBrief_Card.is-mint {
+    border-left: 3px solid var(--Fc-1);
+}
+
+.MonthlyAiBrief_Card.is-amber {
+    border-left: 3px solid #ff9f0a;
+}
+
+.MonthlyAiBrief_Card.is-purple {
+    border-left: 3px solid #bf5af2;
+}
+
+/* Card Header */
+.MonthlyAiCard_Header {
+    display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    width: 100%;
+    margin-bottom: 6px;
 }
 
-.MonthlyAiBrief_TitleRow h3 {
-    margin: 3px 0 0;
-    font-size: 0.83rem;
-    font-weight: 650;
-}
-
-.MonthlyAiBrief_TitleRow span {
-    color: var(--Ac-3);
+.MonthlyAiCard_Badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     font-size: 0.58rem;
-    letter-spacing: 0.08em;
+    font-weight: 700;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
 }
 
-.MonthlyAiBrief_Copy p {
-    margin: 7px 0;
-    color: var(--Ac-2);
-    font-size: 0.72rem;
-    line-height: 1.55;
+.MonthlyAiBrief_Card.is-coral .MonthlyAiCard_Badge {
+    color: var(--Gc-1);
 }
 
-.MonthlyAiBrief_Action {
-    color: var(--Ac-2);
-    font-size: 0.7rem;
-    line-height: 1.5;
+.MonthlyAiBrief_Card.is-mint .MonthlyAiCard_Badge {
+    color: var(--Fc-1);
 }
 
-.MonthlyAiBrief_Action strong {
-    margin-right: 4px;
-    color: var(--Bc-1);
-    font-weight: 700;
+.MonthlyAiBrief_Card.is-amber .MonthlyAiCard_Badge {
+    color: #ff9f0a;
 }
 
-.MonthlyAiBrief_Copy>button {
-    display: flex;
+.MonthlyAiBrief_Card.is-purple .MonthlyAiCard_Badge {
+    color: #bf5af2;
+}
+
+.MonthlyAiCard_EvidenceTag {
+    display: inline-flex;
     align-items: center;
     gap: 3px;
-    margin: 9px 0 0;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--Bc-1);
-    font-size: 0.66rem;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    color: var(--Ac-3);
+    font-size: 0.56rem;
     font-weight: 600;
-    cursor: pointer;
+    transition: all 160ms ease;
 }
 
-.MonthlyAiBrief_Copy>button svg {
-    width: 13px;
-    height: 13px;
+.MonthlyAiBrief_Card:hover .MonthlyAiCard_EvidenceTag {
+    color: var(--Ac-1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Card Title */
+.MonthlyAiCard_Title {
+    margin: 0 0 5px 0;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--Ac-1);
+    letter-spacing: -0.01em;
+}
+
+/* Card Fact */
+.MonthlyAiCard_Fact {
+    margin: 0 0 8px 0;
+    font-size: 0.73rem;
+    line-height: 1.45;
+    color: var(--Ac-2);
+}
+
+/* Action Box */
+.MonthlyAiCard_ActionBox {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 6px 9px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    font-size: 0.67rem;
+    line-height: 1.35;
+}
+
+.MonthlyAiCard_ActionTag {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: rgba(212, 157, 129, 0.16);
+    color: var(--Bc-1);
+    font-size: 0.54rem;
+    font-weight: 750;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+}
+
+.MonthlyAiCard_ActionText {
+    color: var(--Ac-3);
+    font-weight: 500;
 }
 
 .MonthlyAiBrief>footer {

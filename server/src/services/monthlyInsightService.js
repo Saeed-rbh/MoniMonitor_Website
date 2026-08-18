@@ -424,25 +424,72 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
                 transactionIds: expenses.slice(0, 5).map((t) => t.id),
             };
 
-        // Candidate 3: Pre-Calculated Fun Fact
+        // Candidate 3: Diverse & Engaging Pre-Calculated Fun Facts
         const daysInMonthSoFar = analysis.latestDay || 1;
         const totalHoursSoFar = daysInMonthSoFar * 24;
         const totalExpenseCount = expenses.length || 1;
         const hoursPerPurchase = Math.round((totalHoursSoFar / totalExpenseCount) * 10) / 10;
 
+        const diningMinor = curCategoriesMap['Dining']?.totalMinor || 0;
+        const groceriesMinor = curCategoriesMap['Groceries']?.totalMinor || 0;
+        const diningTxIds = curCategoriesMap['Dining']?.ids || [];
+        const weekendShare = analysis.summary.expenseMinor > 0
+            ? Math.round((weekendSum / analysis.summary.expenseMinor) * 100)
+            : 0;
+        const postPaydayShare = analysis.summary.expenseMinor > 0
+            ? Math.round((postPaydaySumMinor / analysis.summary.expenseMinor) * 100)
+            : 0;
+
+        // Find the top day of week
+        const sortedDays = Object.entries(dayTotals).sort((a, b) => b[1] - a[1]);
+        const topDay = sortedDays[0];
+
         let candidate3;
-        if (microTxs.length >= 4) {
+        if (diningMinor > 0 && groceriesMinor > 0 && Math.abs(diningMinor - groceriesMinor) > 2000) {
+            const ratio = (diningMinor / groceriesMinor).toFixed(1);
+            if (Number(ratio) >= 1.5) {
+                candidate3 = {
+                    type: 'FunFact_FoodRatio',
+                    funFactTopic: 'Dining Out vs Groceries',
+                    details: `You spent $${ratio} on dining out for every $1.00 spent on groceries (${money(diningMinor)} vs ${money(groceriesMinor)}).`,
+                    transactionIds: diningTxIds.slice(0, 10),
+                };
+            }
+        }
+
+        if (!candidate3 && weekendShare >= 42 && weekendIds.length >= 3) {
+            candidate3 = {
+                type: 'FunFact_WeekendRush',
+                funFactTopic: 'Weekend Spending Momentum',
+                details: `${weekendShare}% of your total monthly spending (${money(weekendSum)}) occurred on Saturdays & Sundays across ${weekendIds.length} purchases.`,
+                transactionIds: weekendIds.slice(0, 10),
+            };
+        } else if (!candidate3 && postPaydayShare >= 45 && postPaydayTxs.length >= 3) {
+            candidate3 = {
+                type: 'FunFact_PaydayVelocity',
+                funFactTopic: 'Post-Payday Sprint',
+                details: `${postPaydayShare}% of your expenses (${money(postPaydaySumMinor)}) happened within 5 days of receiving your income.`,
+                transactionIds: postPaydayTxs.map((t) => t.id).slice(0, 10),
+            };
+        } else if (!candidate3 && microTxs.length >= 5) {
             candidate3 = {
                 type: 'FunFact_MicroPurchases',
                 funFactTopic: 'Micro-purchases under $20',
-                details: `${microTxs.length} small purchases under $20 added up to ${money(microSumMinor)} this month (${Math.round((microSumMinor / (analysis.summary.expenseMinor || 1)) * 100)}% of total expenses)`,
+                details: `${microTxs.length} small purchases under $20 quietly added up to ${money(microSumMinor)} (${Math.round((microSumMinor / (analysis.summary.expenseMinor || 1)) * 100)}% of total expenses).`,
                 transactionIds: microTxs.map((t) => t.id).slice(0, 10),
             };
-        } else {
+        } else if (!candidate3 && topDay && topDay[1] > 0 && dayCounts[topDay[0]] >= 2) {
+            candidate3 = {
+                type: 'FunFact_PeakDay',
+                funFactTopic: `${topDay[0]} Peak Day`,
+                details: `${topDay[0]}s were your highest spending day of the week, totaling ${money(topDay[1])} across ${dayCounts[topDay[0]]} purchases.`,
+                transactionIds: sortedExpenses.filter((t) => dayOfWeekMap[new Date(t.Timestamp).getUTCDay()] === topDay[0]).map((t) => t.id).slice(0, 10),
+            };
+        } else if (!candidate3) {
             candidate3 = {
                 type: 'FunFact_PurchaseFrequency',
-                funFactTopic: 'Purchase Frequency',
-                details: `You made ${expenses.length} purchases across ${daysInMonthSoFar} days — averaging one purchase every ${hoursPerPurchase} hours!`,
+                funFactTopic: 'Purchase Rhythm',
+                details: `You made ${expenses.length} purchases across ${daysInMonthSoFar} days — averaging one purchase every ${hoursPerPurchase} hours.`,
                 transactionIds: expenses.slice(0, 10).map((t) => t.id),
             };
         }
