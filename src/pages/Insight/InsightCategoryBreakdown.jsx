@@ -1,147 +1,143 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { PieChart, ChevronDown, ChevronUp } from 'lucide-react';
+import { getTransactionIcon } from '../../components/Categories';
 
 const InsightCategoryBreakdown = ({ transactions }) => {
-    const [showAllExpenses, setShowAllExpenses] = React.useState(false);
+    const [showAllExpenses, setShowAllExpenses] = useState(false);
 
-    const { incomeStats, expenseStats } = useMemo(() => {
-        if (!transactions || transactions.length === 0) return { incomeStats: [], expenseStats: [] };
+    const { expenseStats, totalExpense } = useMemo(() => {
+        if (!transactions || transactions.length === 0) {
+            return { expenseStats: [], totalExpense: 0 };
+        }
 
-        const incomeMap = {};
         const expenseMap = {};
-        let totalIncome = 0;
-        let totalExpense = 0;
+        let total = 0;
 
-        transactions.forEach(t => {
+        transactions.forEach((t) => {
             const amt = Number(t.Amount);
-            if (isNaN(amt) || amt === 0) return;
+            if (isNaN(amt) || amt <= 0) return;
+
+            const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
+            if (!isExpense && t.Category !== "Dining" && t.Category !== "Shopping") return;
 
             const label = t.Label || "Other";
 
-            // Categorize
-            const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
-            const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
-
-            if (isIncome) {
-                incomeMap[label] = (incomeMap[label] || 0) + amt;
-                totalIncome += amt;
-            } else if (isExpense) {
-                expenseMap[label] = (expenseMap[label] || 0) + amt;
-                totalExpense += amt;
+            if (!expenseMap[label]) {
+                expenseMap[label] = { amount: 0, count: 0 };
             }
+            expenseMap[label].amount += amt;
+            expenseMap[label].count += 1;
+            total += amt;
         });
 
-        // Convert to Arrays & Sort
-        const fmt = (map, total) => Object.entries(map)
-            .map(([label, amount]) => ({
+        // Convert to Array & Sort descending by amount
+        const stats = Object.entries(expenseMap)
+            .map(([label, info]) => ({
                 label,
-                amount,
-                percentage: total > 0 ? (amount / total) * 100 : 0
+                amount: info.amount,
+                count: info.count,
+                percentage: total > 0 ? (info.amount / total) * 100 : 0,
             }))
             .sort((a, b) => b.amount - a.amount);
 
         return {
-            incomeStats: fmt(incomeMap, totalIncome),
-            expenseStats: fmt(expenseMap, totalExpense)
+            expenseStats: stats,
+            totalExpense: total,
         };
     }, [transactions]);
 
-    const formatCurrency = (val) => val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const formatAmount = (val) => {
+        const num = Number(val || 0);
+        if (num % 1 === 0) {
+            return `$${Math.round(num).toLocaleString('en-CA')}`;
+        }
+        return `$${num.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
 
-    const visibleExpenseStats = showAllExpenses ? expenseStats : expenseStats.slice(0, 3);
+    if (!transactions || transactions.length === 0 || expenseStats.length === 0) {
+        return null;
+    }
 
-    const RenderList = ({ title, data, colorVar, emptyMsg }) => (
-        <div className="Insight_BreakdownGroup" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            <h3 className="Insight_SectionTitle" style={{
-                margin: '0',
-                paddingLeft: '5px',
-                textAlign: 'left',
-                fontSize: '0.7rem',
-                fontWeight: 'bold',
-                color: 'var(--Ac-3)',
-                opacity: 0.8,
-                textTransform: 'uppercase',
-                letterSpacing: '1px',
-                width: '100%'
-            }}>
-                {title}
-            </h3>
+    const visibleStats = showAllExpenses ? expenseStats : expenseStats.slice(0, 4);
 
-            <div className="Insight_BreakdownCard" style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                background: 'rgba(255,255,255,0.03)',
-                borderRadius: '25px',
-                padding: '20px',
-                border: '1px solid var(--Bc-3)'
-            }}>
-                {data.length === 0 ? (
-                    <span style={{ fontSize: '0.8rem', color: 'var(--Ac-1)', fontStyle: 'italic', opacity: 0.5 }}>{emptyMsg}</span>
-                ) : (
-                    data.map((item, idx) => (
-                        <div className="Insight_BreakdownItem" key={idx} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <div className="Insight_BreakdownRow" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-                                <span className="Insight_BreakdownLabel" style={{ color: 'var(--Ac-1)', fontWeight: 'normal' }}>{item.label}</span>
-                                <span className="Insight_BreakdownAmount" style={{ fontWeight: '300', color: colorVar }}>
-                                    ${formatCurrency(item.amount)} <span style={{ opacity: 0.7, fontSize: '0.7rem', color: '#fff' }}>({Math.round(item.percentage)}%)</span>
-                                </span>
-                            </div>
-                            {/* Progress Bar */}
-                            <div className="Insight_BreakdownTrack" style={{ width: '100%', height: '4px', background: 'var(--Bc-3)', borderRadius: '2px', overflow: 'hidden' }}>
-                                <div style={{
-                                    width: `${item.percentage}%`,
-                                    height: '100%',
-                                    background: colorVar,
-                                    borderRadius: '2px'
-                                }} />
-                            </div>
+    return (
+        <section className="Insight_BreakdownSection">
+            <div className="Insight_BreakdownCard">
+                {/* Header */}
+                <div className="Insight_BreakdownHeader">
+                    <div className="Insight_BreakdownHeaderLeft">
+                        <div className="Insight_BreakdownIconBadge">
+                            <PieChart size={14} strokeWidth={2.2} />
                         </div>
-                    ))
-                )}
-                {expenseStats.length > 3 && (
+                        <div className="Insight_BreakdownHeaderText">
+                            <strong>Expense Breakdown</strong>
+                            <span>{expenseStats.length} {expenseStats.length === 1 ? 'category' : 'categories'} · {formatAmount(totalExpense)} total</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Categories List */}
+                <div className="Insight_BreakdownList">
+                    {visibleStats.map((item, idx) => {
+                        const icon = getTransactionIcon("Expense", item.label);
+                        const pctRounded = Math.round(item.percentage);
+
+                        return (
+                            <div className="Insight_BreakdownItem" key={item.label || idx}>
+                                <div className="Insight_BreakdownRow">
+                                    <div className="Insight_BreakdownItemLeft">
+                                        <div className="Insight_BreakdownCategoryIcon">
+                                            {icon}
+                                        </div>
+                                        <div className="Insight_BreakdownNameWrap">
+                                            <span className="Insight_BreakdownLabel">{item.label}</span>
+                                            <span className="Insight_BreakdownCount">
+                                                {item.count} {item.count === 1 ? 'txn' : 'txns'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="Insight_BreakdownItemRight">
+                                        <strong className="Insight_BreakdownAmount">
+                                            {formatAmount(item.amount)}
+                                        </strong>
+                                        <span className="Insight_BreakdownPctBadge">
+                                            {pctRounded}%
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Modern Glowing Progress Track */}
+                                <div className="Insight_BreakdownTrack">
+                                    <div
+                                        className="Insight_BreakdownFill"
+                                        style={{
+                                            width: `${Math.min(100, Math.max(2, item.percentage))}%`,
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Show More / Show Less Toggle Button */}
+                {expenseStats.length > 4 && (
                     <button
                         type="button"
-                        className="Insight_MoreButton"
-                        onClick={() => setShowAllExpenses((current) => !current)}
-                        style={{
-                            alignSelf: 'center',
-                            marginTop: '4px',
-                            padding: '6px 18px',
-                            border: '1px solid var(--Bc-3)',
-                            borderRadius: '20px',
-                            background: 'transparent',
-                            color: 'var(--Bc-1)',
-                            fontSize: '0.72rem',
-                            cursor: 'pointer'
-                        }}
+                        className="Insight_BreakdownToggleBtn"
+                        onClick={() => setShowAllExpenses((prev) => !prev)}
                     >
-                        {showAllExpenses ? 'Show Less' : `More (${expenseStats.length - 3})`}
+                        <span>{showAllExpenses ? 'Show Less' : `View All (${expenseStats.length})`}</span>
+                        {showAllExpenses ? (
+                            <ChevronUp size={13} strokeWidth={2.2} />
+                        ) : (
+                            <ChevronDown size={13} strokeWidth={2.2} />
+                        )}
                     </button>
                 )}
             </div>
-        </div>
-    );
-
-    if (!transactions || transactions.length === 0) return null;
-
-    return (
-        <div className="Insight_Breakdown" style={{
-            width: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px', // Reduced gap
-            marginTop: '0px', // Close to box
-            marginBottom: '20px'
-        }}>
-            <div style={{ display: 'flex', gap: '15px', flexDirection: 'row', flexWrap: 'wrap' }}>
-                <RenderList
-                    title="Expense Breakdown"
-                    data={visibleExpenseStats}
-                    colorVar="var(--Gc-1)"
-                    emptyMsg="No Expense Data"
-                />
-            </div>
-        </div>
+        </section>
     );
 };
 
