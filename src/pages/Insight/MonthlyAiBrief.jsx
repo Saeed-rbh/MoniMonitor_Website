@@ -145,6 +145,35 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
     () => new Map(allTxList.map((transaction) => [String(transaction.id), transaction])),
     [allTxList]
   );
+
+  const reviewTransactions = useMemo(() => {
+    const currentMonthTxs = allTxList.filter(
+      (t) => String(t.Timestamp || '').slice(0, 7) === targetMonth
+    );
+    return currentMonthTxs.filter((t) => {
+      const label = String(t.Label || '').trim().toLowerCase();
+      const isExpenseOrIncome = t.Category === 'Expense' || t.Category === 'Income' || t.Type === 'Expense' || t.Type === 'Debit' || t.Type === 'Income' || t.Type === 'Credit';
+      if (!isExpenseOrIncome) return false;
+      return ['other expense', 'other income', 'other', 'expense', 'income', ''].includes(label);
+    }).sort((left, right) => new Date(right.Timestamp) - new Date(left.Timestamp));
+  }, [allTxList, targetMonth]);
+
+  const handleOpenReview = useCallback(() => {
+    if (reviewTransactions.length === 0) return;
+    const count = reviewTransactions.length;
+    const insight = {
+      id: 'data-review',
+      title: 'Data Review Needed',
+      fact: `${count} broadly categorized transaction${count === 1 ? '' : 's'} found in ${new Date(`${targetMonth}-01T12:00:00`).toLocaleDateString('en-CA', { month: 'long', year: 'numeric' })}. Tap any transaction below to assign a specific category.`,
+      evidence: {
+        transactionIds: reviewTransactions.map((t) => t.id).filter(Boolean),
+        count,
+      },
+    };
+    setSelectedInsight(insight);
+    setIsMoreClicked('AI_data-review');
+  }, [reviewTransactions, targetMonth, setIsMoreClicked]);
+
   const evidenceTransactions = useMemo(() => {
     if (!selectedInsight || !selectedInsight.evidence?.transactionIds) return [];
     return selectedInsight.evidence.transactionIds
@@ -289,15 +318,28 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
           </button>
         </header>
 
-        <div className={`MonthlyAiBrief_Quality ${healthy ? "healthy" : "review"}`}>
-          {healthy ? <ShieldCheck aria-hidden="true" /> : <AlertCircle aria-hidden="true" />}
-          <div>
-            <strong>{healthy ? "Verified data" : "Data review needed"}</strong>
-            <span>{healthy
-              ? `${brief.summary.transactionCount} transactions checked · ${brief.source === "ai-synthesized" ? "AI synthesized" : brief.source === "ai-ranked" ? "AI prioritized" : "safe ranking"}`
-              : brief.dataQuality.issues.join(" · ")}
-            </span>
+        <div
+          className={`MonthlyAiBrief_Quality ${healthy ? "healthy" : "review"} ${!healthy && reviewTransactions.length > 0 ? "is-clickable" : ""}`}
+          onClick={!healthy && reviewTransactions.length > 0 ? handleOpenReview : undefined}
+          role={!healthy && reviewTransactions.length > 0 ? "button" : undefined}
+          tabIndex={!healthy && reviewTransactions.length > 0 ? 0 : undefined}
+        >
+          <div className="MonthlyAiBrief_QualityLeft">
+            {healthy ? <ShieldCheck aria-hidden="true" /> : <AlertCircle aria-hidden="true" />}
+            <div>
+              <strong>{healthy ? "Verified data" : "Data review needed"}</strong>
+              <span>{healthy
+                ? `${brief.summary.transactionCount} transactions checked · ${brief.source === "ai-synthesized" ? "AI synthesized" : brief.source === "ai-ranked" ? "AI prioritized" : "safe ranking"}`
+                : brief.dataQuality.issues.join(" · ")}
+              </span>
+            </div>
           </div>
+          {!healthy && reviewTransactions.length > 0 && (
+            <div className="MonthlyAiBrief_QualityAction">
+              <span>Categorize ({reviewTransactions.length})</span>
+              <ChevronRight size={13} aria-hidden="true" />
+            </div>
+          )}
         </div>
 
         <div className="MonthlyAiBrief_List">
@@ -335,7 +377,14 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
       <TransactionDetailModal
         transaction={viewingTx}
         onClose={() => setViewingTx(null)}
-        onTransactionUpdated={(tx) => setViewingTx(tx)}
+        onTransactionUpdated={(tx) => {
+          setViewingTx(tx);
+          clientBriefCache.delete(targetMonth);
+          try {
+            sessionStorage.removeItem(`moni_brief_${targetMonth}`);
+          } catch (_e) {}
+          load(true);
+        }}
       />
     </>
   );

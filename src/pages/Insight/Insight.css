@@ -1054,29 +1054,57 @@
 }
 
 .MonthlyAiBrief_Quality {
+    display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 9px;
     margin-top: 14px;
-    padding: 10px 0;
-    border-block: 1px solid var(--Ac-4);
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--Ac-4);
+    background: rgba(255, 255, 255, 0.02);
     text-align: left;
+    transition: all 180ms ease;
+    box-sizing: border-box;
 }
 
-.MonthlyAiBrief_Quality>svg {
+.MonthlyAiBrief_Quality.is-clickable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.MonthlyAiBrief_Quality.is-clickable:hover {
+    background: rgba(255, 69, 58, 0.07);
+    border-color: rgba(255, 69, 58, 0.28);
+}
+
+.MonthlyAiBrief_Quality.is-clickable:active {
+    transform: scale(0.99);
+}
+
+.MonthlyAiBrief_QualityLeft {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    flex: 1;
+}
+
+.MonthlyAiBrief_QualityLeft>svg {
     width: 19px;
     height: 19px;
     flex: 0 0 19px;
 }
 
-.MonthlyAiBrief_Quality.healthy>svg {
+.MonthlyAiBrief_Quality.healthy .MonthlyAiBrief_QualityLeft>svg {
     color: var(--Fc-1);
 }
 
-.MonthlyAiBrief_Quality.review>svg {
+.MonthlyAiBrief_Quality.review .MonthlyAiBrief_QualityLeft>svg {
     color: var(--Gc-1);
 }
 
-.MonthlyAiBrief_Quality>div {
+.MonthlyAiBrief_QualityLeft>div {
     display: flex;
     min-width: 0;
     flex-direction: column;
@@ -1092,6 +1120,27 @@
     color: var(--Ac-3);
     font-size: 0.66rem;
     line-height: 1.4;
+}
+
+.MonthlyAiBrief_QualityAction {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3.5px 8px;
+    border-radius: 7px;
+    background: rgba(255, 69, 58, 0.12);
+    border: 1px solid rgba(255, 69, 58, 0.25);
+    color: var(--Gc-1);
+    font-size: 0.60rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 180ms ease;
+}
+
+.MonthlyAiBrief_Quality.is-clickable:hover .MonthlyAiBrief_QualityAction {
+    background: rgba(255, 69, 58, 0.20);
+    border-color: rgba(255, 69, 58, 0.40);
 }
 
 .MonthlyAiBrief_List {
