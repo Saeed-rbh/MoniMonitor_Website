@@ -481,38 +481,51 @@ const Insight = () => {
         }
     }, [viewMode, transactions, allTransactions, year]);
 
-    const dayOfWeekData = useMemo(() => {
-        const days = [
-            { label: 'S', name: 'Sunday', inflow: 0, outflow: 0 },
-            { label: 'M', name: 'Monday', inflow: 0, outflow: 0 },
-            { label: 'T', name: 'Tuesday', inflow: 0, outflow: 0 },
-            { label: 'W', name: 'Wednesday', inflow: 0, outflow: 0 },
-            { label: 'T', name: 'Thursday', inflow: 0, outflow: 0 },
-            { label: 'F', name: 'Friday', inflow: 0, outflow: 0 },
-            { label: 'S', name: 'Saturday', inflow: 0, outflow: 0 },
-        ];
+    const monthlyCashFlowData = useMemo(() => {
+        const today = new Date();
+        const baseDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        const months = [];
 
-        const txList = currentViewTransactions || [];
-        txList.forEach((t) => {
-            if (!t.Timestamp) return;
-            const d = new Date(t.Timestamp);
-            const dayIdx = d.getDay();
-            if (dayIdx >= 0 && dayIdx <= 6) {
-                const amount = Number(t.Amount || 0);
-                const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
-                const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
-                if (isIncome) days[dayIdx].inflow += amount;
-                else if (isExpense) days[dayIdx].outflow += amount;
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(baseDate.getFullYear(), baseDate.getMonth() - i, 1);
+            const mYear = d.getFullYear();
+            const mMonth = d.getMonth();
+            const key = `${mYear}-${String(mMonth + 1).padStart(2, '0')}`;
+
+            const monthShort = d.toLocaleString('en-US', { month: 'short' });
+            const monthInitial = monthShort.charAt(0);
+
+            let mIncome = 0;
+            let mExpense = 0;
+
+            if (allTransactions && allTransactions[key]) {
+                mIncome = Number(allTransactions[key].totalIncome || 0);
+                mExpense = Number(allTransactions[key].totalExpense || 0);
             }
-        });
 
-        const maxDayTotal = Math.max(
-            ...days.map((d) => d.inflow + d.outflow),
+            const isCurrentMonth = mYear === today.getFullYear() && mMonth === today.getMonth();
+            const isSelectedMonth = mYear === year && mMonth === month;
+
+            months.push({
+                key,
+                year: mYear,
+                monthIndex: mMonth,
+                shortLabel: monthInitial,
+                fullLabel: `${monthShort} ${mYear}`,
+                inflow: mIncome,
+                outflow: mExpense,
+                isCurrentMonth,
+                isSelectedMonth,
+            });
+        }
+
+        const maxMonthTotal = Math.max(
+            ...months.map((m) => m.inflow + m.outflow),
             1
         );
 
-        return { days, maxDayTotal };
-    }, [currentViewTransactions]);
+        return { months, maxMonthTotal };
+    }, [allTransactions, year, month]);
 
     const periodCaption = viewMode === 'alltime'
         ? 'Full financial history'
@@ -689,34 +702,39 @@ const Insight = () => {
                             </div>
                         </div>
 
-                        {/* Right: 7-Day Pill Bar Chart (S M T W T F S) */}
+                        {/* Right: 12-Month Pill Bar Chart */}
                         <div className="Insight_CashFlowChart">
-                            {dayOfWeekData.days.map((day, idx) => {
+                            {monthlyCashFlowData.months.map((m, idx) => {
                                 const maxChartHeight = 56;
-                                const hasData = day.inflow > 0 || day.outflow > 0;
-                                const totalForDay = day.inflow + day.outflow;
+                                const hasData = m.inflow > 0 || m.outflow > 0;
+                                const totalForMonth = m.inflow + m.outflow;
 
                                 let inflowHeight = 0;
                                 let outflowHeight = 0;
 
                                 if (hasData) {
-                                    const scaledHeight = (totalForDay / dayOfWeekData.maxDayTotal) * maxChartHeight;
+                                    const scaledHeight = (totalForMonth / monthlyCashFlowData.maxMonthTotal) * maxChartHeight;
                                     const usableHeight = Math.max(scaledHeight, 10);
 
-                                    if (day.inflow > 0 && day.outflow > 0) {
-                                        inflowHeight = Math.max(Math.round((day.inflow / totalForDay) * usableHeight), 5);
-                                        outflowHeight = Math.max(Math.round((day.outflow / totalForDay) * usableHeight), 5);
-                                    } else if (day.inflow > 0) {
+                                    if (m.inflow > 0 && m.outflow > 0) {
+                                        inflowHeight = Math.max(Math.round((m.inflow / totalForMonth) * usableHeight), 5);
+                                        outflowHeight = Math.max(Math.round((m.outflow / totalForMonth) * usableHeight), 5);
+                                    } else if (m.inflow > 0) {
                                         inflowHeight = Math.max(Math.round(usableHeight), 6);
                                     } else {
                                         outflowHeight = Math.max(Math.round(usableHeight), 6);
                                     }
                                 }
 
-                                const tooltip = `${day.name}: Inflow $${formatCurrency(day.inflow)} · Outflow $${formatCurrency(day.outflow)}`;
+                                const tooltip = `${m.fullLabel}: Inflow $${formatCurrency(m.inflow)} · Outflow $${formatCurrency(m.outflow)}`;
+                                const isHighlighted = m.isSelectedMonth || m.isCurrentMonth;
 
                                 return (
-                                    <div key={idx} className="Insight_CashFlowCol" title={tooltip}>
+                                    <div
+                                        key={idx}
+                                        className={`Insight_CashFlowCol ${isHighlighted ? 'is-active' : ''}`}
+                                        title={tooltip}
+                                    >
                                         <div className="Insight_CashFlowBarContainer">
                                             {hasData ? (
                                                 <>
@@ -742,7 +760,7 @@ const Insight = () => {
                                                 <div className="Insight_CashFlowPill empty" />
                                             )}
                                         </div>
-                                        <span className="Insight_CashFlowDayLabel">{day.label}</span>
+                                        <span className="Insight_CashFlowDayLabel">{m.shortLabel}</span>
                                     </div>
                                 );
                             })}

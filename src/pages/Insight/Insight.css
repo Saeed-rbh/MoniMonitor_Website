@@ -245,10 +245,11 @@
 .Insight_CashFlowChart {
     display: flex;
     align-items: flex-end;
-    justify-content: flex-end;
-    gap: 7px;
+    justify-content: space-between;
+    gap: 3px;
     flex: 1;
     height: 76px;
+    min-width: 0;
 }
 
 .Insight_CashFlowCol {
@@ -259,13 +260,24 @@
     height: 100%;
     gap: 5px;
     cursor: default;
-    transition: transform 160ms ease;
+    transition: transform 160ms ease, opacity 160ms ease;
     flex: 1;
-    max-width: 18px;
+    min-width: 0;
+    opacity: 0.35;
+}
+
+.Insight_CashFlowCol.is-active {
+    opacity: 1;
+}
+
+.Insight_CashFlowCol.is-active .Insight_CashFlowDayLabel {
+    color: var(--Bc-1);
+    font-weight: 750;
 }
 
 .Insight_CashFlowCol:hover {
     transform: translateY(-2px);
+    opacity: 1;
 }
 
 .Insight_CashFlowBarContainer {
@@ -301,14 +313,15 @@
     height: 4px !important;
     border-radius: 100%;
     background-color: var(--Ac-1);
-    outline: 3px solid var(--Ac-4);
+    outline: 2px solid var(--Ac-4);
 }
 
 .Insight_CashFlowDayLabel {
     color: var(--Ac-3);
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     font-weight: 600;
     line-height: 1;
+    text-transform: uppercase;
 }
 
 .Insight_HeroCopy {
