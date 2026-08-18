@@ -249,6 +249,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         ));
 
         const newTime = new Date(expenseData.Timestamp).getTime();
+
         const allMatches = rawMatches.filter(m => {
             const existingTime = new Date(m.Timestamp).getTime();
             const diffHours = Math.abs(newTime - existingTime) / (1000 * 60 * 60);
@@ -281,13 +282,6 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             if (!suppressNotifications) {
                 await replaceNotification({ ...fuzzyDuplicate, ...expenseData, ...mergedUpdates, id: fuzzyDuplicate.id });
             }
-        } else {
-            // Sort matches by timestamp closeness
-            const sortedMatches = [...allMatches].sort((a, b) =>
-                Math.abs(new Date(a.Timestamp).getTime() - newTime) -
-                Math.abs(new Date(b.Timestamp).getTime() - newTime)
-            );
-
         } else {
             // Sort matches by timestamp closeness
             const sortedMatches = [...allMatches].sort((a, b) =>
