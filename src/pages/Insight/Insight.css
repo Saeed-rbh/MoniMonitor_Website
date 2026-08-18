@@ -1195,22 +1195,20 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 12px 13px;
+    padding: 11px 12px;
     border-radius: 20px;
     border: 1px solid var(--Bc-3);
     background: linear-gradient(145deg, rgba(255, 245, 240, 0.04), rgba(24, 25, 30, 0.45));
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     box-sizing: border-box;
-    min-height: 135px;
-    transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+    aspect-ratio: 1 / 1;
+    width: 100%;
     overflow: hidden;
     position: relative;
-}
-
-.Insight_CategorySquareCard:hover {
-    transform: translateY(-2px);
-    border-color: var(--Bc-2);
+    cursor: default;
+    user-select: none;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .Insight_CategorySquareCard.dining {
@@ -1226,17 +1224,18 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    gap: 6px;
+    gap: 4px;
 }
 
 .Insight_SquareIconBadge {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 9px;
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
     box-sizing: border-box;
+    flex-shrink: 0;
 }
 
 .Insight_SquareIconBadge.dining {
@@ -1252,25 +1251,31 @@
 }
 
 .Insight_SquareBadge {
-    font-size: 0.58rem;
+    font-size: 0.54rem;
     font-weight: 600;
-    padding: 2px 6px;
-    border-radius: 7px;
-    letter-spacing: 0.02em;
+    padding: 2px 5px;
+    border-radius: 6px;
+    letter-spacing: 0.01em;
     line-height: 1.2;
     white-space: nowrap;
 }
 
-.Insight_SquareBadge.dining {
-    color: var(--Bc-1);
-    background: rgba(212, 157, 129, 0.1);
-    border: 1px solid rgba(212, 157, 129, 0.2);
+.Insight_SquareBadge.increase {
+    color: var(--Gc-1);
+    background: rgba(255, 69, 58, 0.12);
+    border: 1px solid rgba(255, 69, 58, 0.25);
 }
 
-.Insight_SquareBadge.shopping {
-    color: var(--Cc-1);
-    background: rgba(160, 143, 255, 0.1);
-    border: 1px solid rgba(160, 143, 255, 0.2);
+.Insight_SquareBadge.decrease {
+    color: var(--Fc-1);
+    background: rgba(48, 209, 88, 0.12);
+    border: 1px solid rgba(48, 209, 88, 0.25);
+}
+
+.Insight_SquareBadge.neutral {
+    color: var(--Ac-3);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .Insight_SquareMain {
@@ -1278,12 +1283,12 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 1px;
-    margin-top: 4px;
+    margin-top: 2px;
 }
 
 .Insight_SquareTitle {
     color: var(--Ac-3);
-    font-size: 0.6rem;
+    font-size: 0.58rem;
     font-weight: 650;
     text-transform: uppercase;
     letter-spacing: 0.08em;

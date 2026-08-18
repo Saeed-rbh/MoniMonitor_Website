@@ -527,6 +527,80 @@ const Insight = () => {
             return { pathD, areaD, hasData: buckets.some((b) => b > 0) };
         };
 
+        // Calculate previous period comparison
+        let prevDiningTotal = 0;
+        let prevShoppingTotal = 0;
+        let hasPrevPeriod = false;
+
+        if (viewMode === 'monthly' && allTransactions) {
+            const prevYear = month === 0 ? year - 1 : year;
+            const prevMonth = month === 0 ? 11 : month - 1;
+            const prevKey = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}`;
+            const prevVal = allTransactions[prevKey];
+            if (prevVal) {
+                hasPrevPeriod = true;
+                const prevTx = prevVal.transactions || [];
+                prevTx.forEach((t) => {
+                    const amt = Number(t.Amount || 0);
+                    if (amt <= 0) return;
+                    const label = String(t.Label || '').toLowerCase();
+                    const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
+                    if (!isExpense && t.Category !== "Dining" && t.Category !== "Shopping") return;
+                    if (label.includes('dining') || label.includes('food') || label.includes('restaurant') || label.includes('cafe')) {
+                        prevDiningTotal += amt;
+                    } else if (label.includes('shopping') || label.includes('retail') || label.includes('clothing') || label.includes('merchandise')) {
+                        prevShoppingTotal += amt;
+                    }
+                });
+            }
+        } else if (viewMode === 'yearly' && allTransactions) {
+            const prevYear = year - 1;
+            let foundPrevYear = false;
+            Object.entries(allTransactions).forEach(([key, val]) => {
+                const [tYear] = key.split('-').map(Number);
+                if (tYear === prevYear && val && val.transactions) {
+                    foundPrevYear = true;
+                    val.transactions.forEach((t) => {
+                        const amt = Number(t.Amount || 0);
+                        if (amt <= 0) return;
+                        const label = String(t.Label || '').toLowerCase();
+                        const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
+                        if (!isExpense && t.Category !== "Dining" && t.Category !== "Shopping") return;
+                        if (label.includes('dining') || label.includes('food') || label.includes('restaurant') || label.includes('cafe')) {
+                            prevDiningTotal += amt;
+                        } else if (label.includes('shopping') || label.includes('retail') || label.includes('clothing') || label.includes('merchandise')) {
+                            prevShoppingTotal += amt;
+                        }
+                    });
+                }
+            });
+            hasPrevPeriod = foundPrevYear;
+        }
+
+        const formatDiffBadge = (currentAmt, prevAmt) => {
+            if (!hasPrevPeriod) {
+                return { text: 'New period', isIncrease: null };
+            }
+            const diff = currentAmt - prevAmt;
+            const periodLabel = viewMode === 'yearly' ? 'last yr' : 'last mo';
+            if (Math.abs(diff) < 0.5) {
+                return { text: `±$0 vs ${periodLabel}`, isIncrease: null };
+            }
+            if (diff > 0) {
+                return {
+                    text: `+$${Math.round(diff)} vs ${periodLabel}`,
+                    isIncrease: true,
+                };
+            }
+            return {
+                text: `-$${Math.round(Math.abs(diff))} vs ${periodLabel}`,
+                isIncrease: false,
+            };
+        };
+
+        const diningDiff = formatDiffBadge(diningTotal, prevDiningTotal);
+        const shoppingDiff = formatDiffBadge(shoppingTotal, prevShoppingTotal);
+
         const totalExpenseSafe = Math.max(1, totalExpense);
 
         return {
@@ -536,6 +610,7 @@ const Insight = () => {
                 percentage: (diningTotal / totalExpenseSafe) * 100,
                 avg: diningCount > 0 ? diningTotal / diningCount : 0,
                 sparkline: buildSparkline(diningBuckets),
+                diff: diningDiff,
             },
             shoppingStats: {
                 total: shoppingTotal,
@@ -543,9 +618,10 @@ const Insight = () => {
                 percentage: (shoppingTotal / totalExpenseSafe) * 100,
                 avg: shoppingCount > 0 ? shoppingTotal / shoppingCount : 0,
                 sparkline: buildSparkline(shoppingBuckets),
+                diff: shoppingDiff,
             },
         };
-    }, [currentViewTransactions, totalExpense]);
+    }, [currentViewTransactions, totalExpense, allTransactions, viewMode, year, month]);
 
     const cashFlowBarData = useMemo(() => {
         const now = new Date();
@@ -958,8 +1034,8 @@ const Insight = () => {
                         <div className="Insight_SquareIconBadge dining">
                             <Utensils size={13} strokeWidth={2.2} />
                         </div>
-                        <span className="Insight_SquareBadge dining">
-                            {diningStats.count > 0 ? `${Math.round(diningStats.percentage)}% of spend` : '0%'}
+                        <span className={`Insight_SquareBadge ${diningStats.diff.isIncrease === true ? 'increase' : diningStats.diff.isIncrease === false ? 'decrease' : 'neutral'}`}>
+                            {diningStats.diff.text}
                         </span>
                     </div>
 
@@ -1000,8 +1076,8 @@ const Insight = () => {
                         <div className="Insight_SquareIconBadge shopping">
                             <ShoppingBag size={13} strokeWidth={2.2} />
                         </div>
-                        <span className="Insight_SquareBadge shopping">
-                            {shoppingStats.count > 0 ? `${Math.round(shoppingStats.percentage)}% of spend` : '0%'}
+                        <span className={`Insight_SquareBadge ${shoppingStats.diff.isIncrease === true ? 'increase' : shoppingStats.diff.isIncrease === false ? 'decrease' : 'neutral'}`}>
+                            {shoppingStats.diff.text}
                         </span>
                     </div>
 
