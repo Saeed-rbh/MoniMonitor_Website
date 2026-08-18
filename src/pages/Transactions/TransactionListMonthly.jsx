@@ -52,13 +52,13 @@ export const groupTransactionsByTimeline = (transactions = []) => {
     if (txYear === todayYear && txMonth === todayMonth && txDay === todayDate) {
       sectionKey = "timeline_today";
       sectionTitle = "Today";
-      sortRank = 10000000000;
+      sortRank = new Date(todayYear, todayMonth, todayDate, 23, 59, 59, 999).getTime();
     }
     // 2. Is Yesterday?
     else if (txYear === yYear && txMonth === yMonth && txDay === yDate) {
       sectionKey = "timeline_yesterday";
       sectionTitle = "Yesterday";
-      sortRank = 9000000000;
+      sortRank = new Date(yYear, yMonth, yDate, 23, 59, 59, 999).getTime();
     }
     // 3. Is This Week?
     else if (date >= curMonday && date <= curSunday) {
@@ -70,7 +70,7 @@ export const groupTransactionsByTimeline = (transactions = []) => {
           : `${startMon} ${curMonday.getDate()} – ${endMon} ${curSunday.getDate()}`;
       sectionKey = "timeline_this_week";
       sectionTitle = `This Week · ${weekLabel}`;
-      sortRank = 8000000000;
+      sortRank = curSunday.getTime();
     }
     // 4. Same month or past month:
     else {
@@ -97,7 +97,7 @@ export const groupTransactionsByTimeline = (transactions = []) => {
 
         sectionKey = `week_${monday.toISOString().slice(0, 10)}`;
         sectionTitle = `Week · ${weekLabel}`;
-        sortRank = monday.getTime();
+        sortRank = sunday.getTime();
       } else {
         const monthName = date.toLocaleString("en-US", {
           month: "long",
@@ -105,7 +105,7 @@ export const groupTransactionsByTimeline = (transactions = []) => {
         });
         sectionKey = `month_${txYear}_${String(txMonth + 1).padStart(2, "0")}`;
         sectionTitle = monthName;
-        sortRank = new Date(txYear, txMonth, 1).getTime();
+        sortRank = new Date(txYear, txMonth + 1, 0, 23, 59, 59, 999).getTime();
       }
     }
 
