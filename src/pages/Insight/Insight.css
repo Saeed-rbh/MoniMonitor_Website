@@ -769,12 +769,13 @@
     justify-content: space-between;
     width: 100%;
     gap: 8px;
+    min-height: 24px;
 }
 
 .Insight_BreakdownItemLeft {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 7px;
     min-width: 0;
     flex: 1;
 }
@@ -791,24 +792,20 @@
     color: var(--Ac-2);
     font-size: 0.7rem;
     flex-shrink: 0;
+    line-height: 0;
 }
 
 .Insight_BreakdownCategoryIcon svg {
     width: 12px;
     height: 12px;
-}
-
-.Insight_BreakdownNameWrap {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    text-align: left;
+    display: block;
 }
 
 .Insight_BreakdownLabel {
     color: var(--Ac-1);
-    font-size: 0.74rem;
-    font-weight: 650;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -817,8 +814,11 @@
 
 .Insight_BreakdownCount {
     color: var(--Ac-4);
-    font-size: 0.56rem;
+    font-size: 0.58rem;
     font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .Insight_BreakdownItemRight {
@@ -833,18 +833,24 @@
     font-size: 0.8rem;
     font-weight: 700;
     letter-spacing: -0.01em;
+    line-height: 1;
 }
 
 .Insight_BreakdownPctBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     font-size: 0.58rem;
     font-weight: 700;
-    padding: 1.5px 5px;
+    line-height: 1;
+    padding: 2px 5px;
     border-radius: 5px;
     color: var(--Ac-2);
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid rgba(255, 255, 255, 0.1);
     min-width: 24px;
     text-align: center;
+    box-sizing: border-box;
 }
 
 .Insight_BreakdownTrack {

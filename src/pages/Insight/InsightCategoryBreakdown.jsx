@@ -89,12 +89,10 @@ const InsightCategoryBreakdown = ({ transactions }) => {
                                         <div className="Insight_BreakdownCategoryIcon">
                                             {icon}
                                         </div>
-                                        <div className="Insight_BreakdownNameWrap">
-                                            <span className="Insight_BreakdownLabel">{item.label}</span>
-                                            <span className="Insight_BreakdownCount">
-                                                {item.count} {item.count === 1 ? 'txn' : 'txns'}
-                                            </span>
-                                        </div>
+                                        <span className="Insight_BreakdownLabel">{item.label}</span>
+                                        <span className="Insight_BreakdownCount">
+                                            · {item.count} {item.count === 1 ? 'txn' : 'txns'}
+                                        </span>
                                     </div>
 
                                     <div className="Insight_BreakdownItemRight">
