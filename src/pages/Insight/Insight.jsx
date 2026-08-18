@@ -8,7 +8,7 @@ import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
 import { getPortfolioAPI } from "../../services/apiService";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 import MonthlyAiBrief from "./MonthlyAiBrief";
-import { Utensils, ShoppingBag, AlertTriangle, ChevronRight } from "lucide-react";
+import { Utensils, ShoppingBag, AlertTriangle } from "lucide-react";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import {
     buildAllTimeInsightData,
@@ -344,6 +344,14 @@ const Insight = () => {
 
     const formatCurrency = (val) => {
         return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const formatAnomalyAmount = (val) => {
+        const num = Number(val || 0);
+        if (num % 1 === 0) {
+            return `$${Math.round(num).toLocaleString('en-CA')}`;
+        }
+        return `$${num.toLocaleString('en-CA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
     const formatCompact = (val) => {
@@ -1242,9 +1250,8 @@ const Insight = () => {
                                 </div>
                                 <div className="Insight_AnomalyAmountWrap">
                                     <strong className="Insight_AnomalyAmount">
-                                        -${Number(t.Amount).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        -{formatAnomalyAmount(t.Amount)}
                                     </strong>
-                                    <ChevronRight size={13} className="Insight_AnomalyChevron" />
                                 </div>
                             </div>
                         ))}
