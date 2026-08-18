@@ -402,37 +402,35 @@ async function synthesizeMonthlyInsightsWithGemini(richData) {
 You are an observant personal financial intelligence analyst.
 Observe the user's real financial ledger and 6-month historical trends for ${richData.targetMonth || richData.month}.
 
-Do NOT follow a rigid formula or generic advice. Instead, thoroughly observe the provided 6-month transactions and historical summaries to find the 3 MOST UNEXPECTED trends, unusual patterns, or intriguing spending habits that:
-- Either NEED ATTENTION (e.g. concerning spikes, sneaky leakage, multi-month spending drift, new unvetted merchants, off-pattern recurring charges, or outsized category concentration).
-- OR are FUN / SURPRISING to know (e.g. food ratios like dining vs groceries, weekend spending momentum, post-payday velocity, micro-purchase accumulation, or peak spending day rhythms).
+Do not follow any predefined formula or canned advice. Thoroughly analyze the provided dataset and identify the 3 most unexpected trends, anomalies, behavioral patterns, or habits across the data that either need attention or are fun and surprising to know.
 
 For each of the 3 discoveries, return:
-- "id": A short unique slug (e.g. "grocery-drift", "weekend-surge", "dining-ratio").
-- "metric": A punchy 2-4 word stat highlight badge (e.g. "+45% vs 6-Mo Avg", "2.4x Dining:Groceries", "Friday Peak Day", "$340 New Merchant").
-- "title": A 2-4 word clean, punchy title.
-- "fact": 1-2 concise, engaging sentences explaining the specific unexpected observation with exact dollar amounts and percentage shifts from the data.
-- "action": 1 practical, smart takeaway or lighthearted tip (max 12 words).
+- "id": Short unique identifier slug.
+- "metric": A punchy 2-4 word stat highlight badge summarizing the key quantitative signal.
+- "title": A 2-4 word clear, concise title describing the specific discovery.
+- "fact": 1-2 concise sentences explaining the unexpected observation with exact numbers and percentage changes from the dataset.
+- "action": 1 practical takeaway or tip (maximum 12 words).
 - "confidence": "high" or "medium".
-- "evidenceTransactionIds": Real transaction IDs from the input dataset that substantiate this observation.
+- "evidenceTransactionIds": Real transaction IDs from the dataset that directly support this discovery.
 
 STRICT CONSTRAINTS:
-1. Zero hallucination. Only state numbers, merchants, and dates directly present in the provided 6-month dataset.
+1. Zero hallucination. Every figure, merchant name, category, and date must be directly derived from the provided dataset.
 2. Return ONLY a valid JSON object matching:
 {
   "insights": [
     {
       "id": "slug-id",
-      "metric": "2-4 word stat badge",
-      "title": "2-4 word title",
-      "fact": "1-2 sentence unexpected observation with real numbers",
-      "action": "1 sentence takeaway or tip",
+      "metric": "stat badge",
+      "title": "title",
+      "fact": "unexpected observation with real numbers",
+      "action": "takeaway or tip",
       "confidence": "high",
-      "evidenceTransactionIds": [101, 102]
+      "evidenceTransactionIds": [1, 2]
     }
   ]
 }
 
-6-Month Ledger & Historical Dataset:
+Dataset:
 ${JSON.stringify(richData)}
 `;
 
