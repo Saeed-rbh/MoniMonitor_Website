@@ -2,13 +2,13 @@ import React, { useMemo } from "react";
 import { useTransactions } from "../../context/TransactionContext";
 import "./Insight.css"; // Import animation styles
 import InsightTrendChart from "./InsightTrendChart";
-import InsightMonthlyTrendChart from "./InsightMonthlyTrendChart";
 import { animated, useSpring, easings } from "@react-spring/web";
 import { ScalableElement } from "../../utils/tools";
 import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
 import { getPortfolioAPI } from "../../services/apiService";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 import MonthlyAiBrief from "./MonthlyAiBrief";
+import { Utensils, ShoppingBag } from "lucide-react";
 import {
     buildAllTimeInsightData,
     buildInvestmentValueTimeline,
@@ -432,32 +432,7 @@ const Insight = () => {
         ];
     }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode, visiblePeriodCount]);
 
-    const periodTrendData = useMemo(() => {
-        const income = dailyIncome.slice(paddingDays, paddingDays + visiblePeriodCount);
-        const expense = dailyExpense.slice(paddingDays, paddingDays + visiblePeriodCount);
-        const invest = dailyInvest.slice(paddingDays, paddingDays + visiblePeriodCount);
-
-        let previousInvest = 0;
-        return income.map((value, index) => {
-            const cumulativeInvest = invest[index] || 0;
-            const periodInvest = cumulativeInvest - previousInvest;
-            previousInvest = cumulativeInvest;
-            return {
-                period: viewMode === 'monthly' ? String(index + 1) : periodLabels[index],
-                income: value || 0,
-                expenses: expense[index] || 0,
-                invest: periodInvest,
-            };
-        });
-    }, [dailyIncome, dailyExpense, dailyInvest, paddingDays, periodLabels, viewMode, visiblePeriodCount]);
-
-    const periodTrendTitle = viewMode === 'monthly'
-        ? 'Day-by-Day Spending Trend'
-        : viewMode === 'yearly'
-            ? 'Month-by-Month Spending Trend'
-            : 'Year-by-Year Spending Trend';
-
-    // --- Prepare Data for Category Breakdown ---
+    // --- Prepare Data for Category Breakdown and Summary Cards ---
     const currentViewTransactions = useMemo(() => {
         if (viewMode === 'monthly') {
             return transactions || [];
@@ -480,6 +455,97 @@ const Insight = () => {
             return yearlyTx;
         }
     }, [viewMode, transactions, allTransactions, year]);
+
+    const { diningStats, shoppingStats } = useMemo(() => {
+        const txList = currentViewTransactions || [];
+        let diningTotal = 0;
+        let diningCount = 0;
+        let shoppingTotal = 0;
+        let shoppingCount = 0;
+
+        const bucketCount = 6;
+        const diningBuckets = Array(bucketCount).fill(0);
+        const shoppingBuckets = Array(bucketCount).fill(0);
+
+        if (txList.length > 0) {
+            const timestamps = txList
+                .map((t) => new Date(t.Timestamp).getTime())
+                .filter((time) => Number.isFinite(time));
+            const minTime = timestamps.length ? Math.min(...timestamps) : 0;
+            const maxTime = timestamps.length ? Math.max(...timestamps) : 1;
+            const timeRange = Math.max(1, maxTime - minTime);
+
+            txList.forEach((t) => {
+                const amt = Number(t.Amount || 0);
+                if (amt <= 0) return;
+                const label = String(t.Label || '').toLowerCase();
+                const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
+                if (!isExpense && t.Category !== "Dining" && t.Category !== "Shopping") return;
+
+                const tTime = new Date(t.Timestamp).getTime();
+                const bucketIdx = Math.min(
+                    bucketCount - 1,
+                    Math.max(0, Math.floor(((tTime - minTime) / timeRange) * bucketCount))
+                );
+
+                if (label.includes('dining') || label.includes('food') || label.includes('restaurant') || label.includes('cafe')) {
+                    diningTotal += amt;
+                    diningCount++;
+                    diningBuckets[bucketIdx] += amt;
+                } else if (label.includes('shopping') || label.includes('retail') || label.includes('clothing') || label.includes('merchandise')) {
+                    shoppingTotal += amt;
+                    shoppingCount++;
+                    shoppingBuckets[bucketIdx] += amt;
+                }
+            });
+        }
+
+        const buildSparkline = (buckets) => {
+            const maxB = Math.max(...buckets, 1);
+            const width = 100;
+            const height = 26;
+            const padY = 3;
+            const usableH = height - padY * 2;
+            const step = width / (bucketCount - 1);
+
+            const points = buckets.map((v, i) => {
+                const x = i * step;
+                const y = height - padY - (v / maxB) * usableH;
+                return { x, y };
+            });
+
+            let pathD = `M ${points[0].x} ${points[0].y}`;
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = points[i];
+                const p1 = points[i + 1];
+                const cpX = (p0.x + p1.x) / 2;
+                pathD += ` C ${cpX} ${p0.y}, ${cpX} ${p1.y}, ${p1.x} ${p1.y}`;
+            }
+
+            const areaD = `${pathD} L ${width} ${height} L 0 ${height} Z`;
+
+            return { pathD, areaD, hasData: buckets.some((b) => b > 0) };
+        };
+
+        const totalExpenseSafe = Math.max(1, totalExpense);
+
+        return {
+            diningStats: {
+                total: diningTotal,
+                count: diningCount,
+                percentage: (diningTotal / totalExpenseSafe) * 100,
+                avg: diningCount > 0 ? diningTotal / diningCount : 0,
+                sparkline: buildSparkline(diningBuckets),
+            },
+            shoppingStats: {
+                total: shoppingTotal,
+                count: shoppingCount,
+                percentage: (shoppingTotal / totalExpenseSafe) * 100,
+                avg: shoppingCount > 0 ? shoppingTotal / shoppingCount : 0,
+                sparkline: buildSparkline(shoppingBuckets),
+            },
+        };
+    }, [currentViewTransactions, totalExpense]);
 
     const cashFlowBarData = useMemo(() => {
         const now = new Date();
@@ -884,6 +950,93 @@ const Insight = () => {
                 </div>
             </div>
 
+            {/* 2 Category Squares: Dining (Left) and Shopping (Right) */}
+            <div className="Insight_CategorySquares">
+                {/* Left: Dining Square */}
+                <div className="Insight_CategorySquareCard dining">
+                    <div className="Insight_SquareHeader">
+                        <div className="Insight_SquareIconBadge dining">
+                            <Utensils size={13} strokeWidth={2.2} />
+                        </div>
+                        <span className="Insight_SquareBadge dining">
+                            {diningStats.count > 0 ? `${Math.round(diningStats.percentage)}% of spend` : '0%'}
+                        </span>
+                    </div>
+
+                    <div className="Insight_SquareMain">
+                        <span className="Insight_SquareTitle">Dining</span>
+                        <strong className="Insight_SquareAmount">${formatCurrency(diningStats.total)}</strong>
+                    </div>
+
+                    {/* Mini Sparkline Chart */}
+                    <div className="Insight_SquareChartWrap">
+                        <svg className="Insight_SquareSvg" viewBox="0 0 100 26" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="diningGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="var(--Bc-1)" stopOpacity="0.45" />
+                                    <stop offset="100%" stopColor="var(--Bc-1)" stopOpacity="0.0" />
+                                </linearGradient>
+                            </defs>
+                            {diningStats.sparkline.hasData ? (
+                                <>
+                                    <path d={diningStats.sparkline.areaD} fill="url(#diningGrad)" />
+                                    <path d={diningStats.sparkline.pathD} fill="none" stroke="var(--Bc-1)" strokeWidth="2" strokeLinecap="round" />
+                                </>
+                            ) : (
+                                <line x1="0" y1="22" x2="100" y2="22" stroke="var(--Ac-4)" strokeWidth="1.5" strokeDasharray="3 3" />
+                            )}
+                        </svg>
+                    </div>
+
+                    <div className="Insight_SquareFooter">
+                        <span>{diningStats.count} {diningStats.count === 1 ? 'txn' : 'txns'}</span>
+                        <span>{diningStats.avg > 0 ? `Avg $${Math.round(diningStats.avg)}` : 'No spend'}</span>
+                    </div>
+                </div>
+
+                {/* Right: Shopping Square */}
+                <div className="Insight_CategorySquareCard shopping">
+                    <div className="Insight_SquareHeader">
+                        <div className="Insight_SquareIconBadge shopping">
+                            <ShoppingBag size={13} strokeWidth={2.2} />
+                        </div>
+                        <span className="Insight_SquareBadge shopping">
+                            {shoppingStats.count > 0 ? `${Math.round(shoppingStats.percentage)}% of spend` : '0%'}
+                        </span>
+                    </div>
+
+                    <div className="Insight_SquareMain">
+                        <span className="Insight_SquareTitle">Shopping</span>
+                        <strong className="Insight_SquareAmount">${formatCurrency(shoppingStats.total)}</strong>
+                    </div>
+
+                    {/* Mini Sparkline Chart */}
+                    <div className="Insight_SquareChartWrap">
+                        <svg className="Insight_SquareSvg" viewBox="0 0 100 26" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="shoppingGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="var(--Cc-1)" stopOpacity="0.45" />
+                                    <stop offset="100%" stopColor="var(--Cc-1)" stopOpacity="0.0" />
+                                </linearGradient>
+                            </defs>
+                            {shoppingStats.sparkline.hasData ? (
+                                <>
+                                    <path d={shoppingStats.sparkline.areaD} fill="url(#shoppingGrad)" />
+                                    <path d={shoppingStats.sparkline.pathD} fill="none" stroke="var(--Cc-1)" strokeWidth="2" strokeLinecap="round" />
+                                </>
+                            ) : (
+                                <line x1="0" y1="22" x2="100" y2="22" stroke="var(--Ac-4)" strokeWidth="1.5" strokeDasharray="3 3" />
+                            )}
+                        </svg>
+                    </div>
+
+                    <div className="Insight_SquareFooter">
+                        <span>{shoppingStats.count} {shoppingStats.count === 1 ? 'txn' : 'txns'}</span>
+                        <span>{shoppingStats.avg > 0 ? `Avg $${Math.round(shoppingStats.avg)}` : 'No spend'}</span>
+                    </div>
+                </div>
+            </div>
+
             <div className="Insight_KpiGrid" style={{
                 width: "100%",
                 display: "flex",
@@ -927,22 +1080,6 @@ const Insight = () => {
                 </div>
                 <InsightTrendChart data={chartData} />
             </section>
-
-            {periodTrendData.length > 0 && (
-                <section className="Insight_ChartCard" style={{ width: "100%", flexShrink: 0, marginTop: "10px" }}>
-                    <div className="Insight_SectionTitle" style={{
-                        width: "100%",
-                        paddingLeft: "10px",
-                        fontSize: "0.8rem",
-                        fontWeight: "bold",
-                        color: "var(--Ac-3)",
-                        marginBottom: "5px"
-                    }}>
-                        {periodTrendTitle}
-                    </div>
-                    <InsightMonthlyTrendChart data={periodTrendData} />
-                </section>
-            )}
 
             {/* Expense Warning */}
             {anomalies.length > 0 && (
