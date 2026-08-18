@@ -1491,30 +1491,67 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
         if (!pairIN && !pairOUT) return [];
     }
 
-    // ── Step 5: reclassify the selected pair ──────────────────────────────────
+    // ── Step 5: reclassify and link the selected pair ──────────────────────────────────
+    // Determine the source and destination bank names.
+    let sourceStr = "External";
+    if (pairOUT && pairOUT.BankName) {
+        sourceStr = pairOUT.BankName;
+    } else if (interac && interac.Reason) {
+        const m = String(interac.Reason).match(/E-Transfer\s*-\s*(.+)/i);
+        if (m) sourceStr = m[1].trim();
+        else sourceStr = "Interac";
+    }
+
+    let destStr = "External";
+    if (pairIN && pairIN.BankName) {
+        destStr = pairIN.BankName;
+    } else if (interac && interac.Reason) {
+        const m = String(interac.Reason).match(/E-Transfer\s*-\s*(.+)/i);
+        if (m) destStr = m[1].trim();
+        else destStr = "Interac";
+    }
+
+    if (sourceStr === destStr && sourceStr === "Interac") {
+        destStr = "Account"; // fallback if both default to Interac
+    }
+
+    const sharedReason = `Internal transfer: ${sourceStr} -> ${destStr}`;
+    // Generate a unique reference number to link all legs together
+    const groupTime = Math.min(...[pairIN, pairOUT, interac].filter(Boolean).map(t => new Date(t.Timestamp).getTime()));
+    const sharedRef = `XFER-${groupTime}-${tx.AmountMinor}`;
+
     const reclassified = [];
-    for (const candidate of [pairIN, pairOUT].filter(Boolean)) {
-        if (candidate.Category === 'Internal') continue; // already classified, skip
+    const legsToUpdate = [pairIN, pairOUT, interac].filter(Boolean);
+
+    for (const leg of legsToUpdate) {
+        const isAlreadyInternal = leg.Category === 'Internal';
 
         await db.run(
-            `UPDATE transactions SET Category = 'Internal', Label = 'Internal Transfer'
+            `UPDATE transactions SET Category = 'Internal', Label = 'Internal Transfer', Reason = ?, ReferenceNumber = ?
              WHERE id = ? AND userId = ?`,
-            [candidate.id, userId]
+            [sharedReason, sharedRef, leg.id, userId]
         );
-        console.log(
-            `[InternalPairing] Reclassified tx ${candidate.id} ` +
-            `(${candidate.Category}/${candidate.Label} $${candidate.Amount} ` +
-            `AccountFlow=${candidate.AccountFlow} ${candidate.BankName} ${candidate.Account}) ` +
-            `→ Internal/Internal Transfer ` +
-            `(paired with tx ${transactionId}${interac ? `, Interac tx ${interac.id}` : ''}).`
-        );
-        reclassified.push({
-            id: candidate.id,
-            oldCategory: candidate.Category,
-            oldLabel: candidate.Label,
-            newCategory: 'Internal',
-            newLabel: 'Internal Transfer',
-        });
+
+        if (!isAlreadyInternal) {
+            console.log(
+                `[InternalPairing] Reclassified tx ${leg.id} ` +
+                `(${leg.Category}/${leg.Label} $${leg.Amount} ` +
+                `AccountFlow=${leg.AccountFlow} ${leg.BankName} ${leg.Account}) ` +
+                `→ Internal/Internal Transfer (linked as ${sharedRef}).`
+            );
+            reclassified.push({
+                id: leg.id,
+                oldCategory: leg.Category,
+                oldLabel: leg.Label,
+                newCategory: 'Internal',
+                newLabel: 'Internal Transfer',
+            });
+        } else {
+            console.log(
+                `[InternalPairing] Linked already-Internal tx ${leg.id} ` +
+                `to transfer group ${sharedRef}.`
+            );
+        }
     }
 
     return reclassified;
