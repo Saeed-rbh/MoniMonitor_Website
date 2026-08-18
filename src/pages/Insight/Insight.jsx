@@ -610,20 +610,20 @@ const Insight = () => {
 
         const formatDiningAvgBadge = () => {
             if (!hasPrevPeriod || prevDiningDailyAvg === 0) {
-                if (currentDiningDailyAvg > 0) return { text: '▲ 100%', isIncrease: true };
-                return { text: '0%', isIncrease: null };
+                if (currentDiningDailyAvg > 0) return { arrow: '▲', pct: 100, isIncrease: true };
+                return { arrow: '', pct: 0, isIncrease: null };
             }
 
             const diff = currentDiningDailyAvg - prevDiningDailyAvg;
             const pct = Math.round((diff / prevDiningDailyAvg) * 100);
 
             if (pct === 0) {
-                return { text: '0%', isIncrease: null };
+                return { arrow: '', pct: 0, isIncrease: null };
             }
             if (pct > 0) {
-                return { text: `▲ ${pct}%`, isIncrease: true };
+                return { arrow: '▲', pct, isIncrease: true };
             }
-            return { text: `▼ ${Math.abs(pct)}%`, isIncrease: false };
+            return { arrow: '▼', pct: Math.abs(pct), isIncrease: false };
         };
 
         const diningDiff = formatDiningAvgBadge();
@@ -1060,8 +1060,18 @@ const Insight = () => {
                         <div className="Insight_SquareIconBadge dining">
                             <Utensils size={13} strokeWidth={2.2} />
                         </div>
-                        <span className={`Insight_SquareBadge ${diningStats.diff.isIncrease === true ? 'increase' : diningStats.diff.isIncrease === false ? 'decrease' : 'neutral'}`}>
-                            {diningStats.diff.text}
+                        <span className="Insight_SquareBadge dining">
+                            {diningStats.diff.arrow && (
+                                <span style={{
+                                    color: diningStats.diff.isIncrease ? 'var(--Gc-1)' : 'var(--Fc-1)',
+                                    marginRight: '2px',
+                                    fontSize: '0.68rem',
+                                    lineHeight: 1
+                                }}>
+                                    {diningStats.diff.arrow}
+                                </span>
+                            )}
+                            <span>{diningStats.diff.pct}%</span>
                         </span>
                     </div>
 
