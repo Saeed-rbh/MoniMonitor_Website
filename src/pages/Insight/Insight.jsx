@@ -774,11 +774,11 @@ const Insight = () => {
                                         <div className="Insight_CashFlowBarContainer">
                                             {hasData ? (
                                                 <>
-                                                    {inflowHeight > 0 && (
+                                                    {investHeight > 0 && (
                                                         <div
-                                                            className="Insight_CashFlowPill inflow"
+                                                            className="Insight_CashFlowPill invest"
                                                             style={{
-                                                                height: `${inflowHeight}px`,
+                                                                height: `${investHeight}px`,
                                                             }}
                                                         />
                                                     )}
@@ -787,16 +787,16 @@ const Insight = () => {
                                                             className="Insight_CashFlowPill outflow"
                                                             style={{
                                                                 height: `${outflowHeight}px`,
-                                                                marginTop: inflowHeight > 0 ? "3px" : "0px",
+                                                                marginTop: investHeight > 0 ? "3px" : "0px",
                                                             }}
                                                         />
                                                     )}
-                                                    {investHeight > 0 && (
+                                                    {inflowHeight > 0 && (
                                                         <div
-                                                            className="Insight_CashFlowPill invest"
+                                                            className="Insight_CashFlowPill inflow"
                                                             style={{
-                                                                height: `${investHeight}px`,
-                                                                marginTop: (inflowHeight > 0 || outflowHeight > 0) ? "3px" : "0px",
+                                                                height: `${inflowHeight}px`,
+                                                                marginTop: (investHeight > 0 || outflowHeight > 0) ? "3px" : "0px",
                                                             }}
                                                         />
                                                     )}
