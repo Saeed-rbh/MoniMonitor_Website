@@ -42,19 +42,24 @@ function isAuthorizedTelegramUpdate(update) {
     return chatId !== undefined && String(chatId) === String(TELEGRAM_CHAT_ID);
 }
 
-// A transaction is "generic" only when both Label AND Reason are vague bank placeholders.
-// Uses the new label taxonomy from aiService.js
+// A transaction is "generic" when its Reason or Label is a vague bank placeholder
 const isGeneric = (l = "", r = "") => {
-    const label = l.toLowerCase().trim();
-    const reason = r.toLowerCase().trim();
-    const genericLabels = ['bank deposit', 'e-transfer out', 'withdrawal', 'deposit'];
-    const genericReasons = ['withdrawal', 'deposit', 'bank withdrawal', 'bank deposit', 'rbc royal bank deposit', 'interac e-transfer'];
-    return genericLabels.includes(label) && genericReasons.includes(reason);
+    const label = String(l || "").toLowerCase().trim();
+    const reason = String(r || "").toLowerCase().trim();
+    const genericLabels = [
+        'bank deposit', 'deposit', 'deposits', 'cash & cheque deposits',
+        'cash deposits', 'withdrawal', 'withdrawals', 'e-transfer out',
+        'e-transfer in', 'other expense', 'other income', 'uncategorized'
+    ];
+    const genericReasons = [
+        'withdrawal', 'deposit', 'deposit notice', 'bank withdrawal',
+        'bank deposit', 'rbc royal bank deposit', 'rbc deposit',
+        'interac e-transfer', 'e-transfer', 'electronic transfer',
+        'funds transfer', 'transfer'
+    ];
+    return genericReasons.includes(reason) || (genericLabels.includes(label) && genericReasons.some(gr => reason.includes(gr)));
 };
 
-/**
- * Sends a Telegram notification and saves the message_id back to the transaction row.
- */
 async function notifyAndSave(tx) {
     const webAppUrl = WEB_APP_URL;
     const isHttps = webAppUrl.startsWith('https');
@@ -283,18 +288,27 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                 Math.abs(new Date(b.Timestamp).getTime() - newTime)
             );
 
+        } else {
+            // Sort matches by timestamp closeness
+            const sortedMatches = [...allMatches].sort((a, b) =>
+                Math.abs(new Date(a.Timestamp).getTime() - newTime) -
+                Math.abs(new Date(b.Timestamp).getTime() - newTime)
+            );
+
             const genericMatch = sortedMatches.find(m => isGeneric(m.Label, m.Reason));
 
             if (genericMatch && !newIsGeneric) {
                 // Upgrade generic → specific: delete old message, send fresh
                 console.log(`[${idInfo}] Upgrading generic to specific: ${expenseData.Reason}`);
                 const specificUpdates = {
+                    Category: expenseData.Category || genericMatch.Category,
                     Label: expenseData.Label,
                     Reason: expenseData.Reason,
                     Type: expenseData.Type,
                     Account: expenseData.Account || genericMatch.Account,
                     BankName: expenseData.BankName || genericMatch.BankName,
-                    ReferenceNumber: expenseData.ReferenceNumber || genericMatch.ReferenceNumber
+                    ReferenceNumber: expenseData.ReferenceNumber || genericMatch.ReferenceNumber,
+                    Timestamp: expenseData.Timestamp || genericMatch.Timestamp,
                 };
                 await updateAgentTransaction(genericMatch.id, specificUpdates);
                 activeId = genericMatch.id;
