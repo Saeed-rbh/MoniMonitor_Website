@@ -1182,21 +1182,16 @@ const Insight = () => {
             )}
 
             <section className="Insight_ChartCard" style={{ width: "100%", flexShrink: 0 }}>
-                <div className="Insight_SectionTitle" style={{
-                    width: "100%",
-                    paddingLeft: "10px",
-                    fontSize: "0.8rem",
-                    fontWeight: "bold",
-                    color: "var(--Ac-3)",
-                    marginBottom: "5px"
-                }}>
-                    {viewMode === 'alltime'
-                        ? 'All-Time Trend'
-                        : viewMode === 'yearly'
-                            ? `${year} Annual Trend`
-                            : 'Monthly Trend'}
-                </div>
-                <InsightTrendChart data={chartData} />
+                <InsightTrendChart
+                    data={chartData}
+                    title={
+                        viewMode === 'alltime'
+                            ? 'All-Time Trend'
+                            : viewMode === 'yearly'
+                                ? `${year} Annual Trend`
+                                : 'Monthly Trend'
+                    }
+                />
             </section>
 
             {/* Expense Warning */}
