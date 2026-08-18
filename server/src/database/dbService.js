@@ -1492,10 +1492,11 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     }
 
     // ── Step 5: reclassify and link the selected pair ──────────────────────────────────
-    // Determine the source and destination bank names.
+    // Determine the source and destination account names.
     let sourceStr = "External";
-    if (pairOUT && pairOUT.BankName) {
-        sourceStr = pairOUT.BankName;
+    if (pairOUT) {
+        const desc = describeDiscoveredAccount(pairOUT);
+        sourceStr = desc ? desc.name : (pairOUT.BankName || "External");
     } else if (interac && interac.Reason) {
         const m = String(interac.Reason).match(/E-Transfer\s*-\s*(.+)/i);
         if (m) sourceStr = m[1].trim();
@@ -1503,8 +1504,9 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     }
 
     let destStr = "External";
-    if (pairIN && pairIN.BankName) {
-        destStr = pairIN.BankName;
+    if (pairIN) {
+        const desc = describeDiscoveredAccount(pairIN);
+        destStr = desc ? desc.name : (pairIN.BankName || "External");
     } else if (interac && interac.Reason) {
         const m = String(interac.Reason).match(/E-Transfer\s*-\s*(.+)/i);
         if (m) destStr = m[1].trim();
