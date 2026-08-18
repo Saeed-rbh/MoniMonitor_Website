@@ -344,6 +344,17 @@ const Insight = () => {
         return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
+    const formatCompact = (val) => {
+        const num = Math.abs(Number(val) || 0);
+        if (num >= 1000000) {
+            return `$${(num / 1000000).toFixed(2)}M`;
+        }
+        if (num >= 1000) {
+            return `$${(num / 1000).toFixed(2)}K`;
+        }
+        return `$${num.toFixed(2)}`;
+    };
+
     const renderGrid = (title, color, data, maxVal, totalVal) => (
         <div className="Insight_Kpi" style={{ "--insight-accent": color }}>
             <div className="Insight_KpiHeader">
@@ -470,6 +481,39 @@ const Insight = () => {
         }
     }, [viewMode, transactions, allTransactions, year]);
 
+    const dayOfWeekData = useMemo(() => {
+        const days = [
+            { label: 'S', name: 'Sunday', inflow: 0, outflow: 0 },
+            { label: 'M', name: 'Monday', inflow: 0, outflow: 0 },
+            { label: 'T', name: 'Tuesday', inflow: 0, outflow: 0 },
+            { label: 'W', name: 'Wednesday', inflow: 0, outflow: 0 },
+            { label: 'T', name: 'Thursday', inflow: 0, outflow: 0 },
+            { label: 'F', name: 'Friday', inflow: 0, outflow: 0 },
+            { label: 'S', name: 'Saturday', inflow: 0, outflow: 0 },
+        ];
+
+        const txList = currentViewTransactions || [];
+        txList.forEach((t) => {
+            if (!t.Timestamp) return;
+            const d = new Date(t.Timestamp);
+            const dayIdx = d.getDay();
+            if (dayIdx >= 0 && dayIdx <= 6) {
+                const amount = Number(t.Amount || 0);
+                const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
+                const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
+                if (isIncome) days[dayIdx].inflow += amount;
+                else if (isExpense) days[dayIdx].outflow += amount;
+            }
+        });
+
+        const maxDayTotal = Math.max(
+            ...days.map((d) => d.inflow + d.outflow),
+            1
+        );
+
+        return { days, maxDayTotal };
+    }, [currentViewTransactions]);
+
     const periodCaption = viewMode === 'alltime'
         ? 'Full financial history'
         : viewMode === 'yearly'
@@ -588,59 +632,129 @@ const Insight = () => {
 
             <div className="Insight_Hero" style={{
                 width: "100%",
-                display: "flex",
-                flexDirection: "row",
-                justifyContent: "space-evenly",
-                alignItems: "center",
-                gap: "5px"
+                display: "block",
             }}>
-                {/* Balance Display */}
-                <div className="Insight_HeroCard" style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: "5px",
-                    border: "1px solid var(--Bc-2)",
-                    borderRadius: "50px",
-                    padding: "10px 20px",
-                    gap: "10px",
-                    width: "100%",
-                    boxSizing: "border-box"
-                }}>
-                    <div className="Insight_HeroCopy">
-                        <span>{viewMode === 'alltime' ? 'Net account value' : 'Cash-flow balance'}</span>
-                        <small>{periodCaption}</small>
+                {/* Cash Flow Balance Card with 7-Day Pill Chart */}
+                <div className="Insight_HeroCard Insight_CashFlowCard">
+                    {/* Top Row: Overall Balance & Percentage Change */}
+                    <div className="Insight_HeroHeader">
+                        <div className="Insight_HeroCopy">
+                            <span>{viewMode === 'alltime' ? 'Net account value' : 'Cash-flow balance'}</span>
+                            <small>{periodCaption}</small>
+                        </div>
+
+                        <div className="Insight_HeroValue" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {percentageChange !== null && (
+                                <div className={`Insight_ChangeBadge ${Number(percentageChange) >= 0 ? 'positive' : 'negative'}`}>
+                                    <span style={{
+                                        fontSize: '0.75rem',
+                                        fontWeight: '600',
+                                        color: Number(percentageChange) >= 0 ? 'var(--Fc-1)' : 'var(--Gc-1)'
+                                    }}>
+                                        {Number(percentageChange) >= 0 ? '▲' : '▼'} {Math.abs(percentageChange)}%
+                                    </span>
+                                </div>
+                            )}
+                            <span style={{
+                                fontSize: "1.08rem",
+                                fontWeight: "650",
+                                color: totalBalance >= 0 ? "var(--Fc-1)" : "var(--Gc-1)"
+                            }}>
+                                ${formatCurrency(totalBalance)}
+                            </span>
+                        </div>
                     </div>
 
-                    <div className="Insight_HeroValue" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {percentageChange !== null && (
-                            <div className={`Insight_ChangeBadge ${Number(percentageChange) >= 0 ? 'positive' : 'negative'}`} style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: Number(percentageChange) >= 0 ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)',
-                                padding: '2px 12px',
-                                borderRadius: '12px',
-                                gap: '2px',
-                                opacity: 0.8
-                            }}>
-                                <span style={{
-                                    fontSize: '0.75rem',
-                                    fontWeight: '600',
-                                    color: Number(percentageChange) >= 0 ? 'var(--Fc-1)' : 'var(--Gc-1)'
-                                }}>
-                                    {Number(percentageChange) >= 0 ? '▲' : '▼'} {Math.abs(percentageChange)}%
+                    {/* Bottom Row: Inflow/Outflow Summary + 7-Day Pill Chart */}
+                    <div className="Insight_CashFlowBody">
+                        {/* Left: Inflow and Outflow Totals */}
+                        <div className="Insight_CashFlowTotals">
+                            <div className="Insight_CashFlowTotalItem">
+                                <span className="Insight_CashFlowAmount" style={{ color: "var(--Fc-1)" }}>
+                                    {formatCompact(totalIncome)}
                                 </span>
+                                <div className="Insight_CashFlowLabel">
+                                    <span className="Insight_CashFlowDot" style={{ background: "var(--Fc-1)" }} />
+                                    <span>Inflow</span>
+                                </div>
                             </div>
-                        )}
-                        <span style={{
-                            fontSize: "0.9rem",
-                            fontWeight: "300",
-                            color: totalBalance >= 0 ? "var(--Fc-1)" : "var(--Gc-1)"
-                        }}>
-                            ${formatCurrency(totalBalance)}
-                        </span>
+                            <div className="Insight_CashFlowTotalItem">
+                                <span className="Insight_CashFlowAmount" style={{ color: "var(--Gc-1)" }}>
+                                    {formatCompact(totalExpense)}
+                                </span>
+                                <div className="Insight_CashFlowLabel">
+                                    <span className="Insight_CashFlowDot" style={{ background: "var(--Gc-1)" }} />
+                                    <span>Outflow</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right: 7-Day Pill Bar Chart (S M T W T F S) */}
+                        <div className="Insight_CashFlowChart">
+                            {dayOfWeekData.days.map((day, idx) => {
+                                const maxChartHeight = 56;
+                                const hasData = day.inflow > 0 || day.outflow > 0;
+                                const totalForDay = day.inflow + day.outflow;
+
+                                let inflowHeight = 0;
+                                let outflowHeight = 0;
+
+                                if (hasData) {
+                                    const scaledHeight = (totalForDay / dayOfWeekData.maxDayTotal) * maxChartHeight;
+                                    const usableHeight = Math.max(scaledHeight, 10);
+
+                                    if (day.inflow > 0 && day.outflow > 0) {
+                                        inflowHeight = Math.max(Math.round((day.inflow / totalForDay) * usableHeight), 5);
+                                        outflowHeight = Math.max(Math.round((day.outflow / totalForDay) * usableHeight), 5);
+                                    } else if (day.inflow > 0) {
+                                        inflowHeight = Math.max(Math.round(usableHeight), 6);
+                                    } else {
+                                        outflowHeight = Math.max(Math.round(usableHeight), 6);
+                                    }
+                                }
+
+                                const tooltip = `${day.name}: Inflow $${formatCurrency(day.inflow)} · Outflow $${formatCurrency(day.outflow)}`;
+
+                                return (
+                                    <div key={idx} className="Insight_CashFlowCol" title={tooltip}>
+                                        <div className="Insight_CashFlowBarContainer">
+                                            {hasData ? (
+                                                <>
+                                                    {inflowHeight > 0 && (
+                                                        <div
+                                                            className="Insight_CashFlowPill inflow"
+                                                            style={{
+                                                                height: `${inflowHeight}px`,
+                                                                background: "var(--Fc-1)",
+                                                            }}
+                                                        />
+                                                    )}
+                                                    {outflowHeight > 0 && (
+                                                        <div
+                                                            className="Insight_CashFlowPill outflow"
+                                                            style={{
+                                                                height: `${outflowHeight}px`,
+                                                                background: "var(--Gc-1)",
+                                                                marginTop: inflowHeight > 0 ? "3px" : "0px",
+                                                            }}
+                                                        />
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <div
+                                                    className="Insight_CashFlowPill empty"
+                                                    style={{
+                                                        height: "4px",
+                                                        background: "var(--Ac-4)",
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
+                                        <span className="Insight_CashFlowDayLabel">{day.label}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             </div>
