@@ -838,7 +838,10 @@ const Insight = () => {
                                         className={`Insight_CashFlowCol ${isHighlighted ? 'is-active' : ''}`}
                                         title={tooltip}
                                     >
-                                        <div className="Insight_CashFlowBarContainer">
+                                        <div
+                                            className="Insight_CashFlowBarContainer"
+                                            style={{ animationDelay: `${idx * 30}ms` }}
+                                        >
                                             {hasData ? (
                                                 <>
                                                     {investHeight > 0 && (

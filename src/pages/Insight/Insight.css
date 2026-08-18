@@ -286,6 +286,20 @@
     opacity: 1;
 }
 
+@keyframes cashFlowBarRise {
+    0% {
+        transform: scaleY(0);
+        opacity: 0;
+    }
+    50% {
+        opacity: 0.85;
+    }
+    100% {
+        transform: scaleY(1);
+        opacity: 1;
+    }
+}
+
 .Insight_CashFlowBarContainer {
     display: flex;
     flex-direction: column;
@@ -293,6 +307,8 @@
     justify-content: flex-end;
     height: 68px;
     width: 100%;
+    transform-origin: bottom center;
+    animation: cashFlowBarRise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .Insight_CashFlowPill {
