@@ -1103,7 +1103,7 @@ const Insight = () => {
                             <ShoppingBag size={13} strokeWidth={2.2} />
                         </div>
                         <span className="Insight_SquareBadge shopping">
-                            {shoppingStats.count > 0 ? `${Math.round(shoppingStats.percentage)}% of spend` : '0%'}
+                            {shoppingStats.count > 0 ? `${Math.round(shoppingStats.percentage)}%` : '0%'}
                         </span>
                     </div>
 
