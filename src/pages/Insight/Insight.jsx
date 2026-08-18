@@ -8,7 +8,8 @@ import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
 import { getPortfolioAPI } from "../../services/apiService";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 import MonthlyAiBrief from "./MonthlyAiBrief";
-import { Utensils, ShoppingBag, AlertTriangle } from "lucide-react";
+import { Utensils, ShoppingBag, AlertTriangle, ChevronRight } from "lucide-react";
+import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import {
     buildAllTimeInsightData,
     buildInvestmentValueTimeline,
@@ -21,6 +22,7 @@ const Insight = () => {
     const { transactionsData: transactions, allTransactions, whichMonth, isDateClicked, isMoreClicked } = useTransactions();
     const [viewMode, setViewMode] = React.useState('monthly');
     const [portfolio, setPortfolio] = React.useState(null);
+    const [selectedAnomalyTx, setSelectedAnomalyTx] = React.useState(null);
 
     React.useEffect(() => {
         let active = true;
@@ -1217,6 +1219,9 @@ const Insight = () => {
                             <div
                                 className="Insight_AnomalyItem"
                                 key={t.id || `${t.Timestamp}-${t.Amount}-${idx}`}
+                                onClick={() => setSelectedAnomalyTx(t)}
+                                role="button"
+                                tabIndex={0}
                             >
                                 <div className="Insight_AnomalyItemLeft">
                                     <span className="Insight_AnomalyReason">
@@ -1239,6 +1244,7 @@ const Insight = () => {
                                     <strong className="Insight_AnomalyAmount">
                                         -${Number(t.Amount).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </strong>
+                                    <ChevronRight size={13} className="Insight_AnomalyChevron" />
                                 </div>
                             </div>
                         ))}
@@ -1248,6 +1254,13 @@ const Insight = () => {
 
             {/* Category Breakdown */}
             <InsightCategoryBreakdown transactions={currentViewTransactions} />
+
+            {/* Transaction Detail Modal for Clicked Anomaly */}
+            <TransactionDetailModal
+                transaction={selectedAnomalyTx}
+                onClose={() => setSelectedAnomalyTx(null)}
+                onTransactionUpdated={(tx) => setSelectedAnomalyTx(tx)}
+            />
         </animated.div>
     );
 };
