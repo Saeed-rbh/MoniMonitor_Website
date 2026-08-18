@@ -864,6 +864,10 @@
   color: var(--Fc-1);
 }
 
+.AccountTransactions_Amount.neutral strong {
+  color: var(--Ac-1);
+}
+
 .AccountTransactions_Sentinel {
   height: 2px;
 }

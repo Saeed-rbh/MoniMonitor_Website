@@ -43,7 +43,7 @@ const TransactionListItem = ({
   const ModifyLabel = getTransactionIcon(category, label);
   const displayReason = getTransactionDisplayReason(description, label);
   const isIncome = category === "Income" || type === "Income" || String(type || "").toLowerCase() === "credit";
-  const direction = isIncome ? "in" : "out";
+  const direction = category === "Internal" ? "neutral" : isIncome ? "in" : "out";
 
   const [visibleButton, setVisibleButton] = useState("M");
   const [showLeftActions, setLeftShowActions] = useState(false);
@@ -230,8 +230,11 @@ const TransactionListItem = ({
             <span>{formatTransactionDate(time)}</span>
           </div>
           <div className={`AccountTransactions_Amount ${direction}`}>
-            <strong>{direction === "in" ? "+" : "−"}{formatMoney(amount)}</strong>
-            <span>{direction === "in" ? "in" : "out"}</span>
+            <strong>
+              {direction === "neutral" ? "" : direction === "in" ? "+" : "−"}
+              {formatMoney(amount)}
+            </strong>
+            <span>{direction === "neutral" ? "transfer" : direction === "in" ? "in" : "out"}</span>
           </div>
           {showLeftActions && (
             <ScalableElement
