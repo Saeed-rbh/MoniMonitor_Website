@@ -1255,9 +1255,52 @@
     border-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Card Title */
+/* Card Title & Stat Row */
+.MonthlyAiCard_StatRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 7px;
+    margin: 2px 0 6px 0;
+}
+
+.MonthlyAiCard_MetricBadge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2.5px 7px;
+    border-radius: 7px;
+    font-size: 0.68rem;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+
+.MonthlyAiCard_MetricBadge.is-coral {
+    background: rgba(255, 69, 58, 0.15);
+    color: var(--Gc-1);
+    border: 1px solid rgba(255, 69, 58, 0.28);
+}
+
+.MonthlyAiCard_MetricBadge.is-mint {
+    background: rgba(48, 209, 88, 0.15);
+    color: var(--Fc-1);
+    border: 1px solid rgba(48, 209, 88, 0.28);
+}
+
+.MonthlyAiCard_MetricBadge.is-amber {
+    background: rgba(255, 159, 10, 0.15);
+    color: #ff9f0a;
+    border: 1px solid rgba(255, 159, 10, 0.28);
+}
+
+.MonthlyAiCard_MetricBadge.is-purple {
+    background: rgba(191, 90, 242, 0.15);
+    color: #bf5af2;
+    border: 1px solid rgba(191, 90, 242, 0.28);
+}
+
 .MonthlyAiCard_Title {
-    margin: 0 0 5px 0;
+    margin: 0;
     font-size: 0.82rem;
     font-weight: 700;
     color: var(--Ac-1);

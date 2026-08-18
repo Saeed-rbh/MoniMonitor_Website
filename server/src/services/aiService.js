@@ -365,9 +365,10 @@ ${JSON.stringify(safeCandidates)}
 
 const AISynthesisItemSchema = z.object({
     id: z.string().trim().min(1).max(80),
+    metric: z.string().trim().min(1).max(40).optional().default(''),
     title: z.string().trim().min(1).max(100),
-    fact: z.string().trim().min(1).max(350),
-    action: z.string().trim().min(1).max(250),
+    fact: z.string().trim().min(1).max(250),
+    action: z.string().trim().min(1).max(150),
     confidence: z.enum(['high', 'medium']).optional().default('high'),
     evidenceTransactionIds: z.array(z.number().int()).optional().default([]),
 });
@@ -379,43 +380,51 @@ const AISynthesisResponseSchema = z.object({
 async function synthesizeMonthlyInsightsWithGemini(richData) {
     if (!ai) return null;
     const prompt = `
-You are a friendly personal finance assistant & behavioral analyst reviewing a user's monthly financial ledger for ${richData.month} alongside historical data from previous months.
+You are a sharp personal finance analyst reviewing a user's ledger for ${richData.month} alongside their 6-month historical baseline.
 
-Your job is to synthesize the provided pre-computed financial candidates into EXACTLY 3 insights:
+Generate EXACTLY 3 ultra-concise, visual-first insight cards with ZERO fluff or verbose essays:
 
-INSIGHT 1: Month-over-Month Behavior Shift (Increase)
-- Synthesize Candidate 1 (MoM Increase): Explain how spending on this specific merchant or category changed compared to the previous month using exact figures, dollar deltas, and percentage changes.
-- Provide 1 clear, helpful micro-action.
+INSIGHT 1: 6-Month Macro Trend & Trajectory
+- Synthesize Candidate 1 (6-Month Historical Baseline & Multi-Month Shift).
+- "metric": A punchy 2-4 word stat badge (e.g. "+38% vs 6-Mo Avg", "6-Month High: $2,850", or "3-Month Rise").
+- "title": 2-4 word clean title (e.g. "6-Month Spending Peak" or "Grocery Momentum").
+- "fact": EXACTLY 1 crisp sentence (max 15 words) with exact dollar amounts and percentage deltas.
+- "action": EXACTLY 1 micro-action (max 10 words).
 
-INSIGHT 2: Month-over-Month Behavior Shift (Decrease or Category Delta)
-- Synthesize Candidate 2 (MoM Decrease/Shift): Explain how spending on this category or merchant dropped or shifted compared to the previous month using exact figures and percentage deltas.
-- Provide 1 clear, helpful micro-action.
+INSIGHT 2: Unexpected Pattern & Anomaly Detection
+- Synthesize Candidate 2 (Unexpected Pattern: sudden new merchant, category concentration shift, or off-cycle recurring spike).
+- "metric": A punchy 2-4 word stat badge (e.g. "New Merchant: $340", "42% in Dining", or "8 Subscriptions").
+- "title": 2-4 word clean title (e.g. "Unusual Retail Spike" or "Subscription Surge").
+- "fact": EXACTLY 1 crisp sentence (max 15 words).
+- "action": EXACTLY 1 micro-action (max 10 words).
 
-INSIGHT 3: One Fun Fact (Surprising & Lighthearted Discovery)
-- Synthesize Candidate 3 (Fun Fact Candidate): A lighthearted, surprising, or quirky discovery about their spending (e.g. coffee vs internet, purchase frequency per hour, micro-leakage accumulation, or category ratio).
-- Title MUST start with "Fun Fact:" (e.g., "Fun Fact: Coffee vs Internet" or "Fun Fact: Micro-Purchase Density").
-- Provide 1 lighthearted action or tip.
+INSIGHT 3: Behavioral Discovery & Rhythm
+- Synthesize Candidate 3 (Food ratio, weekend spending momentum, post-payday velocity, or micro-purchases).
+- "metric": A punchy 2-4 word stat badge (e.g. "2.4x Dining:Groceries", "62% Weekend Rush", or "52% Post-Payday").
+- "title": 2-4 word clean title (e.g. "Food Spending Ratio" or "Weekend Spending Rhythm").
+- "fact": EXACTLY 1 crisp sentence (max 15 words).
+- "action": EXACTLY 1 micro-action (max 10 words).
 
-STRICT CONSTRAINTS:
-1. DO NOT mention brands like "Apple" or "Tim Hortons" UNLESS they are explicitly present in Candidate 1, Candidate 2, or Candidate 3 of the input data.
-2. DO NOT state generic top-spender facts. Only write about the exact pre-computed candidates provided.
-3. State exact dollar amounts and percentage changes calculated strictly from the input data. Do NOT make up numbers.
-4. Attach "evidenceTransactionIds" using real transaction IDs from Candidate 1, 2, or 3.
-5. Return ONLY a valid JSON object matching:
+STRICT RULES:
+1. NO long paragraphs. Keep "fact" strictly under 15 words.
+2. NO generic boilerplate advice. Only state numbers present in the input candidates.
+3. Attach real transaction IDs into "evidenceTransactionIds".
+4. Return ONLY valid JSON:
 {
   "insights": [
     {
-      "id": "slug-id",
-      "title": "3-5 word title",
-      "fact": "1-2 sentence observation with exact metrics",
-      "action": "1 sentence takeaway",
+      "id": "macro-trend",
+      "metric": "+38% vs 6-Mo Avg",
+      "title": "6-Month Spending Surge",
+      "fact": "Expenses reached $2,850 this month, 38% above your 6-month average of $2,065.",
+      "action": "Set a $2,200 spending ceiling for next month.",
       "confidence": "high",
       "evidenceTransactionIds": [101, 102]
     }
   ]
 }
 
-Pre-Computed Financial Candidates & Historical Ledger:
+Input Candidates & 6-Month Ledger Analysis:
 ${JSON.stringify(richData)}
 `;
 

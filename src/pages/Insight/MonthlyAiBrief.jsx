@@ -420,8 +420,15 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
                   )}
                 </div>
 
-                {/* Title */}
-                <h3 className="MonthlyAiCard_Title">{cleanTitle}</h3>
+                {/* Hero Stat Metric & Title */}
+                <div className="MonthlyAiCard_StatRow">
+                  {insight.metric && (
+                    <span className={`MonthlyAiCard_MetricBadge ${theme.accentClass}`}>
+                      {insight.metric}
+                    </span>
+                  )}
+                  <h3 className="MonthlyAiCard_Title">{cleanTitle}</h3>
+                </div>
 
                 {/* Body Fact */}
                 <p className="MonthlyAiCard_Fact">{insight.fact}</p>
@@ -429,7 +436,7 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
                 {/* Compact Action Pill */}
                 {insight.action && (
                   <div className="MonthlyAiCard_ActionBox">
-                    <span className="MonthlyAiCard_ActionTag">Action</span>
+                    <span className="MonthlyAiCard_ActionTag">Tip</span>
                     <span className="MonthlyAiCard_ActionText">{insight.action}</span>
                   </div>
                 )}

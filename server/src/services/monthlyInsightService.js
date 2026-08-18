@@ -42,7 +42,7 @@ function buildMonthlyAnalysis(transactions, month, dataQuality = {}) {
     const current = transactions.filter((transaction) => String(transaction.Timestamp || '').slice(0, 7) === month);
     const latestDay = current.length ? Math.max(...current.map(transactionDay)) : 1;
     const historyByMonth = [];
-    for (let offset = 1; offset <= 3; offset += 1) {
+    for (let offset = 1; offset <= 6; offset += 1) {
         const range = monthRange(month, offset);
         historyByMonth.push({
             month: range.key,
@@ -192,7 +192,7 @@ function hashAnalysis(analysis) {
 async function getMonthlyInsightBrief(userId, month, options = {}) {
     if (!MONTH_PATTERN.test(month)) throw new Error('month must be YYYY-MM');
     const db = await getDb();
-    const earliest = monthRange(month, 3).start.toISOString();
+    const earliest = monthRange(month, 6).start.toISOString();
     const latest = monthRange(month, -1).start.toISOString();
     const transactions = await db.all(
         `SELECT * FROM transactions WHERE userId = ? AND Timestamp >= ? AND Timestamp < ? ORDER BY Timestamp ASC`,
@@ -230,18 +230,14 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
         const income = currentMonthTxs.filter(isIncome);
         const sortedExpenses = [...expenses].sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
 
-        // Micro purchases <= $20
         const microTxs = sortedExpenses.filter((t) => amountMinor(t) <= 2000);
         const microSumMinor = microTxs.reduce((sum, t) => sum + amountMinor(t), 0);
 
-        // Day of week breakdown (0 = Sun, 6 = Sat)
         const dayOfWeekMap = { 0: 'Sun', 1: 'Mon', 2: 'Tue', 3: 'Wed', 4: 'Thu', 5: 'Fri', 6: 'Sat' };
         const dayTotals = { Sun: 0, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0 };
         const dayCounts = { Sun: 0, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0 };
         let weekendSum = 0;
-        let weekdaySum = 0;
         const weekendIds = [];
-        const weekdayIds = [];
 
         sortedExpenses.forEach((t) => {
             const dow = new Date(t.Timestamp).getUTCDay();
@@ -252,13 +248,9 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
             if (dow === 0 || dow === 6) {
                 weekendSum += amt;
                 weekendIds.push(t.id);
-            } else {
-                weekdaySum += amt;
-                weekdayIds.push(t.id);
             }
         });
 
-        // Payday velocity: calculate expenses that occur within 5 days after each income deposit
         const postPaydayTxs = [];
         let postPaydaySumMinor = 0;
         income.forEach((inc) => {
@@ -273,12 +265,27 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
             });
         });
 
-        // Month-over-Month (MoM) Trend Calculations
-        const prevMonth1Key = monthRange(month, 1).key;
-        const prevMonth2Key = monthRange(month, 2).key;
+        const past6Months = [];
+        for (let i = 1; i <= 6; i++) {
+            const mKey = monthRange(month, i).key;
+            const mTxs = transactions.filter((t) => String(t.Timestamp || '').slice(0, 7) === mKey);
+            const mExpenseTotal = mTxs.filter(isExpense).reduce((sum, t) => sum + amountMinor(t), 0);
+            if (mExpenseTotal > 0 || mTxs.length > 0) {
+                past6Months.push({ month: mKey, totalMinor: mExpenseTotal, txs: mTxs });
+            }
+        }
 
-        const prev1Txs = transactions.filter((t) => String(t.Timestamp || '').slice(0, 7) === prevMonth1Key);
-        const prev2Txs = transactions.filter((t) => String(t.Timestamp || '').slice(0, 7) === prevMonth2Key);
+        const valid6MoTotals = past6Months.map(m => m.totalMinor).filter(tot => tot > 0);
+        const sixMoAvgMinor = valid6MoTotals.length
+            ? Math.round(valid6MoTotals.reduce((a, b) => a + b, 0) / valid6MoTotals.length)
+            : analysis.summary.expenseMinor;
+
+        const deltaVs6MoAvg = sixMoAvgMinor > 0
+            ? Math.round(((analysis.summary.expenseMinor - sixMoAvgMinor) / sixMoAvgMinor) * 100)
+            : 0;
+
+        const isSixMonthHigh = valid6MoTotals.length >= 2 && analysis.summary.expenseMinor >= Math.max(...valid6MoTotals);
+        const isSixMonthLow = valid6MoTotals.length >= 2 && analysis.summary.expenseMinor <= Math.min(...valid6MoTotals);
 
         function getMerchantTotalsMap(txList) {
             const map = {};
@@ -307,128 +314,122 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
         }
 
         const curMerchantsMap = getMerchantTotalsMap(currentMonthTxs);
-        const p1MerchantsMap = getMerchantTotalsMap(prev1Txs);
-        const p2MerchantsMap = getMerchantTotalsMap(prev2Txs);
-
         const curCategoriesMap = getCategoryTotalsMap(currentMonthTxs);
-        const p1CategoriesMap = getCategoryTotalsMap(prev1Txs);
 
-        // Merchant MoM trends
-        const merchantTrends = Object.entries(curMerchantsMap).map(([name, cur]) => {
-            const p1 = p1MerchantsMap[name] || { totalMinor: 0, count: 0, ids: [] };
-            const p2 = p2MerchantsMap[name] || { totalMinor: 0, count: 0, ids: [] };
-            const diffMinor = cur.totalMinor - p1.totalMinor;
-            const percentChange = p1.totalMinor
-                ? Math.round(((cur.totalMinor - p1.totalMinor) / p1.totalMinor) * 100)
-                : null;
-            const isConsecutiveIncrease = cur.totalMinor > p1.totalMinor && p1.totalMinor > p2.totalMinor && p2.totalMinor > 0;
-            return {
-                merchant: name,
-                currentMonthSpentMinor: cur.totalMinor,
-                previousMonthSpentMinor: p1.totalMinor,
-                diffMinor,
-                currentMonthSpent: money(cur.totalMinor),
-                currentMonthCount: cur.count,
-                previousMonthSpent: money(p1.totalMinor),
-                previousMonthCount: p1.count,
-                twoMonthsAgoSpent: money(p2.totalMinor),
-                dollarChangeVsLastMonth: money(diffMinor),
-                percentChangeVsLastMonth: percentChange !== null ? `${percentChange > 0 ? '+' : ''}${percentChange}%` : 'New merchant this month',
-                isConsecutiveIncrease,
-                transactionIds: cur.ids,
-            };
-        });
+        const allPast6MoTxs = past6Months.flatMap(m => m.txs);
+        const past6MoMerchantsMap = getMerchantTotalsMap(allPast6MoTxs);
+        const p1Txs = past6Months[0]?.txs || [];
+        const p1MerchantsMap = getMerchantTotalsMap(p1Txs);
+        const p1CategoriesMap = getCategoryTotalsMap(p1Txs);
 
-        // Category MoM trends
-        const categoryTrends = Object.entries(curCategoriesMap).map(([label, cur]) => {
-            const p1 = p1CategoriesMap[label] || { totalMinor: 0, count: 0, ids: [] };
-            const diffMinor = cur.totalMinor - p1.totalMinor;
-            const percentChange = p1.totalMinor
-                ? Math.round(((cur.totalMinor - p1.totalMinor) / p1.totalMinor) * 100)
-                : null;
-            return {
-                categoryLabel: label,
-                currentMonthSpentMinor: cur.totalMinor,
-                previousMonthSpentMinor: p1.totalMinor,
-                diffMinor,
-                currentMonthSpent: money(cur.totalMinor),
-                previousMonthSpent: money(p1.totalMinor),
-                dollarChangeVsLastMonth: money(diffMinor),
-                percentChangeVsLastMonth: percentChange !== null ? `${percentChange > 0 ? '+' : ''}${percentChange}%` : 'New category this month',
-                transactionIds: cur.ids,
-            };
-        });
+        let consecutiveCategoryTrend = null;
+        if (past6Months.length >= 2) {
+            const p2Txs = past6Months[1]?.txs || [];
+            const p2CategoriesMap = getCategoryTotalsMap(p2Txs);
 
-        // Candidate 1: Real MoM Increasing Merchant or Category
-        const increasingMerchants = merchantTrends
-            .filter((m) => m.diffMinor > 0 && m.previousMonthSpentMinor > 0)
-            .sort((a, b) => b.diffMinor - a.diffMinor);
-        
-        const candidate1 = increasingMerchants[0]
-            ? {
-                type: 'MoM_Increase',
-                merchantOrCategory: increasingMerchants[0].merchant,
-                currentMonthSpent: increasingMerchants[0].currentMonthSpent,
-                previousMonthSpent: increasingMerchants[0].previousMonthSpent,
-                dollarChange: increasingMerchants[0].dollarChangeVsLastMonth,
-                percentChange: increasingMerchants[0].percentChangeVsLastMonth,
-                isConsecutiveIncrease: increasingMerchants[0].isConsecutiveIncrease,
-                transactionIds: increasingMerchants[0].transactionIds,
+            for (const [cat, curEntry] of Object.entries(curCategoriesMap)) {
+                const p1Entry = p1CategoriesMap[cat] || { totalMinor: 0 };
+                const p2Entry = p2CategoriesMap[cat] || { totalMinor: 0 };
+                if (curEntry.totalMinor > p1Entry.totalMinor && p1Entry.totalMinor > p2Entry.totalMinor && p2Entry.totalMinor > 0) {
+                    consecutiveCategoryTrend = {
+                        category: cat,
+                        current: money(curEntry.totalMinor),
+                        p1: money(p1Entry.totalMinor),
+                        p2: money(p2Entry.totalMinor),
+                        ids: curEntry.ids,
+                    };
+                    break;
+                }
             }
-            : {
-                type: 'MoM_Increase',
-                merchantOrCategory: categoryTrends[0]?.categoryLabel || 'Expenses',
-                currentMonthSpent: categoryTrends[0]?.currentMonthSpent || money(analysis.summary.expenseMinor),
-                previousMonthSpent: categoryTrends[0]?.previousMonthSpent || '$0.00',
-                dollarChange: categoryTrends[0]?.dollarChangeVsLastMonth || '$0.00',
-                percentChange: categoryTrends[0]?.percentChangeVsLastMonth || '0%',
-                transactionIds: categoryTrends[0]?.transactionIds || [],
+        }
+
+        let candidate1;
+        if (consecutiveCategoryTrend) {
+            candidate1 = {
+                type: '6Month_Consecutive_Rise',
+                topic: `${consecutiveCategoryTrend.category} 3-Month Momentum`,
+                summary: `${consecutiveCategoryTrend.category} spending has risen for 3 straight months (${consecutiveCategoryTrend.p2} → ${consecutiveCategoryTrend.p1} → ${consecutiveCategoryTrend.current}).`,
+                transactionIds: consecutiveCategoryTrend.ids,
             };
-
-        // Candidate 2: Real MoM Decreasing Merchant or Category Shift
-        const decreasingMerchants = merchantTrends
-            .filter((m) => m.diffMinor < 0 && m.previousMonthSpentMinor > 0)
-            .sort((a, b) => a.diffMinor - b.diffMinor);
-
-        const decreasingCategories = categoryTrends
-            .filter((c) => c.diffMinor < 0 && c.previousMonthSpentMinor > 0)
-            .sort((a, b) => a.diffMinor - b.diffMinor);
-
-        const candidate2 = decreasingMerchants[0]
-            ? {
-                type: 'MoM_Decrease',
-                merchantOrCategory: decreasingMerchants[0].merchant,
-                currentMonthSpent: decreasingMerchants[0].currentMonthSpent,
-                previousMonthSpent: decreasingMerchants[0].previousMonthSpent,
-                dollarChange: decreasingMerchants[0].dollarChangeVsLastMonth,
-                percentChange: decreasingMerchants[0].percentChangeVsLastMonth,
-                transactionIds: decreasingMerchants[0].transactionIds,
-            }
-            : decreasingCategories[0]
-            ? {
-                type: 'MoM_Decrease',
-                merchantOrCategory: decreasingCategories[0].categoryLabel,
-                currentMonthSpent: decreasingCategories[0].currentMonthSpent,
-                previousMonthSpent: decreasingCategories[0].previousMonthSpent,
-                dollarChange: decreasingCategories[0].dollarChangeVsLastMonth,
-                percentChange: decreasingCategories[0].percentChangeVsLastMonth,
-                transactionIds: decreasingCategories[0].transactionIds,
-            }
-            : {
-                type: 'MoM_Baseline',
-                merchantOrCategory: 'Overall Expenses',
-                currentMonthSpent: money(analysis.summary.expenseMinor),
-                previousMonthSpent: '$0.00',
-                dollarChange: '$0.00',
-                percentChange: '0%',
-                transactionIds: expenses.slice(0, 5).map((t) => t.id),
+        } else if (isSixMonthHigh) {
+            candidate1 = {
+                type: '6Month_High',
+                topic: '6-Month Spending Peak',
+                summary: `This month's expenses (${money(analysis.summary.expenseMinor)}) are the highest in 6 months, ${deltaVs6MoAvg}% above your 6-month average of ${money(sixMoAvgMinor)}.`,
+                transactionIds: expenses.slice(0, 10).map(t => t.id),
             };
+        } else if (isSixMonthLow) {
+            candidate1 = {
+                type: '6Month_Low',
+                topic: '6-Month Spending Low',
+                summary: `Spending this month (${money(analysis.summary.expenseMinor)}) is your lowest in 6 months, saving ${money(sixMoAvgMinor - analysis.summary.expenseMinor)} vs your 6-month norm.`,
+                transactionIds: expenses.slice(0, 10).map(t => t.id),
+            };
+        } else {
+            candidate1 = {
+                type: '6Month_Baseline',
+                topic: '6-Month Trajectory',
+                summary: `Monthly spend of ${money(analysis.summary.expenseMinor)} is ${Math.abs(deltaVs6MoAvg)}% ${deltaVs6MoAvg >= 0 ? 'above' : 'below'} your 6-month average of ${money(sixMoAvgMinor)}.`,
+                transactionIds: expenses.slice(0, 10).map(t => t.id),
+            };
+        }
 
-        // Candidate 3: Diverse & Engaging Pre-Calculated Fun Facts
-        const daysInMonthSoFar = analysis.latestDay || 1;
-        const totalHoursSoFar = daysInMonthSoFar * 24;
-        const totalExpenseCount = expenses.length || 1;
-        const hoursPerPurchase = Math.round((totalHoursSoFar / totalExpenseCount) * 10) / 10;
+        const brandNewMerchants = Object.entries(curMerchantsMap)
+            .filter(([name, cur]) => !past6MoMerchantsMap[name] && cur.totalMinor >= 15000)
+            .sort((a, b) => b[1].totalMinor - a[1].totalMinor);
+
+        const topCategoryEntry = Object.entries(curCategoriesMap)
+            .map(([cat, cur]) => ({
+                category: cat,
+                totalMinor: cur.totalMinor,
+                share: analysis.summary.expenseMinor > 0 ? Math.round((cur.totalMinor / analysis.summary.expenseMinor) * 100) : 0,
+                ids: cur.ids,
+            }))
+            .sort((a, b) => b.totalMinor - a.totalMinor)[0];
+
+        let candidate2;
+        if (brandNewMerchants.length > 0) {
+            const [name, info] = brandNewMerchants[0];
+            candidate2 = {
+                type: 'Unexpected_NewMerchant',
+                topic: `New Merchant: ${name}`,
+                summary: `Spent ${money(info.totalMinor)} at ${name} with zero prior spending recorded across the last 6 months.`,
+                transactionIds: info.ids,
+            };
+        } else if (topCategoryEntry && topCategoryEntry.share >= 38) {
+            candidate2 = {
+                type: 'Unexpected_CategoryConcentration',
+                topic: `${topCategoryEntry.category} Concentration`,
+                summary: `${topCategoryEntry.category} absorbed ${topCategoryEntry.share}% of your total budget this month (${money(topCategoryEntry.totalMinor)}).`,
+                transactionIds: topCategoryEntry.ids,
+            };
+        } else {
+            const incMerchants = Object.entries(curMerchantsMap)
+                .map(([name, cur]) => ({
+                    name,
+                    diffMinor: cur.totalMinor - (p1MerchantsMap[name]?.totalMinor || 0),
+                    curTotal: cur.totalMinor,
+                    ids: cur.ids,
+                }))
+                .filter(m => m.diffMinor > 2000)
+                .sort((a, b) => b.diffMinor - a.diffMinor);
+
+            if (incMerchants.length > 0) {
+                candidate2 = {
+                    type: 'Unexpected_MerchantShift',
+                    topic: `${incMerchants[0].name} Surge`,
+                    summary: `Spending at ${incMerchants[0].name} increased by ${money(incMerchants[0].diffMinor)} compared to last month (${money(incMerchants[0].curTotal)} total).`,
+                    transactionIds: incMerchants[0].ids,
+                };
+            } else {
+                candidate2 = {
+                    type: 'Unexpected_BalancedPattern',
+                    topic: 'Stable Expense Spread',
+                    summary: `Expenses were evenly distributed across ${Object.keys(curCategoriesMap).length} categories with no unexpected merchant spikes.`,
+                    transactionIds: expenses.slice(0, 5).map(t => t.id),
+                };
+            }
+        }
 
         const diningMinor = curCategoriesMap['Dining']?.totalMinor || 0;
         const groceriesMinor = curCategoriesMap['Groceries']?.totalMinor || 0;
@@ -440,14 +441,13 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
             ? Math.round((postPaydaySumMinor / analysis.summary.expenseMinor) * 100)
             : 0;
 
-        // Find the top day of week
         const sortedDays = Object.entries(dayTotals).sort((a, b) => b[1] - a[1]);
         const topDay = sortedDays[0];
 
         let candidate3;
         if (diningMinor > 0 && groceriesMinor > 0 && Math.abs(diningMinor - groceriesMinor) > 2000) {
             const ratio = (diningMinor / groceriesMinor).toFixed(1);
-            if (Number(ratio) >= 1.5) {
+            if (Number(ratio) >= 1.4) {
                 candidate3 = {
                     type: 'FunFact_FoodRatio',
                     funFactTopic: 'Dining Out vs Groceries',
@@ -486,23 +486,27 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
                 transactionIds: sortedExpenses.filter((t) => dayOfWeekMap[new Date(t.Timestamp).getUTCDay()] === topDay[0]).map((t) => t.id).slice(0, 10),
             };
         } else if (!candidate3) {
+            const daysInMonthSoFar = analysis.latestDay || 1;
+            const hoursPerPurchase = Math.round(((daysInMonthSoFar * 24) / (expenses.length || 1)) * 10) / 10;
             candidate3 = {
                 type: 'FunFact_PurchaseFrequency',
                 funFactTopic: 'Purchase Rhythm',
                 details: `You made ${expenses.length} purchases across ${daysInMonthSoFar} days — averaging one purchase every ${hoursPerPurchase} hours.`,
-                transactionIds: expenses.slice(0, 10).map((t) => t.id),
+                transactionIds: expenses.slice(0, 10).map(t => t.id),
             };
         }
 
         const richData = {
             month,
-            previousMonthsKeys: [prevMonth1Key, prevMonth2Key],
-            Candidate1_MoM_Increase: candidate1,
-            Candidate2_MoM_Decrease: candidate2,
-            Candidate3_FunFact: candidate3,
+            past6MonthsKeys: past6Months.map(m => m.month),
+            Candidate1_SixMonthTrend: candidate1,
+            Candidate2_UnexpectedPattern: candidate2,
+            Candidate3_BehaviorDiscovery: candidate3,
             summary: {
                 income: money(analysis.summary.incomeMinor),
                 expenses: money(analysis.summary.expenseMinor),
+                sixMonthAverageExpenses: money(sixMoAvgMinor),
+                deltaVsSixMonthAvg: `${deltaVs6MoAvg > 0 ? '+' : ''}${deltaVs6MoAvg}%`,
                 savingsContribution: money(analysis.summary.savingMinor),
                 netCashFlow: money(analysis.summary.netCashFlowMinor),
                 totalTransactions: analysis.summary.transactionCount,
@@ -516,6 +520,7 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
                 selectedInsights = rawSynthesized.map((item) => ({
                     id: item.id,
                     type: 'ai_synthesis',
+                    metric: item.metric || '',
                     title: item.title,
                     fact: item.fact,
                     action: item.action,
@@ -528,7 +533,7 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
                 source = 'ai-synthesized';
             }
         } catch (error) {
-            console.warn('[Monthly insights] Gemini synthesis error; attempting ranking fallback:', error.message);
+            console.warn('[Monthly AI brief] Gemini synthesis error; using ranking fallback:', error.message);
         }
 
         // Fallback to ranking or deterministic candidates if Gemini synthesis was skipped/failed
