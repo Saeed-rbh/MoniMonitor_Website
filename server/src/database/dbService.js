@@ -1391,7 +1391,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
         alreadyPairedBankAlertSiblings.map(s => normalizeAccountKey(s.BankName, s.Account))
     );
 
-    const candidates = siblings.filter(
+    const candidates = all.filter(
         s => (s.Category === 'Income' || s.Category === 'Expense') && s.ReceivedAt
     );
 
