@@ -8,7 +8,7 @@ import InsightCategoryBreakdown from "./InsightCategoryBreakdown";
 import { getPortfolioAPI } from "../../services/apiService";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 import MonthlyAiBrief from "./MonthlyAiBrief";
-import { Utensils, ShoppingBag } from "lucide-react";
+import { Utensils, ShoppingBag, AlertTriangle } from "lucide-react";
 import {
     buildAllTimeInsightData,
     buildInvestmentValueTimeline,
@@ -1194,61 +1194,55 @@ const Insight = () => {
                 />
             </section>
 
-            {/* Expense Warning */}
+            {/* Expense Warning / Anomalies */}
             {anomalies.length > 0 && (
-                <section className="Insight_AnomalyCard" style={{
-                    width: "100%",
-                    marginTop: "5px",
-                    marginBottom: "10px",
-                    padding: "10px",
-                    borderRadius: "15px",
-                    background: "rgba(255, 59, 48, 0.1)",
-                    border: "1px solid var(--Gc-1)",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "stretch",
-                    gap: "5px",
-                    boxSizing: "border-box",
-                    textAlign: "left"
-                }}>
-                    <div className="Insight_AnomalyHeader" style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--Gc-1)" }}>
-                        <span className="Insight_AnomalyIcon">!</span>
-                        <div>
-                            <strong>Unusual spending</strong>
-                            <small>Higher than your recent pattern</small>
-                        </div>
-                    </div>
-                    {anomalies.map((t, idx) => (
-                        <div className="Insight_AnomalyItem"
-                            key={t.id || `${t.Timestamp}-${t.Amount}-${idx}`}
-                            style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "flex-start",
-                                gap: "5px",
-                                fontSize: "0.8rem",
-                                color: "var(--Ac-3)",
-                                padding: "8px 0 8px 28px",
-                                borderTop: idx > 0 ? "1px solid rgba(255,255,255,0.08)" : "none"
-                            }}
-                        >
-                            <div className="Insight_AnomalyCopy" style={{ display: "flex", flexDirection: "column", gap: "3px", minWidth: 0 }}>
-                                <strong style={{ color: "var(--Ac-1)", fontSize: "0.82rem", overflowWrap: "anywhere" }}>
-                                    {getTransactionDisplayReason(t.Reason, t.Label)}
-                                </strong>
-                                <span style={{ fontSize: "0.7rem", opacity: 0.75 }}>
-                                    {[t.Label || "Expense", t.Account, t.Timestamp && new Date(t.Timestamp).toLocaleDateString("en-CA", {
-                                        month: "short",
-                                        day: "numeric",
-                                        year: "numeric"
-                                    })].filter(Boolean).join(" · ")}
-                                </span>
+                <section className="Insight_AnomalyCard">
+                    <div className="Insight_AnomalyHeader">
+                        <div className="Insight_AnomalyHeaderLeft">
+                            <div className="Insight_AnomalyIconBadge">
+                                <AlertTriangle size={15} strokeWidth={2.4} />
                             </div>
-                            <span style={{ fontWeight: "600", color: "var(--Gc-1)", whiteSpace: "nowrap", textAlign: "left" }}>
-                                ${Number(t.Amount).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </span>
+                            <div className="Insight_AnomalyHeaderText">
+                                <strong>Unusual Spending</strong>
+                                <span>Higher than your typical pattern</span>
+                            </div>
                         </div>
-                    ))}
+                        <span className="Insight_AnomalyCountBadge">
+                            {anomalies.length} flagged
+                        </span>
+                    </div>
+
+                    <div className="Insight_AnomalyList">
+                        {anomalies.map((t, idx) => (
+                            <div
+                                className="Insight_AnomalyItem"
+                                key={t.id || `${t.Timestamp}-${t.Amount}-${idx}`}
+                            >
+                                <div className="Insight_AnomalyItemLeft">
+                                    <span className="Insight_AnomalyReason">
+                                        {getTransactionDisplayReason(t.Reason, t.Label)}
+                                    </span>
+                                    <div className="Insight_AnomalyMeta">
+                                        {t.Label && <span className="Insight_AnomalyTag label">{t.Label}</span>}
+                                        {t.Account && <span className="Insight_AnomalyTag account">{t.Account}</span>}
+                                        {t.Timestamp && (
+                                            <span className="Insight_AnomalyDate">
+                                                {new Date(t.Timestamp).toLocaleDateString("en-US", {
+                                                    month: "short",
+                                                    day: "numeric",
+                                                })}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="Insight_AnomalyAmountWrap">
+                                    <strong className="Insight_AnomalyAmount">
+                                        -${Number(t.Amount).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </strong>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </section>
             )}
 
