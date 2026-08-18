@@ -214,7 +214,7 @@ Fields to extract:
   - Bank fees, NSF, or interest charges → "Financial Charges"
 
 - "Reason": Short merchant name or description (e.g. "Tim Hortons", "Interac e-Transfer from John").
-- "Timestamp": Transaction date in ISO 8601 (e.g. "2024-10-01T16:09:00.000Z").
+- "Timestamp": Transaction date and time in ISO 8601 (e.g. "2024-10-01T16:09:00.000Z") ONLY if explicitly stated in the email body; otherwise null.
 - "Type": Payment method (e.g. "Credit Card", "Checking Account", "e-Transfer", "Savings Account").
 - "Account": Masked account/card number if shown (e.g. "************2379"). Return null if not found.
 - "BankName": Bank name if shown (e.g. "RBC Royal Bank"). Return null if not found.

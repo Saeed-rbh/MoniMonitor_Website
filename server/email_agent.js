@@ -193,8 +193,9 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         expenseData.ReceivedAt = receivedAt || new Date().toISOString();
         expenseData.SourceEmailKey = sourceEmailKey;
 
-        if (!expenseData.Timestamp) {
-            expenseData.Timestamp = new Date().toISOString();
+        // If email does not have a timestamp, use the email's received time instead
+        if (!expenseData.Timestamp || !Number.isFinite(new Date(expenseData.Timestamp).getTime())) {
+            expenseData.Timestamp = expenseData.ReceivedAt;
         }
 
         // A stable account/card reference in a transaction is enough to add a new
