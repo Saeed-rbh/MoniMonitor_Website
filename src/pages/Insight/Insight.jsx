@@ -574,6 +574,9 @@ const Insight = () => {
                     });
                 }
             });
+            hasPrevPeriod = foundPrevYear;
+        }
+
         // Calculate daily average comparison for Dining vs previous period
         const now = new Date();
         const currentYear = now.getFullYear();
