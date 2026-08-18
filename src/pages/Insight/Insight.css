@@ -1191,36 +1191,60 @@
     margin-top: 2px;
 }
 
+@keyframes categoryCardPopIn {
+    0% {
+        opacity: 0;
+        transform: translateY(12px) scale(0.96);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes sparklineDraw {
+    0% {
+        opacity: 0;
+        transform: scaleY(0.1);
+    }
+    100% {
+        opacity: 1;
+        transform: scaleY(1);
+    }
+}
+
 .Insight_CategorySquareCard {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 12px 13px;
-    border-radius: 18px;
+    padding: 13px 14px;
+    border-radius: 19px;
     border: 1px solid var(--Bc-3);
-    background: linear-gradient(145deg, rgba(255, 245, 240, 0.04), rgba(24, 25, 30, 0.45));
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     box-sizing: border-box;
-    min-height: 124px;
+    min-height: 130px;
     width: 100%;
     overflow: hidden;
     position: relative;
     cursor: default;
     user-select: none;
     transition: border-color 180ms ease, box-shadow 180ms ease;
+    animation: categoryCardPopIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .Insight_CategorySquareCard.dining {
     background: radial-gradient(130% 100% at 0% 0%, rgba(212, 157, 129, 0.12) 0%, rgba(24, 25, 30, 0.55) 75%);
     border: 1px solid rgba(212, 157, 129, 0.22);
     box-shadow: 0 4px 24px rgba(212, 157, 129, 0.05);
+    animation-delay: 90ms;
 }
 
 .Insight_CategorySquareCard.shopping {
     background: radial-gradient(130% 100% at 0% 0%, rgba(160, 143, 255, 0.12) 0%, rgba(24, 25, 30, 0.55) 75%);
     border: 1px solid rgba(160, 143, 255, 0.22);
     box-shadow: 0 4px 24px rgba(160, 143, 255, 0.05);
+    animation-delay: 160ms;
 }
 
 .Insight_SquareHeader {
@@ -1304,7 +1328,7 @@
 
 .Insight_SquareChartWrap {
     width: 100%;
-    height: 24px;
+    height: 25px;
     margin: 3px 0 2px;
     display: flex;
     align-items: center;
@@ -1314,6 +1338,8 @@
     width: 100%;
     height: 100%;
     overflow: visible;
+    transform-origin: bottom;
+    animation: sparklineDraw 0.6s cubic-bezier(0.22, 1, 0.36, 1) 200ms both;
 }
 
 .Insight_SquareFooter {
