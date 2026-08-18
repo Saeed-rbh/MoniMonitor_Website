@@ -441,19 +441,11 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
 
                 {/* Body Fact */}
                 <p className="MonthlyAiCard_Fact">{insight.fact}</p>
-
-                {/* Compact Action Pill */}
-                {insight.action && (
-                  <div className="MonthlyAiCard_ActionBox">
-                    <span className="MonthlyAiCard_ActionTag">Tip</span>
-                    <span className="MonthlyAiCard_ActionText">{insight.action}</span>
-                  </div>
-                )}
               </article>
             );
           })}
         </div>
-        <footer>Amounts are calculated by MoniMonitor. AI only prioritizes verified observations and suggested actions.</footer>
+        <footer>Amounts are calculated by MoniMonitor based on your 6-month historical ledger.</footer>
       </section>
 
       <MoreOpen

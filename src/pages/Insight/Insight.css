@@ -1309,41 +1309,10 @@
 
 /* Card Fact */
 .MonthlyAiCard_Fact {
-    margin: 0 0 8px 0;
+    margin: 0;
     font-size: 0.73rem;
     line-height: 1.45;
     color: var(--Ac-2);
-}
-
-/* Action Box */
-.MonthlyAiCard_ActionBox {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 6px 9px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    font-size: 0.67rem;
-    line-height: 1.35;
-}
-
-.MonthlyAiCard_ActionTag {
-    display: inline-block;
-    padding: 1px 5px;
-    border-radius: 4px;
-    background: rgba(212, 157, 129, 0.16);
-    color: var(--Bc-1);
-    font-size: 0.54rem;
-    font-weight: 750;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    flex-shrink: 0;
-}
-
-.MonthlyAiCard_ActionText {
-    color: var(--Ac-3);
-    font-weight: 500;
 }
 
 .MonthlyAiBrief>footer {
