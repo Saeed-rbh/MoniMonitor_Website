@@ -1,6 +1,6 @@
 require('dotenv').config();
 const { ImapService } = require('./src/services/imapService');
-const { parseEmailWithGemini } = require('./src/services/aiService');
+const { parseEmailWithGemini, formatETransferReason } = require('./src/services/aiService');
 const dbService = require('./src/database/dbService');
 const { SNAPSHOT_CAPTURED_AT } = require('./src/database/financialSnapshot');
 const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery } = require('./src/services/telegramService');
@@ -192,6 +192,9 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             expenseData.Category = rule.category;
             expenseData.Label = rule.label;
         }
+
+        // Format e-Transfer reasons to standard "E-Transfer - [Name]"
+        expenseData.Reason = formatETransferReason(expenseData.Reason, expenseData.Label, expenseData.Type);
 
         console.log(`[${idInfo}] Successfully extracted expense:`, expenseData);
         expenseData.userId = USER_ID;

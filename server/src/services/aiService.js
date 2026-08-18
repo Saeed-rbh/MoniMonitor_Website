@@ -151,10 +151,46 @@ function minimizeEmailForAI(emailBody) {
         .replace(/\b\d{12,19}\b/g, "[REDACTED_ACCOUNT]");
 }
 
+function formatETransferReason(reason, label, type) {
+    if (!reason) return reason;
+    const cleanReason = String(reason).trim();
+    const isETransfer =
+        (label && /personal transfers/i.test(label)) ||
+        (type && /e-transfer/i.test(type)) ||
+        /interac|e-transfer/i.test(cleanReason);
+
+    if (!isETransfer) return cleanReason;
+
+    const alreadyFormatted = cleanReason.match(/^e-transfer\s*-\s*(.+)$/i);
+    if (alreadyFormatted) {
+        return `E-Transfer - ${alreadyFormatted[1].trim()}`;
+    }
+
+    let name = '';
+    const match = cleanReason.match(/(?:from|to|sent to|received from|into [^from]+ from)\s+([A-Za-z0-9\s\.\'\-]+?)(?:\s*\[|\s*\(|\s*\.|$)/i);
+    if (match && match[1]) {
+        name = match[1].trim();
+        if (/sender unavailable|unknown/i.test(name)) name = '';
+    } else {
+        const directMatch = cleanReason.match(/(?:interac\s+)?e-transfer\s*[:-]\s*([A-Za-z0-9\s\.\'\-]+)/i);
+        if (directMatch && directMatch[1]) {
+            name = directMatch[1].trim();
+            if (/sender unavailable|unknown/i.test(name)) name = '';
+        }
+    }
+
+    if (name) {
+        return `E-Transfer - ${name}`;
+    }
+    return 'E-Transfer';
+}
+
 function parseAIResponseText(responseText) {
     const parsedJson = JSON.parse(responseText);
     if (parsedJson.error) return ErrorSchema.parse(parsedJson);
-    return ExpenseSchema.parse(parsedJson);
+    const validated = ExpenseSchema.parse(parsedJson);
+    validated.Reason = formatETransferReason(validated.Reason, validated.Label, validated.Type);
+    return validated;
 }
 
 // ─── AI Parser ─────────────────────────────────────────────────────────────
@@ -213,7 +249,8 @@ Fields to extract:
   - SELL of crypto → Category "Investment", Label "Crypto Sale"
   - Bank fees, NSF, or interest charges → "Financial Charges"
 
-- "Reason": Short merchant name or description (e.g. "Tim Hortons", "Interac e-Transfer from John").
+- "Reason": Short merchant name or description (e.g. "Tim Hortons").
+  - FOR ALL e-Transfers (both sent and received, from or to): MUST ALWAYS be formatted as "E-Transfer - [Name]" (e.g. "E-Transfer - BEHNAM NAYEBI", "E-Transfer - John Doe"). If the person/merchant name is unavailable, use "E-Transfer".
 - "Timestamp": Transaction date and time in ISO 8601 (e.g. "2024-10-01T16:09:00.000Z") ONLY if explicitly stated in the email body; otherwise null.
 - "Type": Payment method (e.g. "Credit Card", "Checking Account", "e-Transfer", "Savings Account").
 - "Account": Masked account/card number if shown (e.g. "************2379"). Return null if not found.
@@ -401,6 +438,7 @@ module.exports = {
     rankMonthlyInsightCandidates,
     synthesizeMonthlyInsightsWithGemini,
     parseAIResponseText,
+    formatETransferReason,
     normalizeNullablePositiveNumber,
     minimizeEmailForAI,
     ALL_LABELS,
