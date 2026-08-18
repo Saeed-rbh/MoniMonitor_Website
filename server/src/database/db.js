@@ -52,6 +52,12 @@ async function getDb() {
                     PortfolioSymbol TEXT,
                     PortfolioQuantity REAL,
                     PortfolioPrice REAL,
+                    BalanceAccountId INTEGER,
+                    BalanceAccountConfidence TEXT,
+                    PortfolioAccountNumber TEXT,
+                    PortfolioToSymbol TEXT,
+                    PortfolioToQuantity REAL,
+                    AccountFlow TEXT,
                     SourceEmailKey TEXT,
                     FOREIGN KEY (userId) REFERENCES users(id)
                 );
@@ -130,6 +136,12 @@ async function getDb() {
             if (!hasColumn("PortfolioSymbol")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioSymbol TEXT");
             if (!hasColumn("PortfolioQuantity")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioQuantity REAL");
             if (!hasColumn("PortfolioPrice")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioPrice REAL");
+            if (!hasColumn("BalanceAccountId")) await db.exec("ALTER TABLE transactions ADD COLUMN BalanceAccountId INTEGER");
+            if (!hasColumn("BalanceAccountConfidence")) await db.exec("ALTER TABLE transactions ADD COLUMN BalanceAccountConfidence TEXT");
+            if (!hasColumn("PortfolioAccountNumber")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioAccountNumber TEXT");
+            if (!hasColumn("PortfolioToSymbol")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioToSymbol TEXT");
+            if (!hasColumn("PortfolioToQuantity")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioToQuantity REAL");
+            if (!hasColumn("AccountFlow")) await db.exec("ALTER TABLE transactions ADD COLUMN AccountFlow TEXT");
             if (!hasColumn("SourceEmailKey")) await db.exec("ALTER TABLE transactions ADD COLUMN SourceEmailKey TEXT");
             await db.run("UPDATE transactions SET AmountMinor = ROUND(Amount * 100) WHERE AmountMinor IS NULL");
 
