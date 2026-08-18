@@ -385,6 +385,7 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             await db.run('DELETE FROM account_balance_events WHERE id = ? AND userId = ?', [existing.id, userId]);
         }
 
+        const isInterac = /interac|e-transfer/i.test(transaction.Type || '') || /interac|e-transfer/i.test(transaction.Reason || '');
         const accounts = await db.all('SELECT * FROM investment_accounts WHERE userId = ?', [userId]);
         const ranked = accounts
             .map((account) => ({
@@ -392,11 +393,23 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
                 score: accountMatchScore(transaction, account, preferred.accountId, preferred.confidence),
             }))
             .filter(({ score }) => score > 0)
-            .sort((a, b) => b.score - a.score);
+            .sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                if (isInterac) return (Number(b.account.cashMinor) || 0) - (Number(a.account.cashMinor) || 0);
+                return 0;
+            });
+            
         const best = ranked[0];
-        if (!best || best.score < 30 || (ranked[1] && ranked[1].score === best.score)) {
+        if (!best || best.score < 30) {
             await db.run('COMMIT');
             return { status: ranked.length ? 'ambiguous_account' : 'unmatched_account' };
+        }
+        
+        if (ranked[1] && ranked[1].score === best.score) {
+            if (!isInterac || Number(ranked[0].account.cashMinor) === Number(ranked[1].account.cashMinor)) {
+                await db.run('COMMIT');
+                return { status: 'ambiguous_account' };
+            }
         }
 
         const amountMinor = Number.isSafeInteger(transaction.AmountMinor)
