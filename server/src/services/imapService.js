@@ -142,7 +142,12 @@ class ImapService {
             }
 
             const parsedMail = await simpleParser(message.source);
-            const emailBody = parsedMail.text || parsedMail.html || '';
+            let headers = '';
+            if (parsedMail.from?.text) headers += `From: ${parsedMail.from.text}\n`;
+            if (parsedMail.to?.text) headers += `To: ${parsedMail.to.text}\n`;
+            if (parsedMail.subject) headers += `Subject: ${parsedMail.subject}\n`;
+            if (headers) headers += '\n';
+            const emailBody = headers + (parsedMail.text || parsedMail.html || '');
             const receivedAt = parsedMail.date ? parsedMail.date.toISOString() : new Date().toISOString();
             const sourceEmailKey = `${this.mailboxKey}:${uidValidity}:${uid}`;
             const success = await this.onNewEmail(emailBody, `Email UID ${uid}`, receivedAt, { sourceEmailKey });

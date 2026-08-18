@@ -1465,6 +1465,38 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
             }
         }
 
+        // Fallback: If we have a clean OUT but no IN, pick an IN from a different account
+        if (pairOUT && !pairIN) {
+            const possibleIns = accountGroups
+                .filter(g => g.key !== normalizeAccountKey(pairOUT.BankName, pairOUT.Account))
+                .flatMap(g => g.ins);
+            if (possibleIns.length === 1) {
+                pairIN = possibleIns[0];
+            } else if (possibleIns.length > 1) {
+                const targetTime = new Date(pairOUT.Timestamp).getTime();
+                pairIN = possibleIns.sort((a, b) =>
+                    Math.abs(new Date(a.Timestamp).getTime() - targetTime) -
+                    Math.abs(new Date(b.Timestamp).getTime() - targetTime)
+                )[0];
+            }
+        }
+
+        // Fallback: If we have a clean IN but no OUT, pick an OUT from a different account
+        if (pairIN && !pairOUT) {
+            const possibleOuts = accountGroups
+                .filter(g => g.key !== normalizeAccountKey(pairIN.BankName, pairIN.Account))
+                .flatMap(g => g.outs);
+            if (possibleOuts.length === 1) {
+                pairOUT = possibleOuts[0];
+            } else if (possibleOuts.length > 1) {
+                const targetTime = new Date(pairIN.Timestamp).getTime();
+                pairOUT = possibleOuts.sort((a, b) =>
+                    Math.abs(new Date(a.Timestamp).getTime() - targetTime) -
+                    Math.abs(new Date(b.Timestamp).getTime() - targetTime)
+                )[0];
+            }
+        }
+
         // If Interac is present but we still haven't found a pairIN, fall back to the
         // nearest IN candidate from any account (Interac confirms it's a self-transfer).
         if (!pairIN && interac) {
