@@ -242,6 +242,12 @@
     outline: 2px solid var(--Gc-3);
 }
 
+.Insight_CashFlowDot.invest {
+    background-color: var(--Ac-1);
+    background: linear-gradient(180deg, var(--Ac-1) 50%, var(--Ac-2) 100%);
+    outline: 2px solid var(--Ac-3);
+}
+
 .Insight_CashFlowChart {
     display: flex;
     align-items: flex-end;
@@ -294,6 +300,12 @@
     border-radius: 20px;
     box-sizing: border-box;
     transition: height 300ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 200ms ease;
+}
+
+.Insight_CashFlowPill.invest {
+    background-color: var(--Ac-1);
+    background: linear-gradient(180deg, var(--Ac-1) 50%, var(--Ac-2) 100%);
+    outline: 2px solid var(--Ac-3);
 }
 
 .Insight_CashFlowPill.inflow {

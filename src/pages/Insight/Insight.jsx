@@ -486,7 +486,24 @@ const Insight = () => {
         const baseDate = new Date(today.getFullYear(), today.getMonth(), 1);
         const months = [];
 
+        // Build 12-month date intervals for investment timeline
+        const monthEndTimes = [];
         for (let i = 11; i >= 0; i--) {
+            const d = new Date(baseDate.getFullYear(), baseDate.getMonth() - i, 1);
+            const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+            monthEndTimes.push(nextMonth.getTime() - 1);
+        }
+
+        const startPeriodDate = new Date(baseDate.getFullYear(), baseDate.getMonth() - 11, 1);
+        const investValues = getRebasedInvestmentPeriodValues(
+            investmentTimeline,
+            startPeriodDate,
+            monthEndTimes
+        );
+
+        let previousInvest = 0;
+        for (let i = 11; i >= 0; i--) {
+            const idx = 11 - i;
             const d = new Date(baseDate.getFullYear(), baseDate.getMonth() - i, 1);
             const mYear = d.getFullYear();
             const mMonth = d.getMonth();
@@ -503,6 +520,10 @@ const Insight = () => {
                 mExpense = Number(allTransactions[key].totalExpense || 0);
             }
 
+            const cumulativeInvest = investValues[idx] || 0;
+            const periodInvest = Math.max(0, cumulativeInvest - previousInvest);
+            previousInvest = cumulativeInvest;
+
             const isCurrentMonth = mYear === today.getFullYear() && mMonth === today.getMonth();
             const isSelectedMonth = mYear === year && mMonth === month;
 
@@ -514,18 +535,19 @@ const Insight = () => {
                 fullLabel: `${monthShort} ${mYear}`,
                 inflow: mIncome,
                 outflow: mExpense,
+                invest: periodInvest,
                 isCurrentMonth,
                 isSelectedMonth,
             });
         }
 
         const maxMonthTotal = Math.max(
-            ...months.map((m) => m.inflow + m.outflow),
+            ...months.map((m) => m.inflow + m.outflow + m.invest),
             1
         );
 
         return { months, maxMonthTotal };
-    }, [allTransactions, year, month]);
+    }, [allTransactions, investmentTimeline, year, month]);
 
     const periodCaption = viewMode === 'alltime'
         ? 'Full financial history'
@@ -680,7 +702,7 @@ const Insight = () => {
 
                     {/* Bottom Row: Inflow/Outflow Summary + 7-Day Pill Chart */}
                     <div className="Insight_CashFlowBody">
-                        {/* Left: Inflow and Outflow Totals */}
+                        {/* Left: Inflow, Outflow, and Invest Totals */}
                         <div className="Insight_CashFlowTotals">
                             <div className="Insight_CashFlowTotalItem">
                                 <span className="Insight_CashFlowAmount" style={{ color: "var(--Fc-1)" }}>
@@ -700,25 +722,39 @@ const Insight = () => {
                                     <span>Outflow</span>
                                 </div>
                             </div>
+                            <div className="Insight_CashFlowTotalItem">
+                                <span className="Insight_CashFlowAmount" style={{ color: "var(--Ac-1)" }}>
+                                    {formatCompact(displayedInvestTotal)}
+                                </span>
+                                <div className="Insight_CashFlowLabel">
+                                    <span className="Insight_CashFlowDot invest" />
+                                    <span>Invest</span>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Right: 12-Month Pill Bar Chart */}
+                        {/* Right: 12-Month Pill Bar Chart (Invest on top, then Inflow, then Outflow) */}
                         <div className="Insight_CashFlowChart">
                             {monthlyCashFlowData.months.map((m, idx) => {
                                 const maxChartHeight = 56;
-                                const hasData = m.inflow > 0 || m.outflow > 0;
-                                const totalForMonth = m.inflow + m.outflow;
+                                const hasData = m.inflow > 0 || m.outflow > 0 || m.invest > 0;
+                                const totalForMonth = m.inflow + m.outflow + m.invest;
 
+                                let investHeight = 0;
                                 let inflowHeight = 0;
                                 let outflowHeight = 0;
 
                                 if (hasData) {
                                     const scaledHeight = (totalForMonth / monthlyCashFlowData.maxMonthTotal) * maxChartHeight;
                                     const usableHeight = Math.max(scaledHeight, 10);
+                                    const activeCount = (m.invest > 0 ? 1 : 0) + (m.inflow > 0 ? 1 : 0) + (m.outflow > 0 ? 1 : 0);
 
-                                    if (m.inflow > 0 && m.outflow > 0) {
-                                        inflowHeight = Math.max(Math.round((m.inflow / totalForMonth) * usableHeight), 5);
-                                        outflowHeight = Math.max(Math.round((m.outflow / totalForMonth) * usableHeight), 5);
+                                    if (activeCount > 1) {
+                                        investHeight = m.invest > 0 ? Math.max(Math.round((m.invest / totalForMonth) * usableHeight), 4) : 0;
+                                        inflowHeight = m.inflow > 0 ? Math.max(Math.round((m.inflow / totalForMonth) * usableHeight), 4) : 0;
+                                        outflowHeight = m.outflow > 0 ? Math.max(Math.round((m.outflow / totalForMonth) * usableHeight), 4) : 0;
+                                    } else if (m.invest > 0) {
+                                        investHeight = Math.max(Math.round(usableHeight), 6);
                                     } else if (m.inflow > 0) {
                                         inflowHeight = Math.max(Math.round(usableHeight), 6);
                                     } else {
@@ -726,7 +762,7 @@ const Insight = () => {
                                     }
                                 }
 
-                                const tooltip = `${m.fullLabel}: Inflow $${formatCurrency(m.inflow)} · Outflow $${formatCurrency(m.outflow)}`;
+                                const tooltip = `${m.fullLabel}: Inflow $${formatCurrency(m.inflow)} · Outflow $${formatCurrency(m.outflow)}${m.invest > 0 ? ` · Invest $${formatCurrency(m.invest)}` : ''}`;
                                 const isHighlighted = m.isSelectedMonth || m.isCurrentMonth;
 
                                 return (
@@ -738,11 +774,20 @@ const Insight = () => {
                                         <div className="Insight_CashFlowBarContainer">
                                             {hasData ? (
                                                 <>
+                                                    {investHeight > 0 && (
+                                                        <div
+                                                            className="Insight_CashFlowPill invest"
+                                                            style={{
+                                                                height: `${investHeight}px`,
+                                                            }}
+                                                        />
+                                                    )}
                                                     {inflowHeight > 0 && (
                                                         <div
                                                             className="Insight_CashFlowPill inflow"
                                                             style={{
                                                                 height: `${inflowHeight}px`,
+                                                                marginTop: investHeight > 0 ? "3px" : "0px",
                                                             }}
                                                         />
                                                     )}
@@ -751,7 +796,7 @@ const Insight = () => {
                                                             className="Insight_CashFlowPill outflow"
                                                             style={{
                                                                 height: `${outflowHeight}px`,
-                                                                marginTop: inflowHeight > 0 ? "4px" : "0px",
+                                                                marginTop: (investHeight > 0 || inflowHeight > 0) ? "3px" : "0px",
                                                             }}
                                                         />
                                                     )}
