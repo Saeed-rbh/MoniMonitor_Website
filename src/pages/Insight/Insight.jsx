@@ -1424,93 +1424,51 @@ const Insight = () => {
                 <span className="Insight_SectionTitle">Spending &amp; Behavioral Analytics</span>
             </div>
 
-            {/* Fixed vs Variable + Zero-Spend Days row */}
+            {/* 1. Fixed vs Variable (Full Width Card) */}
             {totalExpense > 0 && (
-                <div className="Insight_BentoRow">
-                    {/* Fixed vs Variable */}
-                    <div className="Insight_BentoCard fixed-var">
-                        <div className="Insight_BentoHeader">
-                            <div className="Insight_BentoHeaderLeft">
-                                <div className="Insight_BentoIconBadge fixed-var">
-                                    <Layers size={13} strokeWidth={2.2} />
-                                </div>
-                                <span className="Insight_BentoEyebrow">Cost Structure</span>
+                <div className="Insight_BentoCard fixed-var Insight_BentoCard--standalone">
+                    <div className="Insight_BentoHeader">
+                        <div className="Insight_BentoHeaderLeft">
+                            <div className="Insight_BentoIconBadge fixed-var">
+                                <Layers size={13} strokeWidth={2.2} />
                             </div>
-                            <span className="Insight_BentoBadge fixed-var">
-                                {extraStats.fixedPct}% Fixed
-                            </span>
+                            <span className="Insight_BentoEyebrow">Cost Structure</span>
                         </div>
+                        <span className="Insight_BentoBadge fixed-var">
+                            {extraStats.fixedPct}% Fixed
+                        </span>
+                    </div>
 
-                        <div className="Insight_BentoMain">
-                            <span className="Insight_BentoTitle">Fixed vs Variable</span>
-                            <div className="Insight_FixedVarDual">
-                                <div className="Insight_FixedVarCol">
-                                    <span className="Insight_FixedVarVal fixed">${Math.round(extraStats.fixedTotal).toLocaleString('en-CA')}</span>
-                                    <span className="Insight_FixedVarSub">Fixed Bills ({extraStats.fixedPct}%)</span>
-                                </div>
-                                <div className="Insight_FixedVarDivider" />
-                                <div className="Insight_FixedVarCol">
-                                    <span className="Insight_FixedVarVal variable">${Math.round(extraStats.variableTotal).toLocaleString('en-CA')}</span>
-                                    <span className="Insight_FixedVarSub">Flexible Spend ({extraStats.variablePct}%)</span>
-                                </div>
+                    <div className="Insight_BentoMain">
+                        <span className="Insight_BentoTitle">Fixed vs Variable Spending</span>
+                        <div className="Insight_FixedVarDual">
+                            <div className="Insight_FixedVarCol">
+                                <span className="Insight_FixedVarVal fixed">${Math.round(extraStats.fixedTotal).toLocaleString('en-CA')}</span>
+                                <span className="Insight_FixedVarSub">Fixed Bills &amp; Subs ({extraStats.fixedPct}%)</span>
                             </div>
-                        </div>
-
-                        <div className="Insight_FixedVarBar">
-                            <div className="Insight_FixedVarFill fixed" style={{ width: `${extraStats.fixedPct}%` }} />
-                            <div className="Insight_FixedVarFill variable" style={{ width: `${extraStats.variablePct}%` }} />
-                        </div>
-
-                        <div className="Insight_BentoFooter">
-                            <span>Recurring bills vs flexible discretionary</span>
+                            <div className="Insight_FixedVarDivider" />
+                            <div className="Insight_FixedVarCol">
+                                <span className="Insight_FixedVarVal variable">${Math.round(extraStats.variableTotal).toLocaleString('en-CA')}</span>
+                                <span className="Insight_FixedVarSub">Flexible Discretionary ({extraStats.variablePct}%)</span>
+                            </div>
                         </div>
                     </div>
 
-                    {/* Zero-Spend Days (monthly only) */}
-                    {viewMode === 'monthly' && (
-                        <div className="Insight_BentoCard zero-spend">
-                            <div className="Insight_BentoHeader">
-                                <div className="Insight_BentoHeaderLeft">
-                                    <div className="Insight_BentoIconBadge zero-spend">
-                                        <ShieldCheck size={13} strokeWidth={2.2} />
-                                    </div>
-                                    <span className="Insight_BentoEyebrow">Discipline</span>
-                                </div>
-                                <span className="Insight_BentoBadge zero-spend">
-                                    {extraStats.zeroSpendDays} Clean
-                                </span>
-                            </div>
+                    <div className="Insight_FixedVarBar">
+                        <div className="Insight_FixedVarFill fixed" style={{ width: `${extraStats.fixedPct}%` }} />
+                        <div className="Insight_FixedVarFill variable" style={{ width: `${extraStats.variablePct}%` }} />
+                    </div>
 
-                            <div className="Insight_BentoMain">
-                                <span className="Insight_BentoTitle">Zero-Spend Days</span>
-                                <div className="Insight_ZeroSpendHero">
-                                    <strong className="Insight_ZeroSpendNumber">{extraStats.zeroSpendDays}</strong>
-                                    <span className="Insight_ZeroSpendTotal">/ {extraStats.daysChecked}d</span>
-                                </div>
-                            </div>
-
-                            <div className="Insight_ZeroSpendGrid">
-                                {extraStats.zeroSpendTimeline.map((item) => (
-                                    <div
-                                        key={item.day}
-                                        className={`Insight_ZeroDot ${item.isZero ? 'is-zero' : ''} ${item.hasSpend ? 'has-spend' : ''} ${item.isFuture ? 'is-future' : ''}`}
-                                        title={`Day ${item.day}: ${item.isZero ? '$0 spent' : item.hasSpend ? `-$${formatCurrency(item.amount)}` : 'Upcoming'}`}
-                                    />
-                                ))}
-                            </div>
-
-                            <div className="Insight_BentoFooter">
-                                <span>{Math.round((extraStats.zeroSpendDays / Math.max(1, extraStats.daysChecked)) * 100)}% of tracked days spent $0</span>
-                            </div>
-                        </div>
-                    )}
+                    <div className="Insight_BentoFooter">
+                        <span>Recurring commitments vs day-to-day flexible outflows</span>
+                    </div>
                 </div>
             )}
 
-            {/* Burn Rate & Safe-to-Spend Pacing (monthly only) */}
+            {/* 2. Burn Rate & Safe Runway (2 Columns, Monthly Only) */}
             {viewMode === 'monthly' && extraStats.burnRate !== null && totalExpense > 0 && (
                 <div className="Insight_BentoRow">
-                    {/* Burn Rate */}
+                    {/* Daily Burn Rate */}
                     <div className="Insight_BentoCard burn-rate">
                         <div className="Insight_BentoHeader">
                             <div className="Insight_BentoHeaderLeft">
@@ -1541,7 +1499,7 @@ const Insight = () => {
                         </div>
                     </div>
 
-                    {/* Safe to Spend */}
+                    {/* Safe to Spend Runway */}
                     <div className="Insight_BentoCard safe-spend">
                         <div className="Insight_BentoHeader">
                             <div className="Insight_BentoHeaderLeft">
@@ -1551,7 +1509,7 @@ const Insight = () => {
                                 <span className="Insight_BentoEyebrow">Discretionary</span>
                             </div>
                             <span className={`Insight_BentoBadge ${extraStats.safeToSpend > 0 ? 'safe-spend' : 'burn-rate'}`}>
-                                {extraStats.safeToSpend > 0 ? 'Runway Safe' : 'Tight'}
+                                {extraStats.safeToSpend > 0 ? 'Runway Safe' : 'Deficit'}
                             </span>
                         </div>
                         <div className="Insight_BentoMain">
@@ -1567,21 +1525,76 @@ const Insight = () => {
                             />
                         </div>
                         <div className="Insight_BentoFooter">
-                            <span>Buffer after bills &amp; outflows</span>
+                            <span>Remaining buffer after bills &amp; outflows</span>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Day-of-Week Heatmap */}
+            {/* 3. Weekend Split & Micro-Purchases (2 Balanced Columns) */}
             {totalExpense > 0 && (
-                <div className="Insight_BentoCard dow">
+                <div className="Insight_BentoRow">
+                    {/* Weekend Spend */}
+                    <div className="Insight_BentoCard weekend">
+                        <div className="Insight_BentoHeader">
+                            <div className="Insight_BentoHeaderLeft">
+                                <div className="Insight_BentoIconBadge weekend">
+                                    <Clock size={13} strokeWidth={2.2} />
+                                </div>
+                                <span className="Insight_BentoEyebrow">Weekend Share</span>
+                            </div>
+                            <span className="Insight_BentoBadge weekend">{extraStats.weekendPct}%</span>
+                        </div>
+                        <div className="Insight_BentoMain">
+                            <span className="Insight_BentoTitle">Weekend Outflows</span>
+                            <div className="Insight_BentoAmount weekend">
+                                ${Math.round(extraStats.weekendTotal).toLocaleString('en-CA')}
+                            </div>
+                        </div>
+                        <div className="Insight_BentoProgressWrap">
+                            <div className="Insight_BentoProgressBar weekend" style={{ width: `${extraStats.weekendPct}%` }} />
+                        </div>
+                        <div className="Insight_BentoFooter">
+                            <span>{extraStats.weekdayPct}% (${Math.round(extraStats.weekdayTotal).toLocaleString('en-CA')}) on weekdays</span>
+                        </div>
+                    </div>
+
+                    {/* Micro-Purchases */}
+                    <div className="Insight_BentoCard micro">
+                        <div className="Insight_BentoHeader">
+                            <div className="Insight_BentoHeaderLeft">
+                                <div className="Insight_BentoIconBadge micro">
+                                    <Coffee size={13} strokeWidth={2.2} />
+                                </div>
+                                <span className="Insight_BentoEyebrow">Small Buys</span>
+                            </div>
+                            <span className="Insight_BentoBadge micro">{extraStats.microTxs} txns</span>
+                        </div>
+                        <div className="Insight_BentoMain">
+                            <span className="Insight_BentoTitle">Micro-Purchases &lt;$20</span>
+                            <div className="Insight_BentoAmount micro">
+                                ${Math.round(extraStats.microTotal).toLocaleString('en-CA')}
+                            </div>
+                        </div>
+                        <div className="Insight_BentoProgressWrap">
+                            <div className="Insight_BentoProgressBar micro" style={{ width: `${Math.min(100, Math.round((extraStats.microTotal / Math.max(1, totalExpense)) * 100))}%` }} />
+                        </div>
+                        <div className="Insight_BentoFooter">
+                            <span>≈ ${extraStats.microDailyAvg.toFixed(2)}/day across {extraStats.microTxs} purchases</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 4. Day-of-Week Heatmap (Full Width Card) */}
+            {totalExpense > 0 && (
+                <div className="Insight_BentoCard dow Insight_BentoCard--standalone">
                     <div className="Insight_BentoHeader">
                         <div className="Insight_BentoHeaderLeft">
                             <div className="Insight_BentoIconBadge dow">
                                 <Calendar size={13} strokeWidth={2.2} />
                             </div>
-                            <span className="Insight_BentoEyebrow">Weekly Rhythm</span>
+                            <span className="Insight_BentoEyebrow">Spending Rhythm</span>
                         </div>
                         <span className="Insight_BentoBadge dow">
                             Peak: {extraStats.topDow.day}
@@ -1589,7 +1602,7 @@ const Insight = () => {
                     </div>
 
                     <div className="Insight_BentoMain">
-                        <span className="Insight_BentoTitle">Day-of-Week Heatmap</span>
+                        <span className="Insight_BentoTitle">Day-of-Week Spending Heatmap</span>
                     </div>
 
                     <div className="Insight_DowVisual">
@@ -1605,7 +1618,7 @@ const Insight = () => {
                                     <div className="Insight_DowBarTrack">
                                         <div
                                             className={`Insight_DowBarFill ${isPeak ? 'is-peak' : ''}`}
-                                            style={{ height: `${Math.max(d.pct * 54, d.total > 0 ? 6 : 2)}px` }}
+                                            style={{ height: `${Math.max(d.pct * 56, d.total > 0 ? 6 : 2)}px` }}
                                         />
                                     </div>
                                     <span className="Insight_DowDayLabel">{d.day.slice(0, 2)}</span>
@@ -1621,60 +1634,10 @@ const Insight = () => {
                 </div>
             )}
 
-            {/* Behavioral Habits Row: Weekend split + Micro-purchases + Post-payday */}
+            {/* 5. Post-Payday Velocity & Zero-Spend Days (2 Balanced Columns) */}
             {totalExpense > 0 && (
-                <div className="Insight_BentoRow Insight_BentoRow--three">
-                    {/* Weekend / Weekday split */}
-                    <div className="Insight_BentoCard weekend">
-                        <div className="Insight_BentoHeader">
-                            <div className="Insight_BentoHeaderLeft">
-                                <div className="Insight_BentoIconBadge weekend">
-                                    <Clock size={13} strokeWidth={2.2} />
-                                </div>
-                                <span className="Insight_BentoEyebrow">Weekend</span>
-                            </div>
-                            <span className="Insight_BentoBadge weekend">{extraStats.weekendPct}%</span>
-                        </div>
-                        <div className="Insight_BentoMain">
-                            <span className="Insight_BentoTitle">Sat &amp; Sun Spend</span>
-                            <div className="Insight_BentoAmount weekend">
-                                ${Math.round(extraStats.weekendTotal).toLocaleString('en-CA')}
-                            </div>
-                        </div>
-                        <div className="Insight_BentoProgressWrap">
-                            <div className="Insight_BentoProgressBar weekend" style={{ width: `${extraStats.weekendPct}%` }} />
-                        </div>
-                        <div className="Insight_BentoFooter">
-                            <span>{extraStats.weekdayPct}% on weekdays</span>
-                        </div>
-                    </div>
-
-                    {/* Micro-purchases */}
-                    <div className="Insight_BentoCard micro">
-                        <div className="Insight_BentoHeader">
-                            <div className="Insight_BentoHeaderLeft">
-                                <div className="Insight_BentoIconBadge micro">
-                                    <Coffee size={13} strokeWidth={2.2} />
-                                </div>
-                                <span className="Insight_BentoEyebrow">Micro &lt;$20</span>
-                            </div>
-                            <span className="Insight_BentoBadge micro">{extraStats.microTxs} txns</span>
-                        </div>
-                        <div className="Insight_BentoMain">
-                            <span className="Insight_BentoTitle">Small Purchases</span>
-                            <div className="Insight_BentoAmount micro">
-                                ${Math.round(extraStats.microTotal).toLocaleString('en-CA')}
-                            </div>
-                        </div>
-                        <div className="Insight_BentoProgressWrap">
-                            <div className="Insight_BentoProgressBar micro" style={{ width: `${Math.min(100, Math.round((extraStats.microTotal / Math.max(1, totalExpense)) * 100))}%` }} />
-                        </div>
-                        <div className="Insight_BentoFooter">
-                            <span>≈ ${extraStats.microDailyAvg.toFixed(2)}/day avg</span>
-                        </div>
-                    </div>
-
-                    {/* Post-payday velocity */}
+                <div className="Insight_BentoRow">
+                    {/* Post-Payday Velocity */}
                     <div className="Insight_BentoCard post-payday">
                         <div className="Insight_BentoHeader">
                             <div className="Insight_BentoHeaderLeft">
@@ -1683,10 +1646,10 @@ const Insight = () => {
                                 </div>
                                 <span className="Insight_BentoEyebrow">Velocity</span>
                             </div>
-                            <span className="Insight_BentoBadge post-payday">{extraStats.postPaydayPct}%</span>
+                            <span className="Insight_BentoBadge post-payday">{extraStats.postPaydayPct}% Surge</span>
                         </div>
                         <div className="Insight_BentoMain">
-                            <span className="Insight_BentoTitle">Post-Payday</span>
+                            <span className="Insight_BentoTitle">Post-Payday Spend</span>
                             <div className="Insight_BentoAmount post-payday">
                                 ${Math.round(extraStats.postPaydayTotal).toLocaleString('en-CA')}
                             </div>
@@ -1695,82 +1658,149 @@ const Insight = () => {
                             <div className="Insight_BentoProgressBar post-payday" style={{ width: `${extraStats.postPaydayPct}%` }} />
                         </div>
                         <div className="Insight_BentoFooter">
-                            <span>Spent in 5d of income</span>
+                            <span>Spent in the 5 days following income</span>
                         </div>
                     </div>
+
+                    {/* Zero-Spend Days (monthly only) or Top Merchant */}
+                    {viewMode === 'monthly' ? (
+                        <div className="Insight_BentoCard zero-spend">
+                            <div className="Insight_BentoHeader">
+                                <div className="Insight_BentoHeaderLeft">
+                                    <div className="Insight_BentoIconBadge zero-spend">
+                                        <ShieldCheck size={13} strokeWidth={2.2} />
+                                    </div>
+                                    <span className="Insight_BentoEyebrow">Discipline</span>
+                                </div>
+                                <span className="Insight_BentoBadge zero-spend">
+                                    {extraStats.zeroSpendDays} Clean Days
+                                </span>
+                            </div>
+
+                            <div className="Insight_BentoMain">
+                                <span className="Insight_BentoTitle">Zero-Spend Days</span>
+                                <div className="Insight_ZeroSpendHero">
+                                    <strong className="Insight_ZeroSpendNumber">{extraStats.zeroSpendDays}</strong>
+                                    <span className="Insight_ZeroSpendTotal">/ {extraStats.daysChecked}d</span>
+                                </div>
+                            </div>
+
+                            <div className="Insight_BentoProgressWrap">
+                                <div
+                                    className="Insight_BentoProgressBar safe-spend"
+                                    style={{ width: `${Math.round((extraStats.zeroSpendDays / Math.max(1, extraStats.daysChecked)) * 100)}%` }}
+                                />
+                            </div>
+
+                            <div className="Insight_BentoFooter">
+                                <span>{Math.round((extraStats.zeroSpendDays / Math.max(1, extraStats.daysChecked)) * 100)}% of tracked days with $0 expense</span>
+                            </div>
+                        </div>
+                    ) : extraStats.topByVisit ? (
+                        <div className="Insight_BentoCard merchant">
+                            <div className="Insight_BentoHeader">
+                                <div className="Insight_BentoHeaderLeft">
+                                    <div className="Insight_BentoIconBadge merchant">
+                                        <Store size={13} strokeWidth={2.2} />
+                                    </div>
+                                    <span className="Insight_BentoEyebrow">Frequency</span>
+                                </div>
+                                <span className="Insight_BentoBadge merchant">
+                                    {extraStats.topByVisit.count} Visits
+                                </span>
+                            </div>
+                            <div className="Insight_BentoMain">
+                                <span className="Insight_BentoTitle">Top Merchant</span>
+                                <div className="Insight_MerchantHero">
+                                    <strong className="Insight_MerchantName">{extraStats.topByVisit.name}</strong>
+                                    <span className="Insight_MerchantTotal">${Math.round(extraStats.topByVisit.total).toLocaleString('en-CA')}</span>
+                                </div>
+                            </div>
+                            <div className="Insight_BentoFooter">
+                                <span>Your most frequent destination</span>
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
             )}
 
-            {/* Top Merchant by Visits + Income Sources */}
-            <div className="Insight_BentoRow">
-                {extraStats.topByVisit && (
-                    <div className="Insight_BentoCard merchant">
-                        <div className="Insight_BentoHeader">
-                            <div className="Insight_BentoHeaderLeft">
-                                <div className="Insight_BentoIconBadge merchant">
-                                    <Store size={13} strokeWidth={2.2} />
-                                </div>
-                                <span className="Insight_BentoEyebrow">Frequency</span>
-                            </div>
-                            <span className="Insight_BentoBadge merchant">
-                                {extraStats.topByVisit.count} Visits
-                            </span>
-                        </div>
-                        <div className="Insight_BentoMain">
-                            <span className="Insight_BentoTitle">Top Merchant</span>
-                            <div className="Insight_MerchantHero">
-                                <strong className="Insight_MerchantName">{extraStats.topByVisit.name}</strong>
-                                <span className="Insight_MerchantTotal">${Math.round(extraStats.topByVisit.total).toLocaleString('en-CA')}</span>
-                            </div>
-                        </div>
-                        <div className="Insight_BentoFooter">
-                            <span>Most frequent destination</span>
-                        </div>
-                    </div>
-                )}
-
-                {extraStats.topIncomeSources.length > 0 && (
-                    <div className="Insight_BentoCard income-sources">
-                        <div className="Insight_BentoHeader">
-                            <div className="Insight_BentoHeaderLeft">
-                                <div className="Insight_BentoIconBadge income-sources">
-                                    <Coins size={13} strokeWidth={2.2} />
-                                </div>
-                                <span className="Insight_BentoEyebrow">Inflow</span>
-                            </div>
-                            <span className="Insight_BentoBadge income-sources">
-                                {extraStats.topIncomeSources.length} Streams
-                            </span>
-                        </div>
-                        <div className="Insight_BentoMain">
-                            <span className="Insight_BentoTitle">Income Breakdown</span>
-                            <div className="Insight_IncomeList">
-                                {extraStats.topIncomeSources.map((src, i) => (
-                                    <div key={i} className="Insight_IncomeItem">
-                                        <div className="Insight_IncomeRowTop">
-                                            <span className="Insight_IncomeItemName">{src.name}</span>
-                                            <span className="Insight_IncomeItemAmt">${Math.round(src.amount).toLocaleString('en-CA')}</span>
-                                        </div>
-                                        <div className="Insight_IncomeBarTrack">
-                                            <div className="Insight_IncomeBarFill" style={{ width: `${src.pct}%` }} />
-                                        </div>
+            {/* 6. Top Merchant & Income Sources (2 Columns) */}
+            {(extraStats.topByVisit || extraStats.topIncomeSources.length > 0) && (
+                <div className="Insight_BentoRow">
+                    {/* Top Merchant */}
+                    {extraStats.topByVisit && (
+                        <div className="Insight_BentoCard merchant">
+                            <div className="Insight_BentoHeader">
+                                <div className="Insight_BentoHeaderLeft">
+                                    <div className="Insight_BentoIconBadge merchant">
+                                        <Store size={13} strokeWidth={2.2} />
                                     </div>
-                                ))}
+                                    <span className="Insight_BentoEyebrow">Frequency</span>
+                                </div>
+                                <span className="Insight_BentoBadge merchant">
+                                    {extraStats.topByVisit.count} Visits
+                                </span>
+                            </div>
+                            <div className="Insight_BentoMain">
+                                <span className="Insight_BentoTitle">Top Merchant</span>
+                                <div className="Insight_MerchantHero">
+                                    <strong className="Insight_MerchantName">{extraStats.topByVisit.name}</strong>
+                                    <span className="Insight_MerchantTotal">${Math.round(extraStats.topByVisit.total).toLocaleString('en-CA')} volume</span>
+                                </div>
+                            </div>
+                            <div className="Insight_BentoFooter">
+                                <span>Most frequent destination</span>
                             </div>
                         </div>
-                    </div>
-                )}
-            </div>
+                    )}
 
-            {/* 12-Month Savings Rate Sparkline (monthly only) */}
+                    {/* Income Streams */}
+                    {extraStats.topIncomeSources.length > 0 && (
+                        <div className="Insight_BentoCard income-sources">
+                            <div className="Insight_BentoHeader">
+                                <div className="Insight_BentoHeaderLeft">
+                                    <div className="Insight_BentoIconBadge income-sources">
+                                        <Coins size={13} strokeWidth={2.2} />
+                                    </div>
+                                    <span className="Insight_BentoEyebrow">Inflow</span>
+                                </div>
+                                <span className="Insight_BentoBadge income-sources">
+                                    {extraStats.topIncomeSources.length} Streams
+                                </span>
+                            </div>
+                            <div className="Insight_BentoMain">
+                                <span className="Insight_BentoTitle">Income Streams</span>
+                                <div className="Insight_IncomeList">
+                                    {extraStats.topIncomeSources.map((src, i) => (
+                                        <div key={i} className="Insight_IncomeItem">
+                                            <div className="Insight_IncomeRowTop">
+                                                <span className="Insight_IncomeItemName">{src.name}</span>
+                                                <span className="Insight_IncomeItemAmt">${Math.round(src.amount).toLocaleString('en-CA')}</span>
+                                            </div>
+                                            <div className="Insight_IncomeBarTrack">
+                                                <div className="Insight_IncomeBarFill" style={{ width: `${src.pct}%` }} />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="Insight_BentoFooter">
+                                <span>Total inflow: ${Math.round(totalIncome).toLocaleString('en-CA')}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* 7. 12-Month Savings Rate Sparkline (Monthly Only, Full Width) */}
             {viewMode === 'monthly' && extraStats.savingsRateTrend.some(s => s.rate !== null) && (
-                <div className="Insight_BentoCard savings-rate">
+                <div className="Insight_BentoCard savings-rate Insight_BentoCard--standalone">
                     <div className="Insight_BentoHeader">
                         <div className="Insight_BentoHeaderLeft">
                             <div className="Insight_BentoIconBadge savings-rate">
                                 <TrendingUp size={13} strokeWidth={2.2} />
                             </div>
-                            <span className="Insight_BentoEyebrow">Growth History</span>
+                            <span className="Insight_BentoEyebrow">Savings Discipline</span>
                         </div>
                         <span className="Insight_BentoBadge savings-rate">
                             12-Month Trend
@@ -1778,12 +1808,12 @@ const Insight = () => {
                     </div>
 
                     <div className="Insight_BentoMain">
-                        <span className="Insight_BentoTitle">Savings &amp; Investment Rate</span>
+                        <span className="Insight_BentoTitle">12-Month Savings &amp; Investment Rate</span>
                     </div>
 
                     <div className="Insight_SavingsSparkVisual">
                         {extraStats.savingsRateTrend.map((m, i) => {
-                            const h = m.rate !== null ? Math.max((m.rate / 40) * 48, 4) : 2;
+                            const h = m.rate !== null ? Math.max((m.rate / 40) * 50, 4) : 2;
                             const isLast = i === extraStats.savingsRateTrend.length - 1;
                             return (
                                 <div key={m.key} className={`Insight_SavingsSparkCol ${isLast ? 'is-current' : ''}`} title={m.rate !== null ? `${m.label}: ${m.rate.toFixed(1)}%` : m.label}>
@@ -1805,7 +1835,7 @@ const Insight = () => {
 
                     <div className="Insight_BentoFooter split">
                         <span>Current Rate: <strong style={{ color: 'var(--Fc-1)' }}>{extraStats.savingsRateTrend.findLast(s => s.rate !== null)?.rate.toFixed(1) ?? '—'}%</strong> saved/invested</span>
-                        <span>12-month overview</span>
+                        <span>12-month historical overview</span>
                     </div>
                 </div>
             )}
