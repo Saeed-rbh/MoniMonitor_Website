@@ -1963,3 +1963,374 @@
     height: 6px;
     border-radius: 50%;
 }
+
+/* ═══════════════════════════════════════════════════
+   BENTO STATS SYSTEM
+   ═══════════════════════════════════════════════════ */
+
+.Insight_BentoRow {
+    display: flex;
+    gap: 7px;
+    width: 100%;
+    box-sizing: border-box;
+    align-items: stretch;
+}
+
+.Insight_BentoRow--three {
+    gap: 6px;
+}
+
+.Insight_BentoCard {
+    box-sizing: border-box;
+    padding: 13px 14px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--Bc-3);
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.03) 0%, rgba(20, 21, 26, 0.55) 100%);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    text-align: left;
+    animation: categoryCardPopIn 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.Insight_BentoCard--standalone {
+    width: 100%;
+}
+
+.Insight_BentoCard--full {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.Insight_BentoCard--mini {
+    flex: 0 0 90px;
+    width: 90px;
+    align-items: center;
+    text-align: center;
+    padding: 12px 10px;
+}
+
+.Insight_BentoCard--half {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.Insight_BentoCard--third {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.Insight_BentoEyebrow {
+    color: var(--Ac-3);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    margin-bottom: 1px;
+}
+
+.Insight_BentoTitle {
+    color: var(--Ac-1);
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+}
+
+.Insight_BentoBigNumber {
+    color: var(--Ac-1);
+    font-size: 1.75rem;
+    font-weight: 750;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin: 2px 0;
+}
+
+.Insight_BentoUnit {
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    color: var(--Ac-3);
+}
+
+.Insight_BentoSub {
+    color: var(--Ac-3);
+    font-size: 0.65rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.Insight_BentoSub strong {
+    color: var(--Ac-2);
+    font-weight: 700;
+}
+
+/* ── Fixed vs Variable ────────────────────────────── */
+.Insight_FixedVarBar {
+    display: flex;
+    height: 6px;
+    border-radius: 99px;
+    overflow: hidden;
+    gap: 2px;
+    margin: 4px 0 6px;
+}
+
+.Insight_FixedVarFill {
+    border-radius: 99px;
+    height: 100%;
+    transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.Insight_FixedVarFill.fixed {
+    background: linear-gradient(90deg, #bf5af2, rgba(191, 90, 242, 0.7));
+}
+
+.Insight_FixedVarFill.variable {
+    background: linear-gradient(90deg, var(--Bc-1), rgba(212, 157, 129, 0.6));
+}
+
+.Insight_FixedVarLegend {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.Insight_FixedVarItem {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.Insight_FixedVarDot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.Insight_FixedVarDot.fixed {
+    background: #bf5af2;
+}
+
+.Insight_FixedVarDot.variable {
+    background: var(--Bc-1);
+}
+
+.Insight_FixedVarLabel {
+    color: var(--Ac-3);
+    font-size: 0.62rem;
+    font-weight: 600;
+    flex: 1;
+}
+
+.Insight_FixedVarPct {
+    color: var(--Ac-2);
+    font-size: 0.7rem;
+    font-weight: 750;
+    letter-spacing: -0.01em;
+}
+
+.Insight_FixedVarAmt {
+    color: var(--Ac-3);
+    font-size: 0.6rem;
+    font-weight: 500;
+}
+
+/* ── Zero-Spend Days ──────────────────────────────── */
+.Insight_ZeroSpendCount {
+    color: var(--Fc-1);
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+}
+
+.Insight_ZeroSpendLabel {
+    color: var(--Ac-3);
+    font-size: 0.58rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 1px;
+}
+
+.Insight_ZeroSpendDots {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    justify-content: center;
+    margin-top: 5px;
+}
+
+.Insight_ZeroSpendDot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--Fc-1);
+    opacity: 0.65;
+    box-shadow: 0 0 4px rgba(48, 209, 88, 0.5);
+}
+
+/* ── Day-of-Week Heatmap ─────────────────────────── */
+.Insight_DowRow {
+    display: flex;
+    gap: 4px;
+    align-items: flex-end;
+    width: 100%;
+    margin: 6px 0 2px;
+}
+
+.Insight_DowCol {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.Insight_DowBarWrap {
+    height: 52px;
+    display: flex;
+    align-items: flex-end;
+}
+
+.Insight_DowBar {
+    width: 100%;
+    min-width: 10px;
+    border-radius: 5px 5px 3px 3px;
+    background: rgba(212, 157, 129, 0.35);
+    border: 1px solid rgba(212, 157, 129, 0.18);
+    transition: height 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.Insight_DowCol.is-peak .Insight_DowBar {
+    background: linear-gradient(180deg, rgba(212, 157, 129, 0.85), rgba(212, 157, 129, 0.5));
+    border-color: rgba(212, 157, 129, 0.55);
+    box-shadow: 0 0 10px rgba(212, 157, 129, 0.2);
+}
+
+.Insight_DowLabel {
+    color: var(--Ac-3);
+    font-size: 0.56rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.Insight_DowCol.is-peak .Insight_DowLabel {
+    color: var(--Bc-1);
+    font-weight: 750;
+}
+
+/* ── Weekend / Progress Bars ─────────────────────── */
+.Insight_WkndBarWrap {
+    width: 100%;
+    height: 4px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    margin: 3px 0 2px;
+}
+
+.Insight_WkndBar {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
+    opacity: 0.75;
+}
+
+/* ── Income Sources ───────────────────────────────── */
+.Insight_IncomeSourceList {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-top: 2px;
+    width: 100%;
+}
+
+.Insight_IncomeSourceRow {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 100%;
+}
+
+.Insight_IncomeSourceBar {
+    height: 3px;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--Fc-1), rgba(48, 209, 88, 0.45));
+    transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1);
+    min-width: 6px;
+}
+
+.Insight_IncomeSourceMeta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+}
+
+.Insight_IncomeSourceName {
+    color: var(--Ac-2);
+    font-size: 0.63rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.Insight_IncomeSourcePct {
+    color: var(--Fc-1);
+    font-size: 0.62rem;
+    font-weight: 750;
+    flex-shrink: 0;
+}
+
+/* ── 12-Month Savings Rate Sparkline ─────────────── */
+.Insight_SavingsSparkRow {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    width: 100%;
+    height: 52px;
+    margin: 6px 0 2px;
+}
+
+.Insight_SavingsSparkCol {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    height: 100%;
+}
+
+.Insight_SavingsSparkBar {
+    width: 100%;
+    min-width: 10px;
+    border-radius: 4px 4px 2px 2px;
+    background: rgba(48, 209, 88, 0.35);
+    border: 1px solid rgba(48, 209, 88, 0.18);
+    transition: height 450ms cubic-bezier(0.22, 1, 0.36, 1);
+    min-height: 2px;
+}
+
+.Insight_SavingsSparkBar.is-current {
+    background: linear-gradient(180deg, rgba(48, 209, 88, 0.9), rgba(48, 209, 88, 0.5));
+    border-color: rgba(48, 209, 88, 0.55);
+    box-shadow: 0 0 8px rgba(48, 209, 88, 0.25);
+}
+
+.Insight_SavingsSparkLabel {
+    color: var(--Ac-3);
+    font-size: 0.52rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+

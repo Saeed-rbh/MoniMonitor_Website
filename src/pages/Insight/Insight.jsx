@@ -795,6 +795,169 @@ const Insight = () => {
         return { items, maxPeriodTotal };
     }, [viewMode, year, month, paddingDays, dailyIncome, dailyExpense, dailyInvest, allTransactions, investmentTimeline]);
 
+    // --- New Behavioral & Statistical Metrics ---
+
+    const extraStats = useMemo(() => {
+        const txList = currentViewTransactions || [];
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth();
+        const currentDay = now.getDate();
+
+        // ── 1. Zero-Spend Days ───────────────────────────────────────────────
+        let zeroSpendDays = 0;
+        if (viewMode === 'monthly' && daysInMonth > 0) {
+            const isCurrentMonth = year === currentYear && month === currentMonth;
+            const daysToCheck = isCurrentMonth ? currentDay : daysInMonth;
+            for (let i = 0; i < daysToCheck; i++) {
+                const val = dailyExpense[paddingDays + i];
+                if (val === 0) zeroSpendDays++;
+            }
+        }
+
+        // ── 2. Burn Rate & Projected Month-End ──────────────────────────────
+        let burnRate = null;
+        let projectedMonthEnd = null;
+        let safeToSpend = null;
+        if (viewMode === 'monthly') {
+            const isCurrentMonth = year === currentYear && month === currentMonth;
+            const daysElapsed = isCurrentMonth ? Math.max(1, currentDay) : daysInMonth;
+            burnRate = totalExpense / daysElapsed;
+            projectedMonthEnd = burnRate * daysInMonth;
+            const recurringSum = txList
+                .filter(t => t.Category === 'Expense' && t.Frequency && t.Frequency !== 'OneTime')
+                .reduce((s, t) => s + Number(t.Amount || 0), 0);
+            safeToSpend = Math.max(0, totalIncome - recurringSum - totalExpense);
+        }
+
+        // ── 3. Fixed vs. Variable Split ──────────────────────────────────────
+        let fixedTotal = 0;
+        let variableTotal = 0;
+        txList.forEach(t => {
+            if (t.Category !== 'Expense') return;
+            const amt = Number(t.Amount || 0);
+            if (t.Frequency && t.Frequency !== 'OneTime') fixedTotal += amt;
+            else variableTotal += amt;
+        });
+        const fixedPct = totalExpense > 0 ? Math.round((fixedTotal / totalExpense) * 100) : 0;
+        const variablePct = totalExpense > 0 ? 100 - fixedPct : 0;
+
+        // ── 4. Income Source Breakdown ───────────────────────────────────────
+        const incomeSourceMap = {};
+        txList.forEach(t => {
+            if (t.Category !== 'Income') return;
+            const name = t.Reason || t.Label || 'Other Income';
+            incomeSourceMap[name] = (incomeSourceMap[name] || 0) + Number(t.Amount || 0);
+        });
+        const topIncomeSources = Object.entries(incomeSourceMap)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3)
+            .map(([name, amt]) => ({
+                name: name.length > 20 ? name.slice(0, 18) + '…' : name,
+                amount: amt,
+                pct: totalIncome > 0 ? Math.round((amt / totalIncome) * 100) : 0,
+            }));
+
+        // ── 5. 12-Month Savings Rate Sparkline ──────────────────────────────
+        const savingsRateTrend = [];
+        if (allTransactions && viewMode === 'monthly') {
+            for (let i = 11; i >= 0; i--) {
+                const d = new Date(year, month - i, 1);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const md = allTransactions[key];
+                if (md && md.totalIncome > 0) {
+                    const saving = Number(md.totalSaveInvest || md.totalSaving || 0);
+                    savingsRateTrend.push({ key, rate: Math.max(0, (saving / md.totalIncome) * 100) });
+                } else {
+                    savingsRateTrend.push({ key, rate: null });
+                }
+            }
+        }
+
+        // ── 6. Day-of-Week Spending Heatmap ─────────────────────────────────
+        const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const dowTotals = { Sun: 0, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0 };
+        const dowCounts = { Sun: 0, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0 };
+        txList.forEach(t => {
+            if (t.Category !== 'Expense') return;
+            const dow = DOW[new Date(t.Timestamp).getDay()];
+            dowTotals[dow] += Number(t.Amount || 0);
+            dowCounts[dow]++;
+        });
+        const maxDow = Math.max(...Object.values(dowTotals), 1);
+        const dowData = DOW.map(d => ({
+            day: d,
+            total: dowTotals[d],
+            count: dowCounts[d],
+            pct: dowTotals[d] / maxDow,
+        }));
+        const topDow = dowData.reduce((best, d) => d.total > best.total ? d : best, dowData[0]);
+
+        // ── 7. Weekend vs Weekday Split ──────────────────────────────────────
+        const weekendTotal = (dowTotals.Sat || 0) + (dowTotals.Sun || 0);
+        const weekendPct = totalExpense > 0 ? Math.round((weekendTotal / totalExpense) * 100) : 0;
+        const weekdayPct = 100 - weekendPct;
+
+        // ── 8. Micro-Purchases (<$20) ────────────────────────────────────────
+        const microTxs = txList.filter(t => t.Category === 'Expense' && Number(t.Amount) < 20);
+        const microTotal = microTxs.reduce((s, t) => s + Number(t.Amount || 0), 0);
+        const daysElapsedForMicro = viewMode === 'monthly'
+            ? Math.max(1, year === currentYear && month === currentMonth ? currentDay : daysInMonth)
+            : 30;
+        const microDailyAvg = microTxs.length > 0 ? microTotal / daysElapsedForMicro : 0;
+
+        // ── 9. Top Merchant by Visit Frequency ──────────────────────────────
+        const merchantVisits = {};
+        txList.forEach(t => {
+            if (t.Category !== 'Expense') return;
+            const name = t.Reason || t.Label || 'Unknown';
+            if (!merchantVisits[name]) merchantVisits[name] = { count: 0, total: 0 };
+            merchantVisits[name].count++;
+            merchantVisits[name].total += Number(t.Amount || 0);
+        });
+        const topByVisit = Object.entries(merchantVisits)
+            .sort((a, b) => b[1].count - a[1].count)
+            .slice(0, 1)
+            .map(([name, v]) => ({ name: name.length > 22 ? name.slice(0, 20) + '…' : name, ...v }))[0] || null;
+
+        // ── 10. Post-Payday Velocity ─────────────────────────────────────────
+        const incomeTxs = txList.filter(t => t.Category === 'Income');
+        const expenseTxs = txList.filter(t => t.Category === 'Expense');
+        let postPaydayTotal = 0;
+        let postPaydayCount = 0;
+        const seenPostPaydayIds = new Set();
+        incomeTxs.forEach(inc => {
+            const incTime = new Date(inc.Timestamp).getTime();
+            const fiveDaysLater = incTime + 5 * 24 * 60 * 60 * 1000;
+            expenseTxs.forEach(exp => {
+                if (seenPostPaydayIds.has(exp.id)) return;
+                const expTime = new Date(exp.Timestamp).getTime();
+                if (expTime >= incTime && expTime <= fiveDaysLater) {
+                    postPaydayTotal += Number(exp.Amount || 0);
+                    postPaydayCount++;
+                    seenPostPaydayIds.add(exp.id);
+                }
+            });
+        });
+        const postPaydayPct = totalExpense > 0 ? Math.round((postPaydayTotal / totalExpense) * 100) : 0;
+
+        return {
+            zeroSpendDays,
+            burnRate,
+            projectedMonthEnd,
+            safeToSpend,
+            fixedTotal, variableTotal, fixedPct, variablePct,
+            topIncomeSources,
+            savingsRateTrend,
+            dowData, topDow,
+            weekendTotal, weekendPct, weekdayPct,
+            microTxs: microTxs.length, microTotal, microDailyAvg,
+            topByVisit,
+            postPaydayTotal, postPaydayPct, postPaydayCount,
+        };
+    }, [currentViewTransactions, totalExpense, totalIncome, viewMode, year, month, dailyExpense,
+        paddingDays, daysInMonth, allTransactions]);
+
     const periodCaption = viewMode === 'alltime'
         ? 'Full financial history'
         : viewMode === 'yearly'
@@ -1214,6 +1377,207 @@ const Insight = () => {
                         ))}
                     </div>
                 </section>
+            )}
+
+            {/* ═══════════════════════════════════════════════════
+                NEW STATS SECTION — Bento Cards
+                ═══════════════════════════════════════════════════ */}
+
+            {/* Fixed vs Variable + Zero-Spend Days row */}
+            {totalExpense > 0 && (
+                <div className="Insight_BentoRow">
+                    {/* Fixed vs Variable */}
+                    <div className="Insight_BentoCard Insight_BentoCard--full">
+                        <div className="Insight_BentoEyebrow">Expense type</div>
+                        <div className="Insight_BentoTitle">Fixed vs Variable</div>
+                        <div className="Insight_FixedVarBar">
+                            <div
+                                className="Insight_FixedVarFill fixed"
+                                style={{ width: `${extraStats.fixedPct}%` }}
+                            />
+                            <div
+                                className="Insight_FixedVarFill variable"
+                                style={{ width: `${extraStats.variablePct}%` }}
+                            />
+                        </div>
+                        <div className="Insight_FixedVarLegend">
+                            <div className="Insight_FixedVarItem">
+                                <span className="Insight_FixedVarDot fixed" />
+                                <span className="Insight_FixedVarLabel">Fixed</span>
+                                <span className="Insight_FixedVarPct">{extraStats.fixedPct}%</span>
+                                <span className="Insight_FixedVarAmt">${Math.round(extraStats.fixedTotal).toLocaleString('en-CA')}</span>
+                            </div>
+                            <div className="Insight_FixedVarItem">
+                                <span className="Insight_FixedVarDot variable" />
+                                <span className="Insight_FixedVarLabel">Variable</span>
+                                <span className="Insight_FixedVarPct">{extraStats.variablePct}%</span>
+                                <span className="Insight_FixedVarAmt">${Math.round(extraStats.variableTotal).toLocaleString('en-CA')}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Zero-Spend Days (monthly only) */}
+                    {viewMode === 'monthly' && (
+                        <div className="Insight_BentoCard Insight_BentoCard--mini">
+                            <div className="Insight_BentoEyebrow">Days clean</div>
+                            <div className="Insight_ZeroSpendCount">{extraStats.zeroSpendDays}</div>
+                            <div className="Insight_ZeroSpendLabel">zero-spend {extraStats.zeroSpendDays === 1 ? 'day' : 'days'}</div>
+                            <div className="Insight_ZeroSpendDots">
+                                {Array.from({ length: Math.min(extraStats.zeroSpendDays, 12) }).map((_, i) => (
+                                    <span key={i} className="Insight_ZeroSpendDot" />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Burn Rate card (monthly only) */}
+            {viewMode === 'monthly' && extraStats.burnRate !== null && totalExpense > 0 && (
+                <div className="Insight_BentoRow">
+                    <div className="Insight_BentoCard Insight_BentoCard--half">
+                        <div className="Insight_BentoEyebrow">Daily burn rate</div>
+                        <div className="Insight_BentoBigNumber" style={{ color: 'var(--Gc-1)' }}>
+                            ${Math.round(extraStats.burnRate).toLocaleString('en-CA')}
+                            <span className="Insight_BentoUnit">/day</span>
+                        </div>
+                        <div className="Insight_BentoSub">Projected month-end: <strong>${Math.round(extraStats.projectedMonthEnd).toLocaleString('en-CA')}</strong></div>
+                    </div>
+                    <div className="Insight_BentoCard Insight_BentoCard--half">
+                        <div className="Insight_BentoEyebrow">Safe to spend</div>
+                        <div className="Insight_BentoBigNumber" style={{ color: extraStats.safeToSpend > 0 ? 'var(--Fc-1)' : 'var(--Gc-1)' }}>
+                            ${Math.round(extraStats.safeToSpend).toLocaleString('en-CA')}
+                        </div>
+                        <div className="Insight_BentoSub">After income &amp; fixed costs</div>
+                    </div>
+                </div>
+            )}
+
+            {/* Day-of-Week Heatmap */}
+            {totalExpense > 0 && (
+                <div className="Insight_BentoCard Insight_BentoCard--standalone">
+                    <div className="Insight_BentoEyebrow">When you spend</div>
+                    <div className="Insight_DowRow">
+                        {extraStats.dowData.map((d) => (
+                            <div key={d.day} className={`Insight_DowCol ${d.day === extraStats.topDow.day ? 'is-peak' : ''}`}>
+                                <div className="Insight_DowBarWrap">
+                                    <div
+                                        className="Insight_DowBar"
+                                        style={{ height: `${Math.max(d.pct * 52, d.total > 0 ? 6 : 0)}px` }}
+                                    />
+                                </div>
+                                <span className="Insight_DowLabel">{d.day.slice(0, 2)}</span>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="Insight_BentoSub" style={{ marginTop: 2 }}>
+                        Highest spend day: <strong style={{ color: 'var(--Bc-1)' }}>{extraStats.topDow.day}</strong>
+                        {' · '}${Math.round(extraStats.topDow.total).toLocaleString('en-CA')} across {extraStats.topDow.count} {extraStats.topDow.count === 1 ? 'txn' : 'txns'}
+                    </div>
+                </div>
+            )}
+
+            {/* Behavioral Habits Row: Weekend split + Micro-purchases + Post-payday */}
+            {totalExpense > 0 && (
+                <div className="Insight_BentoRow Insight_BentoRow--three">
+                    {/* Weekend / Weekday split */}
+                    <div className="Insight_BentoCard Insight_BentoCard--third">
+                        <div className="Insight_BentoEyebrow">Weekend spend</div>
+                        <div className="Insight_BentoBigNumber">{extraStats.weekendPct}<span className="Insight_BentoUnit">%</span></div>
+                        <div className="Insight_WkndBarWrap">
+                            <div className="Insight_WkndBar" style={{ width: `${extraStats.weekendPct}%`, background: 'var(--Bc-1)' }} />
+                        </div>
+                        <div className="Insight_BentoSub">of total · wkday {extraStats.weekdayPct}%</div>
+                    </div>
+
+                    {/* Micro-purchases */}
+                    <div className="Insight_BentoCard Insight_BentoCard--third">
+                        <div className="Insight_BentoEyebrow">Micro &lt;$20</div>
+                        <div className="Insight_BentoBigNumber">{extraStats.microTxs}<span className="Insight_BentoUnit"> txns</span></div>
+                        <div className="Insight_BentoSub">
+                            ${Math.round(extraStats.microTotal).toLocaleString('en-CA')} total
+                        </div>
+                        {extraStats.microDailyAvg > 0 && (
+                            <div className="Insight_BentoSub">≈ ${extraStats.microDailyAvg.toFixed(2)}/day</div>
+                        )}
+                    </div>
+
+                    {/* Post-payday velocity */}
+                    <div className="Insight_BentoCard Insight_BentoCard--third">
+                        <div className="Insight_BentoEyebrow">Post-payday</div>
+                        <div className="Insight_BentoBigNumber">{extraStats.postPaydayPct}<span className="Insight_BentoUnit">%</span></div>
+                        <div className="Insight_WkndBarWrap">
+                            <div className="Insight_WkndBar" style={{ width: `${extraStats.postPaydayPct}%`, background: 'var(--Gc-1)' }} />
+                        </div>
+                        <div className="Insight_BentoSub">spent in 5 days after pay</div>
+                    </div>
+                </div>
+            )}
+
+            {/* Top Merchant by Visits + Income Sources */}
+            <div className="Insight_BentoRow">
+                {extraStats.topByVisit && (
+                    <div className="Insight_BentoCard Insight_BentoCard--half">
+                        <div className="Insight_BentoEyebrow">Most visited</div>
+                        <div className="Insight_BentoTitle" style={{ fontSize: '0.82rem' }}>
+                            {extraStats.topByVisit.name}
+                        </div>
+                        <div className="Insight_BentoBigNumber" style={{ fontSize: '1.5rem' }}>
+                            {extraStats.topByVisit.count}×
+                        </div>
+                        <div className="Insight_BentoSub">
+                            ${Math.round(extraStats.topByVisit.total).toLocaleString('en-CA')} total
+                        </div>
+                    </div>
+                )}
+
+                {extraStats.topIncomeSources.length > 0 && (
+                    <div className="Insight_BentoCard Insight_BentoCard--half">
+                        <div className="Insight_BentoEyebrow">Income sources</div>
+                        <div className="Insight_IncomeSourceList">
+                            {extraStats.topIncomeSources.map((src, i) => (
+                                <div key={i} className="Insight_IncomeSourceRow">
+                                    <div className="Insight_IncomeSourceBar" style={{ width: `${src.pct}%` }} />
+                                    <div className="Insight_IncomeSourceMeta">
+                                        <span className="Insight_IncomeSourceName">{src.name}</span>
+                                        <span className="Insight_IncomeSourcePct">{src.pct}%</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* 12-Month Savings Rate Sparkline (monthly only) */}
+            {viewMode === 'monthly' && extraStats.savingsRateTrend.some(s => s.rate !== null) && (
+                <div className="Insight_BentoCard Insight_BentoCard--standalone">
+                    <div className="Insight_BentoEyebrow">12-month savings rate</div>
+                    <div className="Insight_SavingsSparkRow">
+                        {extraStats.savingsRateTrend.map((m, i) => {
+                            const h = m.rate !== null ? Math.max((m.rate / 40) * 44, 4) : 2;
+                            const isLast = i === extraStats.savingsRateTrend.length - 1;
+                            return (
+                                <div key={m.key} className="Insight_SavingsSparkCol" title={m.rate !== null ? `${m.key}: ${m.rate.toFixed(1)}%` : m.key}>
+                                    <div
+                                        className={`Insight_SavingsSparkBar ${isLast ? 'is-current' : ''}`}
+                                        style={{ height: `${h}px`, opacity: m.rate !== null ? 1 : 0.15 }}
+                                    />
+                                    {(i === 0 || i === 11) && m.key && (
+                                        <span className="Insight_SavingsSparkLabel">
+                                            {m.key.slice(2, 4) + '\u2019' + ['J','F','M','A','M','J','J','A','S','O','N','D'][Number(m.key.slice(5, 7)) - 1]}
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="Insight_BentoSub" style={{ marginTop: 4 }}>
+                        Current: <strong style={{ color: 'var(--Fc-1)' }}>
+                            {extraStats.savingsRateTrend.findLast(s => s.rate !== null)?.rate.toFixed(1) ?? '—'}%
+                        </strong> of income saved / invested
+                    </div>
+                </div>
             )}
 
             {/* Category Breakdown */}
