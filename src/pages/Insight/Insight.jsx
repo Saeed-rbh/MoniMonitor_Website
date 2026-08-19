@@ -1455,15 +1455,6 @@ const Insight = () => {
                             </div>
                         </div>
 
-                        <div className="Insight_FixedVarBar">
-                            {extraStats.fixedPct > 0 && (
-                                <div className="Insight_FixedVarFill fixed" style={{ width: `${extraStats.fixedPct}%` }} />
-                            )}
-                            {extraStats.variablePct > 0 && (
-                                <div className="Insight_FixedVarFill variable" style={{ width: `${extraStats.variablePct}%` }} />
-                            )}
-                        </div>
-
                         <div className="Insight_BentoFooter">
                             <span>Recurring commitments vs day-to-day flexible outflows</span>
                         </div>
