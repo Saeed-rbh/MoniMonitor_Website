@@ -1965,15 +1965,25 @@
 }
 
 /* ═══════════════════════════════════════════════════
-   BENTO STATS SYSTEM
+   BENTO STATS SYSTEM — High-End Glassmorphism
    ═══════════════════════════════════════════════════ */
+
+.Insight_SectionHeader {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    margin: 8px 0 2px 0;
+    padding: 0 4px;
+    box-sizing: border-box;
+}
 
 .Insight_BentoRow {
     display: flex;
-    gap: 7px;
+    gap: 8px;
     width: 100%;
     box-sizing: border-box;
     align-items: stretch;
+    margin-bottom: 2px;
 }
 
 .Insight_BentoRow--three {
@@ -1982,99 +1992,408 @@
 
 .Insight_BentoCard {
     box-sizing: border-box;
-    padding: 13px 14px 12px;
-    border-radius: 20px;
+    padding: 13px 14px 11px;
+    border-radius: 19px;
     border: 1px solid var(--Bc-3);
-    background: linear-gradient(160deg, rgba(255, 255, 255, 0.03) 0%, rgba(20, 21, 26, 0.55) 100%);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    background: radial-gradient(130% 100% at 0% 0%, rgba(255, 255, 255, 0.04) 0%, rgba(20, 21, 26, 0.6) 75%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    justify-content: space-between;
     text-align: left;
+    min-width: 0;
+    flex: 1 1 0;
+    position: relative;
+    overflow: hidden;
+    cursor: default;
+    user-select: none;
+    transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms ease, box-shadow 180ms ease;
     animation: categoryCardPopIn 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-.Insight_BentoCard--standalone {
-    width: 100%;
+.Insight_BentoCard:hover {
+    transform: translateY(-1px);
 }
 
-.Insight_BentoCard--full {
-    flex: 1 1 0;
-    min-width: 0;
+/* ── Themed Card Gradients & Glows ─────────────────── */
+.Insight_BentoCard.fixed-var {
+    background: radial-gradient(130% 100% at 0% 0%, rgba(191, 90, 242, 0.12) 0%, rgba(20, 21, 26, 0.6) 75%);
+    border: 1px solid rgba(191, 90, 242, 0.22);
+    box-shadow: 0 4px 24px rgba(191, 90, 242, 0.04);
 }
 
-.Insight_BentoCard--mini {
-    flex: 0 0 90px;
-    width: 90px;
+.Insight_BentoCard.zero-spend {
+    background: radial-gradient(130% 100% at 0% 0%, rgba(48, 209, 88, 0.13) 0%, rgba(20, 21, 26, 0.6) 75%);
+    border: 1px solid rgba(48, 209, 88, 0.22);
+    box-shadow: 0 4px 24px rgba(48, 209, 88, 0.04);
+}
+
+.Insight_BentoCard.burn-rate {
+    background: radial-gradient(130% 100% at 0% 0%, rgba(255, 69, 58, 0.12) 0%, rgba(20, 21, 26, 0.6) 75%);
+    border: 1px solid rgba(255, 69, 58, 0.22);
+    box-shadow: 0 4px 24px rgba(255, 69, 58, 0.04);
+}
+
+.Insight_BentoCard.safe-spend {
+    background: radial-gradient(130% 100% at 0% 0%, rgba(100, 210, 255, 0.12) 0%, rgba(20, 21, 26, 0.6) 75%);
+    border: 1px solid rgba(100, 210, 255, 0.22);
+    box-shadow: 0 4px 24px rgba(100, 210, 255, 0.04);
+}
+
+.Insight_BentoCard.dow {
+    background: radial-gradient(130% 100% at 0% 0%, rgba(212, 157, 129, 0.12) 0%, rgba(20, 21, 26, 0.6) 75%);
+    border: 1px solid rgba(212, 157, 129, 0.22);
+    box-shadow: 0 4px 24px rgba(212, 157, 129, 0.04);
+}
+
+.Insight_BentoCard.weekend {
+    background: radial-gradient(130% 100% at 0% 0%, rgba(255, 179, 64, 0.12) 0%, rgba(20, 21, 26, 0.6) 75%);
+    border: 1px solid rgba(255, 179, 64, 0.22);
+    box-shadow: 0 4px 24px rgba(255, 179, 64, 0.04);
+}
+
+.Insight_BentoCard.micro {
+    background: radial-gradient(130% 100% at 0% 0%, rgba(255, 120, 100, 0.12) 0%, rgba(20, 21, 26, 0.6) 75%);
+    border: 1px solid rgba(255, 120, 100, 0.22);
+    box-shadow: 0 4px 24px rgba(255, 120, 100, 0.04);
+}
+
+.Insight_BentoCard.post-payday {
+    background: radial-gradient(130% 100% at 0% 0%, rgba(140, 100, 255, 0.12) 0%, rgba(20, 21, 26, 0.6) 75%);
+    border: 1px solid rgba(140, 100, 255, 0.22);
+    box-shadow: 0 4px 24px rgba(140, 100, 255, 0.04);
+}
+
+.Insight_BentoCard.merchant {
+    background: radial-gradient(130% 100% at 0% 0%, rgba(240, 180, 100, 0.12) 0%, rgba(20, 21, 26, 0.6) 75%);
+    border: 1px solid rgba(240, 180, 100, 0.22);
+    box-shadow: 0 4px 24px rgba(240, 180, 100, 0.04);
+}
+
+.Insight_BentoCard.income-sources {
+    background: radial-gradient(130% 100% at 0% 0%, rgba(48, 209, 88, 0.12) 0%, rgba(20, 21, 26, 0.6) 75%);
+    border: 1px solid rgba(48, 209, 88, 0.22);
+    box-shadow: 0 4px 24px rgba(48, 209, 88, 0.04);
+}
+
+.Insight_BentoCard.savings-rate {
+    background: radial-gradient(130% 100% at 0% 0%, rgba(50, 215, 150, 0.13) 0%, rgba(20, 21, 26, 0.6) 75%);
+    border: 1px solid rgba(50, 215, 150, 0.22);
+    box-shadow: 0 4px 24px rgba(50, 215, 150, 0.04);
+}
+
+/* ── Bento Header & Icon Badges ───────────────────── */
+.Insight_BentoHeader {
+    display: flex;
     align-items: center;
-    text-align: center;
-    padding: 12px 10px;
+    justify-content: space-between;
+    width: 100%;
+    margin-bottom: 6px;
+    gap: 4px;
 }
 
-.Insight_BentoCard--half {
-    flex: 1 1 0;
+.Insight_BentoHeaderLeft {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     min-width: 0;
 }
 
-.Insight_BentoCard--third {
-    flex: 1 1 0;
-    min-width: 0;
+.Insight_BentoIconBadge {
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.Insight_BentoIconBadge.fixed-var {
+    background: rgba(191, 90, 242, 0.16);
+    color: #bf5af2;
+    border: 1px solid rgba(191, 90, 242, 0.35);
+}
+
+.Insight_BentoIconBadge.zero-spend {
+    background: rgba(48, 209, 88, 0.16);
+    color: var(--Fc-1);
+    border: 1px solid rgba(48, 209, 88, 0.35);
+}
+
+.Insight_BentoIconBadge.burn-rate {
+    background: rgba(255, 69, 58, 0.16);
+    color: var(--Gc-1);
+    border: 1px solid rgba(255, 69, 58, 0.35);
+}
+
+.Insight_BentoIconBadge.safe-spend {
+    background: rgba(100, 210, 255, 0.16);
+    color: #64d2ff;
+    border: 1px solid rgba(100, 210, 255, 0.35);
+}
+
+.Insight_BentoIconBadge.dow {
+    background: rgba(212, 157, 129, 0.16);
+    color: var(--Bc-1);
+    border: 1px solid rgba(212, 157, 129, 0.35);
+}
+
+.Insight_BentoIconBadge.weekend {
+    background: rgba(255, 179, 64, 0.16);
+    color: #ffb340;
+    border: 1px solid rgba(255, 179, 64, 0.35);
+}
+
+.Insight_BentoIconBadge.micro {
+    background: rgba(255, 120, 100, 0.16);
+    color: #ff7864;
+    border: 1px solid rgba(255, 120, 100, 0.35);
+}
+
+.Insight_BentoIconBadge.post-payday {
+    background: rgba(140, 100, 255, 0.16);
+    color: #8c64ff;
+    border: 1px solid rgba(140, 100, 255, 0.35);
+}
+
+.Insight_BentoIconBadge.merchant {
+    background: rgba(240, 180, 100, 0.16);
+    color: #f0b464;
+    border: 1px solid rgba(240, 180, 100, 0.35);
+}
+
+.Insight_BentoIconBadge.income-sources {
+    background: rgba(48, 209, 88, 0.16);
+    color: var(--Fc-1);
+    border: 1px solid rgba(48, 209, 88, 0.35);
+}
+
+.Insight_BentoIconBadge.savings-rate {
+    background: rgba(50, 215, 150, 0.16);
+    color: #32d796;
+    border: 1px solid rgba(50, 215, 150, 0.35);
 }
 
 .Insight_BentoEyebrow {
     color: var(--Ac-3);
     font-size: 0.58rem;
     font-weight: 700;
-    letter-spacing: 0.09em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    margin-bottom: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.Insight_BentoBadge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6.5px;
+    border-radius: 6.5px;
+    letter-spacing: -0.01em;
+    line-height: 1.2;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.Insight_BentoBadge.fixed-var {
+    color: #bf5af2;
+    background: rgba(191, 90, 242, 0.12);
+    border: 1px solid rgba(191, 90, 242, 0.25);
+}
+
+.Insight_BentoBadge.zero-spend {
+    color: var(--Fc-1);
+    background: rgba(48, 209, 88, 0.12);
+    border: 1px solid rgba(48, 209, 88, 0.25);
+}
+
+.Insight_BentoBadge.burn-rate {
+    color: var(--Gc-1);
+    background: rgba(255, 69, 58, 0.12);
+    border: 1px solid rgba(255, 69, 58, 0.25);
+}
+
+.Insight_BentoBadge.safe-spend {
+    color: #64d2ff;
+    background: rgba(100, 210, 255, 0.12);
+    border: 1px solid rgba(100, 210, 255, 0.25);
+}
+
+.Insight_BentoBadge.dow {
+    color: var(--Bc-1);
+    background: rgba(212, 157, 129, 0.12);
+    border: 1px solid rgba(212, 157, 129, 0.25);
+}
+
+.Insight_BentoBadge.weekend {
+    color: #ffb340;
+    background: rgba(255, 179, 64, 0.12);
+    border: 1px solid rgba(255, 179, 64, 0.25);
+}
+
+.Insight_BentoBadge.micro {
+    color: #ff7864;
+    background: rgba(255, 120, 100, 0.12);
+    border: 1px solid rgba(255, 120, 100, 0.25);
+}
+
+.Insight_BentoBadge.post-payday {
+    color: #8c64ff;
+    background: rgba(140, 100, 255, 0.12);
+    border: 1px solid rgba(140, 100, 255, 0.25);
+}
+
+.Insight_BentoBadge.merchant {
+    color: #f0b464;
+    background: rgba(240, 180, 100, 0.12);
+    border: 1px solid rgba(240, 180, 100, 0.25);
+}
+
+.Insight_BentoBadge.income-sources {
+    color: var(--Fc-1);
+    background: rgba(48, 209, 88, 0.12);
+    border: 1px solid rgba(48, 209, 88, 0.25);
+}
+
+.Insight_BentoBadge.savings-rate {
+    color: #32d796;
+    background: rgba(50, 215, 150, 0.12);
+    border: 1px solid rgba(50, 215, 150, 0.25);
+}
+
+/* ── Bento Main Typography ────────────────────────── */
+.Insight_BentoMain {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 2px 0 6px;
+    width: 100%;
 }
 
 .Insight_BentoTitle {
-    color: var(--Ac-1);
-    font-size: 0.88rem;
-    font-weight: 700;
-    letter-spacing: -0.015em;
-    line-height: 1.2;
+    color: var(--Ac-3);
+    font-size: 0.58rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
 }
 
-.Insight_BentoBigNumber {
+.Insight_BentoAmount {
     color: var(--Ac-1);
-    font-size: 1.75rem;
+    font-size: 1.35rem;
     font-weight: 750;
     letter-spacing: -0.03em;
-    line-height: 1;
-    margin: 2px 0;
+    line-height: 1.1;
+}
+
+.Insight_BentoAmount.burn-rate {
+    color: var(--Gc-1);
+}
+
+.Insight_BentoAmount.safe-spend {
+    color: var(--Fc-1);
+}
+
+.Insight_BentoAmount.weekend {
+    color: #ffb340;
+}
+
+.Insight_BentoAmount.micro {
+    color: #ff7864;
+}
+
+.Insight_BentoAmount.post-payday {
+    color: #8c64ff;
 }
 
 .Insight_BentoUnit {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     font-weight: 500;
     letter-spacing: 0;
     color: var(--Ac-3);
+    margin-left: 2px;
 }
 
-.Insight_BentoSub {
+.Insight_BentoFooter {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.62rem;
     color: var(--Ac-3);
-    font-size: 0.65rem;
     font-weight: 500;
-    line-height: 1.4;
+    line-height: 1.3;
+    margin-top: 4px;
+    width: 100%;
 }
 
-.Insight_BentoSub strong {
+.Insight_BentoFooter strong {
     color: var(--Ac-2);
     font-weight: 700;
 }
 
-/* ── Fixed vs Variable ────────────────────────────── */
+.Insight_BentoFooter.split {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ── Fixed vs Variable Card ───────────────────────── */
+.Insight_FixedVarDual {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 3px 0 6px;
+    width: 100%;
+}
+
+.Insight_FixedVarCol {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.Insight_FixedVarVal {
+    font-size: 1.05rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+
+.Insight_FixedVarVal.fixed {
+    color: #bf5af2;
+}
+
+.Insight_FixedVarVal.variable {
+    color: var(--Bc-1);
+}
+
+.Insight_FixedVarSub {
+    font-size: 0.58rem;
+    color: var(--Ac-3);
+    font-weight: 600;
+}
+
+.Insight_FixedVarDivider {
+    width: 1px;
+    height: 22px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
 .Insight_FixedVarBar {
     display: flex;
     height: 6px;
     border-radius: 99px;
     overflow: hidden;
     gap: 2px;
-    margin: 4px 0 6px;
+    background: rgba(255, 255, 255, 0.06);
+    margin: 2px 0;
+    width: 100%;
 }
 
 .Insight_FixedVarFill {
@@ -2088,191 +2407,215 @@
 }
 
 .Insight_FixedVarFill.variable {
-    background: linear-gradient(90deg, var(--Bc-1), rgba(212, 157, 129, 0.6));
+    background: linear-gradient(90deg, var(--Bc-1), rgba(212, 157, 129, 0.7));
 }
 
-.Insight_FixedVarLegend {
+/* ── Zero-Spend Card & Dot Matrix ─────────────────── */
+.Insight_ZeroSpendHero {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    align-items: baseline;
+    gap: 3px;
+    margin: 2px 0 4px;
 }
 
-.Insight_FixedVarItem {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.Insight_FixedVarDot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    flex-shrink: 0;
-}
-
-.Insight_FixedVarDot.fixed {
-    background: #bf5af2;
-}
-
-.Insight_FixedVarDot.variable {
-    background: var(--Bc-1);
-}
-
-.Insight_FixedVarLabel {
-    color: var(--Ac-3);
-    font-size: 0.62rem;
-    font-weight: 600;
-    flex: 1;
-}
-
-.Insight_FixedVarPct {
-    color: var(--Ac-2);
-    font-size: 0.7rem;
-    font-weight: 750;
-    letter-spacing: -0.01em;
-}
-
-.Insight_FixedVarAmt {
-    color: var(--Ac-3);
-    font-size: 0.6rem;
-    font-weight: 500;
-}
-
-/* ── Zero-Spend Days ──────────────────────────────── */
-.Insight_ZeroSpendCount {
+.Insight_ZeroSpendNumber {
     color: var(--Fc-1);
-    font-size: 2.2rem;
+    font-size: 1.6rem;
     font-weight: 800;
     letter-spacing: -0.04em;
     line-height: 1;
 }
 
-.Insight_ZeroSpendLabel {
+.Insight_ZeroSpendTotal {
     color: var(--Ac-3);
-    font-size: 0.58rem;
+    font-size: 0.7rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-top: 1px;
 }
 
-.Insight_ZeroSpendDots {
-    display: flex;
-    flex-wrap: wrap;
+.Insight_ZeroSpendGrid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
     gap: 3px;
-    justify-content: center;
-    margin-top: 5px;
+    width: 100%;
+    margin: 4px 0 2px;
 }
 
-.Insight_ZeroSpendDot {
+.Insight_ZeroDot {
     width: 5px;
     height: 5px;
     border-radius: 50%;
-    background: var(--Fc-1);
-    opacity: 0.65;
-    box-shadow: 0 0 4px rgba(48, 209, 88, 0.5);
+    margin: auto;
+    transition: all 200ms ease;
 }
 
-/* ── Day-of-Week Heatmap ─────────────────────────── */
-.Insight_DowRow {
+.Insight_ZeroDot.is-zero {
+    background: var(--Fc-1);
+    box-shadow: 0 0 6px rgba(48, 209, 88, 0.65);
+}
+
+.Insight_ZeroDot.has-spend {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.Insight_ZeroDot.is-future {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* ── Generic Progress Bar Wrap ────────────────────── */
+.Insight_BentoProgressWrap {
+    width: 100%;
+    height: 4.5px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+    margin: 4px 0 3px;
+}
+
+.Insight_BentoProgressBar {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.Insight_BentoProgressBar.burn-rate {
+    background: linear-gradient(90deg, var(--Gc-1), rgba(255, 69, 58, 0.6));
+}
+
+.Insight_BentoProgressBar.safe-spend {
+    background: linear-gradient(90deg, var(--Fc-1), rgba(48, 209, 88, 0.6));
+}
+
+.Insight_BentoProgressBar.weekend {
+    background: linear-gradient(90deg, #ffb340, rgba(255, 179, 64, 0.6));
+}
+
+.Insight_BentoProgressBar.micro {
+    background: linear-gradient(90deg, #ff7864, rgba(255, 120, 100, 0.6));
+}
+
+.Insight_BentoProgressBar.post-payday {
+    background: linear-gradient(90deg, #8c64ff, rgba(140, 100, 255, 0.6));
+}
+
+/* ── Day-of-Week Heatmap Chart ────────────────────── */
+.Insight_DowVisual {
     display: flex;
     gap: 4px;
     align-items: flex-end;
     width: 100%;
-    margin: 6px 0 2px;
+    height: 72px;
+    margin: 8px 0 4px;
 }
 
-.Insight_DowCol {
+.Insight_DowColumn {
     flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: flex-end;
     gap: 4px;
+    position: relative;
+    height: 100%;
 }
 
-.Insight_DowBarWrap {
+.Insight_DowPeakTag {
+    position: absolute;
+    top: 0px;
+    font-size: 0.46rem;
+    font-weight: 800;
+    color: var(--Bc-1);
+    letter-spacing: 0.06em;
+    background: rgba(212, 157, 129, 0.16);
+    padding: 1px 4px;
+    border-radius: 4px;
+    border: 1px solid rgba(212, 157, 129, 0.35);
+    line-height: 1;
+}
+
+.Insight_DowBarTrack {
+    width: 100%;
     height: 52px;
     display: flex;
     align-items: flex-end;
+    justify-content: center;
 }
 
-.Insight_DowBar {
+.Insight_DowBarFill {
     width: 100%;
-    min-width: 10px;
-    border-radius: 5px 5px 3px 3px;
-    background: rgba(212, 157, 129, 0.35);
+    min-width: 8px;
+    border-radius: 5px 5px 2.5px 2.5px;
+    background: rgba(212, 157, 129, 0.32);
     border: 1px solid rgba(212, 157, 129, 0.18);
     transition: height 400ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.Insight_DowCol.is-peak .Insight_DowBar {
-    background: linear-gradient(180deg, rgba(212, 157, 129, 0.85), rgba(212, 157, 129, 0.5));
-    border-color: rgba(212, 157, 129, 0.55);
-    box-shadow: 0 0 10px rgba(212, 157, 129, 0.2);
+.Insight_DowBarFill.is-peak {
+    background: linear-gradient(180deg, var(--Bc-1) 0%, rgba(212, 157, 129, 0.6) 100%);
+    border-color: rgba(212, 157, 129, 0.7);
+    box-shadow: 0 0 10px rgba(212, 157, 129, 0.35);
 }
 
-.Insight_DowLabel {
+.Insight_DowDayLabel {
     color: var(--Ac-3);
     font-size: 0.56rem;
-    font-weight: 600;
+    font-weight: 650;
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
 
-.Insight_DowCol.is-peak .Insight_DowLabel {
+.Insight_DowColumn.is-peak .Insight_DowDayLabel {
     color: var(--Bc-1);
     font-weight: 750;
 }
 
-/* ── Weekend / Progress Bars ─────────────────────── */
-.Insight_WkndBarWrap {
-    width: 100%;
-    height: 4px;
-    border-radius: 99px;
-    background: rgba(255, 255, 255, 0.06);
+/* ── Top Merchant Card ────────────────────────────── */
+.Insight_MerchantHero {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 2px 0 4px;
+}
+
+.Insight_MerchantName {
+    color: var(--Ac-1);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
     overflow: hidden;
-    margin: 3px 0 2px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.Insight_WkndBar {
-    height: 100%;
-    border-radius: 99px;
-    transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
-    opacity: 0.75;
+.Insight_MerchantTotal {
+    color: #f0b464;
+    font-size: 0.72rem;
+    font-weight: 700;
 }
 
-/* ── Income Sources ───────────────────────────────── */
-.Insight_IncomeSourceList {
+/* ── Income Sources List ──────────────────────────── */
+.Insight_IncomeList {
     display: flex;
     flex-direction: column;
-    gap: 7px;
-    margin-top: 2px;
+    gap: 6px;
+    width: 100%;
+    margin-top: 3px;
+}
+
+.Insight_IncomeItem {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5px;
     width: 100%;
 }
 
-.Insight_IncomeSourceRow {
+.Insight_IncomeRowTop {
     display: flex;
-    flex-direction: column;
-    gap: 3px;
-    width: 100%;
-}
-
-.Insight_IncomeSourceBar {
-    height: 3px;
-    border-radius: 99px;
-    background: linear-gradient(90deg, var(--Fc-1), rgba(48, 209, 88, 0.45));
-    transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1);
-    min-width: 6px;
-}
-
-.Insight_IncomeSourceMeta {
-    display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
     gap: 6px;
 }
 
-.Insight_IncomeSourceName {
+.Insight_IncomeItemName {
     color: var(--Ac-2);
     font-size: 0.63rem;
     font-weight: 600;
@@ -2280,24 +2623,39 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     flex: 1;
-    min-width: 0;
 }
 
-.Insight_IncomeSourcePct {
+.Insight_IncomeItemAmt {
     color: var(--Fc-1);
-    font-size: 0.62rem;
+    font-size: 0.63rem;
     font-weight: 750;
     flex-shrink: 0;
 }
 
-/* ── 12-Month Savings Rate Sparkline ─────────────── */
-.Insight_SavingsSparkRow {
-    display: flex;
-    align-items: flex-end;
-    gap: 3px;
+.Insight_IncomeBarTrack {
     width: 100%;
-    height: 52px;
-    margin: 6px 0 2px;
+    height: 3px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.06);
+    overflow: hidden;
+}
+
+.Insight_IncomeBarFill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--Fc-1), rgba(48, 209, 88, 0.5));
+    transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1);
+    min-width: 4px;
+}
+
+/* ── 12-Month Savings Rate Sparkline ─────────────── */
+.Insight_SavingsSparkVisual {
+    display: flex;
+    gap: 3px;
+    align-items: flex-end;
+    width: 100%;
+    height: 62px;
+    margin: 8px 0 4px;
 }
 
 .Insight_SavingsSparkCol {
@@ -2310,27 +2668,35 @@
     height: 100%;
 }
 
+.Insight_SavingsSparkTrack {
+    width: 100%;
+    height: 48px;
+    display: flex;
+    align-items: flex-end;
+}
+
 .Insight_SavingsSparkBar {
     width: 100%;
-    min-width: 10px;
+    min-width: 8px;
     border-radius: 4px 4px 2px 2px;
-    background: rgba(48, 209, 88, 0.35);
-    border: 1px solid rgba(48, 209, 88, 0.18);
+    background: rgba(50, 215, 150, 0.32);
+    border: 1px solid rgba(50, 215, 150, 0.18);
     transition: height 450ms cubic-bezier(0.22, 1, 0.36, 1);
     min-height: 2px;
 }
 
 .Insight_SavingsSparkBar.is-current {
-    background: linear-gradient(180deg, rgba(48, 209, 88, 0.9), rgba(48, 209, 88, 0.5));
-    border-color: rgba(48, 209, 88, 0.55);
-    box-shadow: 0 0 8px rgba(48, 209, 88, 0.25);
+    background: linear-gradient(180deg, #32d796 0%, rgba(50, 215, 150, 0.55) 100%);
+    border-color: rgba(50, 215, 150, 0.7);
+    box-shadow: 0 0 10px rgba(50, 215, 150, 0.35);
 }
 
-.Insight_SavingsSparkLabel {
+.Insight_SavingsSparkAxis {
     color: var(--Ac-3);
     font-size: 0.52rem;
     font-weight: 600;
     letter-spacing: 0.02em;
     white-space: nowrap;
 }
+
 
