@@ -848,20 +848,6 @@ const Insight = () => {
                     as="button"
                     className={`Insight_PeriodButton ${viewMode === 'monthly' ? 'is-active' : ''}`}
                     onClick={() => setViewMode('monthly')}
-                    style={{
-                        background: 'radial-gradient(circle at 30% -20%, var(--Bc-3) -100%, var(--Ec-4) 65%)',
-                        color: viewMode === 'monthly' ? 'var(--Bc-1)' : 'var(--Ac-1)',
-                        outline: '1px solid var(--Bc-3)',
-                        border: 'none',
-                        borderRadius: '30px',
-                        padding: '10px 25px',
-                        flex: 1,
-                        minWidth: 0,
-                        fontSize: '0.8rem',
-                        fontWeight: viewMode === 'monthly' ? '600' : '200',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease'
-                    }}
                 >
                     Monthly
                 </ScalableElement>
@@ -869,20 +855,6 @@ const Insight = () => {
                     as="button"
                     className={`Insight_PeriodButton ${viewMode === 'yearly' ? 'is-active' : ''}`}
                     onClick={() => setViewMode('yearly')}
-                    style={{
-                        background: 'radial-gradient(circle at 30% -20%, var(--Bc-3) -100%, var(--Ec-4) 65%)',
-                        color: viewMode === 'yearly' ? 'var(--Bc-1)' : 'var(--Ac-1)',
-                        outline: '1px solid var(--Bc-3)',
-                        border: 'none',
-                        borderRadius: '30px',
-                        padding: '10px 25px',
-                        flex: 1,
-                        minWidth: 0,
-                        fontSize: '0.8rem',
-                        fontWeight: viewMode === 'yearly' ? '600' : '200',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease'
-                    }}
                 >
                     Yearly
                 </ScalableElement>
@@ -890,21 +862,6 @@ const Insight = () => {
                     as="button"
                     className={`Insight_PeriodButton ${viewMode === 'alltime' ? 'is-active' : ''}`}
                     onClick={() => setViewMode('alltime')}
-                    style={{
-                        background: 'radial-gradient(circle at 30% -20%, var(--Bc-3) -100%, var(--Ec-4) 65%)',
-                        color: viewMode === 'alltime' ? 'var(--Bc-1)' : 'var(--Ac-1)',
-                        outline: '1px solid var(--Bc-3)',
-                        border: 'none',
-                        borderRadius: '30px',
-                        padding: '10px 20px',
-                        flex: 1,
-                        minWidth: 0,
-                        fontSize: '0.8rem',
-                        fontWeight: viewMode === 'alltime' ? '600' : '200',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        whiteSpace: 'nowrap'
-                    }}
                 >
                     All Time
                 </ScalableElement>
