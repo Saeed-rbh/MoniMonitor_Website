@@ -2351,23 +2351,27 @@
 /* ── Fixed vs Variable Card ───────────────────────── */
 .Insight_FixedVarDual {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
-    margin: 4px 0 7px;
+    margin: 8px 0 10px;
     width: 100%;
+    gap: 12px;
 }
 
 .Insight_FixedVarCol {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
 }
 
 .Insight_FixedVarVal {
-    font-size: 1.15rem;
+    font-size: 1.22rem;
     font-weight: 750;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+    display: block;
 }
 
 .Insight_FixedVarVal.fixed {
@@ -2379,15 +2383,19 @@
 }
 
 .Insight_FixedVarSub {
-    font-size: 0.66rem;
+    font-size: 0.7rem;
     color: var(--Ac-3);
     font-weight: 600;
+    line-height: 1.35;
+    display: block;
 }
 
 .Insight_FixedVarDivider {
     width: 1px;
-    height: 24px;
+    height: 32px;
     background: rgba(255, 255, 255, 0.08);
+    align-self: center;
+    flex-shrink: 0;
 }
 
 .Insight_FixedVarBar {

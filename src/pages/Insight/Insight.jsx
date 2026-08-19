@@ -1445,12 +1445,12 @@ const Insight = () => {
                             <div className="Insight_FixedVarDual">
                                 <div className="Insight_FixedVarCol">
                                     <span className="Insight_FixedVarVal fixed">${Math.round(extraStats.fixedTotal).toLocaleString('en-CA')}</span>
-                                    <span className="Insight_FixedVarSub">Fixed Bills &amp; Subs ({extraStats.fixedPct}%)</span>
+                                    <span className="Insight_FixedVarSub">Fixed Bills ({extraStats.fixedPct}%)</span>
                                 </div>
                                 <div className="Insight_FixedVarDivider" />
                                 <div className="Insight_FixedVarCol">
                                     <span className="Insight_FixedVarVal variable">${Math.round(extraStats.variableTotal).toLocaleString('en-CA')}</span>
-                                    <span className="Insight_FixedVarSub">Flexible Discretionary ({extraStats.variablePct}%)</span>
+                                    <span className="Insight_FixedVarSub">Flexible Spend ({extraStats.variablePct}%)</span>
                                 </div>
                             </div>
                         </div>
