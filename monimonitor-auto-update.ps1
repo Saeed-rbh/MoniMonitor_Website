@@ -69,31 +69,10 @@ function Test-CleanMainBranch {
 }
 
 function Test-MoniMonitorHealth {
-    param([string]$Url)
+    param([string]$Url, [int]$TimeoutSec = 8)
 
     try {
-        $health = Invoke-RestMethod -Uri $Url -TimeoutSec 5
-        return $health.status -eq 'ok'
-    }
-
-    Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
-}
-
-function Test-CleanMainBranch {
-    $branch = (& git -C $repository branch --show-current 2>$null).Trim()
-    if ($LASTEXITCODE -ne 0 -or $branch -ne 'main') {
-        return $false
-    }
-
-    $changes = & git -C $repository status --porcelain 2>$null
-    return $LASTEXITCODE -eq 0 -and -not $changes
-}
-
-function Test-MoniMonitorHealth {
-    param([string]$Url)
-
-    try {
-        $health = Invoke-RestMethod -Uri $Url -TimeoutSec 5
+        $health = Invoke-RestMethod -Uri $Url -TimeoutSec $TimeoutSec
         return $health.status -eq 'ok'
     }
     catch {

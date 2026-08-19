@@ -186,16 +186,20 @@ rem Do not report success based only on local processes or Funnel configuration.
 rem Verify the same public route used by the deployed website, repairing Funnel
 rem between attempts in case Windows resumed with stale networking state.
 echo Verifying the public website can reach the API...
-for /L %%A in (1,1,6) do (
-  powershell -NoProfile -Command "try { $health = Invoke-RestMethod -Uri '%PUBLIC_HEALTH_URL%' -TimeoutSec 5; if ($health.status -eq 'ok') { exit 0 } } catch {}; exit 1"
+for /L %%A in (1,1,8) do (
+  powershell -NoProfile -Command "try { $health = Invoke-RestMethod -Uri '%PUBLIC_HEALTH_URL%' -TimeoutSec 12; if ($health.status -eq 'ok') { exit 0 } } catch {}; exit 1"
   if not errorlevel 1 (
     echo Public API health check passed.
     exit /b 0
   )
 
-  echo Public API is not reachable yet. Repairing Funnel ^(%%A/6^)...
+  echo Public API is not reachable yet. Repairing Funnel ^(%%A/8^)...
   "%TAILSCALE_EXE%" funnel --bg 3001 >nul 2>&1
-  timeout /t 5 /nobreak >nul
+  if %%A==1 (
+    timeout /t 15 /nobreak >nul
+  ) else (
+    timeout /t 10 /nobreak >nul
+  )
 )
 
 echo The local API is healthy, but %PUBLIC_HEALTH_URL% is still unavailable.
