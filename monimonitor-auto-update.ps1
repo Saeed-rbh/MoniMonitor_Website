@@ -75,6 +75,27 @@ function Test-MoniMonitorHealth {
         $health = Invoke-RestMethod -Uri $Url -TimeoutSec 5
         return $health.status -eq 'ok'
     }
+
+    Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
+}
+
+function Test-CleanMainBranch {
+    $branch = (& git -C $repository branch --show-current 2>$null).Trim()
+    if ($LASTEXITCODE -ne 0 -or $branch -ne 'main') {
+        return $false
+    }
+
+    $changes = & git -C $repository status --porcelain 2>$null
+    return $LASTEXITCODE -eq 0 -and -not $changes
+}
+
+function Test-MoniMonitorHealth {
+    param([string]$Url)
+
+    try {
+        $health = Invoke-RestMethod -Uri $Url -TimeoutSec 5
+        return $health.status -eq 'ok'
+    }
     catch {
         return $false
     }
@@ -91,8 +112,12 @@ function Repair-PublicTunnel {
         return
     }
 
-    Write-UpdateLog 'Public API health check failed; repairing Tailscale Funnel.'
+    Write-UpdateLog 'Public API health check failed; resetting and repairing Tailscale Funnel.'
     for ($attempt = 1; $attempt -le 3; $attempt++) {
+        if ($attempt -gt 1) {
+            & $tailscaleExecutable serve reset 2>$null | Out-Null
+            Start-Sleep -Seconds 2
+        }
         & $tailscaleExecutable funnel --bg 3001 2>$null | Out-Null
         Start-Sleep -Seconds 5
         if (Test-MoniMonitorHealth -Url $publicHealthUrl) {
