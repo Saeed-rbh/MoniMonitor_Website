@@ -113,3 +113,16 @@ stays in the retry queue until analysis and database ingestion succeed.
   generation without mixing message identities.
 - Transaction-level duplicate detection remains the final protection if a
   message succeeds immediately before an unexpected shutdown.
+
+## Plaid transaction fallback
+
+Plaid can fill transaction gaps when an email notification is missing. Add the
+Plaid server credentials shown in `server/.env.example`, start the API, then use
+Profile → Bank fallback → Connect a bank with Plaid.
+
+- Plaid Link performs user consent; API secrets and access tokens never reach the browser.
+- Access tokens are encrypted at rest with `PLAID_TOKEN_ENCRYPTION_KEY` (or `JWT_SECRET` as a compatibility fallback).
+- `/transactions/sync` cursors are persisted for incremental updates.
+- Source mappings attach matching Plaid records to existing email transactions instead of inserting duplicates.
+- Transaction loading checks Plaid at most once every ten minutes; Profile also provides a manual sync.
+- `PLAID_ENV=sandbox` is suitable for testing. Change it to `production` only with the matching Production secret and approved Plaid application.

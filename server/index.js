@@ -11,6 +11,7 @@ const { parseTransaction, transactionUpdateSchema } = require("./src/validation/
 const { validateTelegramInitData, normalizeTelegramPhotoUrl } = require("./src/services/telegramAuthService");
 const backupService = require("./src/services/backupService");
 const { getMonthlyInsightBrief } = require("./src/services/monthlyInsightService");
+const plaidService = require("./src/services/plaidService");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -52,7 +53,7 @@ app.use((req, res, next) => {
         "X-Frame-Options": "DENY",
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' http: https: ws: wss:;",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.plaid.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; frame-src https://cdn.plaid.com; connect-src 'self' http: https: ws: wss:;",
     };
     if (isProduction || process.env.ENFORCE_HTTPS === "true") {
         headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
@@ -191,6 +192,9 @@ app.post("/telegram-auth", authRateLimit, async (req, res) => {
 });
 app.get("/transactions", authenticateToken, async (req, res) => {
     try {
+        await plaidService.syncUserItems(req.user.userId).catch((error) => {
+            console.error("Background Plaid sync error:", error.message);
+        });
         const filters = {
             category: req.query.category,
             label: req.query.label,
@@ -205,6 +209,52 @@ app.get("/transactions", authenticateToken, async (req, res) => {
     } catch (error) {
         return sendValidationError(res, error);
     }
+});
+
+app.get("/plaid/status", authenticateToken, async (req, res) => {
+    try {
+        return res.json(await plaidService.getStatus(req.user.userId));
+    } catch (error) { return sendValidationError(res, error); }
+});
+
+app.post("/plaid/link-token", authenticateToken, authRateLimit, async (req, res) => {
+    try {
+        return res.json(await plaidService.createLinkToken(req.user.userId));
+    } catch (error) {
+        if (error.statusCode === 503) return res.status(503).json({ error: error.message });
+        return sendValidationError(res, error);
+    }
+});
+
+app.post("/plaid/exchange", authenticateToken, authRateLimit, async (req, res) => {
+    try {
+        const connection = await plaidService.exchangePublicToken(
+            req.user.userId, req.body?.publicToken, req.body?.metadata
+        );
+        const sync = await plaidService.syncUserItems(req.user.userId, { force: true });
+        return res.status(201).json({ connection, sync });
+    } catch (error) {
+        if (error.statusCode && error.statusCode < 500) return res.status(error.statusCode).json({ error: error.message });
+        return sendValidationError(res, error);
+    }
+});
+
+app.post("/plaid/sync", authenticateToken, async (req, res) => {
+    try {
+        return res.json(await plaidService.syncUserItems(req.user.userId, { force: true }));
+    } catch (error) { return sendValidationError(res, error); }
+});
+
+app.delete("/plaid/items/:itemId", authenticateToken, async (req, res) => {
+    if (typeof req.params.itemId !== 'string' || req.params.itemId.length > 200) {
+        return res.status(400).json({ error: 'Invalid Plaid item' });
+    }
+    try {
+        if (!await plaidService.disconnectItem(req.user.userId, req.params.itemId)) {
+            return res.status(404).json({ error: 'Bank connection not found' });
+        }
+        return res.json({ message: 'Bank disconnected' });
+    } catch (error) { return sendValidationError(res, error); }
 });
 
 app.post("/transactions", authenticateToken, async (req, res) => {
@@ -534,7 +584,12 @@ app.post("/backups/:fileName/restore", authenticateToken, async (req, res) => {
 app.post("/MoniMonitor_ToDB", authenticateToken, async (req, res) => {
     const { status, record_entry, record_type, ...filters } = req.body || {};
     try {
-        if (status === "read") return res.json(await dbService.getAllTransactionsForUser(req.user.userId, filters));
+        if (status === "read") {
+            await plaidService.syncUserItems(req.user.userId).catch((error) => {
+                console.error("Background Plaid sync error:", error.message);
+            });
+            return res.json(await dbService.getAllTransactionsForUser(req.user.userId, filters));
+        }
         if (status !== "record") return res.status(400).json({ error: "Invalid status" });
 
         const { BalanceAccountId = null, ...recordInput } = record_entry || {};

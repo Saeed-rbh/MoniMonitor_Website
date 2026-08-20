@@ -282,6 +282,40 @@ export const restoreBackupAPI = async (fileName) => {
     return response ? response.json() : null;
 };
 
+const plaidRequest = async (path = '', options = {}) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+    const response = await fetch(apiUrl(`/plaid${path}`), {
+        ...options,
+        headers: {
+            ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+            Authorization: `Bearer ${token}`,
+            ...options.headers,
+        },
+    });
+    if (!response.ok) {
+        handleExpiredSession(response);
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || 'Plaid request failed');
+    }
+    return response.json();
+};
+
+export const getPlaidStatusAPI = () => plaidRequest('/status');
+
+export const createPlaidLinkTokenAPI = () => plaidRequest('/link-token', { method: 'POST' });
+
+export const exchangePlaidPublicTokenAPI = (publicToken, metadata) => plaidRequest('/exchange', {
+    method: 'POST',
+    body: JSON.stringify({ publicToken, metadata }),
+});
+
+export const syncPlaidAPI = () => plaidRequest('/sync', { method: 'POST' });
+
+export const disconnectPlaidItemAPI = (itemId) => plaidRequest(`/items/${encodeURIComponent(itemId)}`, {
+    method: 'DELETE',
+});
+
 const portfolioRequest = async (path = '', options = {}) => {
     const token = localStorage.getItem('token');
     if (!token) return null;

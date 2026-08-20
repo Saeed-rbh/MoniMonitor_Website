@@ -29,6 +29,9 @@ const INSERT_ORDER = [
     'investment_holdings',
     'portfolio_transactions',
     'account_balance_events',
+    'plaid_items',
+    'plaid_accounts',
+    'transaction_sources',
     'agent_audit_log',
     'app_migrations',
 ];
@@ -202,8 +205,15 @@ async function restoreBackup(fileName, restoredByUserId) {
         const tables = INSERT_ORDER.filter((table) => currentTables.has(table) && sourceTables.has(table));
         const sourceHasDurableEmailState = sourceTables.has('email_sync_state') &&
             sourceTables.has('email_ingestion_queue');
+        const sourceHasPlaidState = sourceTables.has('plaid_items') &&
+            sourceTables.has('plaid_accounts') && sourceTables.has('transaction_sources');
 
         await db.exec('BEGIN IMMEDIATE');
+        if (!sourceHasPlaidState) {
+            if (currentTables.has('transaction_sources')) await db.exec('DELETE FROM transaction_sources');
+            if (currentTables.has('plaid_accounts')) await db.exec('DELETE FROM plaid_accounts');
+            if (currentTables.has('plaid_items')) await db.exec('DELETE FROM plaid_items');
+        }
         for (const table of [...tables].reverse()) {
             await db.exec(`DELETE FROM ${quoteIdentifier(table)}`);
         }

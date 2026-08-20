@@ -259,6 +259,53 @@ async function getDb() {
                     createdAt TEXT NOT NULL,
                     UNIQUE(userId, month)
                 );
+
+                CREATE TABLE IF NOT EXISTS plaid_items (
+                    itemId TEXT PRIMARY KEY,
+                    userId TEXT NOT NULL,
+                    accessTokenEncrypted TEXT NOT NULL,
+                    cursor TEXT,
+                    institutionId TEXT,
+                    institutionName TEXT,
+                    status TEXT NOT NULL DEFAULT 'active',
+                    lastSyncedAt TEXT,
+                    lastError TEXT,
+                    createdAt TEXT NOT NULL,
+                    updatedAt TEXT NOT NULL,
+                    UNIQUE(userId, itemId),
+                    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS plaid_accounts (
+                    plaidAccountId TEXT PRIMARY KEY,
+                    itemId TEXT NOT NULL,
+                    userId TEXT NOT NULL,
+                    appAccountId INTEGER,
+                    name TEXT,
+                    officialName TEXT,
+                    mask TEXT,
+                    type TEXT,
+                    subtype TEXT,
+                    currency TEXT,
+                    updatedAt TEXT NOT NULL,
+                    FOREIGN KEY (itemId) REFERENCES plaid_items(itemId) ON DELETE CASCADE,
+                    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (appAccountId) REFERENCES investment_accounts(id) ON DELETE SET NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS transaction_sources (
+                    provider TEXT NOT NULL,
+                    externalId TEXT NOT NULL,
+                    userId TEXT NOT NULL,
+                    transactionId INTEGER NOT NULL,
+                    itemId TEXT,
+                    ownsTransaction INTEGER NOT NULL DEFAULT 0,
+                    createdAt TEXT NOT NULL,
+                    updatedAt TEXT NOT NULL,
+                    PRIMARY KEY (provider, externalId),
+                    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (transactionId) REFERENCES transactions(id) ON DELETE CASCADE
+                );
             `);
             await db.exec(`
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_monthly_ai_briefs_user_month ON monthly_ai_briefs(userId, month);
@@ -318,6 +365,9 @@ async function getDb() {
                 CREATE INDEX IF NOT EXISTS idx_portfolio_transactions_user_date ON portfolio_transactions(userId, occurredAt DESC);
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_portfolio_transactions_source ON portfolio_transactions(sourceTransactionId) WHERE sourceTransactionId IS NOT NULL;
                 CREATE INDEX IF NOT EXISTS idx_account_balance_events_user ON account_balance_events(userId, occurredAt DESC);
+                CREATE INDEX IF NOT EXISTS idx_plaid_items_user ON plaid_items(userId);
+                CREATE INDEX IF NOT EXISTS idx_plaid_accounts_item ON plaid_accounts(itemId);
+                CREATE INDEX IF NOT EXISTS idx_transaction_sources_transaction ON transaction_sources(transactionId);
             `);
 
             // Cleanup processed_emails older than 90 days to prevent DB bloat

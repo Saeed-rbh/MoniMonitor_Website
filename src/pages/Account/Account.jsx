@@ -5,12 +5,17 @@ import "../../pages/Auth.css"; // Reuse Auth styles
 import BlurFade from "../../components/ui/blur-fade"; // Use relative path
 import {
     createBackupAPI,
+    createPlaidLinkTokenAPI,
+    disconnectPlaidItemAPI,
     downloadBackupAPI,
+    exchangePlaidPublicTokenAPI,
     GetDataFromDB,
     getBackupStatusAPI,
+    getPlaidStatusAPI,
     getSettingsAPI,
     restoreBackupAPI,
     saveSettingsAPI,
+    syncPlaidAPI,
 } from "../../services/apiService";
 
 const Account = () => {
@@ -24,6 +29,9 @@ const Account = () => {
     const [backupStatus, setBackupStatus] = useState(null);
     const [backupBusy, setBackupBusy] = useState(false);
     const [backupMessage, setBackupMessage] = useState("");
+    const [plaidStatus, setPlaidStatus] = useState(null);
+    const [plaidBusy, setPlaidBusy] = useState(false);
+    const [plaidMessage, setPlaidMessage] = useState("");
 
     // UI State
     const [activeDropdown, setActiveDropdown] = useState(null);
@@ -40,13 +48,14 @@ const Account = () => {
 
     useEffect(() => {
         let active = true;
-        Promise.all([getSettingsAPI(), getBackupStatusAPI()]).then(([settings, backups]) => {
+        Promise.all([getSettingsAPI(), getBackupStatusAPI(), getPlaidStatusAPI().catch(() => null)]).then(([settings, backups, plaid]) => {
             if (!active) return;
             if (settings) {
                 setCurrency(settings.currency || "CAD");
                 setNotifications(Boolean(settings.notificationsEnabled));
             }
             if (backups) setBackupStatus(backups);
+            if (plaid) setPlaidStatus(plaid);
         });
         return () => { active = false; };
     }, []);
@@ -132,6 +141,78 @@ const Account = () => {
         }
         setBackupMessage("Backup restored. Reloading your financial data…");
         window.setTimeout(() => window.location.reload(), 800);
+    };
+
+    const refreshPlaidStatus = async () => {
+        const status = await getPlaidStatusAPI();
+        setPlaidStatus(status);
+        return status;
+    };
+
+    const handleConnectPlaid = async () => {
+        setPlaidBusy(true);
+        setPlaidMessage("Preparing secure bank connection…");
+        try {
+            const { linkToken } = await createPlaidLinkTokenAPI();
+            if (!window.Plaid?.create) throw new Error("Plaid Link could not be loaded");
+            const handler = window.Plaid.create({
+                token: linkToken,
+                onSuccess: async (publicToken, metadata) => {
+                    try {
+                        setPlaidMessage("Connecting and checking for missing transactions…");
+                        await exchangePlaidPublicTokenAPI(publicToken, { institution: metadata.institution });
+                        await refreshPlaidStatus();
+                        setPlaidMessage("Bank connected. Missing transactions are now covered by Plaid.");
+                    } catch (error) {
+                        setPlaidMessage(error.message);
+                    } finally {
+                        setPlaidBusy(false);
+                        handler.destroy();
+                    }
+                },
+                onExit: (error) => {
+                    if (error) setPlaidMessage(error.display_message || error.error_message || "Bank connection was not completed.");
+                    else setPlaidMessage("Bank connection cancelled.");
+                    setPlaidBusy(false);
+                    handler.destroy();
+                },
+            });
+            handler.open();
+        } catch (error) {
+            setPlaidMessage(error.message);
+            setPlaidBusy(false);
+        }
+    };
+
+    const handlePlaidSync = async () => {
+        setPlaidBusy(true);
+        setPlaidMessage("Checking Plaid for missing transactions…");
+        try {
+            const result = await syncPlaidAPI();
+            await refreshPlaidStatus();
+            const imported = result.results?.reduce((sum, item) => sum + (item.imported || 0), 0) || 0;
+            const matched = result.results?.reduce((sum, item) => sum + (item.matched || 0), 0) || 0;
+            setPlaidMessage(`Sync complete: ${imported} imported, ${matched} matched to existing email records.`);
+        } catch (error) {
+            setPlaidMessage(error.message);
+        } finally {
+            setPlaidBusy(false);
+        }
+    };
+
+    const handlePlaidDisconnect = async (item) => {
+        const label = item.institutionName || "this bank";
+        if (!window.confirm(`Disconnect ${label}? Imported transaction history will be kept.`)) return;
+        setPlaidBusy(true);
+        try {
+            await disconnectPlaidItemAPI(item.itemId);
+            await refreshPlaidStatus();
+            setPlaidMessage(`${label} disconnected. Existing transactions were kept.`);
+        } catch (error) {
+            setPlaidMessage(error.message);
+        } finally {
+            setPlaidBusy(false);
+        }
     };
 
     const lastBackupLabel = backupStatus?.lastBackup
@@ -307,6 +388,34 @@ const Account = () => {
                             <span style={{ fontSize: "1rem", cursor: "pointer" }}>↺</span>
                         </div>
                         {backupMessage && <p role="status" style={{ color: "var(--Ac-2)", fontSize: "0.72rem", margin: "2px 6px 8px" }}>{backupMessage}</p>}
+                    </div>
+
+                    {/* Bank transaction fallback */}
+                    <div className="settings-section" style={{ width: '100%', marginBottom: '0.4rem' }}>
+                        <h4 style={{ color: "var(--Ac-2)", marginBottom: "0.2rem", marginLeft: "5px", fontSize: "0.7rem", fontWeight: "bold", textTransform: 'uppercase' }}>Bank fallback</h4>
+                        {plaidStatus?.items?.map((item) => (
+                            <div className="settings-item" style={{ ...itemStyle, cursor: "default" }} key={item.itemId}>
+                                <div style={{ minWidth: 0 }}>
+                                    <div>{item.institutionName || "Connected bank"}</div>
+                                    <div style={{ color: item.status === 'active' ? "var(--Ac-3)" : "var(--Gc-2)", fontSize: "0.68rem", marginTop: "2px" }}>
+                                        {item.status === 'active' ? `${item.accountCount} account${item.accountCount === 1 ? '' : 's'} · Last sync ${item.lastSyncedAt ? new Date(item.lastSyncedAt).toLocaleString() : 'pending'}` : item.lastError || 'Connection needs attention'}
+                                    </div>
+                                </div>
+                                <button type="button" disabled={plaidBusy} onClick={() => handlePlaidDisconnect(item)} style={{ background: "none", border: 0, color: "var(--Gc-2)", cursor: "pointer", fontSize: "0.72rem" }}>Disconnect</button>
+                            </div>
+                        ))}
+                        <div className="settings-item" style={itemStyle} onClick={plaidBusy || plaidStatus?.configured === false ? undefined : handleConnectPlaid}>
+                            <span>{plaidBusy ? "Plaid is working…" : "Connect a bank with Plaid"}</span>
+                            <span style={{ fontSize: "1rem" }}>🏦</span>
+                        </div>
+                        {plaidStatus?.items?.length > 0 && (
+                            <div className="settings-item" style={itemStyle} onClick={plaidBusy ? undefined : handlePlaidSync}>
+                                <span>Check for missing transactions</span>
+                                <span style={{ fontSize: "1rem" }}>↻</span>
+                            </div>
+                        )}
+                        {plaidStatus?.configured === false && <p role="status" style={{ color: "var(--Gc-2)", fontSize: "0.72rem", margin: "2px 6px 8px" }}>Plaid credentials have not been configured on the server.</p>}
+                        {plaidMessage && <p role="status" style={{ color: "var(--Ac-2)", fontSize: "0.72rem", margin: "2px 6px 8px" }}>{plaidMessage}</p>}
                     </div>
 
                     {/* Support */}

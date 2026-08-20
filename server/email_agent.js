@@ -239,6 +239,9 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         );
         if (duplicate) {
             console.log(`[${idInfo}] Duplicate expense detected. Skipping save.`);
+            if (sourceEmailKey && !duplicate.SourceEmailKey) {
+                await updateAgentTransaction(duplicate.id, { SourceEmailKey: sourceEmailKey });
+            }
             await syncPortfolioFromEmail(duplicate.id, expenseData, idInfo);
             return true;
         }
@@ -277,7 +280,8 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             const mergedUpdates = {
                 Account: expenseData.Account || fuzzyDuplicate.Account,
                 BankName: expenseData.BankName || fuzzyDuplicate.BankName,
-                ReferenceNumber: expenseData.ReferenceNumber || fuzzyDuplicate.ReferenceNumber
+                ReferenceNumber: expenseData.ReferenceNumber || fuzzyDuplicate.ReferenceNumber,
+                SourceEmailKey: sourceEmailKey || fuzzyDuplicate.SourceEmailKey,
             };
             await updateAgentTransaction(fuzzyDuplicate.id, mergedUpdates);
             activeId = fuzzyDuplicate.id;
@@ -306,6 +310,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                     BankName: expenseData.BankName || genericMatch.BankName,
                     ReferenceNumber: expenseData.ReferenceNumber || genericMatch.ReferenceNumber,
                     Timestamp: expenseData.Timestamp || genericMatch.Timestamp,
+                    SourceEmailKey: sourceEmailKey || genericMatch.SourceEmailKey,
                 };
                 await updateAgentTransaction(genericMatch.id, specificUpdates);
                 activeId = genericMatch.id;
@@ -321,7 +326,8 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                     console.log(`[${idInfo}] Generic alert for already-detailed transaction. Updating account info silently.`);
                     await updateAgentTransaction(existingSpecific.id, {
                         Account: expenseData.Account || existingSpecific.Account,
-                        BankName: expenseData.BankName || existingSpecific.BankName
+                        BankName: expenseData.BankName || existingSpecific.BankName,
+                        SourceEmailKey: sourceEmailKey || existingSpecific.SourceEmailKey,
                     });
                     activeId = existingSpecific.id;
                 } else {
