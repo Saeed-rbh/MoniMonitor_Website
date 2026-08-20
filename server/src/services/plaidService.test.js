@@ -8,6 +8,7 @@ const {
     encryptAccessToken,
     decryptAccessToken,
     plaidBalanceMinor,
+    fetchCurrentMarketPrices,
     normalizeInvestmentSnapshot,
 } = require('./plaidService');
 
@@ -105,6 +106,52 @@ test('uses security close prices when Wealthsimple reports zero holding prices a
     assert.equal(result.holdings[1].priceMicros, 48290000);
     assert.equal(result.holdings[2].priceMicros, 45610000);
     assert.equal(result.cashMinor, 70849);
+});
+
+test('uses a current market quote before Plaid previous-close data', () => {
+    const result = normalizeInvestmentSnapshot({
+        accounts: [{ account_id: 'tfsa', balances: { current: 9412.442916 } }],
+        securities: [{ security_id: 'vfv', ticker_symbol: 'VFV', type: 'etf', close_price: 188.93 }],
+        holdings: [{
+            account_id: 'tfsa', security_id: 'vfv', quantity: 21.0674,
+            institution_price: 0, institution_value: 0, iso_currency_code: 'CAD',
+        }],
+    }, new Map([['vfv', { price: 187.08, updatedAt: '2026-08-20T20:00:00.000Z' }]])).get('tfsa');
+    assert.equal(result.holdings[0].priceMicros, 187080000);
+    assert.equal(result.holdings[0].updatedAt, '2026-08-20T20:00:00.000Z');
+    assert.equal(result.cashMinor, 547115);
+});
+
+test('derives a unit price from Plaid institution value when its unit price is zero', () => {
+    const result = normalizeInvestmentSnapshot({
+        accounts: [{ account_id: 'tfsa', balances: { current: 1000 } }],
+        securities: [{ security_id: 'vfv', ticker_symbol: 'VFV', type: 'etf', close_price: 180 }],
+        holdings: [{
+            account_id: 'tfsa', security_id: 'vfv', quantity: 4,
+            institution_price: 0, institution_value: 760, iso_currency_code: 'CAD',
+        }],
+    }).get('tfsa');
+    assert.equal(result.holdings[0].priceMicros, 190000000);
+    assert.equal(result.cashMinor, 24000);
+});
+
+test('fetches TSX quotes for zero-price Canadian holdings', async () => {
+    const requested = [];
+    const prices = await fetchCurrentMarketPrices({
+        securities: [{ security_id: 'vfv', ticker_symbol: 'VFV', iso_currency_code: 'CAD' }],
+        holdings: [{
+            security_id: 'vfv', quantity: 21.0674, institution_price: 0,
+            institution_value: 0, iso_currency_code: 'CAD',
+        }],
+    }, async (url) => {
+        requested.push(url);
+        return {
+            ok: true,
+            json: async () => ({ chart: { result: [{ meta: { regularMarketPrice: 187.08, regularMarketTime: 1787256000 } }] } }),
+        };
+    });
+    assert.match(requested[0], /VFV.TO/);
+    assert.equal(prices.get('vfv').price, 187.08);
 });
 
 test('maps an investment purchase with exact security details', () => {

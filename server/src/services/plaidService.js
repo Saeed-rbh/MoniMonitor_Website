@@ -4,6 +4,7 @@ const dbService = require('../database/dbService');
 const PLAID_ENVIRONMENTS = new Set(['sandbox', 'development', 'production']);
 const syncPromises = new Map();
 const USER_SYNC_COOLDOWN_MS = 10 * 60 * 1000;
+const INVESTMENT_HOLDINGS_REFRESH_MS = 10 * 60 * 1000;
 
 function getConfig() {
     const environment = PLAID_ENVIRONMENTS.has(process.env.PLAID_ENV)
@@ -342,7 +343,53 @@ const toMicros = (value) => {
     return Number.isFinite(number) && number >= 0 ? Math.round(number * 1000000) : 0;
 };
 
-function normalizeInvestmentSnapshot(snapshot = {}) {
+const yahooSymbol = (ticker, currency) => {
+    const normalized = String(ticker || '').trim().toUpperCase();
+    if (!/^[A-Z0-9.\-]{1,20}$/.test(normalized)) return null;
+    return currency === 'CAD' && !normalized.includes('.') ? `${normalized}.TO` : normalized;
+};
+
+async function fetchCurrentMarketPrices(snapshot = {}, fetchImpl = fetch) {
+    if (process.env.MARKET_QUOTES_ENABLED === 'false') return new Map();
+    const securities = new Map((snapshot.securities || []).map((security) => [security.security_id, security]));
+    const targets = (snapshot.holdings || []).filter((holding) => {
+        const institutionPrice = Number(holding.institution_price);
+        const institutionValue = Number(holding.institution_value);
+        return !(institutionPrice > 0) && !(institutionValue > 0) && Number(holding.quantity) > 0;
+    });
+    const prices = new Map();
+    await Promise.all(targets.map(async (holding) => {
+        const security = securities.get(holding.security_id) || {};
+        const currency = String(
+            holding.iso_currency_code || holding.unofficial_currency_code ||
+            security.iso_currency_code || security.unofficial_currency_code || ''
+        ).toUpperCase();
+        const symbol = yahooSymbol(security.ticker_symbol, currency);
+        if (!symbol) return;
+        try {
+            const response = await fetchImpl(
+                `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d`,
+                { headers: { 'User-Agent': 'MoniMonitor/1.0' }, signal: AbortSignal.timeout(5000) }
+            );
+            if (!response.ok) return;
+            const result = (await response.json())?.chart?.result?.[0];
+            const price = Number(result?.meta?.regularMarketPrice);
+            if (!(price > 0)) return;
+            const marketTime = Number(result?.meta?.regularMarketTime);
+            prices.set(holding.security_id, {
+                price,
+                updatedAt: Number.isFinite(marketTime)
+                    ? new Date(marketTime * 1000).toISOString()
+                    : new Date().toISOString(),
+            });
+        } catch {
+            // Plaid's close price remains a safe fallback when live quotes are unavailable.
+        }
+    }));
+    return prices;
+}
+
+function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
     const securities = new Map((snapshot.securities || []).map((security) => [security.security_id, security]));
     const byAccount = new Map();
     for (const holding of snapshot.holdings || []) {
@@ -350,13 +397,22 @@ function normalizeInvestmentSnapshot(snapshot = {}) {
         const entry = byAccount.get(holding.account_id) || { cashMinor: 0, hasExplicitCash: false, holdings: [] };
         const quantity = Number(holding.quantity) || 0;
         const institutionPrice = Number(holding.institution_price);
+        const institutionValue = Number(holding.institution_value);
+        const valuePrice = quantity > 0 && Number.isFinite(institutionValue) && institutionValue > 0
+            ? institutionValue / quantity
+            : 0;
+        const marketQuote = marketPrices.get(holding.security_id);
+        const marketPrice = Number(marketQuote?.price);
         const closePrice = Number(security.close_price);
         const effectivePrice = Number.isFinite(institutionPrice) && institutionPrice > 0
             ? institutionPrice
-            : Number.isFinite(closePrice) && closePrice > 0
-                ? closePrice
-                : 0;
-        const institutionValue = Number(holding.institution_value);
+            : valuePrice > 0
+                ? valuePrice
+                : Number.isFinite(marketPrice) && marketPrice > 0
+                    ? marketPrice
+                    : Number.isFinite(closePrice) && closePrice > 0
+                        ? closePrice
+                        : 0;
         const effectiveValue = Number.isFinite(institutionValue) && institutionValue > 0
             ? institutionValue
             : quantity * effectivePrice;
@@ -375,6 +431,7 @@ function normalizeInvestmentSnapshot(snapshot = {}) {
                 priceMicros: toMicros(effectivePrice),
                 currency: String(holding.iso_currency_code || holding.unofficial_currency_code || 'CAD').toUpperCase(),
                 updatedAt: holding.institution_price_datetime || holding.institution_price_as_of ||
+                    marketQuote?.updatedAt ||
                     security.update_datetime || security.close_price_as_of || new Date().toISOString(),
                 valueMinor,
             });
@@ -393,7 +450,8 @@ function normalizeInvestmentSnapshot(snapshot = {}) {
 
 async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
     const db = await dbService.getDb();
-    const normalized = normalizeInvestmentSnapshot(snapshot);
+    const marketPrices = await fetchCurrentMarketPrices(snapshot);
+    const normalized = normalizeInvestmentSnapshot(snapshot, marketPrices);
     let accountsUpdated = 0;
     await db.run('BEGIN IMMEDIATE');
     try {
@@ -752,7 +810,7 @@ async function performItemSync(item, { forceHoldings = false } = {}) {
     try {
         const accessToken = decryptAccessToken(item.accessTokenEncrypted);
         const holdingsStale = !item.holdingsLastSyncedAt ||
-            new Date(item.holdingsLastSyncedAt).getTime() < Date.now() - 6 * 60 * 60 * 1000;
+            new Date(item.holdingsLastSyncedAt).getTime() < Date.now() - INVESTMENT_HOLDINGS_REFRESH_MS;
         const shouldFetchHoldings = forceHoldings || item.holdingsStatus !== 'active' || holdingsStale;
         const investmentTransactionsStale = !item.investmentTransactionsLastSyncedAt ||
             new Date(item.investmentTransactionsLastSyncedAt).getTime() < Date.now() - 6 * 60 * 60 * 1000;
@@ -953,6 +1011,7 @@ module.exports = {
     toAppTransaction,
     toAppInvestmentTransaction,
     plaidBalanceMinor,
+    fetchCurrentMarketPrices,
     normalizeInvestmentSnapshot,
     encryptAccessToken,
     decryptAccessToken,
