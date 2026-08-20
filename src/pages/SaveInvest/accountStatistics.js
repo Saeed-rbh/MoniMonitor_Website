@@ -58,3 +58,6 @@ export const buildAccountStatistics = (accounts = [], allTransactions = {}) => {
     };
   });
 };
+
+export const withRecordedTransactions = (statistics = []) =>
+  statistics.filter((item) => Number(item?.transactionCount || 0) > 0);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAccountStatistics, getAccountTransactions } from "./accountStatistics";
+import { buildAccountStatistics, getAccountTransactions, withRecordedTransactions } from "./accountStatistics";
 
 describe("buildAccountStatistics", () => {
   it("builds separate flow and activity statistics for each account", () => {
@@ -55,5 +55,13 @@ describe("buildAccountStatistics", () => {
     });
 
     expect(result.map((transaction) => transaction.id)).toEqual([3, 1]);
+  });
+
+  it("hides account statistics with no linked transactions", () => {
+    const statistics = [
+      { account: { id: 1 }, transactionCount: 2 },
+      { account: { id: 2 }, transactionCount: 0 },
+    ];
+    expect(withRecordedTransactions(statistics).map((item) => item.account.id)).toEqual([1]);
   });
 });

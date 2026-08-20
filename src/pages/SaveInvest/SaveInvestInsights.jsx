@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTransactions } from "../../context/TransactionContext";
 import { getPortfolioAPI } from "../../services/apiService";
-import { buildAccountStatistics } from "./accountStatistics";
+import { buildAccountStatistics, withRecordedTransactions } from "./accountStatistics";
 import "./SaveInvestInsights.css";
 
 const money = (minorValue, currency = "CAD") =>
@@ -65,13 +65,17 @@ const SaveInvestInsights = () => {
     () => buildAccountStatistics(accounts, allTransactions),
     [accounts, allTransactions]
   );
+  const visibleStatistics = useMemo(
+    () => withRecordedTransactions(statistics),
+    [statistics]
+  );
   const currency = accounts[0]?.currency || "CAD";
   const netValueMinor = Number(portfolio?.totalValueMinor || 0);
   const assetsMinor = Number(portfolio?.totalCashMinor || 0) +
     Number(portfolio?.holdingsValueMinor || 0);
   const debtMinor = Number(portfolio?.totalLiabilitiesMinor || 0);
   const holdingsMinor = Number(portfolio?.holdingsValueMinor || 0);
-  const activeAccounts = statistics.filter((item) => item.transactionCount > 0).length;
+  const visibleAccounts = visibleStatistics.map((item) => item.account);
 
   const trendPoints = useMemo(() => {
     if (!allTransactions) return [];
@@ -100,7 +104,7 @@ const SaveInvestInsights = () => {
         <div>
           <span className="SaveInvestInsights_Eyebrow">FINANCIAL OVERVIEW</span>
           <h1>Accounts</h1>
-          <p>Balances and statistics for every connected account.</p>
+          <p>Balances and statistics for accounts with recorded activity.</p>
         </div>
         <div className="SaveInvestInsights_Actions">
           <button type="button" onClick={() => navigate("/Accounts/Manage")}>Manage</button>
@@ -155,13 +159,13 @@ const SaveInvestInsights = () => {
         </article>
         <article>
           <span>Accounts</span>
-          <strong>{accounts.length}</strong>
-          <small>{activeAccounts} with recorded activity</small>
+          <strong>{visibleAccounts.length}</strong>
+          <small>With recorded transactions</small>
         </article>
         <article>
           <span>Investments</span>
           <strong>{money(holdingsMinor, currency)}</strong>
-          <small>{accounts.reduce((sum, account) => sum + (account.holdings?.length || 0), 0)} holdings</small>
+          <small>{visibleAccounts.reduce((sum, account) => sum + (account.holdings?.length || 0), 0)} holdings</small>
         </article>
       </section>
 
@@ -174,7 +178,7 @@ const SaveInvestInsights = () => {
         </div>
 
         <div className="SaveInvestInsights_Accounts">
-          {statistics.map(({ account, ...stats }) => {
+          {visibleStatistics.map(({ account, ...stats }) => {
             const isDebt = account.accountType === "Credit Card";
             const valueMinor = Number(account.totalValueMinor || 0);
             const displayValueMinor = isDebt ? Math.abs(valueMinor) : valueMinor;
@@ -349,8 +353,8 @@ const SaveInvestInsights = () => {
             );
           })}
 
-          {portfolio && !accounts.length && (
-            <div className="SaveInvestInsights_Empty">No accounts are stored yet.</div>
+          {portfolio && !visibleStatistics.length && (
+            <div className="SaveInvestInsights_Empty">No accounts with recorded transactions.</div>
           )}
           {!portfolio && (
             <div className="SaveInvestInsights_Empty">Loading account summaries…</div>
