@@ -6,6 +6,7 @@ const {
     toAppTransaction,
     encryptAccessToken,
     decryptAccessToken,
+    plaidBalanceMinor,
 } = require('./plaidService');
 
 test('maps Plaid outflows and inflows to MoniMonitor categories', () => {
@@ -55,4 +56,11 @@ test('encrypts stored Plaid access tokens with authenticated encryption', () => 
         if (previousKey === undefined) delete process.env.PLAID_TOKEN_ENCRYPTION_KEY;
         else process.env.PLAID_TOKEN_ENCRYPTION_KEY = previousKey;
     }
+});
+
+test('converts Plaid current balances to integer minor units', () => {
+    assert.equal(plaidBalanceMinor({ balances: { current: 933.72 } }), 93372);
+    assert.equal(plaidBalanceMinor({ balances: { current: -12.345 } }), -1235);
+    assert.equal(plaidBalanceMinor({ balances: { current: null } }), null);
+    assert.equal(plaidBalanceMinor({ balances: {} }), null);
 });

@@ -287,6 +287,36 @@ async function upsertPlaidAccounts(userId, item, accounts = []) {
     return accountMap;
 }
 
+function plaidBalanceMinor(account = {}) {
+    const rawCurrent = account.balances?.current;
+    if (rawCurrent === null || rawCurrent === undefined || rawCurrent === '') return null;
+    const current = Number(rawCurrent);
+    return Number.isFinite(current)
+        ? Math.sign(current) * Math.round(Math.abs(current) * 100)
+        : null;
+}
+
+async function applyAuthoritativeBalances(userId, accountMap) {
+    const db = await dbService.getDb();
+    const now = new Date().toISOString();
+    let updated = 0;
+    for (const account of accountMap.values()) {
+        const balanceMinor = plaidBalanceMinor(account);
+        if (!account.appAccountId || balanceMinor === null) continue;
+        const currency = String(
+            account.balances?.iso_currency_code || account.balances?.unofficial_currency_code || 'CAD'
+        ).toUpperCase();
+        const result = await db.run(
+            `UPDATE investment_accounts
+             SET cashMinor = ?, currency = ?, updatedAt = ?
+             WHERE id = ? AND userId = ?`,
+            [balanceMinor, currency, now, account.appAccountId, userId]
+        );
+        updated += result.changes;
+    }
+    return updated;
+}
+
 async function linkSource(userId, itemId, externalId, transactionId, ownsTransaction) {
     const db = await dbService.getDb();
     const now = new Date().toISOString();
@@ -422,8 +452,15 @@ async function fetchSyncPages(accessToken, startingCursor) {
 async function performItemSync(item) {
     const db = await dbService.getDb();
     try {
-        const changes = await fetchSyncPages(decryptAccessToken(item.accessTokenEncrypted), item.cursor);
-        const accountMap = await upsertPlaidAccounts(item.userId, item, [...changes.accounts.values()]);
+        const accessToken = decryptAccessToken(item.accessTokenEncrypted);
+        const [changes, accountResponse] = await Promise.all([
+            fetchSyncPages(accessToken, item.cursor),
+            plaidRequest('/accounts/get', { access_token: accessToken }),
+        ]);
+        const accounts = accountResponse.accounts?.length
+            ? accountResponse.accounts
+            : [...changes.accounts.values()];
+        const accountMap = await upsertPlaidAccounts(item.userId, item, accounts);
         const totals = { imported: 0, matched: 0, updated: 0, removed: changes.removed.length };
         for (const transaction of changes.added) {
             const result = await importAddedTransaction(item.userId, item, transaction, accountMap);
@@ -435,6 +472,10 @@ async function performItemSync(item) {
             if (result.status === 'updated') totals.updated += 1;
         }
         for (const transaction of changes.removed) await applyRemovedTransaction(item.userId, transaction);
+        // Transaction events preserve edit/delete behavior, but a partial history
+        // cannot reconstruct an account's opening balance. Plaid's current balance
+        // is the authoritative anchor after every completed sync.
+        totals.balancesUpdated = await applyAuthoritativeBalances(item.userId, accountMap);
         const now = new Date().toISOString();
         await db.run(
             `UPDATE plaid_items SET cursor = ?, status = 'active', lastSyncedAt = ?,
@@ -522,6 +563,7 @@ module.exports = {
     disconnectItem,
     classifyPlaidTransaction,
     toAppTransaction,
+    plaidBalanceMinor,
     encryptAccessToken,
     decryptAccessToken,
 };
