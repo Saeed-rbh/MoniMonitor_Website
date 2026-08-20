@@ -30,6 +30,7 @@ function accountMatchScore(transaction, account, preferredAccountId, preferredCo
     const accountDigits = String(account.accountRef || '').replace(/\D/g, '');
 
     if (transactionRef && accountRef && transactionRef === accountRef) score += 120;
+    else if (transactionRef.length >= 4 && accountRef && accountRef.includes(transactionRef)) score += 110;
     else if (transactionDigits.length >= 4 && accountDigits.length >= 4 &&
         transactionDigits.slice(-4) === accountDigits.slice(-4)) score += 100;
     else if (transactionRef && accountName &&

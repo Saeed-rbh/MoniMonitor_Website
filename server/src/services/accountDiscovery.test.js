@@ -42,6 +42,18 @@ test('reuses a unique existing account by its final digits', () => {
     assert.equal(result.reason, 'identity_match');
 });
 
+test('matches an alphanumeric Plaid mask embedded in an existing account reference', () => {
+    const account = {
+        id: 10,
+        name: 'TFSA',
+        institution: 'Wealthsimple',
+        accountType: 'TFSA',
+        accountRef: 'HQ656S0K7CAD',
+    };
+    const transaction = { Account: 'S0K7', BankName: 'Wealthsimple (Canada)', Type: 'tfsa' };
+    assert.equal(resolveAccountCandidate(transaction, [account]).account.id, 10);
+});
+
 test('attaches a reference to one matching manual account but not an ambiguous pair', () => {
     const account = { id: 9, name: 'New chequing', institution: 'TD', accountType: 'Chequing', accountRef: null };
     const transaction = { Account: '1234567', BankName: 'TD', Type: 'Chequing Account' };

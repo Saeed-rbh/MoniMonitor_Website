@@ -301,8 +301,19 @@ async function applyAuthoritativeBalances(userId, accountMap) {
     const now = new Date().toISOString();
     let updated = 0;
     for (const account of accountMap.values()) {
-        const balanceMinor = plaidBalanceMinor(account);
-        if (!account.appAccountId || balanceMinor === null) continue;
+        const totalBalanceMinor = plaidBalanceMinor(account);
+        if (!account.appAccountId || totalBalanceMinor === null) continue;
+        const holdings = account.type === 'investment'
+            ? await db.get(
+                `SELECT COALESCE(SUM(ROUND(quantity * COALESCE(priceMicros, priceMinor * 10000) / 10000.0)), 0)
+                    AS valueMinor
+                 FROM investment_holdings WHERE accountId = ? AND userId = ?`,
+                [account.appAccountId, userId]
+            )
+            : null;
+        const balanceMinor = account.type === 'investment'
+            ? totalBalanceMinor - Number(holdings?.valueMinor || 0)
+            : totalBalanceMinor;
         const currency = String(
             account.balances?.iso_currency_code || account.balances?.unofficial_currency_code || 'CAD'
         ).toUpperCase();
