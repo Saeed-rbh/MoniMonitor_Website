@@ -320,6 +320,15 @@ async function getDb() {
             if (!plaidItemColumns.some((column) => column.name === 'holdingsLastSyncedAt')) {
                 await db.exec('ALTER TABLE plaid_items ADD COLUMN holdingsLastSyncedAt TEXT');
             }
+            if (!plaidItemColumns.some((column) => column.name === 'investmentTransactionsStatus')) {
+                await db.exec("ALTER TABLE plaid_items ADD COLUMN investmentTransactionsStatus TEXT NOT NULL DEFAULT 'unknown'");
+            }
+            if (!plaidItemColumns.some((column) => column.name === 'investmentTransactionsLastError')) {
+                await db.exec('ALTER TABLE plaid_items ADD COLUMN investmentTransactionsLastError TEXT');
+            }
+            if (!plaidItemColumns.some((column) => column.name === 'investmentTransactionsLastSyncedAt')) {
+                await db.exec('ALTER TABLE plaid_items ADD COLUMN investmentTransactionsLastSyncedAt TEXT');
+            }
             const investmentAccountColumns = await db.all('PRAGMA table_info(investment_accounts)');
             if (!investmentAccountColumns.some((column) => column.name === 'accountRef')) {
                 await db.exec('ALTER TABLE investment_accounts ADD COLUMN accountRef TEXT');

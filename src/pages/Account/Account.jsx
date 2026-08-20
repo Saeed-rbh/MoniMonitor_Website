@@ -228,7 +228,10 @@ const Account = () => {
             await refreshPlaidStatus();
             const imported = result.results?.reduce((sum, item) => sum + (item.imported || 0), 0) || 0;
             const matched = result.results?.reduce((sum, item) => sum + (item.matched || 0), 0) || 0;
-            setPlaidMessage(`Sync complete: ${imported} imported, ${matched} matched to existing email records.`);
+            const investmentImported = result.results?.reduce((sum, item) => sum + (item.investmentTransactionsImported || 0), 0) || 0;
+            const investmentMatched = result.results?.reduce((sum, item) => sum + (item.investmentTransactionsMatched || 0), 0) || 0;
+            const historyPending = result.results?.some((item) => item.investmentTransactionsStatus === 'pending');
+            setPlaidMessage(`Sync complete: ${imported + investmentImported} imported, ${matched + investmentMatched} matched to existing email records.${historyPending ? ' Investment history is preparing and will be loaded automatically.' : ''}`);
         } catch (error) {
             setPlaidMessage(error.message);
         } finally {

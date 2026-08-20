@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const {
     classifyPlaidTransaction,
     toAppTransaction,
+    toAppInvestmentTransaction,
     encryptAccessToken,
     decryptAccessToken,
     plaidBalanceMinor,
@@ -84,4 +85,49 @@ test('normalizes authoritative investment quantities, prices, cost, and cash', (
     assert.equal(result.holdings[0].quantity, 20.5);
     assert.equal(result.holdings[0].priceMicros, 190000000);
     assert.equal(result.holdings[0].averageCostMicros, 160975610);
+});
+
+test('maps an investment purchase with exact security details', () => {
+    const result = toAppInvestmentTransaction({
+        investment_transaction_id: 'investment-1',
+        account_id: 'tfsa',
+        security_id: 'vfv',
+        date: '2026-08-19',
+        name: 'BUY VFV',
+        quantity: 0.0527,
+        amount: 9.99,
+        price: 189.62,
+        type: 'buy',
+        subtype: 'buy',
+        iso_currency_code: 'CAD',
+    }, { appAccountId: 10, mask: 'S0K7', type: 'investment', subtype: 'tfsa' }, { ticker_symbol: 'VFV' }, 'Wealthsimple');
+    assert.equal(result.Category, 'Investment');
+    assert.equal(result.Label, 'ETF & Stock Purchase');
+    assert.equal(result.PortfolioAction, 'BUY');
+    assert.equal(result.PortfolioAccountId, 10);
+    assert.equal(result.PortfolioSymbol, 'VFV');
+    assert.equal(result.PortfolioQuantity, 0.0527);
+    assert.equal(result.PortfolioPrice, 189.62);
+    assert.equal(result.AccountFlow, 'OUT');
+});
+
+test('maps TFSA cash contributions and dividends', () => {
+    const account = { appAccountId: 10, mask: 'S0K7', type: 'investment', subtype: 'tfsa' };
+    const contribution = toAppInvestmentTransaction({
+        date: '2026-08-01', name: 'Contribution', amount: -100, quantity: 0,
+        type: 'cash', subtype: 'contribution', iso_currency_code: 'CAD',
+    }, account);
+    assert.equal(contribution.Category, 'Saving');
+    assert.equal(contribution.Label, 'Savings Contributions');
+    assert.equal(contribution.PortfolioAction, 'CONTRIBUTION');
+    assert.equal(contribution.AccountFlow, 'IN');
+
+    const dividend = toAppInvestmentTransaction({
+        date: '2026-08-02', name: 'Dividend', amount: -4.25, quantity: 0,
+        type: 'cash', subtype: 'dividend', iso_currency_code: 'CAD',
+    }, account, { ticker_symbol: 'VFV' });
+    assert.equal(dividend.Label, 'Dividends');
+    assert.equal(dividend.PortfolioAction, 'DIVIDEND');
+    assert.equal(dividend.AmountMinor, 425);
+    assert.equal(dividend.AccountFlow, 'IN');
 });

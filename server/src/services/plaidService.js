@@ -417,17 +417,17 @@ async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
     return accountsUpdated;
 }
 
-async function linkSource(userId, itemId, externalId, transactionId, ownsTransaction) {
+async function linkSource(userId, itemId, externalId, transactionId, ownsTransaction, provider = 'plaid') {
     const db = await dbService.getDb();
     const now = new Date().toISOString();
     await db.run(
         `INSERT INTO transaction_sources
             (provider, externalId, userId, transactionId, itemId, ownsTransaction, createdAt, updatedAt)
-         VALUES ('plaid', ?, ?, ?, ?, ?, ?, ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(provider, externalId) DO UPDATE SET
             transactionId = excluded.transactionId, itemId = excluded.itemId,
             ownsTransaction = excluded.ownsTransaction, updatedAt = excluded.updatedAt`,
-        [externalId, userId, transactionId, itemId, ownsTransaction ? 1 : 0, now, now]
+        [provider, externalId, userId, transactionId, itemId, ownsTransaction ? 1 : 0, now, now]
     );
 }
 
@@ -549,6 +549,192 @@ async function fetchSyncPages(accessToken, startingCursor) {
     throw new Error('Unable to complete Plaid pagination');
 }
 
+const investmentFeeSubtypes = new Set([
+    'account fee', 'fund fee', 'legal fee', 'management fee', 'margin expense',
+    'miscellaneous fee', 'transfer fee', 'trust fee',
+]);
+const investmentTaxSubtypes = new Set(['non-resident tax', 'tax', 'tax withheld']);
+const investmentDividendSubtypes = new Set([
+    'dividend', 'non-qualified dividend', 'qualified dividend', 'return of principal',
+    'short-term capital gain', 'long-term capital gain',
+]);
+
+function toAppInvestmentTransaction(transaction, account = {}, security = {}, institutionName = null) {
+    const type = String(transaction.type || '').toLowerCase();
+    const subtype = String(transaction.subtype || '').toLowerCase();
+    if (type === 'cancel') return null;
+    const signedAmount = Number(transaction.amount);
+    const amountMinor = Number.isFinite(signedAmount) ? Math.abs(Math.round(signedAmount * 100)) : 0;
+    const flow = type === 'transfer' ? 'NONE' : signedAmount > 0 ? 'OUT' : signedAmount < 0 ? 'IN' : 'NONE';
+    let Category = 'Investment';
+    let Label = flow === 'IN' ? 'Investment Reimbursements' : 'Investment Fees';
+    let PortfolioAction = flow === 'IN' ? 'REIMBURSEMENT' : 'FEE';
+
+    if (type === 'buy') {
+        Label = 'ETF & Stock Purchase';
+        PortfolioAction = 'BUY';
+    } else if (type === 'sell') {
+        Label = 'ETF & Stock Sale';
+        PortfolioAction = 'SELL';
+    } else if (type === 'transfer') {
+        Label = 'Asset Distribution';
+        PortfolioAction = 'TRANSFER';
+    } else if (investmentFeeSubtypes.has(subtype) || type === 'fee') {
+        Label = 'Investment Fees';
+        PortfolioAction = 'FEE';
+    } else if (investmentTaxSubtypes.has(subtype)) {
+        Label = 'Investment Taxes';
+        PortfolioAction = 'TAX';
+    } else if (investmentDividendSubtypes.has(subtype)) {
+        Label = 'Dividends';
+        PortfolioAction = 'DIVIDEND';
+    } else if (subtype.includes('interest')) {
+        Label = 'Investment Interest';
+        PortfolioAction = 'INTEREST';
+    } else if (subtype === 'contribution' || subtype === 'deposit') {
+        Category = 'Saving';
+        Label = 'Savings Contributions';
+        PortfolioAction = subtype === 'contribution' ? 'CONTRIBUTION' : 'DEPOSIT';
+    } else if (subtype === 'withdrawal' || subtype === 'distribution') {
+        Label = 'Asset Distribution';
+        PortfolioAction = subtype === 'withdrawal' ? 'WITHDRAWAL' : 'DISTRIBUTION';
+    }
+
+    const transactionDate = transaction.transaction_datetime ||
+        (/^\d{4}-\d{2}-\d{2}$/.test(transaction.date || '') ? `${transaction.date}T12:00:00.000Z` : new Date().toISOString());
+    const quantity = Math.abs(Number(transaction.quantity) || 0);
+    const price = Number(transaction.price);
+    return {
+        AmountMinor: amountMinor,
+        Amount: amountMinor / 100,
+        Currency: String(transaction.iso_currency_code || transaction.unofficial_currency_code || account.currency || 'CAD').toUpperCase(),
+        Category,
+        Label,
+        Reason: String(transaction.name || subtype || 'Investment transaction').slice(0, 500),
+        Timestamp: transactionDate,
+        Type: accountTypeLabel(account),
+        Account: account.mask || account.name || null,
+        BankName: institutionName,
+        AccountFlow: flow,
+        PortfolioAction,
+        PortfolioAccountId: account.appAccountId || null,
+        PortfolioConfidence: account.appAccountId ? 'HIGH' : null,
+        PortfolioAccountNumber: account.mask || null,
+        PortfolioSymbol: security.ticker_symbol || null,
+        PortfolioQuantity: quantity > 0 ? quantity : null,
+        PortfolioPrice: Number.isFinite(price) && price > 0 ? price : null,
+    };
+}
+
+function investmentWindow() {
+    const end = new Date();
+    const start = new Date(end);
+    start.setUTCFullYear(start.getUTCFullYear() - 2);
+    return { startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) };
+}
+
+async function fetchInvestmentTransactionPages(accessToken) {
+    const { startDate, endDate } = investmentWindow();
+    const result = { transactions: [], securities: new Map(), startDate, endDate };
+    let offset = 0;
+    do {
+        const page = await plaidRequest('/investments/transactions/get', {
+            access_token: accessToken,
+            start_date: startDate,
+            end_date: endDate,
+            options: { count: 500, offset, async_update: true },
+        });
+        result.transactions.push(...(page.investment_transactions || []));
+        (page.securities || []).forEach((security) => result.securities.set(security.security_id, security));
+        offset = result.transactions.length;
+        if (offset >= Number(page.total_investment_transactions || 0)) return result;
+    } while (true);
+}
+
+async function findInvestmentFallbackMatch(userId, appTransaction) {
+    const db = await dbService.getDb();
+    const timestamp = new Date(appTransaction.Timestamp);
+    const from = new Date(timestamp.getTime() - 5 * 86400000).toISOString();
+    const to = new Date(timestamp.getTime() + 5 * 86400000).toISOString();
+    const candidates = await db.all(
+        `SELECT t.* FROM transactions t
+         WHERE t.userId = ? AND t.AmountMinor = ? AND t.Timestamp BETWEEN ? AND ?
+           AND NOT EXISTS (
+               SELECT 1 FROM transaction_sources s
+               WHERE s.transactionId = t.id AND s.provider = 'plaid_investments'
+           )`,
+        [userId, appTransaction.AmountMinor, from, to]
+    );
+    const ranked = candidates.map((candidate) => {
+        const sameDate = String(candidate.Timestamp).slice(0, 10) === String(appTransaction.Timestamp).slice(0, 10);
+        const sameAccount = Number(candidate.PortfolioAccountId) === Number(appTransaction.PortfolioAccountId);
+        const sameAction = candidate.PortfolioAction === appTransaction.PortfolioAction;
+        const sameSymbol = appTransaction.PortfolioSymbol && candidate.PortfolioSymbol === appTransaction.PortfolioSymbol;
+        const quantities = [Number(candidate.PortfolioQuantity), Number(appTransaction.PortfolioQuantity)];
+        const sameQuantity = quantities.every(Number.isFinite) && Math.abs(quantities[0] - quantities[1]) < 1e-8;
+        const score = (sameDate ? 4 : 0) + (sameAccount ? 6 : 0) + (sameAction ? 5 : 0) +
+            (sameSymbol ? 5 : 0) + (sameQuantity ? 5 : 0) + (reasonOverlap(candidate.Reason, appTransaction.Reason) ? 1 : 0);
+        return { candidate, score };
+    }).filter(({ score }) => score >= 10).sort((a, b) => b.score - a.score);
+    if (!ranked.length || ranked[0].score === ranked[1]?.score) return null;
+    return ranked[0].candidate;
+}
+
+async function importInvestmentTransaction(userId, item, transaction, accountMap, securities) {
+    const db = await dbService.getDb();
+    const externalId = transaction.investment_transaction_id;
+    const existing = await db.get(
+        `SELECT s.*, t.SourceEmailKey FROM transaction_sources s
+         JOIN transactions t ON t.id = s.transactionId AND t.userId = s.userId
+         WHERE s.provider = 'plaid_investments' AND s.externalId = ? AND s.userId = ?`,
+        [externalId, userId]
+    );
+    const account = accountMap.get(transaction.account_id) || {};
+    const appTransaction = toAppInvestmentTransaction(
+        transaction, account, securities.get(transaction.security_id) || {}, item.institutionName
+    );
+    if (!appTransaction) return { status: 'ignored' };
+    if (existing) {
+        if (existing.ownsTransaction && !existing.SourceEmailKey) {
+            await dbService.updateTransactionForUser(existing.transactionId, userId, appTransaction);
+            return { status: 'updated', transactionId: existing.transactionId };
+        }
+        return { status: 'known', transactionId: existing.transactionId };
+    }
+    const match = await findInvestmentFallbackMatch(userId, appTransaction);
+    if (match) {
+        await linkSource(userId, item.itemId, externalId, match.id, false, 'plaid_investments');
+        return { status: 'matched_email', transactionId: match.id };
+    }
+    const transactionId = await dbService.addTransaction({ ...appTransaction, userId });
+    await linkSource(userId, item.itemId, externalId, transactionId, true, 'plaid_investments');
+    return { status: 'imported', transactionId };
+}
+
+async function removeMissingInvestmentTransactions(userId, itemId, startDate, currentIds) {
+    const db = await dbService.getDb();
+    const sources = await db.all(
+        `SELECT s.*, t.SourceEmailKey FROM transaction_sources s
+         JOIN transactions t ON t.id = s.transactionId AND t.userId = s.userId
+         WHERE s.provider = 'plaid_investments' AND s.itemId = ? AND s.userId = ? AND t.Timestamp >= ?`,
+        [itemId, userId, `${startDate}T00:00:00.000Z`]
+    );
+    let removed = 0;
+    for (const source of sources) {
+        if (currentIds.has(source.externalId)) continue;
+        await db.run(
+            `DELETE FROM transaction_sources WHERE provider = 'plaid_investments' AND externalId = ? AND userId = ?`,
+            [source.externalId, userId]
+        );
+        const remaining = await db.get('SELECT COUNT(*) AS count FROM transaction_sources WHERE transactionId = ?', [source.transactionId]);
+        if (source.ownsTransaction && !source.SourceEmailKey && !remaining.count) {
+            await dbService.deleteTransaction(source.transactionId, userId);
+        }
+        removed += 1;
+    }
+    return removed;
+}
+
 async function performItemSync(item, { forceHoldings = false } = {}) {
     const db = await dbService.getDb();
     try {
@@ -556,12 +742,21 @@ async function performItemSync(item, { forceHoldings = false } = {}) {
         const holdingsStale = !item.holdingsLastSyncedAt ||
             new Date(item.holdingsLastSyncedAt).getTime() < Date.now() - 6 * 60 * 60 * 1000;
         const shouldFetchHoldings = forceHoldings || item.holdingsStatus !== 'active' || holdingsStale;
-        const [changes, accountResponse, investmentResult] = await Promise.all([
+        const investmentTransactionsStale = !item.investmentTransactionsLastSyncedAt ||
+            new Date(item.investmentTransactionsLastSyncedAt).getTime() < Date.now() - 6 * 60 * 60 * 1000;
+        const shouldFetchInvestmentTransactions = forceHoldings ||
+            item.investmentTransactionsStatus !== 'active' || investmentTransactionsStale;
+        const [changes, accountResponse, investmentResult, investmentTransactionsResult] = await Promise.all([
             fetchSyncPages(accessToken, item.cursor),
             plaidRequest('/accounts/get', { access_token: accessToken }),
             shouldFetchHoldings
                 ? plaidRequest('/investments/holdings/get', { access_token: accessToken })
                     .then((snapshot) => ({ snapshot }))
+                    .catch((error) => ({ error }))
+                : Promise.resolve({ skipped: true }),
+            shouldFetchInvestmentTransactions
+                ? fetchInvestmentTransactionPages(accessToken)
+                    .then((history) => ({ history }))
                     .catch((error) => ({ error }))
                 : Promise.resolve({ skipped: true }),
         ]);
@@ -580,6 +775,36 @@ async function performItemSync(item, { forceHoldings = false } = {}) {
             if (result.status === 'updated') totals.updated += 1;
         }
         for (const transaction of changes.removed) await applyRemovedTransaction(item.userId, transaction);
+        totals.investmentTransactionsImported = 0;
+        totals.investmentTransactionsMatched = 0;
+        totals.investmentTransactionsUpdated = 0;
+        totals.investmentTransactionsRemoved = 0;
+        if (investmentTransactionsResult.history) {
+            const history = investmentTransactionsResult.history;
+            for (const transaction of history.transactions) {
+                const result = await importInvestmentTransaction(
+                    item.userId, item, transaction, accountMap, history.securities
+                );
+                if (result.status === 'imported') totals.investmentTransactionsImported += 1;
+                if (result.status === 'matched_email') totals.investmentTransactionsMatched += 1;
+                if (result.status === 'updated') totals.investmentTransactionsUpdated += 1;
+            }
+            totals.investmentTransactionsRemoved = await removeMissingInvestmentTransactions(
+                item.userId, item.itemId, history.startDate,
+                new Set(history.transactions.map((transaction) => transaction.investment_transaction_id))
+            );
+            totals.investmentTransactionsStatus = 'active';
+        } else if (investmentTransactionsResult.error?.code === 'PRODUCT_NOT_READY') {
+            totals.investmentTransactionsStatus = 'pending';
+        } else if (investmentTransactionsResult.error?.code === 'ADDITIONAL_CONSENT_REQUIRED') {
+            totals.investmentTransactionsStatus = 'consent_required';
+        } else if (['NO_INVESTMENT_ACCOUNTS', 'PRODUCT_NOT_SUPPORTED', 'PRODUCTS_NOT_SUPPORTED'].includes(investmentTransactionsResult.error?.code)) {
+            totals.investmentTransactionsStatus = 'unavailable';
+        } else if (investmentTransactionsResult.error) {
+            totals.investmentTransactionsStatus = 'error';
+        } else {
+            totals.investmentTransactionsStatus = item.investmentTransactionsStatus || 'unknown';
+        }
         // Transaction events preserve edit/delete behavior, but a partial history
         // cannot reconstruct an account's opening balance. Plaid's current balance
         // is the authoritative anchor after every completed sync.
@@ -599,15 +824,23 @@ async function performItemSync(item, { forceHoldings = false } = {}) {
         const holdingsError = investmentResult.error
             ? String(investmentResult.error.message || 'Investment holdings sync failed').slice(0, 500)
             : null;
+        const investmentTransactionsError = investmentTransactionsResult.error
+            ? String(investmentTransactionsResult.error.message || 'Investment transaction sync failed').slice(0, 500)
+            : null;
         const now = new Date().toISOString();
         await db.run(
             `UPDATE plaid_items SET cursor = ?, status = 'active', lastSyncedAt = ?,
                 lastError = NULL, holdingsStatus = ?, holdingsLastError = ?,
-                holdingsLastSyncedAt = COALESCE(?, holdingsLastSyncedAt), updatedAt = ?
+                holdingsLastSyncedAt = COALESCE(?, holdingsLastSyncedAt),
+                investmentTransactionsStatus = ?, investmentTransactionsLastError = ?,
+                investmentTransactionsLastSyncedAt = COALESCE(?, investmentTransactionsLastSyncedAt),
+                updatedAt = ?
               WHERE itemId = ? AND userId = ?`,
             [changes.nextCursor, now, totals.holdingsStatus,
                 investmentResult.skipped ? item.holdingsLastError : holdingsError,
-                investmentResult.snapshot ? now : null, now, item.itemId, item.userId]
+                investmentResult.snapshot ? now : null, totals.investmentTransactionsStatus,
+                investmentTransactionsResult.skipped ? item.investmentTransactionsLastError : investmentTransactionsError,
+                investmentTransactionsResult.history ? now : null, now, item.itemId, item.userId]
         );
         return totals;
     } catch (error) {
@@ -651,7 +884,9 @@ async function getStatus(userId) {
     const db = await dbService.getDb();
     const items = await db.all(
         `SELECT i.itemId, i.institutionId, i.institutionName, i.status, i.lastSyncedAt,
-                i.lastError, i.holdingsStatus, i.holdingsLastError, i.holdingsLastSyncedAt, i.createdAt,
+                i.lastError, i.holdingsStatus, i.holdingsLastError, i.holdingsLastSyncedAt,
+                i.investmentTransactionsStatus, i.investmentTransactionsLastError,
+                i.investmentTransactionsLastSyncedAt, i.createdAt,
                 COUNT(a.plaidAccountId) AS accountCount,
                 SUM(CASE WHEN lower(a.type) = 'investment' THEN 1 ELSE 0 END) AS investmentAccountCount
          FROM plaid_items i LEFT JOIN plaid_accounts a ON a.itemId = i.itemId
@@ -672,7 +907,10 @@ async function disconnectItem(userId, itemId) {
     }
     await db.run('BEGIN IMMEDIATE');
     try {
-        await db.run(`DELETE FROM transaction_sources WHERE provider = 'plaid' AND itemId = ? AND userId = ?`, [itemId, userId]);
+        await db.run(
+            `DELETE FROM transaction_sources WHERE provider IN ('plaid', 'plaid_investments') AND itemId = ? AND userId = ?`,
+            [itemId, userId]
+        );
         await db.run('DELETE FROM plaid_accounts WHERE itemId = ? AND userId = ?', [itemId, userId]);
         await db.run('DELETE FROM plaid_items WHERE itemId = ? AND userId = ?', [itemId, userId]);
         await db.run('COMMIT');
@@ -692,6 +930,7 @@ module.exports = {
     disconnectItem,
     classifyPlaidTransaction,
     toAppTransaction,
+    toAppInvestmentTransaction,
     plaidBalanceMinor,
     normalizeInvestmentSnapshot,
     encryptAccessToken,
