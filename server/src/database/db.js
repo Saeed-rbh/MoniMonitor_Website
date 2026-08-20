@@ -310,6 +310,16 @@ async function getDb() {
             await db.exec(`
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_monthly_ai_briefs_user_month ON monthly_ai_briefs(userId, month);
             `).catch(() => {});
+            const plaidItemColumns = await db.all('PRAGMA table_info(plaid_items)');
+            if (!plaidItemColumns.some((column) => column.name === 'holdingsStatus')) {
+                await db.exec("ALTER TABLE plaid_items ADD COLUMN holdingsStatus TEXT NOT NULL DEFAULT 'unknown'");
+            }
+            if (!plaidItemColumns.some((column) => column.name === 'holdingsLastError')) {
+                await db.exec('ALTER TABLE plaid_items ADD COLUMN holdingsLastError TEXT');
+            }
+            if (!plaidItemColumns.some((column) => column.name === 'holdingsLastSyncedAt')) {
+                await db.exec('ALTER TABLE plaid_items ADD COLUMN holdingsLastSyncedAt TEXT');
+            }
             const investmentAccountColumns = await db.all('PRAGMA table_info(investment_accounts)');
             if (!investmentAccountColumns.some((column) => column.name === 'accountRef')) {
                 await db.exec('ALTER TABLE investment_accounts ADD COLUMN accountRef TEXT');

@@ -7,6 +7,7 @@ const {
     encryptAccessToken,
     decryptAccessToken,
     plaidBalanceMinor,
+    normalizeInvestmentSnapshot,
 } = require('./plaidService');
 
 test('maps Plaid outflows and inflows to MoniMonitor categories', () => {
@@ -63,4 +64,24 @@ test('converts Plaid current balances to integer minor units', () => {
     assert.equal(plaidBalanceMinor({ balances: { current: -12.345 } }), -1235);
     assert.equal(plaidBalanceMinor({ balances: { current: null } }), null);
     assert.equal(plaidBalanceMinor({ balances: {} }), null);
+});
+
+test('normalizes authoritative investment quantities, prices, cost, and cash', () => {
+    const result = normalizeInvestmentSnapshot({
+        accounts: [{ account_id: 'tfsa', balances: { current: 9435.30 } }],
+        securities: [
+            { security_id: 'vfv', ticker_symbol: 'VFV', name: 'Vanguard S&P 500', type: 'etf' },
+            { security_id: 'cash', ticker_symbol: 'CAD', name: 'Cash', type: 'cash', is_cash_equivalent: true },
+        ],
+        holdings: [
+            { account_id: 'tfsa', security_id: 'vfv', quantity: 20.5, institution_price: 190, institution_value: 3895, cost_basis: 3300, iso_currency_code: 'CAD' },
+            { account_id: 'tfsa', security_id: 'cash', quantity: 540.3, institution_price: 1, institution_value: 540.3, iso_currency_code: 'CAD' },
+        ],
+    }).get('tfsa');
+    assert.equal(result.cashMinor, 54030);
+    assert.equal(result.holdings.length, 1);
+    assert.equal(result.holdings[0].symbol, 'VFV');
+    assert.equal(result.holdings[0].quantity, 20.5);
+    assert.equal(result.holdings[0].priceMicros, 190000000);
+    assert.equal(result.holdings[0].averageCostMicros, 160975610);
 });

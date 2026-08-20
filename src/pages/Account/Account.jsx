@@ -184,6 +184,42 @@ const Account = () => {
         }
     };
 
+    const handleEnablePlaidHoldings = async (item) => {
+        setPlaidBusy(true);
+        setPlaidMessage("Preparing secure investment authorization…");
+        try {
+            const { linkToken } = await createPlaidLinkTokenAPI(item.itemId);
+            if (!window.Plaid?.create) throw new Error("Plaid Link could not be loaded");
+            const handler = window.Plaid.create({
+                token: linkToken,
+                onSuccess: async () => {
+                    try {
+                        setPlaidMessage("Loading current TFSA cash and holdings…");
+                        await syncPlaidAPI();
+                        await refreshPlaidStatus();
+                        setPlaidMessage("Investment holdings updated from Wealthsimple. Reloading…");
+                        window.setTimeout(() => window.location.reload(), 700);
+                    } catch (error) {
+                        setPlaidMessage(error.message);
+                    } finally {
+                        setPlaidBusy(false);
+                        handler.destroy();
+                    }
+                },
+                onExit: (error) => {
+                    if (error) setPlaidMessage(error.display_message || error.error_message || "Investment authorization was not completed.");
+                    else setPlaidMessage("Investment authorization cancelled.");
+                    setPlaidBusy(false);
+                    handler.destroy();
+                },
+            });
+            handler.open();
+        } catch (error) {
+            setPlaidMessage(error.message);
+            setPlaidBusy(false);
+        }
+    };
+
     const handlePlaidSync = async () => {
         setPlaidBusy(true);
         setPlaidMessage("Checking Plaid for missing transactions…");
@@ -398,10 +434,16 @@ const Account = () => {
                                 <div style={{ minWidth: 0 }}>
                                     <div>{item.institutionName || "Connected bank"}</div>
                                     <div style={{ color: item.status === 'active' ? "var(--Ac-3)" : "var(--Gc-2)", fontSize: "0.68rem", marginTop: "2px" }}>
-                                        {item.status === 'active' ? `${item.accountCount} account${item.accountCount === 1 ? '' : 's'} · Last sync ${item.lastSyncedAt ? new Date(item.lastSyncedAt).toLocaleString() : 'pending'}` : item.lastError || 'Connection needs attention'}
+                                        {item.status === 'active' ? `${item.accountCount} account${item.accountCount === 1 ? '' : 's'} · Last sync ${item.lastSyncedAt ? new Date(item.lastSyncedAt).toLocaleString() : 'pending'}${Number(item.investmentAccountCount) > 0 && item.holdingsStatus !== 'active' ? ' · Holdings authorization needed' : ''}` : item.lastError || 'Connection needs attention'}
                                     </div>
                                 </div>
                                 <button type="button" disabled={plaidBusy} onClick={() => handlePlaidDisconnect(item)} style={{ background: "none", border: 0, color: "var(--Gc-2)", cursor: "pointer", fontSize: "0.72rem" }}>Disconnect</button>
+                            </div>
+                        ))}
+                        {plaidStatus?.items?.filter((item) => Number(item.investmentAccountCount) > 0 && ['unknown', 'consent_required'].includes(item.holdingsStatus)).map((item) => (
+                            <div className="settings-item" style={itemStyle} onClick={plaidBusy ? undefined : () => handleEnablePlaidHoldings(item)} key={`holdings-${item.itemId}`}>
+                                <span>Enable accurate investment holdings</span>
+                                <span style={{ fontSize: "1rem" }}>📈</span>
                             </div>
                         ))}
                         <div className="settings-item" style={itemStyle} onClick={plaidBusy || plaidStatus?.configured === false ? undefined : handleConnectPlaid}>

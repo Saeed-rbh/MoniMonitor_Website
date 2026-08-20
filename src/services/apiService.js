@@ -303,7 +303,10 @@ const plaidRequest = async (path = '', options = {}) => {
 
 export const getPlaidStatusAPI = () => plaidRequest('/status');
 
-export const createPlaidLinkTokenAPI = () => plaidRequest('/link-token', { method: 'POST' });
+export const createPlaidLinkTokenAPI = (itemId) => plaidRequest('/link-token', {
+    method: 'POST',
+    ...(itemId ? { body: JSON.stringify({ itemId }) } : {}),
+});
 
 export const exchangePlaidPublicTokenAPI = (publicToken, metadata) => plaidRequest('/exchange', {
     method: 'POST',

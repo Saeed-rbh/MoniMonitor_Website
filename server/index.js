@@ -219,8 +219,13 @@ app.get("/plaid/status", authenticateToken, async (req, res) => {
 
 app.post("/plaid/link-token", authenticateToken, authRateLimit, async (req, res) => {
     try {
-        return res.json(await plaidService.createLinkToken(req.user.userId));
+        const itemId = req.body?.itemId;
+        if (itemId !== undefined && (typeof itemId !== 'string' || itemId.length > 200)) {
+            return res.status(400).json({ error: 'Invalid Plaid item' });
+        }
+        return res.json(await plaidService.createLinkToken(req.user.userId, itemId));
     } catch (error) {
+        if (error.statusCode && error.statusCode < 500) return res.status(error.statusCode).json({ error: error.message });
         if (error.statusCode === 503) return res.status(503).json({ error: error.message });
         return sendValidationError(res, error);
     }

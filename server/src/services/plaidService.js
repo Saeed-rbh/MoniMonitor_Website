@@ -87,16 +87,32 @@ async function plaidRequest(path, body = {}) {
     return data;
 }
 
-async function createLinkToken(userId) {
+async function createLinkToken(userId, itemId = null) {
     const config = requireConfig();
     const request = {
         user: { client_user_id: String(userId) },
         client_name: 'MoniMonitor',
-        products: ['transactions'],
-        transactions: { days_requested: 90 },
         country_codes: config.countries,
         language: 'en',
     };
+    if (itemId) {
+        const db = await dbService.getDb();
+        const item = await db.get(
+            'SELECT accessTokenEncrypted FROM plaid_items WHERE itemId = ? AND userId = ?',
+            [itemId, userId]
+        );
+        if (!item) {
+            const error = new Error('Bank connection not found');
+            error.statusCode = 404;
+            throw error;
+        }
+        request.access_token = decryptAccessToken(item.accessTokenEncrypted);
+        request.additional_consented_products = ['investments'];
+    } else {
+        request.products = ['transactions'];
+        request.transactions = { days_requested: 90 };
+        request.additional_consented_products = ['investments'];
+    }
     if (config.redirectUri) request.redirect_uri = config.redirectUri;
     if (config.webhookUrl) request.webhook = config.webhookUrl;
     const result = await plaidRequest('/link/token/create', request);
@@ -302,18 +318,11 @@ async function applyAuthoritativeBalances(userId, accountMap) {
     let updated = 0;
     for (const account of accountMap.values()) {
         const totalBalanceMinor = plaidBalanceMinor(account);
-        if (!account.appAccountId || totalBalanceMinor === null) continue;
-        const holdings = account.type === 'investment'
-            ? await db.get(
-                `SELECT COALESCE(SUM(ROUND(quantity * COALESCE(priceMicros, priceMinor * 10000) / 10000.0)), 0)
-                    AS valueMinor
-                 FROM investment_holdings WHERE accountId = ? AND userId = ?`,
-                [account.appAccountId, userId]
-            )
-            : null;
-        const balanceMinor = account.type === 'investment'
-            ? totalBalanceMinor - Number(holdings?.valueMinor || 0)
-            : totalBalanceMinor;
+        // An investment account's current balance is its total value, not cash.
+        // Without the Investments product, subtracting locally reconstructed
+        // positions mixes two different snapshots and corrupts the cash value.
+        if (!account.appAccountId || totalBalanceMinor === null || account.type === 'investment') continue;
+        const balanceMinor = totalBalanceMinor;
         const currency = String(
             account.balances?.iso_currency_code || account.balances?.unofficial_currency_code || 'CAD'
         ).toUpperCase();
@@ -326,6 +335,86 @@ async function applyAuthoritativeBalances(userId, accountMap) {
         updated += result.changes;
     }
     return updated;
+}
+
+const toMicros = (value) => {
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? Math.round(number * 1000000) : 0;
+};
+
+function normalizeInvestmentSnapshot(snapshot = {}) {
+    const securities = new Map((snapshot.securities || []).map((security) => [security.security_id, security]));
+    const byAccount = new Map();
+    for (const holding of snapshot.holdings || []) {
+        const security = securities.get(holding.security_id) || {};
+        const entry = byAccount.get(holding.account_id) || { cashMinor: 0, hasExplicitCash: false, holdings: [] };
+        const valueMinor = Math.round((Number(holding.institution_value) || 0) * 100);
+        if (security.is_cash_equivalent || security.type === 'cash') {
+            entry.cashMinor += valueMinor;
+            entry.hasExplicitCash = true;
+        } else {
+            const quantity = Number(holding.quantity) || 0;
+            const totalCost = Number(holding.cost_basis);
+            const averageCost = quantity > 0 && Number.isFinite(totalCost) ? totalCost / quantity : 0;
+            entry.holdings.push({
+                symbol: String(security.ticker_symbol || security.name || holding.security_id || 'Holding').trim().slice(0, 40),
+                name: security.name ? String(security.name).trim().slice(0, 160) : null,
+                quantity,
+                averageCostMicros: toMicros(averageCost),
+                priceMicros: toMicros(holding.institution_price),
+                currency: String(holding.iso_currency_code || holding.unofficial_currency_code || 'CAD').toUpperCase(),
+                updatedAt: holding.institution_price_datetime || holding.institution_price_as_of || new Date().toISOString(),
+                valueMinor,
+            });
+        }
+        byAccount.set(holding.account_id, entry);
+    }
+    for (const account of snapshot.accounts || []) {
+        const entry = byAccount.get(account.account_id) || { cashMinor: 0, hasExplicitCash: false, holdings: [] };
+        const totalMinor = plaidBalanceMinor(account);
+        const investedMinor = entry.holdings.reduce((sum, holding) => sum + holding.valueMinor, 0);
+        if (!entry.hasExplicitCash && totalMinor !== null) entry.cashMinor = Math.max(0, totalMinor - investedMinor);
+        byAccount.set(account.account_id, entry);
+    }
+    return byAccount;
+}
+
+async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
+    const db = await dbService.getDb();
+    const normalized = normalizeInvestmentSnapshot(snapshot);
+    let accountsUpdated = 0;
+    await db.run('BEGIN IMMEDIATE');
+    try {
+        for (const [plaidAccountId, entry] of normalized) {
+            const account = accountMap.get(plaidAccountId);
+            if (!account?.appAccountId || account.type !== 'investment') continue;
+            await db.run('DELETE FROM investment_holdings WHERE accountId = ? AND userId = ?', [account.appAccountId, userId]);
+            for (const holding of entry.holdings) {
+                await db.run(
+                    `INSERT INTO investment_holdings
+                        (userId, accountId, symbol, name, quantity, averageCostMinor, averageCostMicros,
+                         priceMinor, priceMicros, currency, updatedAt)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [userId, account.appAccountId, holding.symbol, holding.name, holding.quantity,
+                        Math.round(holding.averageCostMicros / 10000), holding.averageCostMicros,
+                        Math.round(holding.priceMicros / 10000), holding.priceMicros,
+                        holding.currency, holding.updatedAt]
+                );
+            }
+            const sourceAccount = (snapshot.accounts || []).find((item) => item.account_id === plaidAccountId);
+            const currency = String(sourceAccount?.balances?.iso_currency_code || sourceAccount?.balances?.unofficial_currency_code || account.currency || 'CAD').toUpperCase();
+            await db.run(
+                'UPDATE investment_accounts SET cashMinor = ?, currency = ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                [entry.cashMinor, currency, new Date().toISOString(), account.appAccountId, userId]
+            );
+            accountsUpdated += 1;
+        }
+        await db.run('COMMIT');
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+    return accountsUpdated;
 }
 
 async function linkSource(userId, itemId, externalId, transactionId, ownsTransaction) {
@@ -460,13 +549,21 @@ async function fetchSyncPages(accessToken, startingCursor) {
     throw new Error('Unable to complete Plaid pagination');
 }
 
-async function performItemSync(item) {
+async function performItemSync(item, { forceHoldings = false } = {}) {
     const db = await dbService.getDb();
     try {
         const accessToken = decryptAccessToken(item.accessTokenEncrypted);
-        const [changes, accountResponse] = await Promise.all([
+        const holdingsStale = !item.holdingsLastSyncedAt ||
+            new Date(item.holdingsLastSyncedAt).getTime() < Date.now() - 6 * 60 * 60 * 1000;
+        const shouldFetchHoldings = forceHoldings || item.holdingsStatus !== 'active' || holdingsStale;
+        const [changes, accountResponse, investmentResult] = await Promise.all([
             fetchSyncPages(accessToken, item.cursor),
             plaidRequest('/accounts/get', { access_token: accessToken }),
+            shouldFetchHoldings
+                ? plaidRequest('/investments/holdings/get', { access_token: accessToken })
+                    .then((snapshot) => ({ snapshot }))
+                    .catch((error) => ({ error }))
+                : Promise.resolve({ skipped: true }),
         ]);
         const accounts = accountResponse.accounts?.length
             ? accountResponse.accounts
@@ -487,11 +584,30 @@ async function performItemSync(item) {
         // cannot reconstruct an account's opening balance. Plaid's current balance
         // is the authoritative anchor after every completed sync.
         totals.balancesUpdated = await applyAuthoritativeBalances(item.userId, accountMap);
+        if (investmentResult.snapshot) {
+            totals.holdingsUpdated = await applyInvestmentSnapshot(item.userId, accountMap, investmentResult.snapshot);
+            totals.holdingsStatus = 'active';
+        } else if (investmentResult.error?.code === 'ADDITIONAL_CONSENT_REQUIRED') {
+            totals.holdingsStatus = 'consent_required';
+        } else if (['NO_INVESTMENT_ACCOUNTS', 'PRODUCT_NOT_READY', 'PRODUCTS_NOT_SUPPORTED'].includes(investmentResult.error?.code)) {
+            totals.holdingsStatus = 'unavailable';
+        } else if (investmentResult.error) {
+            totals.holdingsStatus = 'error';
+        } else {
+            totals.holdingsStatus = item.holdingsStatus || 'unknown';
+        }
+        const holdingsError = investmentResult.error
+            ? String(investmentResult.error.message || 'Investment holdings sync failed').slice(0, 500)
+            : null;
         const now = new Date().toISOString();
         await db.run(
             `UPDATE plaid_items SET cursor = ?, status = 'active', lastSyncedAt = ?,
-                lastError = NULL, updatedAt = ? WHERE itemId = ? AND userId = ?`,
-            [changes.nextCursor, now, now, item.itemId, item.userId]
+                lastError = NULL, holdingsStatus = ?, holdingsLastError = ?,
+                holdingsLastSyncedAt = COALESCE(?, holdingsLastSyncedAt), updatedAt = ?
+              WHERE itemId = ? AND userId = ?`,
+            [changes.nextCursor, now, totals.holdingsStatus,
+                investmentResult.skipped ? item.holdingsLastError : holdingsError,
+                investmentResult.snapshot ? now : null, now, item.itemId, item.userId]
         );
         return totals;
     } catch (error) {
@@ -504,9 +620,9 @@ async function performItemSync(item) {
     }
 }
 
-async function syncItem(item) {
+async function syncItem(item, options = {}) {
     if (syncPromises.has(item.itemId)) return syncPromises.get(item.itemId);
-    const promise = performItemSync(item).finally(() => syncPromises.delete(item.itemId));
+    const promise = performItemSync(item, options).finally(() => syncPromises.delete(item.itemId));
     syncPromises.set(item.itemId, promise);
     return promise;
 }
@@ -520,7 +636,7 @@ async function syncUserItems(userId, { force = false } = {}) {
     const results = [];
     for (const item of eligible) {
         try {
-            results.push({ itemId: item.itemId, ok: true, ...(await syncItem(item)) });
+            results.push({ itemId: item.itemId, ok: true, ...(await syncItem(item, { forceHoldings: force })) });
         } catch (error) {
             console.error(`[Plaid] Sync failed for item ${item.itemId}:`, error.message);
             results.push({ itemId: item.itemId, ok: false, error: error.message });
@@ -535,7 +651,9 @@ async function getStatus(userId) {
     const db = await dbService.getDb();
     const items = await db.all(
         `SELECT i.itemId, i.institutionId, i.institutionName, i.status, i.lastSyncedAt,
-                i.lastError, i.createdAt, COUNT(a.plaidAccountId) AS accountCount
+                i.lastError, i.holdingsStatus, i.holdingsLastError, i.holdingsLastSyncedAt, i.createdAt,
+                COUNT(a.plaidAccountId) AS accountCount,
+                SUM(CASE WHEN lower(a.type) = 'investment' THEN 1 ELSE 0 END) AS investmentAccountCount
          FROM plaid_items i LEFT JOIN plaid_accounts a ON a.itemId = i.itemId
          WHERE i.userId = ? GROUP BY i.itemId ORDER BY i.createdAt DESC`,
         [userId]
@@ -575,6 +693,7 @@ module.exports = {
     classifyPlaidTransaction,
     toAppTransaction,
     plaidBalanceMinor,
+    normalizeInvestmentSnapshot,
     encryptAccessToken,
     decryptAccessToken,
 };
