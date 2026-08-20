@@ -348,12 +348,23 @@ function normalizeInvestmentSnapshot(snapshot = {}) {
     for (const holding of snapshot.holdings || []) {
         const security = securities.get(holding.security_id) || {};
         const entry = byAccount.get(holding.account_id) || { cashMinor: 0, hasExplicitCash: false, holdings: [] };
-        const valueMinor = Math.round((Number(holding.institution_value) || 0) * 100);
+        const quantity = Number(holding.quantity) || 0;
+        const institutionPrice = Number(holding.institution_price);
+        const closePrice = Number(security.close_price);
+        const effectivePrice = Number.isFinite(institutionPrice) && institutionPrice > 0
+            ? institutionPrice
+            : Number.isFinite(closePrice) && closePrice > 0
+                ? closePrice
+                : 0;
+        const institutionValue = Number(holding.institution_value);
+        const effectiveValue = Number.isFinite(institutionValue) && institutionValue > 0
+            ? institutionValue
+            : quantity * effectivePrice;
+        const valueMinor = Math.round(effectiveValue * 100);
         if (security.is_cash_equivalent || security.type === 'cash') {
             entry.cashMinor += valueMinor;
             entry.hasExplicitCash = true;
         } else {
-            const quantity = Number(holding.quantity) || 0;
             const totalCost = Number(holding.cost_basis);
             const averageCost = quantity > 0 && Number.isFinite(totalCost) ? totalCost / quantity : 0;
             entry.holdings.push({
@@ -361,9 +372,10 @@ function normalizeInvestmentSnapshot(snapshot = {}) {
                 name: security.name ? String(security.name).trim().slice(0, 160) : null,
                 quantity,
                 averageCostMicros: toMicros(averageCost),
-                priceMicros: toMicros(holding.institution_price),
+                priceMicros: toMicros(effectivePrice),
                 currency: String(holding.iso_currency_code || holding.unofficial_currency_code || 'CAD').toUpperCase(),
-                updatedAt: holding.institution_price_datetime || holding.institution_price_as_of || new Date().toISOString(),
+                updatedAt: holding.institution_price_datetime || holding.institution_price_as_of ||
+                    security.update_datetime || security.close_price_as_of || new Date().toISOString(),
                 valueMinor,
             });
         }
@@ -746,24 +758,29 @@ async function performItemSync(item, { forceHoldings = false } = {}) {
             new Date(item.investmentTransactionsLastSyncedAt).getTime() < Date.now() - 6 * 60 * 60 * 1000;
         const shouldFetchInvestmentTransactions = forceHoldings ||
             item.investmentTransactionsStatus !== 'active' || investmentTransactionsStale;
-        const [changes, accountResponse, investmentResult, investmentTransactionsResult] = await Promise.all([
+        const [changes, accountResponse] = await Promise.all([
             fetchSyncPages(accessToken, item.cursor),
             plaidRequest('/accounts/get', { access_token: accessToken }),
-            shouldFetchHoldings
-                ? plaidRequest('/investments/holdings/get', { access_token: accessToken })
-                    .then((snapshot) => ({ snapshot }))
-                    .catch((error) => ({ error }))
-                : Promise.resolve({ skipped: true }),
-            shouldFetchInvestmentTransactions
-                ? fetchInvestmentTransactionPages(accessToken)
-                    .then((history) => ({ history }))
-                    .catch((error) => ({ error }))
-                : Promise.resolve({ skipped: true }),
         ]);
         const accounts = accountResponse.accounts?.length
             ? accountResponse.accounts
             : [...changes.accounts.values()];
         const accountMap = await upsertPlaidAccounts(item.userId, item, accounts);
+        const hasInvestmentAccounts = accounts.some((account) => account.type === 'investment');
+        const [investmentResult, investmentTransactionsResult] = hasInvestmentAccounts
+            ? await Promise.all([
+                shouldFetchHoldings
+                ? plaidRequest('/investments/holdings/get', { access_token: accessToken })
+                    .then((snapshot) => ({ snapshot }))
+                    .catch((error) => ({ error }))
+                : Promise.resolve({ skipped: true }),
+                shouldFetchInvestmentTransactions
+                ? fetchInvestmentTransactionPages(accessToken)
+                    .then((history) => ({ history }))
+                    .catch((error) => ({ error }))
+                : Promise.resolve({ skipped: true }),
+            ])
+            : [{ notApplicable: true }, { notApplicable: true }];
         const totals = { imported: 0, matched: 0, updated: 0, removed: changes.removed.length };
         for (const transaction of changes.added) {
             const result = await importAddedTransaction(item.userId, item, transaction, accountMap);
@@ -802,6 +819,8 @@ async function performItemSync(item, { forceHoldings = false } = {}) {
             totals.investmentTransactionsStatus = 'unavailable';
         } else if (investmentTransactionsResult.error) {
             totals.investmentTransactionsStatus = 'error';
+        } else if (investmentTransactionsResult.notApplicable) {
+            totals.investmentTransactionsStatus = 'not_applicable';
         } else {
             totals.investmentTransactionsStatus = item.investmentTransactionsStatus || 'unknown';
         }
@@ -818,6 +837,8 @@ async function performItemSync(item, { forceHoldings = false } = {}) {
             totals.holdingsStatus = 'unavailable';
         } else if (investmentResult.error) {
             totals.holdingsStatus = 'error';
+        } else if (investmentResult.notApplicable) {
+            totals.holdingsStatus = 'not_applicable';
         } else {
             totals.holdingsStatus = item.holdingsStatus || 'unknown';
         }

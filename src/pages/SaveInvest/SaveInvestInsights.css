@@ -243,11 +243,16 @@
 
 .SaveInvestInsights_Accounts {
   display: grid;
+  min-width: 0;
+  max-width: 100%;
   gap: 9px;
   margin-top: 12px;
 }
 
 .SaveInvestInsights_Account {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   padding: 13px;
   border: 1px solid var(--Ac-4);
   border-radius: 18px;
@@ -259,6 +264,11 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+.SaveInvestInsights_Account > header > div:first-child {
+  min-width: 0;
+  overflow: hidden;
 }
 
 .SaveInvestInsights_Account h3 {
@@ -576,6 +586,9 @@
 /* ─── Accounts Overview — Asset Breakdown (Cash vs Holdings) ───── */
 
 .AccountsOverview_AssetBreakdown {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   margin-top: 11px;
   padding: 11px 12px;
   border-radius: 14px;
@@ -706,11 +719,14 @@
 }
 
 .AccountsOverview_HoldingInfo {
+  flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
 }
 
 .AccountsOverview_SymbolBadge {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 4px;
   font-size: 0.72rem;
@@ -718,11 +734,15 @@
 }
 
 .AccountsOverview_SymbolBadge strong {
+  flex-shrink: 0;
   font-weight: 650;
   color: var(--Bc-1);
 }
 
 .AccountsOverview_SymbolBadge .name {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--Ac-2);
   font-size: 0.62rem;
   white-space: nowrap;
@@ -731,12 +751,16 @@
 }
 
 .AccountsOverview_HoldingSub {
+  overflow: hidden;
   color: var(--Ac-3);
   font-size: 0.57rem;
   margin-top: 1px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .AccountsOverview_HoldingVal {
+  max-width: 52%;
   text-align: right;
   flex-shrink: 0;
 }
@@ -755,6 +779,7 @@
   gap: 6px;
   margin-top: 1px;
   font-size: 0.57rem;
+  white-space: nowrap;
 }
 
 .AccountsOverview_HoldingMeta .share {
