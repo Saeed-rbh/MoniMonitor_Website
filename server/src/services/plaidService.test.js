@@ -87,6 +87,26 @@ test('normalizes authoritative investment quantities, prices, cost, and cash', (
     assert.equal(result.holdings[0].averageCostMicros, 160975610);
 });
 
+test('uses security close prices when Wealthsimple reports zero holding prices and values', () => {
+    const result = normalizeInvestmentSnapshot({
+        accounts: [{ account_id: 'tfsa', balances: { current: 9412.442916 } }],
+        securities: [
+            { security_id: 'vfv', ticker_symbol: 'VFV', type: 'etf', close_price: 188.93, close_price_as_of: '2026-08-19' },
+            { security_id: 'qqc', ticker_symbol: 'QQC', type: 'etf', close_price: 48.29, close_price_as_of: '2026-08-19' },
+            { security_id: 'xeqt', ticker_symbol: 'XEQT', type: 'etf', close_price: 45.61, close_price_as_of: '2026-08-19' },
+        ],
+        holdings: [
+            { account_id: 'tfsa', security_id: 'vfv', quantity: 21.0674, institution_price: 0, institution_value: 0, cost_basis: 3410.45, iso_currency_code: 'CAD' },
+            { account_id: 'tfsa', security_id: 'qqc', quantity: 46.2295, institution_price: 0, institution_value: 0, cost_basis: 2001.85, iso_currency_code: 'CAD' },
+            { account_id: 'tfsa', security_id: 'xeqt', quantity: 54.6211, institution_price: 0, institution_value: 0, cost_basis: 2194.62, iso_currency_code: 'CAD' },
+        ],
+    }).get('tfsa');
+    assert.equal(result.holdings[0].priceMicros, 188930000);
+    assert.equal(result.holdings[1].priceMicros, 48290000);
+    assert.equal(result.holdings[2].priceMicros, 45610000);
+    assert.equal(result.cashMinor, 70849);
+});
+
 test('maps an investment purchase with exact security details', () => {
     const result = toAppInvestmentTransaction({
         investment_transaction_id: 'investment-1',
