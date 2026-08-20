@@ -64,4 +64,18 @@ describe("buildAccountStatistics", () => {
     ];
     expect(withRecordedTransactions(statistics).map((item) => item.account.id)).toEqual([1]);
   });
+
+  it("assigns a generic TFSA name to the exact account instead of every TFSA", () => {
+    const accounts = [
+      { id: 10, name: "TFSA", accountRef: "HQ656S0K7CAD" },
+      { id: 14, name: "Wealthsimple TFSA", accountRef: "0WK8" },
+    ];
+    const statistics = buildAccountStatistics(accounts, {
+      "2026-08": { transactions: [
+        { id: 1, Timestamp: "2026-08-20", Account: "TFSA", Amount: 10, AccountFlow: "OUT" },
+      ] },
+    });
+
+    expect(statistics.map((item) => item.transactionCount)).toEqual([1, 0]);
+  });
 });
