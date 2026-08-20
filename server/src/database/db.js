@@ -329,6 +329,15 @@ async function getDb() {
             if (!plaidItemColumns.some((column) => column.name === 'investmentTransactionsLastSyncedAt')) {
                 await db.exec('ALTER TABLE plaid_items ADD COLUMN investmentTransactionsLastSyncedAt TEXT');
             }
+            if (!plaidItemColumns.some((column) => column.name === 'lastWebhookAt')) {
+                await db.exec('ALTER TABLE plaid_items ADD COLUMN lastWebhookAt TEXT');
+            }
+            if (!plaidItemColumns.some((column) => column.name === 'lastWebhookType')) {
+                await db.exec('ALTER TABLE plaid_items ADD COLUMN lastWebhookType TEXT');
+            }
+            if (!plaidItemColumns.some((column) => column.name === 'lastWebhookCode')) {
+                await db.exec('ALTER TABLE plaid_items ADD COLUMN lastWebhookCode TEXT');
+            }
             const investmentAccountColumns = await db.all('PRAGMA table_info(investment_accounts)');
             if (!investmentAccountColumns.some((column) => column.name === 'accountRef')) {
                 await db.exec('ALTER TABLE investment_accounts ADD COLUMN accountRef TEXT');

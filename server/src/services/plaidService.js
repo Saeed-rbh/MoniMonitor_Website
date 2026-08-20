@@ -3,8 +3,11 @@ const dbService = require('../database/dbService');
 
 const PLAID_ENVIRONMENTS = new Set(['sandbox', 'development', 'production']);
 const syncPromises = new Map();
+const webhookVerificationKeys = new Map();
 const USER_SYNC_COOLDOWN_MS = 10 * 60 * 1000;
 const INVESTMENT_HOLDINGS_REFRESH_MS = 10 * 60 * 1000;
+const WEBHOOK_MAX_AGE_SECONDS = 5 * 60;
+const WEBHOOK_KEY_CACHE_MS = 6 * 60 * 60 * 1000;
 
 function getConfig() {
     const environment = PLAID_ENVIRONMENTS.has(process.env.PLAID_ENV)
@@ -86,6 +89,46 @@ async function plaidRequest(path, body = {}) {
         throw error;
     }
     return data;
+}
+
+const decodeJwtPart = (value) => JSON.parse(Buffer.from(value, 'base64url').toString('utf8'));
+
+async function getWebhookVerificationKey(keyId) {
+    const cached = webhookVerificationKeys.get(keyId);
+    if (cached && cached.cachedAt > Date.now() - WEBHOOK_KEY_CACHE_MS) return cached.key;
+    const result = await plaidRequest('/webhook_verification_key/get', { key_id: keyId });
+    if (!result.key) throw new Error('Plaid webhook verification key is unavailable');
+    webhookVerificationKeys.set(keyId, { key: result.key, cachedAt: Date.now() });
+    return result.key;
+}
+
+async function verifyPlaidWebhook(rawBody, signedJwt, keyProvider = getWebhookVerificationKey) {
+    if (!Buffer.isBuffer(rawBody) || !rawBody.length || typeof signedJwt !== 'string') return false;
+    const parts = signedJwt.split('.');
+    if (parts.length !== 3) return false;
+    try {
+        const header = decodeJwtPart(parts[0]);
+        const payload = decodeJwtPart(parts[1]);
+        if (header.alg !== 'ES256' || typeof header.kid !== 'string' || !header.kid) return false;
+        const issuedAt = Number(payload.iat);
+        const age = Math.floor(Date.now() / 1000) - issuedAt;
+        if (!Number.isFinite(issuedAt) || age < -60 || age > WEBHOOK_MAX_AGE_SECONDS) return false;
+
+        const jwk = await keyProvider(header.kid);
+        if (!jwk || jwk.alg !== 'ES256' || jwk.kid !== header.kid || jwk.kty !== 'EC') return false;
+        const publicKey = crypto.createPublicKey({ key: jwk, format: 'jwk' });
+        const validSignature = crypto.verify(
+            'sha256', Buffer.from(`${parts[0]}.${parts[1]}`),
+            { key: publicKey, dsaEncoding: 'ieee-p1363' }, Buffer.from(parts[2], 'base64url')
+        );
+        if (!validSignature) return false;
+
+        const expectedHash = Buffer.from(String(payload.request_body_sha256 || ''), 'hex');
+        const actualHash = crypto.createHash('sha256').update(rawBody).digest();
+        return expectedHash.length === actualHash.length && crypto.timingSafeEqual(expectedHash, actualHash);
+    } catch {
+        return false;
+    }
 }
 
 async function createLinkToken(userId, itemId = null) {
@@ -957,6 +1000,65 @@ async function syncUserItems(userId, { force = false } = {}) {
     return { configured: true, results };
 }
 
+const webhookSyncOptions = ({ webhook_type: type, webhook_code: code } = {}) => {
+    if (type === 'TRANSACTIONS' && code === 'SYNC_UPDATES_AVAILABLE') return { forceHoldings: false };
+    if (type === 'HOLDINGS' && code === 'DEFAULT_UPDATE') return { forceHoldings: true };
+    if (type === 'INVESTMENTS_TRANSACTIONS' && ['DEFAULT_UPDATE', 'HISTORICAL_UPDATE'].includes(code)) {
+        return { forceHoldings: true };
+    }
+    if (type === 'ITEM' && code === 'LOGIN_REPAIRED') return { forceHoldings: true };
+    return null;
+};
+
+async function processPlaidWebhook(payload = {}) {
+    const itemId = typeof payload.item_id === 'string' ? payload.item_id : null;
+    if (!itemId) return { handled: false, reason: 'missing_item' };
+    const db = await dbService.getDb();
+    const item = await db.get('SELECT * FROM plaid_items WHERE itemId = ?', [itemId]);
+    if (!item) return { handled: false, reason: 'unknown_item' };
+    await db.run(
+        `UPDATE plaid_items SET lastWebhookAt = ?, lastWebhookType = ?, lastWebhookCode = ?, updatedAt = ?
+         WHERE itemId = ?`,
+        [new Date().toISOString(), String(payload.webhook_type || 'UNKNOWN').slice(0, 80),
+            String(payload.webhook_code || 'UNKNOWN').slice(0, 120), new Date().toISOString(), itemId]
+    );
+
+    if (payload.webhook_type === 'ITEM' && ['ERROR', 'PENDING_DISCONNECT'].includes(payload.webhook_code)) {
+        const message = payload.error?.error_message || payload.reason || payload.webhook_code;
+        await db.run(
+            `UPDATE plaid_items SET status = ?, lastError = ?, updatedAt = ? WHERE itemId = ?`,
+            [payload.webhook_code === 'ERROR' ? 'error' : 'attention_required',
+                String(message).slice(0, 500), new Date().toISOString(), itemId]
+        );
+        return { handled: true, action: 'status_updated' };
+    }
+
+    const syncOptions = webhookSyncOptions(payload);
+    if (!syncOptions) return { handled: true, action: 'acknowledged' };
+    return { handled: true, action: 'synced', ...(await syncItem(item, syncOptions)) };
+}
+
+async function registerWebhookForAllItems(webhookUrl = getConfig().webhookUrl) {
+    if (!webhookUrl) throw new Error('PLAID_WEBHOOK_URL is not configured');
+    const parsed = new URL(webhookUrl);
+    if (parsed.protocol !== 'https:') throw new Error('Plaid webhook URL must use HTTPS');
+    const db = await dbService.getDb();
+    const items = await db.all('SELECT itemId, accessTokenEncrypted FROM plaid_items ORDER BY createdAt');
+    const results = [];
+    for (const item of items) {
+        try {
+            const response = await plaidRequest('/item/webhook/update', {
+                access_token: decryptAccessToken(item.accessTokenEncrypted),
+                webhook: webhookUrl,
+            });
+            results.push({ itemId: item.itemId, ok: true, webhook: response.item?.webhook || webhookUrl });
+        } catch (error) {
+            results.push({ itemId: item.itemId, ok: false, error: error.message });
+        }
+    }
+    return results;
+}
+
 async function getStatus(userId) {
     const config = getConfig();
     if (!isConfigured()) return { configured: false, environment: config.environment, items: [] };
@@ -965,7 +1067,8 @@ async function getStatus(userId) {
         `SELECT i.itemId, i.institutionId, i.institutionName, i.status, i.lastSyncedAt,
                 i.lastError, i.holdingsStatus, i.holdingsLastError, i.holdingsLastSyncedAt,
                 i.investmentTransactionsStatus, i.investmentTransactionsLastError,
-                i.investmentTransactionsLastSyncedAt, i.createdAt,
+                i.investmentTransactionsLastSyncedAt, i.lastWebhookAt, i.lastWebhookType,
+                i.lastWebhookCode, i.createdAt,
                 COUNT(a.plaidAccountId) AS accountCount,
                 SUM(CASE WHEN lower(a.type) = 'investment' THEN 1 ELSE 0 END) AS investmentAccountCount
          FROM plaid_items i LEFT JOIN plaid_accounts a ON a.itemId = i.itemId
@@ -1005,6 +1108,10 @@ module.exports = {
     createLinkToken,
     exchangePublicToken,
     syncUserItems,
+    verifyPlaidWebhook,
+    webhookSyncOptions,
+    processPlaidWebhook,
+    registerWebhookForAllItems,
     getStatus,
     disconnectItem,
     classifyPlaidTransaction,

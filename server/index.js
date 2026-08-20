@@ -70,7 +70,12 @@ app.use(cors({
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
 }));
-app.use(express.json({ limit: "100kb" }));
+app.use(express.json({
+    limit: "100kb",
+    verify(req, _res, buffer) {
+        if (req.path === "/plaid/webhook") req.rawBody = Buffer.from(buffer);
+    },
+}));
 
 const authRateLimit = createRateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 const insightRateLimit = createRateLimit({ windowMs: 60 * 60 * 1000, max: 180 });
@@ -209,6 +214,25 @@ app.get("/transactions", authenticateToken, async (req, res) => {
     } catch (error) {
         return sendValidationError(res, error);
     }
+});
+
+app.post("/plaid/webhook", async (req, res) => {
+    const verified = await plaidService.verifyPlaidWebhook(
+        req.rawBody,
+        req.get("Plaid-Verification")
+    ).catch((error) => {
+        console.error("Plaid webhook verification error:", error.message);
+        return false;
+    });
+    if (!verified) return res.status(401).json({ error: "Invalid webhook signature" });
+
+    const payload = req.body && typeof req.body === "object" ? req.body : {};
+    res.status(200).json({ received: true });
+    setImmediate(() => {
+        plaidService.processPlaidWebhook(payload).then((result) => {
+            console.log(`[Plaid] Webhook ${payload.webhook_type || "UNKNOWN"}/${payload.webhook_code || "UNKNOWN"}: ${result.action || result.reason}`);
+        }).catch((error) => console.error("Plaid webhook processing error:", error.message));
+    });
 });
 
 app.get("/plaid/status", authenticateToken, async (req, res) => {

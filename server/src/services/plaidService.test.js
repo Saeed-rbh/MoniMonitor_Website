@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 
 const {
     classifyPlaidTransaction,
@@ -10,6 +11,8 @@ const {
     plaidBalanceMinor,
     fetchCurrentMarketPrices,
     normalizeInvestmentSnapshot,
+    verifyPlaidWebhook,
+    webhookSyncOptions,
 } = require('./plaidService');
 
 test('maps Plaid outflows and inflows to MoniMonitor categories', () => {
@@ -152,6 +155,43 @@ test('fetches TSX quotes for zero-price Canadian holdings', async () => {
     });
     assert.match(requested[0], /VFV.TO/);
     assert.equal(prices.get('vfv').price, 187.08);
+});
+
+test('verifies Plaid webhook signatures and exact request bodies', async () => {
+    const rawBody = Buffer.from(JSON.stringify({
+        webhook_type: 'TRANSACTIONS', webhook_code: 'SYNC_UPDATES_AVAILABLE', item_id: 'item-1',
+    }));
+    const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
+    const keyId = 'test-key';
+    const jwk = { ...publicKey.export({ format: 'jwk' }), alg: 'ES256', kid: keyId, use: 'sig' };
+    const encodedHeader = Buffer.from(JSON.stringify({ alg: 'ES256', kid: keyId, typ: 'JWT' })).toString('base64url');
+    const encodedPayload = Buffer.from(JSON.stringify({
+        iat: Math.floor(Date.now() / 1000),
+        request_body_sha256: crypto.createHash('sha256').update(rawBody).digest('hex'),
+    })).toString('base64url');
+    const signingInput = `${encodedHeader}.${encodedPayload}`;
+    const signature = crypto.sign('sha256', Buffer.from(signingInput), {
+        key: privateKey, dsaEncoding: 'ieee-p1363',
+    }).toString('base64url');
+    const token = `${signingInput}.${signature}`;
+
+    assert.equal(await verifyPlaidWebhook(rawBody, token, async () => jwk), true);
+    assert.equal(await verifyPlaidWebhook(Buffer.from(`${rawBody} `), token, async () => jwk), false);
+});
+
+test('routes only supported Plaid webhook updates to item synchronization', () => {
+    assert.deepEqual(webhookSyncOptions({
+        webhook_type: 'TRANSACTIONS', webhook_code: 'SYNC_UPDATES_AVAILABLE',
+    }), { forceHoldings: false });
+    assert.deepEqual(webhookSyncOptions({
+        webhook_type: 'HOLDINGS', webhook_code: 'DEFAULT_UPDATE',
+    }), { forceHoldings: true });
+    assert.deepEqual(webhookSyncOptions({
+        webhook_type: 'INVESTMENTS_TRANSACTIONS', webhook_code: 'HISTORICAL_UPDATE',
+    }), { forceHoldings: true });
+    assert.equal(webhookSyncOptions({
+        webhook_type: 'TRANSACTIONS', webhook_code: 'DEFAULT_UPDATE',
+    }), null);
 });
 
 test('maps an investment purchase with exact security details', () => {
