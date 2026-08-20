@@ -658,6 +658,7 @@ if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`API server listening on http://localhost:${PORT}`);
         backupService.startAutomaticBackups();
+        plaidService.startAutomaticReconciliation();
     });
 }
 

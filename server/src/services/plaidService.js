@@ -4,10 +4,15 @@ const dbService = require('../database/dbService');
 const PLAID_ENVIRONMENTS = new Set(['sandbox', 'development', 'production']);
 const syncPromises = new Map();
 const webhookVerificationKeys = new Map();
+let reconciliationTimer = null;
+let reconciliationStartupTimer = null;
+let reconciliationPromise = null;
 const USER_SYNC_COOLDOWN_MS = 10 * 60 * 1000;
 const INVESTMENT_HOLDINGS_REFRESH_MS = 10 * 60 * 1000;
 const WEBHOOK_MAX_AGE_SECONDS = 5 * 60;
 const WEBHOOK_KEY_CACHE_MS = 6 * 60 * 60 * 1000;
+const DEFAULT_RECONCILIATION_HOURS = 24;
+const RECONCILIATION_STARTUP_DELAY_MS = 15 * 1000;
 
 function getConfig() {
     const environment = PLAID_ENVIRONMENTS.has(process.env.PLAID_ENV)
@@ -982,7 +987,7 @@ async function syncItem(item, options = {}) {
     return promise;
 }
 
-async function syncUserItems(userId, { force = false } = {}) {
+async function syncUserItems(userId, { force = false, forceHoldings = force } = {}) {
     if (!isConfigured()) return { configured: false, results: [] };
     const db = await dbService.getDb();
     const items = await db.all('SELECT * FROM plaid_items WHERE userId = ?', [userId]);
@@ -991,13 +996,49 @@ async function syncUserItems(userId, { force = false } = {}) {
     const results = [];
     for (const item of eligible) {
         try {
-            results.push({ itemId: item.itemId, ok: true, ...(await syncItem(item, { forceHoldings: force })) });
+            results.push({ itemId: item.itemId, ok: true, ...(await syncItem(item, { forceHoldings })) });
         } catch (error) {
             console.error(`[Plaid] Sync failed for item ${item.itemId}:`, error.message);
             results.push({ itemId: item.itemId, ok: false, error: error.message });
         }
     }
     return { configured: true, results };
+}
+
+function reconciliationIntervalMs(value = process.env.PLAID_RECONCILIATION_INTERVAL_HOURS) {
+    const hours = value === undefined || value === '' ? DEFAULT_RECONCILIATION_HOURS : Number(value);
+    return Number.isFinite(hours) && hours >= 1 && hours <= 168
+        ? hours * 60 * 60 * 1000
+        : DEFAULT_RECONCILIATION_HOURS * 60 * 60 * 1000;
+}
+
+async function reconcileAllPlaidItems() {
+    if (!isConfigured()) return { configured: false, users: 0, items: 0, failed: 0 };
+    if (reconciliationPromise) return reconciliationPromise;
+    reconciliationPromise = (async () => {
+        const db = await dbService.getDb();
+        const users = await db.all('SELECT DISTINCT userId FROM plaid_items ORDER BY userId');
+        const summary = { configured: true, users: users.length, items: 0, failed: 0 };
+        for (const { userId } of users) {
+            const result = await syncUserItems(userId, { force: true, forceHoldings: false });
+            summary.items += result.results.length;
+            summary.failed += result.results.filter((item) => !item.ok).length;
+        }
+        return summary;
+    })().finally(() => { reconciliationPromise = null; });
+    return reconciliationPromise;
+}
+
+function startAutomaticReconciliation() {
+    if (reconciliationTimer) return reconciliationTimer;
+    const run = () => reconcileAllPlaidItems().then((summary) => {
+        console.log(`[Plaid] Reconciliation checked ${summary.items} Item(s); ${summary.failed} failed.`);
+    }).catch((error) => console.error('[Plaid] Reconciliation failed:', error.message));
+    reconciliationStartupTimer = setTimeout(run, RECONCILIATION_STARTUP_DELAY_MS);
+    reconciliationStartupTimer.unref?.();
+    reconciliationTimer = setInterval(run, reconciliationIntervalMs());
+    reconciliationTimer.unref?.();
+    return reconciliationTimer;
 }
 
 const webhookSyncOptions = ({ webhook_type: type, webhook_code: code } = {}) => {
@@ -1108,6 +1149,9 @@ module.exports = {
     createLinkToken,
     exchangePublicToken,
     syncUserItems,
+    reconciliationIntervalMs,
+    reconcileAllPlaidItems,
+    startAutomaticReconciliation,
     verifyPlaidWebhook,
     webhookSyncOptions,
     processPlaidWebhook,

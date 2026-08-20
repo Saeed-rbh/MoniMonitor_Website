@@ -13,6 +13,7 @@ const {
     normalizeInvestmentSnapshot,
     verifyPlaidWebhook,
     webhookSyncOptions,
+    reconciliationIntervalMs,
 } = require('./plaidService');
 
 test('maps Plaid outflows and inflows to MoniMonitor categories', () => {
@@ -192,6 +193,13 @@ test('routes only supported Plaid webhook updates to item synchronization', () =
     assert.equal(webhookSyncOptions({
         webhook_type: 'TRANSACTIONS', webhook_code: 'DEFAULT_UPDATE',
     }), null);
+});
+
+test('uses a bounded daily Plaid reconciliation interval', () => {
+    assert.equal(reconciliationIntervalMs(), 24 * 60 * 60 * 1000);
+    assert.equal(reconciliationIntervalMs('12'), 12 * 60 * 60 * 1000);
+    assert.equal(reconciliationIntervalMs('0'), 24 * 60 * 60 * 1000);
+    assert.equal(reconciliationIntervalMs('not-a-number'), 24 * 60 * 60 * 1000);
 });
 
 test('maps an investment purchase with exact security details', () => {
