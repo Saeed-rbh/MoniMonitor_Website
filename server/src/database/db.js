@@ -1,7 +1,7 @@
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const path = require('path');
-const { applyFinancialSnapshot } = require('./financialSnapshot');
+const { runStartupMaintenance } = require('./startupMaintenance');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'monimonitor.sqlite');
 
@@ -247,10 +247,7 @@ async function getDb() {
                 CREATE INDEX IF NOT EXISTS idx_account_balance_events_user ON account_balance_events(userId, occurredAt DESC);
             `);
 
-            // Cleanup processed_emails older than 90 days to prevent DB bloat
-            const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-            await db.run('DELETE FROM processed_emails WHERE processedAt < ?', [cutoff]);
-            await applyFinancialSnapshot(db, process.env.USER_ID);
+            await runStartupMaintenance(db);
             return db;
         });
     }
