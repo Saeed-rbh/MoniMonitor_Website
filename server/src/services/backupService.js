@@ -32,6 +32,7 @@ const INSERT_ORDER = [
     'plaid_items',
     'plaid_accounts',
     'transaction_sources',
+    'plaid_webhook_events',
     'agent_audit_log',
     'app_migrations',
 ];

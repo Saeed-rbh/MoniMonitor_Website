@@ -7,12 +7,17 @@ const webhookVerificationKeys = new Map();
 let reconciliationTimer = null;
 let reconciliationStartupTimer = null;
 let reconciliationPromise = null;
+let webhookWorkerTimer = null;
+let webhookProcessingPromise = null;
 const USER_SYNC_COOLDOWN_MS = 10 * 60 * 1000;
 const INVESTMENT_HOLDINGS_REFRESH_MS = 10 * 60 * 1000;
 const WEBHOOK_MAX_AGE_SECONDS = 5 * 60;
 const WEBHOOK_KEY_CACHE_MS = 6 * 60 * 60 * 1000;
 const DEFAULT_RECONCILIATION_HOURS = 24;
 const RECONCILIATION_STARTUP_DELAY_MS = 15 * 1000;
+const WEBHOOK_WORKER_INTERVAL_MS = 60 * 1000;
+const WEBHOOK_PROCESSING_STALE_MS = 5 * 60 * 1000;
+const WEBHOOK_MAX_RETRY_MS = 6 * 60 * 60 * 1000;
 
 function getConfig() {
     const environment = PLAID_ENVIRONMENTS.has(process.env.PLAID_ENV)
@@ -1079,6 +1084,103 @@ async function processPlaidWebhook(payload = {}) {
     return { handled: true, action: 'synced', ...(await syncItem(item, syncOptions)) };
 }
 
+async function enqueuePlaidWebhook(rawBody, signedJwt) {
+    if (!Buffer.isBuffer(rawBody) || !rawBody.length) throw new Error('Plaid webhook body is empty');
+    if (typeof signedJwt !== 'string' || !signedJwt) throw new Error('Plaid webhook signature is empty');
+    const payloadJson = rawBody.toString('utf8');
+    const payload = JSON.parse(payloadJson);
+    const eventKey = crypto.createHash('sha256').update(signedJwt).digest('hex');
+    const now = new Date().toISOString();
+    const db = await dbService.getDb();
+    const result = await db.run(
+        `INSERT OR IGNORE INTO plaid_webhook_events
+            (eventKey, itemId, webhookType, webhookCode, payloadJson, status, attempts,
+             receivedAt, nextAttemptAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, 'pending', 0, ?, ?, ?)`,
+        [eventKey, typeof payload.item_id === 'string' ? payload.item_id : null,
+            typeof payload.webhook_type === 'string' ? payload.webhook_type.slice(0, 80) : null,
+            typeof payload.webhook_code === 'string' ? payload.webhook_code.slice(0, 120) : null,
+            payloadJson, now, now, now]
+    );
+    const event = await db.get('SELECT id, status FROM plaid_webhook_events WHERE eventKey = ?', [eventKey]);
+    return { id: event.id, status: event.status, inserted: result.changes === 1 };
+}
+
+const webhookRetryDelayMs = (attempt) => Math.min(
+    30 * 1000 * (2 ** Math.max(0, Number(attempt || 1) - 1)),
+    WEBHOOK_MAX_RETRY_MS
+);
+
+async function processPendingPlaidWebhooks({ limit = 25, processor = processPlaidWebhook } = {}) {
+    if (webhookProcessingPromise) return webhookProcessingPromise;
+    webhookProcessingPromise = (async () => {
+        const db = await dbService.getDb();
+        const now = new Date();
+        const nowIso = now.toISOString();
+        const staleIso = new Date(now.getTime() - WEBHOOK_PROCESSING_STALE_MS).toISOString();
+        await db.run(
+            `UPDATE plaid_webhook_events SET status = 'retry', nextAttemptAt = ?, updatedAt = ?
+             WHERE status = 'processing' AND lastAttemptAt < ?`,
+            [nowIso, nowIso, staleIso]
+        );
+        const events = await db.all(
+            `SELECT * FROM plaid_webhook_events
+             WHERE status IN ('pending', 'retry') AND nextAttemptAt <= ?
+             ORDER BY id LIMIT ?`,
+            [nowIso, Math.max(1, Math.min(100, Number(limit) || 25))]
+        );
+        const summary = { selected: events.length, processed: 0, retried: 0 };
+        for (const event of events) {
+            const attempt = Number(event.attempts || 0) + 1;
+            const claimed = await db.run(
+                `UPDATE plaid_webhook_events
+                 SET status = 'processing', attempts = ?, lastAttemptAt = ?, updatedAt = ?
+                 WHERE id = ? AND status IN ('pending', 'retry')`,
+                [attempt, nowIso, nowIso, event.id]
+            );
+            if (claimed.changes !== 1) continue;
+            try {
+                const result = await processor(JSON.parse(event.payloadJson));
+                if (result?.reason === 'unknown_item') throw new Error('Plaid Item is not available locally yet');
+                const processedAt = new Date().toISOString();
+                await db.run(
+                    `UPDATE plaid_webhook_events
+                     SET status = 'processed', processedAt = ?, lastError = NULL, updatedAt = ?
+                     WHERE id = ?`,
+                    [processedAt, processedAt, event.id]
+                );
+                summary.processed += 1;
+            } catch (error) {
+                const retryAt = new Date(Date.now() + webhookRetryDelayMs(attempt)).toISOString();
+                await db.run(
+                    `UPDATE plaid_webhook_events
+                     SET status = 'retry', nextAttemptAt = ?, lastError = ?, updatedAt = ?
+                     WHERE id = ?`,
+                    [retryAt, String(error.message || 'Webhook processing failed').slice(0, 500),
+                        new Date().toISOString(), event.id]
+                );
+                summary.retried += 1;
+            }
+        }
+        return summary;
+    })().finally(() => { webhookProcessingPromise = null; });
+    return webhookProcessingPromise;
+}
+
+function kickPlaidWebhookWorker() {
+    setImmediate(() => processPendingPlaidWebhooks().catch((error) => {
+        console.error('[Plaid] Webhook worker failed:', error.message);
+    }));
+}
+
+function startPlaidWebhookWorker() {
+    if (webhookWorkerTimer) return webhookWorkerTimer;
+    kickPlaidWebhookWorker();
+    webhookWorkerTimer = setInterval(kickPlaidWebhookWorker, WEBHOOK_WORKER_INTERVAL_MS);
+    webhookWorkerTimer.unref?.();
+    return webhookWorkerTimer;
+}
+
 async function registerWebhookForAllItems(webhookUrl = getConfig().webhookUrl) {
     if (!webhookUrl) throw new Error('PLAID_WEBHOOK_URL is not configured');
     const parsed = new URL(webhookUrl);
@@ -1116,7 +1218,25 @@ async function getStatus(userId) {
          WHERE i.userId = ? GROUP BY i.itemId ORDER BY i.createdAt DESC`,
         [userId]
     );
-    return { configured: true, environment: config.environment, items };
+    const webhookInbox = await db.get(
+        `SELECT
+            SUM(CASE WHEN e.status IN ('pending', 'processing', 'retry') THEN 1 ELSE 0 END) AS pending,
+            SUM(CASE WHEN e.status = 'processed' THEN 1 ELSE 0 END) AS processed,
+            MAX(e.processedAt) AS lastProcessedAt
+         FROM plaid_webhook_events e JOIN plaid_items i ON i.itemId = e.itemId
+         WHERE i.userId = ?`,
+        [userId]
+    );
+    return {
+        configured: true,
+        environment: config.environment,
+        items,
+        webhookInbox: {
+            pending: Number(webhookInbox?.pending || 0),
+            processed: Number(webhookInbox?.processed || 0),
+            lastProcessedAt: webhookInbox?.lastProcessedAt || null,
+        },
+    };
 }
 
 async function disconnectItem(userId, itemId) {
@@ -1155,6 +1275,11 @@ module.exports = {
     verifyPlaidWebhook,
     webhookSyncOptions,
     processPlaidWebhook,
+    enqueuePlaidWebhook,
+    webhookRetryDelayMs,
+    processPendingPlaidWebhooks,
+    kickPlaidWebhookWorker,
+    startPlaidWebhookWorker,
     registerWebhookForAllItems,
     getStatus,
     disconnectItem,

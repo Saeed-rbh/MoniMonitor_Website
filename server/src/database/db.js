@@ -306,6 +306,24 @@ async function getDb() {
                     FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE,
                     FOREIGN KEY (transactionId) REFERENCES transactions(id) ON DELETE CASCADE
                 );
+
+                CREATE TABLE IF NOT EXISTS plaid_webhook_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    eventKey TEXT UNIQUE NOT NULL,
+                    itemId TEXT,
+                    webhookType TEXT,
+                    webhookCode TEXT,
+                    payloadJson TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending'
+                        CHECK(status IN ('pending', 'processing', 'retry', 'processed')),
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    receivedAt TEXT NOT NULL,
+                    nextAttemptAt TEXT NOT NULL,
+                    lastAttemptAt TEXT,
+                    processedAt TEXT,
+                    lastError TEXT,
+                    updatedAt TEXT NOT NULL
+                );
             `);
             await db.exec(`
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_monthly_ai_briefs_user_month ON monthly_ai_briefs(userId, month);
@@ -396,6 +414,8 @@ async function getDb() {
                 CREATE INDEX IF NOT EXISTS idx_plaid_items_user ON plaid_items(userId);
                 CREATE INDEX IF NOT EXISTS idx_plaid_accounts_item ON plaid_accounts(itemId);
                 CREATE INDEX IF NOT EXISTS idx_transaction_sources_transaction ON transaction_sources(transactionId);
+                CREATE INDEX IF NOT EXISTS idx_plaid_webhook_events_pending
+                    ON plaid_webhook_events(status, nextAttemptAt, id);
             `);
 
             // Cleanup processed_emails older than 90 days to prevent DB bloat

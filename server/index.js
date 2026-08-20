@@ -217,22 +217,24 @@ app.get("/transactions", authenticateToken, async (req, res) => {
 });
 
 app.post("/plaid/webhook", async (req, res) => {
+    const signedJwt = req.get("Plaid-Verification");
     const verified = await plaidService.verifyPlaidWebhook(
         req.rawBody,
-        req.get("Plaid-Verification")
+        signedJwt
     ).catch((error) => {
         console.error("Plaid webhook verification error:", error.message);
         return false;
     });
     if (!verified) return res.status(401).json({ error: "Invalid webhook signature" });
 
-    const payload = req.body && typeof req.body === "object" ? req.body : {};
-    res.status(200).json({ received: true });
-    setImmediate(() => {
-        plaidService.processPlaidWebhook(payload).then((result) => {
-            console.log(`[Plaid] Webhook ${payload.webhook_type || "UNKNOWN"}/${payload.webhook_code || "UNKNOWN"}: ${result.action || result.reason}`);
-        }).catch((error) => console.error("Plaid webhook processing error:", error.message));
-    });
+    try {
+        const queued = await plaidService.enqueuePlaidWebhook(req.rawBody, signedJwt);
+        res.status(200).json({ received: true, queued: queued.inserted });
+        plaidService.kickPlaidWebhookWorker();
+    } catch (error) {
+        console.error("Plaid webhook enqueue error:", error.message);
+        return res.status(503).json({ error: "Unable to persist webhook" });
+    }
 });
 
 app.get("/plaid/status", authenticateToken, async (req, res) => {
@@ -659,6 +661,7 @@ if (require.main === module) {
         console.log(`API server listening on http://localhost:${PORT}`);
         backupService.startAutomaticBackups();
         plaidService.startAutomaticReconciliation();
+        plaidService.startPlaidWebhookWorker();
     });
 }
 
