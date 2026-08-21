@@ -19,9 +19,11 @@ This is the core engine for communicating with the Telegram Bot API. It implemen
 
 ### 2. `server/email_agent.js`
 This file acts as the orchestrator. It listens for incoming bank emails, parses them with Gemini AI, and then triggers the Telegram notification workflow. 
-- **Notification Logic (`notifyAndSave`)**: Evaluates incoming transactions. If a transaction is generic or under $5, it is sent silently. It attaches inline interactive buttons (`🏷️ Recategorize`, `💰 Mark Saving`, `📊 Open Dashboard`) to the alert.
+- **Notification Logic (`notifyAndSave`)**: Evaluates incoming transactions. If a transaction is generic or under $5, it is sent silently. It attaches inline interactive buttons (`🏷️ Recategorize`, `🔄 Internal Transfer`) to the alert.
 - **Update Listener (`onTelegramUpdate`)**: 
-  - **Callback Queries**: Handles button clicks. When a user clicks `🏷️ Recategorize`, this listener intercepts the callback (`recat:<id>`), edits the message to show a category grid, and processes the final selection (`setcat:<id>`).
+  - **Callback Queries**: Handles button clicks:
+    - `🏷️ Recategorize` (`recat:<id>`): Displays category buttons and applies selection (`setcat:<id>`).
+    - `🔄 Internal Transfer` (`transfer:<id>`): Reclassifies the transaction to Category `Internal` and Label `Internal Transfer` with a route to/from a `Temporary` account (`Internal transfer: <Source> -> Temporary` or `Temporary -> <Dest>`), and automatically triggers internal counterpart matching when counterpart legs (including money transferred back to the account) exist or arrive.
   - **Commands**: Listens for text commands like `/summary` and `/recent` and responds with a link to the WebApp Dashboard.
   - **AI Learning**: Whenever a category is manually changed via Telegram buttons, this file instructs the database to save a "Merchant Rule", teaching the system your preferences for future transactions.
 
@@ -42,7 +44,7 @@ Stores the required credentials securely:
 ## ✨ Key Capabilities
 
 1. **Interactive Keyboards (A2UI)**
-   Instead of just reading alerts, you can act on them. The inline keyboards allow you to instantly categorize transactions or mark them as savings. The bot updates the message in place (no spamming the chat with new messages) and records the change in your SQLite database.
+   Instead of just reading alerts, you can act on them. The inline keyboards allow you to instantly categorize transactions or mark them as internal transfers (routed through temporary account). The bot updates the message in place (no spamming the chat with new messages) and records the change in your SQLite database.
 
 2. **Smart Merchant Learning**
    When you correct a transaction's category using the Telegram buttons, the backend saves a rule. Future emails from the same merchant will bypass the AI's default guess and automatically apply your chosen category.

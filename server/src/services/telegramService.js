@@ -111,15 +111,16 @@ function e(text) {
  */
 function formatTransactionMessage(tx, action = 'new') {
     const isIncome = tx.Category === 'Income';
+    const isInternal = tx.Category === 'Internal';
     const portfolioAction = tx.PortfolioAction || null;
     const isTrade = portfolioAction === 'BUY' || portfolioAction === 'SELL';
-    const sign = isTrade ? '' : (isIncome ? '+' : '-');
+    const sign = isTrade ? '' : (isInternal ? '' : (isIncome ? '+' : '-'));
     const amountStr = `${sign}$${parseFloat(tx.Amount).toFixed(2)}`;
-    const headerEmoji = action === 'updated' ? '🔄' : (isTrade ? '📈' : (isIncome ? '💰' : '💸'));
+    const headerEmoji = action === 'updated' ? '🔄' : (isTrade ? '📈' : (isInternal ? '🔄' : (isIncome ? '💰' : '💸')));
     const headerLabel = action === 'updated'
         ? 'Transaction Updated'
-        : (isTrade ? `${portfolioAction} Order Filled` : (isIncome ? 'Income Received' : 'Expense Detected'));
-    const amountEmoji = isTrade ? '⚪' : (isIncome ? '✅' : '🔴');
+        : (isTrade ? `${portfolioAction} Order Filled` : (isInternal ? 'Internal Transfer' : (isIncome ? 'Income Received' : 'Expense Detected')));
+    const amountEmoji = isTrade ? '⚪' : (isInternal ? '🔄' : (isIncome ? '✅' : '🔴'));
     const divider     = e('─────────────────────');
 
     const lines = [
@@ -293,4 +294,4 @@ async function answerTelegramInlineQuery(inlineQueryId, results) {
     });
 }
 
-module.exports = { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery };
+module.exports = { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e };

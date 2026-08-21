@@ -3,7 +3,7 @@ const { ImapService } = require('./src/services/imapService');
 const { parseEmailWithGemini, formatETransferReason } = require('./src/services/aiService');
 const dbService = require('./src/database/dbService');
 const { SNAPSHOT_CAPTURED_AT } = require('./src/database/financialSnapshot');
-const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery } = require('./src/services/telegramService');
+const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e } = require('./src/services/telegramService');
 
 const IMAP_HOST = 'imap.gmail.com';
 const IMAP_PORT = 993;
@@ -61,21 +61,14 @@ const isGeneric = (l = "", r = "") => {
 };
 
 async function notifyAndSave(tx) {
-    const webAppUrl = WEB_APP_URL;
-    const isHttps = webAppUrl.startsWith('https');
-    
     const replyMarkup = {
         inline_keyboard: [
             [
                 { text: "🏷️ Recategorize", callback_data: `recat:${tx.id}` },
-                { text: "💰 Mark Saving", callback_data: `save:${tx.id}` }
+                { text: "🔄 Internal Transfer", callback_data: `transfer:${tx.id}` }
             ]
         ]
     };
-    
-    if (isHttps) {
-        replyMarkup.inline_keyboard.push([{ text: "📊 Open Dashboard", web_app: { url: webAppUrl } }]);
-    }
 
     const silent = isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0;
 
@@ -442,17 +435,14 @@ async function onTelegramUpdate(update) {
                 results = txs.map(tx => {
                     const isIncome = tx.Category === 'Income';
                     const sign = isIncome ? '+' : '-';
-                    const webAppUrl = WEB_APP_URL;
-                    const isHttps = webAppUrl.startsWith('https');
                     const replyMarkup = {
                         inline_keyboard: [
                             [
                                 { text: "🏷️ Recategorize", callback_data: `recat:${tx.id}` },
-                                { text: "💰 Mark Saving", callback_data: `save:${tx.id}` }
+                                { text: "🔄 Internal Transfer", callback_data: `transfer:${tx.id}` }
                             ]
                         ]
                     };
-                    if (isHttps) replyMarkup.inline_keyboard.push([{ text: "📊 Open Dashboard", web_app: { url: webAppUrl } }]);
 
                     return {
                         type: 'article',
@@ -477,16 +467,53 @@ async function onTelegramUpdate(update) {
             const data = query.data;
             const messageId = query.message.message_id;
             
-            if (data.startsWith('save:')) {
+            if (data.startsWith('transfer:') || data.startsWith('save:')) {
                 const txId = data.split(':')[1];
-                await updateAgentTransaction(txId, { Category: 'Saving', Label: 'Savings Contributions' });
-                
                 const db = await dbService.getDb();
                 const tx = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [txId, USER_ID]);
-                if (tx && tx.Reason) {
-                    await dbService.saveMerchantRule(tx.userId, tx.Reason, 'Saving', 'Savings Contributions');
-                    const newText = formatTransactionMessage(tx, 'updated');
-                    await editTelegramMessage(messageId, newText);
+                if (tx) {
+                    const isOut = tx.AccountFlow === 'OUT' || tx.Category === 'Expense';
+                    const sourceOrDest = tx.Account || tx.BankName || 'Account';
+                    const newReason = isOut
+                        ? `Internal transfer: ${sourceOrDest} -> Temporary`
+                        : `Internal transfer: Temporary -> ${sourceOrDest}`;
+                    const updates = {
+                        Category: 'Internal',
+                        Label: 'Internal Transfer',
+                        Reason: newReason,
+                        Account: tx.Account || 'Temporary'
+                    };
+                    if (isOut && !tx.AccountFlow) updates.AccountFlow = 'OUT';
+                    if (!isOut && !tx.AccountFlow) updates.AccountFlow = 'IN';
+
+                    await updateAgentTransaction(txId, updates);
+                    
+                    if (tx.Reason) {
+                        await dbService.saveMerchantRule(tx.userId, tx.Reason, 'Internal', 'Internal Transfer');
+                    }
+
+                    // Attempt counterpart pairing immediately
+                    try {
+                        const reclassified = await dbService.detectAndReclassifyInternalCounterparts(USER_ID, txId);
+                        for (const change of reclassified) {
+                            await writeAudit('internal_reclassification', 'success', {
+                                transactionId: change.id,
+                                triggeredByTransactionId: txId,
+                                oldCategory: change.oldCategory,
+                                oldLabel: change.oldLabel,
+                                newCategory: change.newCategory,
+                                newLabel: change.newLabel,
+                            });
+                        }
+                    } catch (pairErr) {
+                        console.error('[InternalTransfer] Pairing error:', pairErr.message);
+                    }
+
+                    const updatedTx = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [txId, USER_ID]);
+                    if (updatedTx) {
+                        const newText = formatTransactionMessage(updatedTx, 'updated');
+                        await editTelegramMessage(messageId, newText);
+                    }
                 }
             }
             else if (data.startsWith('recat:')) {
@@ -508,7 +535,7 @@ async function onTelegramUpdate(update) {
                     ]
                 };
                 
-                const text = query.message.text ? query.message.text.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&') + "\n\n*Select a new category:*" : "*Select a new category:*";
+                const text = query.message.text ? e(query.message.text) + "\n\n*Select a new category:*" : "*Select a new category:*";
                 await editTelegramMessage(messageId, text, replyMarkup);
             }
             else if (data.startsWith('setcat:')) {
@@ -533,17 +560,12 @@ async function onTelegramUpdate(update) {
                 const tx = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [txId, USER_ID]);
                 if (tx) {
                     const newText = formatTransactionMessage(tx);
-                    const webAppUrl = WEB_APP_URL;
-                    const isHttps = webAppUrl.startsWith('https');
-                    const dashboardButton = isHttps ? { text: "📊 Open Dashboard", web_app: { url: webAppUrl } } : { text: "📊 Open Dashboard", url: webAppUrl };
-                    
                     const replyMarkup = {
                         inline_keyboard: [
                             [
                                 { text: "🏷️ Recategorize", callback_data: `recat:${tx.id}` },
-                                { text: "💰 Mark Saving", callback_data: `save:${tx.id}` }
-                            ],
-                            [ dashboardButton ]
+                                { text: "🔄 Internal Transfer", callback_data: `transfer:${tx.id}` }
+                            ]
                         ]
                     };
                     await editTelegramMessage(messageId, newText, replyMarkup);
@@ -615,4 +637,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { onNewEmail };
+module.exports = { onNewEmail, notifyAndSave, onTelegramUpdate };

@@ -1299,13 +1299,24 @@ async function detectAndMarkRecurring(userId, transactionId) {
 // a valid internal self-transfer group.
 const INTERNAL_PAIRING_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
 
+function isTemporaryInternalTransfer(tx) {
+    if (!tx) return false;
+    if (tx.Category !== 'Internal') return false;
+    if (tx.ReferenceNumber && /^XFER-/i.test(tx.ReferenceNumber)) return false;
+    const reason = String(tx.Reason || '');
+    return /temporary/i.test(reason) || /temporary/i.test(String(tx.Account || ''));
+}
+
 /**
  * Returns true if an Internal transaction is a genuine bank/Interac email alert
- * (as opposed to a ledger-import "Internal transfer: X → Y [XFER-…]" entry).
+ * or an unpaired temporary internal transfer.
  */
 function isEmailSourcedInternalTransfer(tx) {
-    if (!tx.ReceivedAt) return false;
-    if (/^Internal transfer:/i.test(String(tx.Reason || ''))) return false;
+    if (!tx.ReceivedAt && !tx.Timestamp) return false;
+    if (tx.ReferenceNumber && /^XFER-/i.test(tx.ReferenceNumber)) return false;
+    if (/^Internal transfer:/i.test(String(tx.Reason || ''))) {
+        return isTemporaryInternalTransfer(tx);
+    }
     return true;
 }
 
@@ -1320,50 +1331,9 @@ function normalizeAccountKey(bankName, account) {
 }
 
 /**
- * After any transaction is saved, detect whether it is part of a multi-email
- * internal self-transfer and reclassify the relevant counterparts.
- *
- * ────────────────────────────────────────────────────────────────────────────
- * VALID TRANSFER STRUCTURE
- *
- *   A valid internal transfer moves money from account A to account B and
- *   generates up to three separate bank emails:
- *
- *     [A] Withdrawal / OUT   ← Expense alert from the source bank
- *     [–] Interac notice     ← "E-Transfer - SAEED ARABHA" (no account, Internal)
- *     [B] Deposit   / IN     ← Income alert from the destination bank
- *
- *   Key invariants:
- *     1. Source account A ≠ destination account B.
- *     2. The source and destination must be different accounts. A same-account
- *        IN/OUT pair is never sufficient evidence of a self-transfer.
- *     3. Without an Interac notification a bare OUT-from-A + IN-to-B pair
- *        (different accounts, same amount, within window) is also valid.
- *
- * ────────────────────────────────────────────────────────────────────────────
- * ALGORITHM (called for every new/updated transaction)
- *
- *   Step 1 – Collect siblings: all email-sourced transactions with the same
- *             AmountMinor + Currency within the 2-hour window.
- *
- *   Step 2 – Identify the Interac notification (if present): Category=Internal,
- *             email-sourced, Reason NOT "Internal transfer: …".
- *
- *   Step 3 – Group the reclassifiable bank alerts (Income/Expense, ReceivedAt
- *             IS NOT NULL, not yet Internal) by account.
- *
- *   Step 4 – Choose exactly one pairIN (destination) and one pairOUT (source):
- *     • If all reclassifiable candidates are from the SAME account:
- *         – Leave them unchanged; a transfer needs a second account.
- *     • If candidates span MULTIPLE accounts:
- *         – Look for one clean IN account (only INs, no OUTs) and one clean
- *           OUT account (only OUTs, no INs) that are different from each other.
- *         – An Interac notification is NOT required here (bare OUT+IN pair is
- *           sufficient evidence when the accounts differ).
- *
- *   Step 5 – Reclassify the selected pair to Internal/Internal Transfer.
- *
- * Returns [{id, oldCategory, oldLabel, newCategory, newLabel}] for each change.
+ * After any transaction is saved or marked, detect whether it is part of an
+ * internal transfer (including Temporary transfers and multi-email transfers)
+ * and reclassify / link the relevant counterparts.
  */
 async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     const db = await getDb();
@@ -1372,36 +1342,117 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
         [transactionId, userId]
     );
     if (!tx) return [];
-    if (!tx.ReceivedAt) return [];
+    if (!tx.ReceivedAt && !tx.Timestamp) return [];
 
-    const txTime = new Date(tx.Timestamp).getTime();
+    const txTime = new Date(tx.Timestamp || tx.ReceivedAt).getTime();
     if (!Number.isFinite(txTime)) return [];
 
-    // Only relevant for Interac Internal alerts or bank Income/Expense alerts
+    const isTemporary = isTemporaryInternalTransfer(tx);
     const isInterac = tx.Category === 'Internal' && isEmailSourcedInternalTransfer(tx);
     const isBankAlert = tx.Category === 'Income' || tx.Category === 'Expense';
-    if (!isInterac && !isBankAlert) return [];
+    if (!isInterac && !isBankAlert && !isTemporary) return [];
 
-    const windowHours = INTERNAL_PAIRING_WINDOW_MS / 3600000;
+    const windowHours = isTemporary ? 30 * 24 : INTERNAL_PAIRING_WINDOW_MS / 3600000;
 
     // ── Step 1: collect all same-amount email-sourced siblings within window ──
     const siblings = await db.all(
         `SELECT * FROM transactions
          WHERE userId = ? AND AmountMinor = ? AND Currency = ?
-           AND ReceivedAt IS NOT NULL
            AND id != ?
            AND ABS(JULIANDAY(Timestamp) - JULIANDAY(?)) * 24 <= ?`,
         [userId, tx.AmountMinor, tx.Currency || 'CAD', transactionId, tx.Timestamp, windowHours]
     );
 
+    let all = [tx, ...siblings];
+
+    // If neither tx nor siblings are temporary, check if an unpaired temporary transfer exists in a 30-day window
+    const hasTemporary = all.some(t => isTemporaryInternalTransfer(t));
+    if (!hasTemporary) {
+        const tempSiblings = await db.all(
+            `SELECT * FROM transactions
+             WHERE userId = ? AND AmountMinor = ? AND Currency = ?
+               AND id != ?
+               AND Category = 'Internal'
+               AND (ReferenceNumber IS NULL OR ReferenceNumber NOT LIKE 'XFER-%')
+               AND (Reason LIKE '%Temporary%' OR Account = 'Temporary')
+               AND ABS(JULIANDAY(Timestamp) - JULIANDAY(?)) * 24 <= 720`,
+            [userId, tx.AmountMinor, tx.Currency || 'CAD', transactionId, tx.Timestamp]
+        );
+        if (tempSiblings.length > 0) {
+            all = [tx, ...tempSiblings];
+        }
+    }
+
+    // ── Handle Temporary Transfer Pairing ─────────────────────────────────────
+    if (all.some(t => isTemporaryInternalTransfer(t))) {
+        const outCandidate = all.find(
+            t => (!t.ReferenceNumber || !/^XFER-/i.test(t.ReferenceNumber)) &&
+                 (t.AccountFlow === 'OUT' || t.Category === 'Expense' || /->\s*Temporary/i.test(String(t.Reason || '')))
+        );
+        const inCandidate = all.find(
+            t => t.id !== outCandidate?.id &&
+                 (!t.ReferenceNumber || !/^XFER-/i.test(t.ReferenceNumber)) &&
+                 (t.AccountFlow === 'IN' || t.Category === 'Income' || /Temporary\s*->/i.test(String(t.Reason || '')))
+        );
+
+        if (outCandidate && inCandidate) {
+            const extractAccount = (leg, isOut) => {
+                const reason = String(leg.Reason || '');
+                const m = reason.match(/^Internal transfer:\s*(.*?)\s*->\s*(.*?)(?:\s*\[|$)/i);
+                if (m) {
+                    const target = isOut ? m[1].trim() : m[2].trim();
+                    if (target && !/temporary/i.test(target)) return target;
+                }
+                const desc = describeDiscoveredAccount(leg);
+                if (desc?.name && !/temporary/i.test(desc.name)) return desc.name;
+                if (leg.Account && !/temporary/i.test(leg.Account)) return leg.Account;
+                if (leg.BankName && !/temporary/i.test(leg.BankName)) return leg.BankName;
+                return 'Account';
+            };
+
+            const sourceStr = extractAccount(outCandidate, true);
+            const destStr = extractAccount(inCandidate, false);
+
+            const isSameAccount = sourceStr.toLowerCase() === destStr.toLowerCase() && sourceStr !== 'Account';
+            const sharedReason = isSameAccount
+                ? `Internal transfer: ${sourceStr} -> Temporary -> ${destStr}`
+                : `Internal transfer: ${sourceStr} -> ${destStr}`;
+
+            const groupTime = Math.min(
+                new Date(outCandidate.Timestamp || outCandidate.ReceivedAt).getTime(),
+                new Date(inCandidate.Timestamp || inCandidate.ReceivedAt).getTime()
+            );
+            const sharedRef = `XFER-${groupTime}-${tx.AmountMinor}`;
+
+            const reclassified = [];
+            for (const leg of [outCandidate, inCandidate]) {
+                const isAlreadyInternal = leg.Category === 'Internal' && leg.Label === 'Internal Transfer';
+                await db.run(
+                    `UPDATE transactions SET Category = 'Internal', Label = 'Internal Transfer', Reason = ?, ReferenceNumber = ?
+                     WHERE id = ? AND userId = ?`,
+                    [sharedReason, sharedRef, leg.id, userId]
+                );
+
+                console.log(
+                    `[InternalPairing] Paired temporary transfer tx ${leg.id} ` +
+                    `(${leg.Category}/${leg.Label} $${leg.Amount}) → Internal/Internal Transfer (linked as ${sharedRef}: ${sharedReason}).`
+                );
+                reclassified.push({
+                    id: leg.id,
+                    oldCategory: leg.Category,
+                    oldLabel: leg.Label,
+                    newCategory: 'Internal',
+                    newLabel: 'Internal Transfer',
+                });
+            }
+            return reclassified;
+        }
+    }
+
     // ── Step 2: identify the Interac notification (among siblings or tx itself) ──
-    const all = [tx, ...siblings];
     const interac = all.find(t => t.Category === 'Internal' && isEmailSourcedInternalTransfer(t));
 
     // ── Step 3: collect reclassifiable bank-alert siblings and occupied accounts ──
-    // Already-Internal bank-alert siblings (e.g. the RBC IN deposit that was
-    // reclassified in a previous pass) mark their accounts as "occupied" — no
-    // further transaction from the same account can be paired into this transfer.
     const alreadyPairedBankAlertSiblings = siblings.filter(
         s => s.Category === 'Internal' && s.ReceivedAt &&
              !/^Internal transfer:/i.test(String(s.Reason || '')) &&
@@ -1426,13 +1477,13 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     if (availableCandidates.length === 0) return [];
 
     // ── Step 4: group candidates by account, then choose pairIN + pairOUT ────
-    const byAccount = new Map(); // normalizedKey → { key, ins: [], outs: [] }
+    const byAccount = new Map();
     for (const c of availableCandidates) {
         const key = normalizeAccountKey(c.BankName, c.Account);
         if (!byAccount.has(key)) byAccount.set(key, { key, ins: [], outs: [] });
         const g = byAccount.get(key);
         if (c.AccountFlow === 'OUT') g.outs.push(c);
-        else g.ins.push(c); // 'IN' or null → treat as deposit/destination leg
+        else g.ins.push(c);
     }
 
     const accountGroups = [...byAccount.values()];
@@ -1440,18 +1491,12 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     let pairOUT = null;
 
     if (accountGroups.length > 1) {
-        // Candidates span MULTIPLE accounts.
-        // Look for one clean IN-only account and one clean OUT-only account.
-        // A bare OUT-from-A + IN-to-B pair is valid even without an Interac notification.
-
-        // Find a single clean IN account (only INs, no OUTs on that account)
         for (const group of accountGroups) {
             if (!pairIN && group.ins.length === 1 && group.outs.length === 0) {
                 pairIN = group.ins[0];
                 break;
             }
         }
-        // Find a single clean OUT account (only OUTs, no INs) that differs from the IN account
         for (const group of accountGroups) {
             if (!pairOUT && group.outs.length === 1 && group.ins.length === 0) {
                 if (!pairIN || group.key !== normalizeAccountKey(pairIN.BankName, pairIN.Account)) {
@@ -1461,19 +1506,14 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
             }
         }
 
-        // A transfer requires both sides. A lone deposit or withdrawal remains
-        // Income/Expense because there is no evidence that another account
-        // supplied or received the money.
         if (!pairIN || !pairOUT) return [];
     }
-
-    // Never classify two legs from the same account as an internal transfer.
+    // Never classify two standard bank alert legs from the same account as an internal transfer
     if (!pairIN || !pairOUT ||
         normalizeAccountKey(pairIN.BankName, pairIN.Account) ===
         normalizeAccountKey(pairOUT.BankName, pairOUT.Account)) return [];
 
     // ── Step 5: reclassify and link the selected pair ──────────────────────────────────
-    // Determine the source and destination account names.
     let sourceStr = "External";
     if (pairOUT) {
         const desc = describeDiscoveredAccount(pairOUT);
@@ -1495,11 +1535,10 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     }
 
     if (sourceStr === destStr && sourceStr === "Interac") {
-        destStr = "Account"; // fallback if both default to Interac
+        destStr = "Account";
     }
 
     const sharedReason = `Internal transfer: ${sourceStr} -> ${destStr}`;
-    // Generate a unique reference number to link all legs together
     const groupTime = Math.min(...[pairIN, pairOUT, interac].filter(Boolean).map(t => new Date(t.Timestamp).getTime()));
     const sharedRef = `XFER-${groupTime}-${tx.AmountMinor}`;
 
