@@ -56,14 +56,58 @@ test('creates one account from a transaction and posts subsequent activity to it
     assert.equal(posting.status, 'applied');
     assert.equal(posting.cashMinor, 1250);
 
-    // A Plaid refresh can replace cashMinor while the event remains recorded.
-    // Re-syncing the transaction must reverse that stale event without hitting
-    // the investment_accounts.cashMinor >= 0 constraint.
+    // An authoritative balance refresh can replace cashMinor while the event
+    // remains recorded. Re-syncing an unchanged event must not apply it again.
     await db.run('UPDATE investment_accounts SET cashMinor = 0 WHERE id = ?', [firstResolution.account.id]);
     const resynced = await dbService.syncTransactionAccountBalance(userId, transactionId, {
         accountId: firstResolution.account.id,
         confidence: 'HIGH',
     });
     assert.equal(resynced.status, 'applied');
-    assert.equal(resynced.cashMinor, 1250);
+    assert.equal(resynced.cashMinor, 0);
+    assert.equal(resynced.unchanged, true);
+    assert.equal(
+        (await db.get('SELECT COUNT(*) AS count FROM account_balance_events WHERE sourceTransactionId = ?', [transactionId])).count,
+        1
+    );
+});
+
+test('re-syncing large chequing transfers does not discard the prior balance', async () => {
+    const userId = 'chequing-resync-test-user';
+    const db = await dbService.getDb();
+    await db.run(
+        'INSERT INTO users (id, username, password, createdAt) VALUES (?, ?, ?, ?)',
+        [userId, 'chequing-resync-test', 'not-used', new Date().toISOString()]
+    );
+    const account = await dbService.createInvestmentAccount(userId, {
+        name: 'RBC Chequing', institution: 'RBC', accountType: 'Chequing',
+        accountRef: '6554', currency: 'CAD', cashMinor: 73467,
+    });
+
+    const incomingId = await dbService.addTransaction({
+        userId, Amount: 2000, AmountMinor: 200000, Category: 'Income', Label: 'Deposit',
+        Reason: 'Deposit', Timestamp: '2026-08-21T12:00:00.000Z', Account: '6554',
+        BankName: 'RBC', AccountFlow: 'IN',
+    });
+    await dbService.syncTransactionAccountBalance(userId, incomingId, {
+        accountId: account.id, confidence: 'HIGH',
+    });
+    const outgoingId = await dbService.addTransaction({
+        userId, Amount: 2001, AmountMinor: 200100, Category: 'Expense', Label: 'Withdrawal',
+        Reason: 'Withdrawal', Timestamp: '2026-08-21T12:01:00.000Z', Account: '6554',
+        BankName: 'RBC', AccountFlow: 'OUT',
+    });
+    await dbService.syncTransactionAccountBalance(userId, outgoingId, {
+        accountId: account.id, confidence: 'HIGH',
+    });
+
+    for (const transactionId of [outgoingId, incomingId]) {
+        const result = await dbService.syncTransactionAccountBalance(userId, transactionId, {
+            accountId: account.id, confidence: 'HIGH',
+        });
+        assert.equal(result.unchanged, true);
+    }
+
+    const finalAccount = await db.get('SELECT cashMinor FROM investment_accounts WHERE id = ?', [account.id]);
+    assert.equal(finalAccount.cashMinor, 73367);
 });

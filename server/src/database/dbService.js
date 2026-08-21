@@ -383,16 +383,6 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             'SELECT * FROM account_balance_events WHERE sourceTransactionId = ? AND userId = ?',
             [transactionId, userId]
         );
-        if (existing) {
-            await db.run(
-                // Plaid may have refreshed the authoritative cash balance since
-                // this event was posted. Clamp stale-event reversals at zero so
-                // re-syncing cannot violate investment_accounts.cashMinor >= 0.
-                'UPDATE investment_accounts SET cashMinor = MAX(0, cashMinor - ?), updatedAt = ? WHERE id = ? AND userId = ?',
-                [existing.deltaMinor, new Date().toISOString(), existing.accountId, userId]
-            );
-            await db.run('DELETE FROM account_balance_events WHERE id = ? AND userId = ?', [existing.id, userId]);
-        }
 
         const isInterac = /interac|e-transfer/i.test(transaction.Type || '') || /interac|e-transfer/i.test(transaction.Reason || '');
         const accounts = await db.all('SELECT * FROM investment_accounts WHERE userId = ?', [userId]);
@@ -426,26 +416,82 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             : toMinorUnits(transaction.Amount);
         const deltaMinor = transactionBalanceDelta(transaction, best.account, amountMinor);
         if (deltaMinor === null) {
+            if (existing) {
+                const oldAccount = accounts.find((account) => Number(account.id) === Number(existing.accountId));
+                const restoredCashMinor = Number(oldAccount?.cashMinor) - Number(existing.deltaMinor);
+                if (!oldAccount || restoredCashMinor < 0) {
+                    await db.run('COMMIT');
+                    return { status: 'review_required', reason: 'Existing balance event cannot be safely reversed' };
+                }
+                await db.run(
+                    'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                    [restoredCashMinor, new Date().toISOString(), existing.accountId, userId]
+                );
+                await db.run('DELETE FROM account_balance_events WHERE id = ? AND userId = ?', [existing.id, userId]);
+            }
             await db.run('COMMIT');
             return { status: 'not_balance_posting' };
         }
-        const nextCashMinor = Number(best.account.cashMinor) + deltaMinor;
+
+        // Re-syncing an unchanged transaction must be idempotent. Previously the
+        // existing delta was reversed with MAX(0, cashMinor - delta), which could
+        // discard the account's opening balance when a deposit exceeded the
+        // current balance. Reapplying the event then inflated the displayed cash.
+        if (existing && Number(existing.accountId) === Number(best.account.id) &&
+            Number(existing.deltaMinor) === Number(deltaMinor)) {
+            await db.run('COMMIT');
+            return {
+                status: 'applied', accountId: best.account.id, accountName: best.account.name,
+                deltaMinor, cashMinor: Number(best.account.cashMinor), unchanged: true,
+            };
+        }
+
+        const oldAccount = existing
+            ? accounts.find((account) => Number(account.id) === Number(existing.accountId))
+            : null;
+        const oldAccountCashMinor = oldAccount
+            ? Number(oldAccount.cashMinor) - Number(existing.deltaMinor)
+            : null;
+        if (existing && (!oldAccount || oldAccountCashMinor < 0)) {
+            await db.run('COMMIT');
+            return { status: 'review_required', reason: 'Existing balance event cannot be safely reversed' };
+        }
+
+        const targetCashMinor = existing && Number(existing.accountId) === Number(best.account.id)
+            ? oldAccountCashMinor
+            : Number(best.account.cashMinor);
+        const nextCashMinor = targetCashMinor + deltaMinor;
         if (nextCashMinor < 0) {
             await db.run('COMMIT');
             return { status: 'review_required', reason: 'Transaction would make the account balance negative' };
         }
 
         const occurredAt = transaction.Timestamp || new Date().toISOString();
+        if (existing && Number(existing.accountId) !== Number(best.account.id)) {
+            await db.run(
+                'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                [oldAccountCashMinor, new Date().toISOString(), existing.accountId, userId]
+            );
+        }
         await db.run(
             'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
             [nextCashMinor, occurredAt, best.account.id, userId]
         );
-        await db.run(
-            `INSERT INTO account_balance_events
-                (userId, accountId, sourceTransactionId, deltaMinor, occurredAt)
-             VALUES (?, ?, ?, ?, ?)`,
-            [userId, best.account.id, transactionId, deltaMinor, occurredAt]
-        );
+        if (existing) {
+            await db.run(
+                `UPDATE account_balance_events
+                 SET accountId = ?, deltaMinor = ?, occurredAt = ?
+                 WHERE id = ? AND userId = ?`,
+                [best.account.id, deltaMinor, occurredAt, existing.id, userId]
+            );
+        } else {
+            await db.run(
+                `INSERT INTO account_balance_events
+                    (userId, accountId, sourceTransactionId, deltaMinor, occurredAt)
+                 VALUES (?, ?, ?, ?, ?)`,
+                [userId, best.account.id, transactionId, deltaMinor, occurredAt]
+            );
+        }
         await db.run('COMMIT');
         return {
             status: 'applied', accountId: best.account.id, accountName: best.account.name,
