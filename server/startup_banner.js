@@ -2,6 +2,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
+const { getAppVersion } = require('../scripts/app-version.cjs');
 
 const repository = path.resolve(__dirname, '..');
 
@@ -49,10 +50,12 @@ const commitTime = git('show', '-s', '--format=%cI', 'HEAD');
 const subject = git('show', '-s', '--format=%s', 'HEAD');
 const updateReceipt = readUpdateReceipt(commit);
 const startedAt = new Date().toISOString();
+const appVersion = getAppVersion();
 
 console.log('');
 console.log('='.repeat(72));
 console.log('MoniMonitor backend version');
+console.log(`App version:      v${appVersion}`);
 console.log(`Push ID:          ${shortCommit || commit || 'unknown'}`);
 if (commit && commit !== shortCommit) console.log(`Full commit:      ${commit}`);
 if (subject) console.log(`Commit:           ${subject}`);

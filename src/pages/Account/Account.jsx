@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import "../../pages/Auth.css"; // Reuse Auth styles
 import BlurFade from "../../components/ui/blur-fade"; // Use relative path
+import { APP_VERSION } from "../../config/appVersion";
 import {
     createBackupAPI,
     createPlaidLinkTokenAPI,
@@ -472,7 +473,7 @@ const Account = () => {
                         </div>
                         <div className="settings-item" style={{ ...itemStyle, borderBottom: 'none' }} onClick={() => setShowAbout(true)}>
                             <span>About</span>
-                            <span style={{ color: "var(--Ac-3)", fontSize: "0.75rem" }}>v1.0.0</span>
+                            <span style={{ color: "var(--Ac-3)", fontSize: "0.75rem" }}>v{APP_VERSION}</span>
                         </div>
                     </div>
 
@@ -551,7 +552,7 @@ const Account = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1rem' }}>
                             <img src="/MoneyMonitor.jpg" alt="Logo" style={{ width: '60px', height: '60px', borderRadius: '15px', marginBottom: '0.5rem' }} />
                             <h2 style={{ margin: 0, color: 'var(--Bc-1)', fontSize: '1.2rem' }}>MoniMonitor</h2>
-                            <span style={{ color: 'var(--Ac-3)', fontSize: '0.8rem' }}>v1.0.0</span>
+                            <span style={{ color: 'var(--Ac-3)', fontSize: '0.8rem' }}>v{APP_VERSION}</span>
                         </div>
                         <p style={{ textAlign: 'center', fontSize: '0.8rem', lineHeight: '1.5' }}>
                             Your privacy-first finance companion.
