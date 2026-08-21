@@ -5,6 +5,7 @@ $pidFile = Join-Path $env:TEMP 'monimonitor-api.pid'
 $stateDirectory = Join-Path $env:LOCALAPPDATA 'MoniMonitor'
 $logFile = Join-Path $stateDirectory 'auto-update.log'
 $runningCommitFile = Join-Path $stateDirectory 'running-commit.txt'
+$lastUpdateFile = Join-Path $stateDirectory 'last-update.json'
 $localHealthUrl = 'http://127.0.0.1:3001/health'
 $publicHealthUrl = 'https://monimonitor.saeedarabha.com/api/health'
 $tailscaleExecutable = 'C:\Program Files\Tailscale\tailscale.exe'
@@ -56,6 +57,25 @@ function Stop-MoniMonitorBackend {
     }
 
     Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
+}
+
+function Write-UpdateReceipt {
+    param([string]$FromCommit, [string]$ToCommit)
+
+    try {
+        if (-not (Test-Path -LiteralPath $stateDirectory)) {
+            New-Item -ItemType Directory -Path $stateDirectory -Force | Out-Null
+        }
+
+        @{
+            fromCommit = $FromCommit
+            toCommit = $ToCommit
+            receivedAt = (Get-Date).ToString('o')
+        } | ConvertTo-Json | Set-Content -LiteralPath $lastUpdateFile -Encoding UTF8
+    }
+    catch {
+        Write-UpdateLog "Could not save the visible update receipt: $($_.Exception.Message)"
+    }
 }
 
 function Test-CleanMainBranch {
@@ -160,6 +180,7 @@ try {
                     continue
                 }
 
+                Write-UpdateReceipt -FromCommit $localCommit -ToCommit $remoteCommit
                 Write-UpdateLog "Updated repository from $localCommit to $remoteCommit."
                 $localCommit = (& git -C $repository rev-parse HEAD 2>$null).Trim()
             }

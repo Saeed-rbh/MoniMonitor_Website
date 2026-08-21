@@ -7,7 +7,7 @@
         "start": "node index.js",
         "agent": "node email_agent.js",
         "import:portfolio-history": "node scripts/import-portfolio-history.js",
-        "dev": "concurrently --names \"API,AGENT\" --prefix-colors \"cyan,yellow\" \"node index.js\" \"node email_agent.js\"",
+        "dev": "node startup_banner.js && concurrently --names \"API,AGENT\" --prefix-colors \"cyan,yellow\" \"node index.js\" \"node email_agent.js\"",
         "test": "node --test src/services/*.test.js"
     },
     "keywords": [],

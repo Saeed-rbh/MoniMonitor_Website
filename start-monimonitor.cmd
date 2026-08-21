@@ -73,7 +73,9 @@ if not errorlevel 1 (
   )
 )
 
-powershell -NoProfile -Command "$command = 'title MoniMonitor API + Email + Telegram&& set AI_INGESTION_ENABLED=true&& npm run dev'; $process = Start-Process -FilePath $env:ComSpec -ArgumentList '/d','/k',$command -WorkingDirectory '%~dp0server' -PassThru; Set-Content -LiteralPath (Join-Path $env:TEMP 'monimonitor-api.pid') -Value $process.Id"
+set "BACKEND_PUSH_ID=unknown"
+for /f "delims=" %%C in ('git rev-parse --short^=12 HEAD 2^>nul') do set "BACKEND_PUSH_ID=%%C"
+powershell -NoProfile -Command "$command = 'title MoniMonitor Backend [' + $env:BACKEND_PUSH_ID + ']&& set AI_INGESTION_ENABLED=true&& npm run dev'; $process = Start-Process -FilePath $env:ComSpec -ArgumentList '/d','/k',$command -WorkingDirectory '%~dp0server' -PassThru; Set-Content -LiteralPath (Join-Path $env:TEMP 'monimonitor-api.pid') -Value $process.Id"
 if errorlevel 1 goto :error
 
 echo Waiting for the backend to become ready...
@@ -121,6 +123,9 @@ exit /b %errorlevel%
 :update_from_github
 echo Checking GitHub for MoniMonitor updates...
 
+set "PRE_UPDATE_COMMIT="
+set "POST_UPDATE_COMMIT="
+
 where git >nul 2>&1
 if errorlevel 1 (
   echo Git is not installed or is not available in PATH. Skipping automatic update.
@@ -151,10 +156,19 @@ if errorlevel 1 (
   exit /b 0
 )
 
+for /f "delims=" %%C in ('git rev-parse HEAD 2^>nul') do set "PRE_UPDATE_COMMIT=%%C"
 git merge --ff-only origin/main
 if errorlevel 1 (
   echo The local and GitHub histories have diverged. Automatic update was skipped.
   exit /b 0
+)
+
+for /f "delims=" %%C in ('git rev-parse HEAD 2^>nul') do set "POST_UPDATE_COMMIT=%%C"
+if defined PRE_UPDATE_COMMIT if defined POST_UPDATE_COMMIT if /I not "%PRE_UPDATE_COMMIT%"=="%POST_UPDATE_COMMIT%" (
+  set "MONIMONITOR_UPDATE_FROM=%PRE_UPDATE_COMMIT%"
+  set "MONIMONITOR_UPDATE_TO=%POST_UPDATE_COMMIT%"
+  powershell -NoProfile -Command "$state = Join-Path $env:LOCALAPPDATA 'MoniMonitor'; [void](New-Item -ItemType Directory -Path $state -Force); @{ fromCommit = $env:MONIMONITOR_UPDATE_FROM; toCommit = $env:MONIMONITOR_UPDATE_TO; receivedAt = (Get-Date).ToString('o') } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $state 'last-update.json') -Encoding UTF8"
+  echo Received update %PRE_UPDATE_COMMIT% -^> %POST_UPDATE_COMMIT%.
 )
 
 echo MoniMonitor is up to date.
