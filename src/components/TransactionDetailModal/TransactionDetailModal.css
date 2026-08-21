@@ -43,10 +43,17 @@
 }
 
 .TxDetail_IconBox.saveinvest,
-.TxDetail_IconBox.saving {
+.TxDetail_IconBox.saving,
+.TxDetail_IconBox.investment {
   background: var(--Cc-4);
   border-color: var(--Cc-3);
   color: var(--Cc-1);
+}
+
+.TxDetail_IconBox.internal {
+  background: var(--Bc-4);
+  border-color: var(--Bc-3);
+  color: var(--Bc-1);
 }
 
 .TxDetail_IconBox svg {
@@ -87,10 +94,18 @@
   color: var(--Gc-1);
 }
 
-.TxDetail_CategoryBadge.saveinvest {
+.TxDetail_CategoryBadge.saveinvest,
+.TxDetail_CategoryBadge.saving,
+.TxDetail_CategoryBadge.investment {
   background: var(--Cc-4);
   border-color: var(--Cc-3);
   color: var(--Cc-1);
+}
+
+.TxDetail_CategoryBadge.internal {
+  background: var(--Bc-4);
+  border-color: var(--Bc-3);
+  color: var(--Bc-1);
 }
 
 .TxDetail_Reason {
@@ -116,6 +131,129 @@
 
 .TxDetail_Amount.out {
   color: var(--Gc-1);
+}
+
+.TxDetail_QuickActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 10px;
+}
+
+.TxDetail_TransferActionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--Bc-3);
+  background: var(--Ac-4);
+  color: var(--Bc-1);
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.TxDetail_TransferActionBtn:hover {
+  background: var(--Ac-3);
+  border-color: var(--Bc-2);
+  transform: translateY(-1px);
+}
+
+.TxDetail_TransferActionBtn:active {
+  transform: scale(0.98);
+}
+
+.TxDetail_TransferActionBtn.active {
+  background: var(--Bc-4);
+  border-color: var(--Bc-2);
+  color: var(--Bc-1);
+}
+
+.TxDetail_TransferActionBtn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.TxDetail_ActionBtnIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--Bc-1);
+  transition: transform 0.3s ease;
+}
+
+.TxDetail_ActionBtnIcon.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+.TxDetail_GroupTabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 2px 0 6px;
+  border-bottom: 1px solid var(--Ac-4);
+  margin-bottom: 4px;
+}
+
+.TxDetail_GroupTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.TxDetail_GroupTab {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--Ac-2);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+}
+
+.TxDetail_GroupTab:hover {
+  color: var(--Ac-1);
+  background: var(--Ac-4);
+}
+
+.TxDetail_GroupTab.active {
+  color: var(--Ac-1);
+  background: var(--Ac-4);
+  border-color: var(--Ac-3);
+  font-weight: 700;
+}
+
+.TxDetail_GroupTab.expense.active {
+  border-color: var(--Gc-3);
+  color: var(--Gc-1);
+}
+
+.TxDetail_GroupTab.income.active {
+  border-color: var(--Fc-3);
+  color: var(--Fc-1);
+}
+
+.TxDetail_GroupTab.saveinvest.active {
+  border-color: var(--Cc-3);
+  color: var(--Cc-1);
+}
+
+.TxDetail_GroupTab.internal.active {
+  border-color: var(--Bc-3);
+  color: var(--Bc-1);
 }
 
 .TxDetail_CategorySection {

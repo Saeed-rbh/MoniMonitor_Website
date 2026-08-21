@@ -326,11 +326,11 @@ app.put("/transactions/:id", authenticateToken, async (req, res) => {
         const accountResolution = await dbService.ensureTransactionAccount(req.user.userId, {
             ...finalTx,
             BalanceAccountId,
-            BalanceAccountConfidence: BalanceAccountId ? 'HIGH' : null,
+            BalanceAccountConfidence: BalanceAccountId ? "HIGH" : null,
         });
         const resolvedAccountId = BalanceAccountId || accountResolution.account?.id || null;
         const accountPosting = await dbService.syncTransactionAccountBalance(req.user.userId, req.params.id, {
-            accountId: resolvedAccountId, confidence: resolvedAccountId ? 'HIGH' : null,
+            accountId: resolvedAccountId, confidence: resolvedAccountId ? "HIGH" : null,
         });
 
         if (updates.Category || updates.Label) {
@@ -342,7 +342,9 @@ app.put("/transactions/:id", authenticateToken, async (req, res) => {
         }
 
         await dbService.detectAndMarkRecurring(req.user.userId, req.params.id).catch((error) => console.error("Recurrence detection error:", error.message));
-        return res.json({ message: "Updated", data: finalTx, accountPosting, accountResolution });
+        await dbService.detectAndReclassifyInternalCounterparts(req.user.userId, req.params.id).catch((error) => console.error("Internal counterpart error:", error.message));
+        const finalUpdatedTx = await dbService.getTransactionById(req.params.id, req.user.userId);
+        return res.json({ message: "Updated", data: finalUpdatedTx || finalTx, accountPosting, accountResolution });
     } catch (error) {
         return sendValidationError(res, error);
     }

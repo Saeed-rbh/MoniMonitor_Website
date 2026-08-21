@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { FiCalendar, FiCreditCard, FiTag, FiRepeat, FiCheckCircle, FiCheck } from "react-icons/fi";
-import { getTransactionIcon, CATEGORY_GROUPS } from "../Categories";
+import { FiCalendar, FiCreditCard, FiTag, FiRepeat, FiCheckCircle, FiCheck, FiRefreshCw } from "react-icons/fi";
+import { getTransactionIcon, CATEGORY_GROUPS, getCategoryForLabel } from "../Categories";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 import { updateTransactionAPI } from "../../services/apiService";
 import {
@@ -10,8 +10,6 @@ import {
 import { useTransactions } from "../../context/TransactionContext";
 import MoreOpen from "../MoreOpen/MoreOpen";
 import "./TransactionDetailModal.css";
-
-
 
 const money = (transaction) => {
   const minor = Number.isFinite(Number(transaction?.AmountMinor))
@@ -48,42 +46,61 @@ const formatFullDate = (timestamp) => {
   });
 };
 
+const GROUP_TABS = ["Expense", "Income", "Save&Invest", "Internal"];
+
 const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransactionUpdated = null }) => {
   const { monthData } = useTransactions();
   const [currentTx, setCurrentTx] = useState(transaction);
+  const [selectedCategory, setSelectedCategory] = useState(transaction?.Category || "Expense");
   const [selectedLabel, setSelectedLabel] = useState(transaction?.Label || transaction?.Category || "");
+  const [activeGroupTab, setActiveGroupTab] = useState("Expense");
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
 
   useEffect(() => {
     setCurrentTx(transaction);
+    const cat = transaction?.Category || "Expense";
+    const normalized = cat === "Saving" || cat === "Investment" ? "Save&Invest" : cat;
+    setSelectedCategory(cat);
     setSelectedLabel(transaction?.Label || transaction?.Category || "");
+    setActiveGroupTab(normalized);
     setSaveStatus(null);
   }, [transaction]);
 
-  const hasChanges = Boolean(selectedLabel && selectedLabel !== (currentTx?.Label || currentTx?.Category));
+  const hasChanges = Boolean(
+    (selectedLabel && selectedLabel !== (currentTx?.Label || currentTx?.Category)) ||
+    (selectedCategory && selectedCategory !== currentTx?.Category)
+  );
 
-  const handleSaveReason = useCallback(async () => {
-    if (!currentTx?.id || !selectedLabel) return;
-    
-    const targetCategory = currentTx.Category || "Expense";
-    const updatedTx = {
-      ...currentTx,
-      Category: targetCategory,
-      Label: selectedLabel,
+  const isInternal = currentTx?.Category === "Internal" || currentTx?.Label === "Internal Transfer";
+
+  const handleMarkInternalTransfer = useCallback(async () => {
+    if (!currentTx?.id || isSaving) return;
+
+    const direction = getTxDirection(currentTx);
+    const sourceOrDest = currentTx.Account || currentTx.BankName || "Personal Account";
+    const newReason = direction === "out"
+      ? `Internal transfer: ${sourceOrDest} -> Temporary`
+      : `Internal transfer: Temporary -> ${sourceOrDest}`;
+
+    const updates = {
+      Category: "Internal",
+      Label: "Internal Transfer",
+      Reason: newReason,
+      Account: currentTx.Account || "Temporary",
     };
 
     setIsSaving(true);
     setSaveStatus("saving");
 
     try {
-      const res = await updateTransactionAPI(currentTx.id, {
-        Category: targetCategory,
-        Label: selectedLabel,
-      });
-
+      const res = await updateTransactionAPI(currentTx.id, updates);
       if (res && res.status !== "error") {
+        const updatedTx = res.data || { ...currentTx, ...updates };
         setCurrentTx(updatedTx);
+        setSelectedCategory("Internal");
+        setSelectedLabel("Internal Transfer");
+        setActiveGroupTab("Internal");
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus(null), 2000);
         monthData?.refetch?.();
@@ -100,7 +117,61 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
     } finally {
       setIsSaving(false);
     }
-  }, [currentTx, selectedLabel, monthData, onTransactionUpdated]);
+  }, [currentTx, isSaving, monthData, onTransactionUpdated]);
+
+  const handleSaveReason = useCallback(async () => {
+    if (!currentTx?.id || !selectedLabel) return;
+    
+    let targetCategory = selectedCategory;
+    if (!targetCategory || targetCategory === "Save&Invest") {
+      targetCategory = getCategoryForLabel(selectedLabel, currentTx.Category || "Expense");
+    }
+
+    let newReason = currentTx.Reason;
+    let newAccount = currentTx.Account;
+    if (targetCategory === "Internal" || selectedLabel === "Internal Transfer") {
+      targetCategory = "Internal";
+      const direction = getTxDirection(currentTx);
+      const sourceOrDest = currentTx.Account || currentTx.BankName || "Personal Account";
+      newReason = direction === "out"
+        ? `Internal transfer: ${sourceOrDest} -> Temporary`
+        : `Internal transfer: Temporary -> ${sourceOrDest}`;
+      newAccount = currentTx.Account || "Temporary";
+    }
+
+    const updates = {
+      Category: targetCategory,
+      Label: selectedLabel,
+      ...(targetCategory === "Internal" ? { Reason: newReason, Account: newAccount } : {}),
+    };
+
+    setIsSaving(true);
+    setSaveStatus("saving");
+
+    try {
+      const res = await updateTransactionAPI(currentTx.id, updates);
+
+      if (res && res.status !== "error") {
+        const updatedTx = res.data || { ...currentTx, ...updates };
+        setCurrentTx(updatedTx);
+        setSelectedCategory(targetCategory);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus(null), 2000);
+        monthData?.refetch?.();
+        if (onTransactionUpdated) {
+          onTransactionUpdated(updatedTx);
+        }
+      } else {
+        setSaveStatus("error");
+        setTimeout(() => setSaveStatus(null), 2500);
+      }
+    } catch (_err) {
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus(null), 2500);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [currentTx, selectedLabel, selectedCategory, monthData, onTransactionUpdated]);
 
   if (!transaction || !currentTx) return null;
 
@@ -111,8 +182,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
   const account = currentTx.Account || currentTx.BankName || currentTx.AccountName || "Personal Account";
   const frequency = currentTx.Frequency || (currentTx.Type === "Monthly" ? "Monthly Recurring" : "One-Time");
 
-  const normalizedCategory = category === "Saving" || category === "Investment" ? "Save&Invest" : category;
-  const subcategories = (CATEGORY_GROUPS[normalizedCategory] || []).map(([name]) => name);
+  const subcategories = (CATEGORY_GROUPS[activeGroupTab] || []).map(([name]) => name);
 
   const feed = () => (
     <div className="TxDetail_Sheet">
@@ -132,11 +202,22 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
         </div>
       </div>
 
-      {/* Reason / Category Pills Section with explicit Save */}
+      <div className="TxDetail_QuickActions">
+        <button
+          type="button"
+          className={`TxDetail_TransferActionBtn ${isInternal ? "active" : ""}`}
+          onClick={handleMarkInternalTransfer}
+          disabled={isSaving}
+        >
+          <FiRefreshCw className={`TxDetail_ActionBtnIcon ${isSaving ? "spinning" : ""}`} />
+          <span>{isInternal ? "✓ Internal Transfer (Active)" : "🔄 Mark as Internal Transfer"}</span>
+        </button>
+      </div>
+
       <div className="TxDetail_CategorySection">
         <div className="TxDetail_CategorySectionHeader">
           <span className="TxDetail_SectionTitle">
-            <FiTag className="TxDetail_RowIcon" /> Reason
+            <FiTag className="TxDetail_RowIcon" /> Recategorize
           </span>
           {hasChanges && (
             <button
@@ -155,7 +236,20 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
           )}
         </div>
 
-        {/* Reason Pills */}
+        <div className="TxDetail_GroupTabs">
+          {GROUP_TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              className={`TxDetail_GroupTab ${activeGroupTab === tab ? "active" : ""} ${tab.toLowerCase().replace(/[^a-z0-9]/g, '')}`}
+              onClick={() => setActiveGroupTab(tab)}
+              disabled={isSaving}
+            >
+              {tab === "Save&Invest" ? "Save & Invest" : tab}
+            </button>
+          ))}
+        </div>
+
         <div className="TxDetail_ReasonPills">
           {subcategories.map((subName) => {
             const isSubActive = String(selectedLabel).toLowerCase() === String(subName).toLowerCase();
@@ -163,9 +257,10 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
               <button
                 key={subName}
                 type="button"
-                className={`TxDetail_ReasonPill ${category.toLowerCase().replace(/[^a-z0-9]/g, '')} ${isSubActive ? "active" : ""}`}
+                className={`TxDetail_ReasonPill ${activeGroupTab.toLowerCase().replace(/[^a-z0-9]/g, '')} ${isSubActive ? "active" : ""}`}
                 onClick={() => {
                   setSelectedLabel(subName);
+                  setSelectedCategory(activeGroupTab === "Save&Invest" ? getCategoryForLabel(subName, "Saving") : activeGroupTab);
                   setSaveStatus(null);
                 }}
                 disabled={isSaving}
