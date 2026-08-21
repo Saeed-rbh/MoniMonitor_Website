@@ -12,6 +12,7 @@ import {
   isSaveInvestTransaction,
   uniqueInternalTransfers,
 } from "../../services/transactionService";
+import { parseTransactionDate } from "../../utils/transactionDate";
 
 const TransactionList = ({
   isMoreClicked,
@@ -68,7 +69,7 @@ const TransactionList = ({
       if (sortby === "Save&Invest") return isSaveInvestTransaction(transaction);
       if (sortby === "Internal") return isInternalTransfer(transaction);
 
-      const txDate = new Date(transaction.Timestamp);
+      const txDate = parseTransactionDate(transaction.Timestamp);
       if (Number.isNaN(txDate.getTime())) return false;
 
       if (sortby === "Today") {

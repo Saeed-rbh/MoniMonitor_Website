@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback } from "react";
 import TransactionListItem from "./TransactionListItem";
+import { parseTransactionDate } from "../../utils/transactionDate";
 
 /**
  * Groups transactions into intuitive, chronological timeline sections:
@@ -37,7 +38,7 @@ export const groupTransactionsByTimeline = (transactions = []) => {
 
   transactions.forEach((tx) => {
     if (!tx || !tx.Timestamp) return;
-    const date = new Date(tx.Timestamp);
+    const date = parseTransactionDate(tx.Timestamp);
     if (Number.isNaN(date.getTime())) return;
 
     const txYear = date.getFullYear();
@@ -46,18 +47,21 @@ export const groupTransactionsByTimeline = (transactions = []) => {
 
     let sectionKey = "";
     let sectionTitle = "";
+    let sectionPriority = 0;
     let sortRank = 0;
 
     // 1. Is Today?
     if (txYear === todayYear && txMonth === todayMonth && txDay === todayDate) {
       sectionKey = "timeline_today";
       sectionTitle = "Today";
+      sectionPriority = 4;
       sortRank = new Date(todayYear, todayMonth, todayDate, 23, 59, 59, 999).getTime();
     }
     // 2. Is Yesterday?
     else if (txYear === yYear && txMonth === yMonth && txDay === yDate) {
       sectionKey = "timeline_yesterday";
       sectionTitle = "Yesterday";
+      sectionPriority = 3;
       sortRank = new Date(yYear, yMonth, yDate, 23, 59, 59, 999).getTime();
     }
     // 3. Is This Week?
@@ -70,6 +74,7 @@ export const groupTransactionsByTimeline = (transactions = []) => {
           : `${startMon} ${curMonday.getDate()} – ${endMon} ${curSunday.getDate()}`;
       sectionKey = "timeline_this_week";
       sectionTitle = `This Week · ${weekLabel}`;
+      sectionPriority = 2;
       sortRank = curSunday.getTime();
     }
     // 4. Same month or past month:
@@ -97,6 +102,7 @@ export const groupTransactionsByTimeline = (transactions = []) => {
 
         sectionKey = `week_${monday.toISOString().slice(0, 10)}`;
         sectionTitle = `Week · ${weekLabel}`;
+        sectionPriority = 1;
         sortRank = sunday.getTime();
       } else {
         const monthName = date.toLocaleString("en-US", {
@@ -105,6 +111,7 @@ export const groupTransactionsByTimeline = (transactions = []) => {
         });
         sectionKey = `month_${txYear}_${String(txMonth + 1).padStart(2, "0")}`;
         sectionTitle = monthName;
+        sectionPriority = 1;
         sortRank = new Date(txYear, txMonth + 1, 0, 23, 59, 59, 999).getTime();
       }
     }
@@ -113,6 +120,7 @@ export const groupTransactionsByTimeline = (transactions = []) => {
       sectionsMap.set(sectionKey, {
         key: sectionKey,
         title: sectionTitle,
+        sectionPriority,
         sortRank,
         items: [],
       });
@@ -121,7 +129,9 @@ export const groupTransactionsByTimeline = (transactions = []) => {
     sectionsMap.get(sectionKey).items.push(tx);
   });
 
-  return Array.from(sectionsMap.values()).sort((a, b) => b.sortRank - a.sortRank);
+  return Array.from(sectionsMap.values()).sort(
+    (a, b) => b.sectionPriority - a.sectionPriority || b.sortRank - a.sortRank
+  );
 };
 
 const TransactionListMonthly = ({

@@ -3,6 +3,10 @@ import { FiCalendar, FiCreditCard, FiTag, FiRepeat, FiCheckCircle, FiCheck } fro
 import { getTransactionIcon, CATEGORY_GROUPS } from "../Categories";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
 import { updateTransactionAPI } from "../../services/apiService";
+import {
+  isDateOnlyTransactionTimestamp,
+  parseTransactionDate,
+} from "../../utils/transactionDate";
 import { useTransactions } from "../../context/TransactionContext";
 import MoreOpen from "../MoreOpen/MoreOpen";
 import "./TransactionDetailModal.css";
@@ -31,15 +35,16 @@ const getTxDirection = (tx) => {
 
 const formatFullDate = (timestamp) => {
   if (!timestamp) return "Date unrecorded";
-  const date = new Date(timestamp);
+  const date = parseTransactionDate(timestamp);
   if (Number.isNaN(date.getTime())) return "Unknown date";
   return date.toLocaleString("en-CA", {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
+    ...(isDateOnlyTransactionTimestamp(timestamp)
+      ? {}
+      : { hour: "numeric", minute: "2-digit" }),
   });
 };
 

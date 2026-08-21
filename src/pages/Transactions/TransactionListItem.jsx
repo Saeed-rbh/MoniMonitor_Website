@@ -4,6 +4,10 @@ import { useDrag } from "@use-gesture/react";
 import { ScalableElement } from "../../utils/tools";
 import { getTransactionIcon } from "../../components/Categories";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
+import {
+  isDateOnlyTransactionTimestamp,
+  parseTransactionDate,
+} from "../../utils/transactionDate";
 
 const formatMoney = (val) => {
   const num = Number(val || 0);
@@ -15,15 +19,16 @@ const formatMoney = (val) => {
 };
 
 const formatTransactionDate = (value) => {
-  const date = new Date(value);
+  const date = parseTransactionDate(value);
   return Number.isNaN(date.getTime())
     ? "Unknown date"
     : date.toLocaleString(undefined, {
       month: "short",
       day: "numeric",
       year: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
+      ...(isDateOnlyTransactionTimestamp(value)
+        ? {}
+        : { hour: "numeric", minute: "2-digit" }),
     });
 };
 
