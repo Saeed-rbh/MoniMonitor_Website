@@ -81,4 +81,41 @@ describe("TransactionDetailModal", () => {
       expect(onUpdated).toHaveBeenCalled();
     });
   });
+
+  it("reverses an outgoing Internal Transfer back to Personal Transfers", async () => {
+    const internalTx = {
+      ...sampleTx,
+      Category: "Internal",
+      Label: "Internal Transfer",
+      Reason: "Internal transfer: RBC Chequing -> Temporary",
+    };
+    vi.mocked(apiService.updateTransactionAPI).mockResolvedValue({
+      status: "success",
+      data: { ...internalTx, Category: "Expense", Label: "Personal Transfers" },
+    });
+
+    const onUpdated = vi.fn();
+    render(
+      <MemoryRouter>
+        <TransactionDetailModal
+          transaction={internalTx}
+          onClose={vi.fn()}
+          onTransactionUpdated={onUpdated}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByText("↩ Reverse Internal Transfer"));
+
+    await waitFor(() => {
+      expect(apiService.updateTransactionAPI).toHaveBeenCalledWith(123, {
+        Category: "Expense",
+        Label: "Personal Transfers",
+      });
+      expect(onUpdated).toHaveBeenCalledWith(expect.objectContaining({
+        Category: "Expense",
+        Label: "Personal Transfers",
+      }));
+    });
+  });
 });

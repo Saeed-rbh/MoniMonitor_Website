@@ -119,6 +119,44 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
     }
   }, [currentTx, isSaving, monthData, onTransactionUpdated]);
 
+  const handleReverseInternalTransfer = useCallback(async () => {
+    if (!currentTx?.id || isSaving) return;
+
+    const direction = getTxDirection(currentTx);
+    const updates = {
+      Category: direction === "in" ? "Income" : "Expense",
+      Label: direction === "in" ? "Personal Transfers Received" : "Personal Transfers",
+    };
+
+    setIsSaving(true);
+    setSaveStatus("saving");
+
+    try {
+      const res = await updateTransactionAPI(currentTx.id, updates);
+      if (res && res.status !== "error") {
+        const updatedTx = res.data || { ...currentTx, ...updates };
+        setCurrentTx(updatedTx);
+        setSelectedCategory(updates.Category);
+        setSelectedLabel(updates.Label);
+        setActiveGroupTab(updates.Category);
+        setSaveStatus("saved");
+        setTimeout(() => setSaveStatus(null), 2000);
+        monthData?.refetch?.();
+        if (onTransactionUpdated) {
+          onTransactionUpdated(updatedTx);
+        }
+      } else {
+        setSaveStatus("error");
+        setTimeout(() => setSaveStatus(null), 2500);
+      }
+    } catch (_err) {
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus(null), 2500);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [currentTx, isSaving, monthData, onTransactionUpdated]);
+
   const handleSaveReason = useCallback(async () => {
     if (!currentTx?.id || !selectedLabel) return;
     
@@ -206,11 +244,11 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
         <button
           type="button"
           className={`TxDetail_TransferActionBtn ${isInternal ? "active" : ""}`}
-          onClick={handleMarkInternalTransfer}
+          onClick={isInternal ? handleReverseInternalTransfer : handleMarkInternalTransfer}
           disabled={isSaving}
         >
           <FiRefreshCw className={`TxDetail_ActionBtnIcon ${isSaving ? "spinning" : ""}`} />
-          <span>{isInternal ? "✓ Internal Transfer (Active)" : "🔄 Mark as Internal Transfer"}</span>
+          <span>{isInternal ? "↩ Reverse Internal Transfer" : "🔄 Mark as Internal Transfer"}</span>
         </button>
       </div>
 
