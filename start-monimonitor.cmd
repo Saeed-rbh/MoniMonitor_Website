@@ -53,22 +53,24 @@ if errorlevel 1 goto :error
 powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/health' -TimeoutSec 2 | Out-Null; exit 0 } catch { exit 1 }"
 if not errorlevel 1 (
   powershell -NoProfile -Command "$agent = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' | Where-Object { $_.CommandLine -match 'email_agent\.js' }; if ($agent) { exit 0 } else { exit 1 }"
-    if errorlevel 1 (
-      echo The API is running without the email and Telegram agent. Close the existing backend window, then run this launcher again.
-      goto :error
-    )
-  call :running_commit_matches
-  if not errorlevel 1 (
-    call :ensure_public_health
+  if errorlevel 1 (
+    echo The API is running without the email and Telegram agent. Restarting it under the full service supervisor...
+    call :stop_standalone_api
     if errorlevel 1 goto :error
-    echo MoniMonitor is already fully running at the current Git commit.
-    if not defined AUTO_UPDATE_RESTART start "" "%PUBLIC_URL%"
-    powershell -NoProfile -Command "Start-Sleep -Seconds 3"
-    exit /b 0
+  ) else (
+    call :running_commit_matches
+    if not errorlevel 1 (
+      call :ensure_public_health
+      if errorlevel 1 goto :error
+      echo MoniMonitor is already fully running at the current Git commit.
+      if not defined AUTO_UPDATE_RESTART start "" "%PUBLIC_URL%"
+      powershell -NoProfile -Command "Start-Sleep -Seconds 3"
+      exit /b 0
+    )
+    echo The running backend does not match the current Git commit. Restarting it...
+    call :stop_backend
+    if errorlevel 1 goto :error
   )
-  echo The running backend does not match the current Git commit. Restarting it...
-  call :stop_backend
-  if errorlevel 1 goto :error
 )
 
 powershell -NoProfile -Command "$command = 'title MoniMonitor API + Email + Telegram&& set AI_INGESTION_ENABLED=true&& npm run dev'; $process = Start-Process -FilePath $env:ComSpec -ArgumentList '/d','/k',$command -WorkingDirectory '%~dp0server' -PassThru; Set-Content -LiteralPath (Join-Path $env:TEMP 'monimonitor-api.pid') -Value $process.Id"
@@ -103,11 +105,17 @@ powershell -NoProfile -Command "$state = Join-Path $env:LOCALAPPDATA 'MoniMonito
 exit /b %errorlevel%
 
 :record_running_commit
-powershell -NoProfile -Command "$state = Join-Path $env:LOCALAPPDATA 'MoniMonitor'; New-Item -ItemType Directory -Path $state -Force ^| Out-Null; $current = (& git -C '%~dp0' rev-parse HEAD).Trim(); if ($LASTEXITCODE -ne 0 -or -not $current) { exit 1 }; Set-Content -LiteralPath (Join-Path $state 'running-commit.txt') -Value $current"
+powershell -NoProfile -Command "$state = Join-Path $env:LOCALAPPDATA 'MoniMonitor'; [void](New-Item -ItemType Directory -Path $state -Force); $current = (& git -C '%~dp0' rev-parse HEAD).Trim(); if ($LASTEXITCODE -ne 0 -or -not $current) { exit 1 }; Set-Content -LiteralPath (Join-Path $state 'running-commit.txt') -Value $current"
 exit /b %errorlevel%
 
 :stop_backend
-powershell -NoProfile -Command "$pidFile = Join-Path $env:TEMP 'monimonitor-api.pid'; $candidateIds = [Collections.Generic.HashSet[int]]::new(); if (Test-Path -LiteralPath $pidFile) { $savedPid = 0; if ([int]::TryParse((Get-Content -LiteralPath $pidFile -Raw).Trim(), [ref]$savedPid)) { [void]$candidateIds.Add($savedPid) } }; Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' -ErrorAction SilentlyContinue ^| Where-Object { $_.CommandLine -like '*MoniMonitor_Website*concurrently*' } ^| ForEach-Object { [void]$candidateIds.Add([int]$_.ProcessId) }; foreach ($candidateId in $candidateIds) { taskkill.exe /PID $candidateId /T /F ^| Out-Null }; Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; $remaining = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' -ErrorAction SilentlyContinue ^| Where-Object { $_.CommandLine -like '*MoniMonitor_Website*concurrently*' }; if ($remaining) { exit 1 }; exit 0"
+powershell -NoProfile -Command "$pidFile = Join-Path $env:TEMP 'monimonitor-api.pid'; $candidateIds = [Collections.Generic.HashSet[int]]::new(); if (Test-Path -LiteralPath $pidFile) { $savedPid = 0; if ([int]::TryParse((Get-Content -LiteralPath $pidFile -Raw).Trim(), [ref]$savedPid)) { [void]$candidateIds.Add($savedPid) } }; $nodeProcesses = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' -ErrorAction SilentlyContinue; foreach ($nodeProcess in $nodeProcesses) { if ($nodeProcess.CommandLine -like '*MoniMonitor_Website*concurrently*') { [void]$candidateIds.Add([int]$nodeProcess.ProcessId) } }; foreach ($candidateId in $candidateIds) { if (Get-Process -Id $candidateId -ErrorAction SilentlyContinue) { [void](Start-Process -FilePath taskkill.exe -ArgumentList '/PID',$candidateId,'/T','/F' -Wait -PassThru -WindowStyle Hidden) } }; Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; $remaining = $false; $nodeProcesses = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' -ErrorAction SilentlyContinue; foreach ($nodeProcess in $nodeProcesses) { if ($nodeProcess.CommandLine -like '*MoniMonitor_Website*concurrently*') { $remaining = $true } }; if ($remaining) { exit 1 }; exit 0"
+exit /b %errorlevel%
+
+:stop_standalone_api
+rem A successful MoniMonitor health check already established that port 3001 is
+rem our API. Stop only Node listeners on that exact port before supervised start.
+powershell -NoProfile -Command "$listeners = Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue; $ids = [Collections.Generic.HashSet[int]]::new(); foreach ($listener in $listeners) { [void]$ids.Add([int]$listener.OwningProcess) }; if ($ids.Count -eq 0) { exit 0 }; foreach ($processId in $ids) { $process = Get-Process -Id $processId -ErrorAction SilentlyContinue; if (-not $process -or $process.ProcessName -ne 'node') { exit 1 } }; foreach ($processId in $ids) { Stop-Process -Id $processId -Force -ErrorAction Stop }; Start-Sleep -Seconds 1; if (Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue) { exit 1 }; exit 0"
 exit /b %errorlevel%
 
 :update_from_github
