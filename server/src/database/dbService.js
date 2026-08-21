@@ -144,6 +144,12 @@ async function addTransaction(transaction) {
             transaction.SourceEmailKey || null,
         ]
     );
+    if (transaction.BalanceAccountId !== undefined && transaction.BalanceAccountId !== null) {
+        await db.run(
+            'UPDATE transactions SET BalanceAccountId = ? WHERE id = ?',
+            [transaction.BalanceAccountId, result.lastID]
+        );
+    }
     return result.lastID;
 }
 
@@ -1303,9 +1309,14 @@ function isEmailSourcedInternalTransfer(tx) {
     return true;
 }
 
-/** Normalised (BankName, Account) key for grouping transactions by account. */
+/** Normalised account identity for grouping transactions by account. */
 function normalizeAccountKey(bankName, account) {
-    return `${String(bankName || '').trim().toLowerCase()}|${String(account || '').trim().toLowerCase()}`;
+    const bank = String(bankName || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const digits = String(account || '').replace(/\D/g, '');
+    const accountIdentity = digits.length >= 4
+        ? `last4:${digits.slice(-4)}`
+        : String(account || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    return `${bank}|${accountIdentity}`;
 }
 
 /**
@@ -1324,10 +1335,8 @@ function normalizeAccountKey(bankName, account) {
  *
  *   Key invariants:
  *     1. Source account A ≠ destination account B.
- *     2. The same account can appear at most ONCE in a transfer group
- *        (either as source OR as destination, never both).
- *        → If both an IN and an OUT come from the same account, only the IN
- *          (deposit = destination leg) is paired; the OUT is left as Expense.
+ *     2. The source and destination must be different accounts. A same-account
+ *        IN/OUT pair is never sufficient evidence of a self-transfer.
  *     3. Without an Interac notification a bare OUT-from-A + IN-to-B pair
  *        (different accounts, same amount, within window) is also valid.
  *
@@ -1343,10 +1352,9 @@ function normalizeAccountKey(bankName, account) {
  *   Step 3 – Group the reclassifiable bank alerts (Income/Expense, ReceivedAt
  *             IS NOT NULL, not yet Internal) by account.
  *
- *   Step 4 – Choose at most one pairIN (destination) and one pairOUT (source):
+ *   Step 4 – Choose exactly one pairIN (destination) and one pairOUT (source):
  *     • If all reclassifiable candidates are from the SAME account:
- *         – An Interac notification must be present to confirm a self-transfer.
- *         – Pair at most ONE: prefer IN (deposit) over OUT (withdrawal).
+ *         – Leave them unchanged; a transfer needs a second account.
  *     • If candidates span MULTIPLE accounts:
  *         – Look for one clean IN account (only INs, no OUTs) and one clean
  *           OUT account (only OUTs, no INs) that are different from each other.
@@ -1431,32 +1439,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     let pairIN  = null;
     let pairOUT = null;
 
-    if (accountGroups.length === 1) {
-        // All reclassifiable candidates from the SAME account.
-        // Require an Interac notification to confirm this is actually a self-transfer
-        // (without Interac we can't distinguish a coincidental same-amount expense+income
-        // pair on the same account from a real internal transfer).
-        if (!interac) return [];
-
-        const [group] = accountGroups;
-        if (group.ins.length === 1 && group.outs.length === 0) {
-            pairIN = group.ins[0];
-        } else if (group.ins.length === 0 && group.outs.length === 1) {
-            pairOUT = group.outs[0];
-        } else if (group.ins.length >= 1) {
-            // Both IN and OUT present for the same account (the problem case:
-            // same-account deposit + withdrawal around the same time).
-            // Pair only the IN (deposit = destination leg). Leave the OUT as-is.
-            // Sort by closeness to the Interac notification time.
-            const interacTime = new Date(interac.Timestamp).getTime();
-            pairIN = group.ins.sort((a, b) =>
-                Math.abs(new Date(a.Timestamp).getTime() - interacTime) -
-                Math.abs(new Date(b.Timestamp).getTime() - interacTime)
-            )[0];
-        }
-        // Multiple INs with no OUTs → ambiguous → leave unpaired.
-
-    } else {
+    if (accountGroups.length > 1) {
         // Candidates span MULTIPLE accounts.
         // Look for one clean IN-only account and one clean OUT-only account.
         // A bare OUT-from-A + IN-to-B pair is valid even without an Interac notification.
@@ -1478,63 +1461,16 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
             }
         }
 
-        // Fallback: If we have a clean OUT but no IN, pick an IN from a different account
-        if (pairOUT && !pairIN) {
-            const possibleIns = accountGroups
-                .filter(g => g.key !== normalizeAccountKey(pairOUT.BankName, pairOUT.Account))
-                .flatMap(g => g.ins);
-            if (possibleIns.length === 1) {
-                pairIN = possibleIns[0];
-            } else if (possibleIns.length > 1) {
-                const targetTime = new Date(pairOUT.Timestamp).getTime();
-                pairIN = possibleIns.sort((a, b) =>
-                    Math.abs(new Date(a.Timestamp).getTime() - targetTime) -
-                    Math.abs(new Date(b.Timestamp).getTime() - targetTime)
-                )[0];
-            }
-        }
-
-        // Fallback: If we have a clean IN but no OUT, pick an OUT from a different account
-        if (pairIN && !pairOUT) {
-            const possibleOuts = accountGroups
-                .filter(g => g.key !== normalizeAccountKey(pairIN.BankName, pairIN.Account))
-                .flatMap(g => g.outs);
-            if (possibleOuts.length === 1) {
-                pairOUT = possibleOuts[0];
-            } else if (possibleOuts.length > 1) {
-                const targetTime = new Date(pairIN.Timestamp).getTime();
-                pairOUT = possibleOuts.sort((a, b) =>
-                    Math.abs(new Date(a.Timestamp).getTime() - targetTime) -
-                    Math.abs(new Date(b.Timestamp).getTime() - targetTime)
-                )[0];
-            }
-        }
-
-        // If Interac is present but we still haven't found a pairIN, fall back to the
-        // nearest IN candidate from any account (Interac confirms it's a self-transfer).
-        if (!pairIN && interac) {
-            const interacTime = new Date(interac.Timestamp).getTime();
-            const allIns = accountGroups.flatMap(g => g.ins);
-            if (allIns.length === 1) {
-                pairIN = allIns[0];
-            } else if (allIns.length > 1) {
-                // Sort by closeness to Interac time and pick the nearest
-                const nearest = allIns.sort((a, b) =>
-                    Math.abs(new Date(a.Timestamp).getTime() - interacTime) -
-                    Math.abs(new Date(b.Timestamp).getTime() - interacTime)
-                )[0];
-                // Only pick if it's unambiguously the closest (not a tie)
-                const second = allIns[1];
-                const d1 = Math.abs(new Date(nearest.Timestamp).getTime() - interacTime);
-                const d2 = Math.abs(new Date(second.Timestamp).getTime() - interacTime);
-                if (d1 !== d2) pairIN = nearest;
-            }
-        }
-
-        // Require at least one of pairIN or pairOUT; and if both, ensure they come
-        // from different accounts (enforced by the loops above).
-        if (!pairIN && !pairOUT) return [];
+        // A transfer requires both sides. A lone deposit or withdrawal remains
+        // Income/Expense because there is no evidence that another account
+        // supplied or received the money.
+        if (!pairIN || !pairOUT) return [];
     }
+
+    // Never classify two legs from the same account as an internal transfer.
+    if (!pairIN || !pairOUT ||
+        normalizeAccountKey(pairIN.BankName, pairIN.Account) ===
+        normalizeAccountKey(pairOUT.BankName, pairOUT.Account)) return [];
 
     // ── Step 5: reclassify and link the selected pair ──────────────────────────────────
     // Determine the source and destination account names.

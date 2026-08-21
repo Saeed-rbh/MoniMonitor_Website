@@ -259,24 +259,13 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         const allMatches = rawMatches.filter(m => {
             const existingTime = new Date(m.Timestamp).getTime();
             const diffHours = Math.abs(newTime - existingTime) / (1000 * 60 * 60);
-            const isETransfer = (expenseData.Type || '').toLowerCase().includes('transfer') || (expenseData.Label || '').toLowerCase().includes('transfer');
-            const mIsETransfer = (m.Type || '').toLowerCase().includes('transfer') || (m.Label || '').toLowerCase().includes('transfer');
-            // Related e-Transfer notifications should arrive close to the same
-            // transaction date. A multi-week window can incorrectly merge two
-            // legitimate deposits with the same amount and recipient (for
-            // example, this $39.54 deposit on Aug 20 with a July 27 deposit).
-            // Keep fuzzy matching bounded to the normal bank-notification gap.
             return diffHours <= 48;
         });
 
-        // 3. Fuzzy duplicate check (e.g. e-Transfer sent vs received)
-        const fuzzyDuplicate = allMatches.find(m => {
-            if (isGeneric(m.Label, m.Reason) || newIsGeneric) return false;
-            if (m.ReferenceNumber && expenseData.ReferenceNumber && m.ReferenceNumber !== expenseData.ReferenceNumber) return false;
-            const existingReason = m.Reason.toLowerCase();
-            const newReason = expenseData.Reason.toLowerCase();
-            return existingReason.includes(newReason) || newReason.includes(existingReason);
-        });
+        // Never merge two non-identical bank legs based only on amount and
+        // similar text. Internal transfers are represented by both records and
+        // are paired only after we have one OUT and one IN on different accounts.
+        const fuzzyDuplicate = null;
 
         let activeId = null;
 
