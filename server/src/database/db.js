@@ -2,6 +2,7 @@ const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const path = require('path');
 const { applyFinancialSnapshot } = require('./financialSnapshot');
+const { reconcileHistoricalInternalTransfers } = require('./historicalTransferReconciliation');
 
 const DB_PATH = process.env.MONIMONITOR_DB_PATH
     ? path.resolve(process.env.MONIMONITOR_DB_PATH)
@@ -422,6 +423,10 @@ async function getDb() {
             const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
             await db.run('DELETE FROM processed_emails WHERE processedAt < ?', [cutoff]);
             await applyFinancialSnapshot(db, process.env.USER_ID);
+            const historicalTransfers = await reconcileHistoricalInternalTransfers(db, process.env.USER_ID);
+            if (historicalTransfers.matched) {
+                console.log(`[Historical transfers] Reclassified ${historicalTransfers.matched} matched pair(s).`);
+            }
             return db;
         });
 
