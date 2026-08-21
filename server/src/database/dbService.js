@@ -385,7 +385,10 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
         );
         if (existing) {
             await db.run(
-                'UPDATE investment_accounts SET cashMinor = cashMinor - ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                // Plaid may have refreshed the authoritative cash balance since
+                // this event was posted. Clamp stale-event reversals at zero so
+                // re-syncing cannot violate investment_accounts.cashMinor >= 0.
+                'UPDATE investment_accounts SET cashMinor = MAX(0, cashMinor - ?), updatedAt = ? WHERE id = ? AND userId = ?',
                 [existing.deltaMinor, new Date().toISOString(), existing.accountId, userId]
             );
             await db.run('DELETE FROM account_balance_events WHERE id = ? AND userId = ?', [existing.id, userId]);
@@ -464,7 +467,9 @@ async function removeTransactionAccountBalance(userId, transactionId) {
         );
         if (existing) {
             await db.run(
-                'UPDATE investment_accounts SET cashMinor = cashMinor - ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                // The authoritative balance can be lower than the old event
+                // after a Plaid refresh; never write a negative cash balance.
+                'UPDATE investment_accounts SET cashMinor = MAX(0, cashMinor - ?), updatedAt = ? WHERE id = ? AND userId = ?',
                 [existing.deltaMinor, new Date().toISOString(), existing.accountId, userId]
             );
             await db.run('DELETE FROM account_balance_events WHERE id = ? AND userId = ?', [existing.id, userId]);

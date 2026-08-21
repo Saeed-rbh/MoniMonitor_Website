@@ -55,4 +55,15 @@ test('creates one account from a transaction and posts subsequent activity to it
     });
     assert.equal(posting.status, 'applied');
     assert.equal(posting.cashMinor, 1250);
+
+    // A Plaid refresh can replace cashMinor while the event remains recorded.
+    // Re-syncing the transaction must reverse that stale event without hitting
+    // the investment_accounts.cashMinor >= 0 constraint.
+    await db.run('UPDATE investment_accounts SET cashMinor = 0 WHERE id = ?', [firstResolution.account.id]);
+    const resynced = await dbService.syncTransactionAccountBalance(userId, transactionId, {
+        accountId: firstResolution.account.id,
+        confidence: 'HIGH',
+    });
+    assert.equal(resynced.status, 'applied');
+    assert.equal(resynced.cashMinor, 1250);
 });
