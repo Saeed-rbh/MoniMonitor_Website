@@ -33,6 +33,7 @@ const Account = () => {
     const [plaidStatus, setPlaidStatus] = useState(null);
     const [plaidBusy, setPlaidBusy] = useState(false);
     const [plaidMessage, setPlaidMessage] = useState("");
+    const [expandedPlaidItem, setExpandedPlaidItem] = useState(null);
 
     // UI State
     const [activeDropdown, setActiveDropdown] = useState(null);
@@ -150,20 +151,20 @@ const Account = () => {
         return status;
     };
 
-    const handleConnectPlaid = async () => {
+    const handleConnectPlaid = async (item = null) => {
         setPlaidBusy(true);
         setPlaidMessage("Preparing secure bank connection…");
         try {
-            const { linkToken } = await createPlaidLinkTokenAPI();
+            const { linkToken } = await createPlaidLinkTokenAPI(item?.itemId);
             if (!window.Plaid?.create) throw new Error("Plaid Link could not be loaded");
             const handler = window.Plaid.create({
                 token: linkToken,
                 onSuccess: async (publicToken, metadata) => {
                     try {
-                        setPlaidMessage("Connecting and checking for missing transactions…");
+                        setPlaidMessage(item ? "Reconnecting and checking for missing transactions…" : "Connecting and checking for missing transactions…");
                         await exchangePlaidPublicTokenAPI(publicToken, { institution: metadata.institution });
                         await refreshPlaidStatus();
-                        setPlaidMessage("Bank connected. Missing transactions are now covered by Plaid.");
+                        setPlaidMessage(item ? "Bank reconnected. Missing transactions are now covered by Plaid." : "Bank connected. Missing transactions are now covered by Plaid.");
                     } catch (error) {
                         setPlaidMessage(error.message);
                     } finally {
@@ -434,15 +435,31 @@ const Account = () => {
                     <div className="settings-section" style={{ width: '100%', marginBottom: '0.4rem' }}>
                         <h4 style={{ color: "var(--Ac-2)", marginBottom: "0.2rem", marginLeft: "5px", fontSize: "0.7rem", fontWeight: "bold", textTransform: 'uppercase' }}>Bank fallback</h4>
                         {plaidStatus?.items?.map((item) => (
-                            <div className="settings-item" style={{ ...itemStyle, cursor: "default" }} key={item.itemId}>
+                            <React.Fragment key={item.itemId}>
+                            <div className="settings-item" style={{ ...itemStyle, cursor: "default" }}>
                                 <div style={{ minWidth: 0 }}>
                                     <div>{item.institutionName || "Connected bank"}</div>
                                     <div style={{ color: item.status === 'active' ? "var(--Ac-3)" : "var(--Gc-2)", fontSize: "0.68rem", marginTop: "2px" }}>
                                         {item.status === 'active' ? `${item.accountCount} account${item.accountCount === 1 ? '' : 's'} · Last sync ${item.lastSyncedAt ? new Date(item.lastSyncedAt).toLocaleString() : 'pending'}${Number(item.investmentAccountCount) > 0 && item.holdingsStatus !== 'active' ? ' · Holdings authorization needed' : ''}` : item.lastError || 'Connection needs attention'}
                                     </div>
                                 </div>
-                                <button type="button" disabled={plaidBusy} onClick={() => handlePlaidDisconnect(item)} style={{ background: "none", border: 0, color: "var(--Gc-2)", cursor: "pointer", fontSize: "0.72rem" }}>Disconnect</button>
+                                <div style={{ display: "flex", gap: "8px", alignItems: "center", flexShrink: 0 }}>
+                                    {item.status !== 'active' && <button type="button" disabled={plaidBusy} onClick={() => handleConnectPlaid(item)} style={{ background: "none", border: 0, color: "var(--Bc-2)", cursor: "pointer", fontSize: "0.72rem" }}>Reconnect</button>}
+                                    <button type="button" disabled={plaidBusy} onClick={() => handlePlaidDisconnect(item)} style={{ background: "none", border: 0, color: "var(--Gc-2)", cursor: "pointer", fontSize: "0.72rem" }}>Disconnect</button>
+                                </div>
                             </div>
+                            {item.accounts?.length > 0 && <>
+                                <button type="button" onClick={() => setExpandedPlaidItem(expandedPlaidItem === item.itemId ? null : item.itemId)} style={{ background: "none", border: 0, color: "var(--Ac-2)", cursor: "pointer", fontSize: "0.7rem", padding: "0 6px 6px" }}>
+                                    {expandedPlaidItem === item.itemId ? "Hide matched accounts" : `View matched accounts (${item.accounts.length})`}
+                                </button>
+                                {expandedPlaidItem === item.itemId && <div style={{ padding: "0 8px 6px", color: "var(--Ac-2)", fontSize: "0.7rem" }}>
+                                    {item.accounts.map((account) => <div key={account.plaidAccountId} style={{ display: "flex", justifyContent: "space-between", gap: "8px", padding: "3px 0" }}>
+                                        <span>{account.name || account.officialName || "Bank account"}{account.mask ? ` ••••${account.mask}` : ""}</span>
+                                        <span style={{ color: account.appAccountId ? "var(--Ac-3)" : "var(--Gc-2)", textAlign: "right" }}>{account.appAccountName || "Not matched"}</span>
+                                    </div>)}
+                                </div>}
+                            </>}
+                            </React.Fragment>
                         ))}
                         {plaidStatus?.items?.filter((item) => Number(item.investmentAccountCount) > 0 && ['unknown', 'consent_required'].includes(item.holdingsStatus)).map((item) => (
                             <div className="settings-item" style={itemStyle} onClick={plaidBusy ? undefined : () => handleEnablePlaidHoldings(item)} key={`holdings-${item.itemId}`}>

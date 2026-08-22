@@ -1218,6 +1218,21 @@ async function getStatus(userId) {
          WHERE i.userId = ? GROUP BY i.itemId ORDER BY i.createdAt DESC`,
         [userId]
     );
+    const accounts = await db.all(
+        `SELECT a.itemId, a.plaidAccountId, a.name, a.officialName, a.mask, a.type, a.subtype,
+                a.appAccountId, ia.name AS appAccountName, ia.accountRef AS appAccountRef
+         FROM plaid_accounts a
+         LEFT JOIN investment_accounts ia ON ia.id = a.appAccountId AND ia.userId = a.userId
+         WHERE a.userId = ?
+         ORDER BY a.itemId, a.name`,
+        [userId]
+    );
+    const accountsByItem = new Map();
+    for (const account of accounts) {
+        if (!accountsByItem.has(account.itemId)) accountsByItem.set(account.itemId, []);
+        accountsByItem.get(account.itemId).push(account);
+    }
+    for (const item of items) item.accounts = accountsByItem.get(item.itemId) || [];
     const webhookInbox = await db.get(
         `SELECT
             SUM(CASE WHEN e.status IN ('pending', 'processing', 'retry') THEN 1 ELSE 0 END) AS pending,
