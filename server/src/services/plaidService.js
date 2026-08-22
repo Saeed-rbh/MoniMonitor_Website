@@ -1206,6 +1206,7 @@ async function getStatus(userId) {
     const config = getConfig();
     if (!isConfigured()) return { configured: false, environment: config.environment, items: [] };
     const db = await dbService.getDb();
+    await removeExactDuplicateItems(db, userId);
     const items = await db.all(
         `SELECT i.itemId, i.institutionId, i.institutionName, i.status, i.lastSyncedAt,
                 i.lastError, i.holdingsStatus, i.holdingsLastError, i.holdingsLastSyncedAt,
@@ -1252,6 +1253,61 @@ async function getStatus(userId) {
             lastProcessedAt: webhookInbox?.lastProcessedAt || null,
         },
     };
+}
+
+// A fresh Plaid Link flow can create a second Item for the same bank account.
+// Remove only exact duplicates: same institution and identical account
+// fingerprints. Different accounts at the same institution remain separate.
+async function removeExactDuplicateItems(db, userId) {
+    const items = await db.all(
+        `SELECT itemId, institutionId, institutionName, updatedAt, createdAt
+         FROM plaid_items WHERE userId = ? ORDER BY updatedAt DESC, createdAt DESC`,
+        [userId]
+    );
+    const accounts = await db.all(
+        `SELECT itemId, name, officialName, mask, type, subtype
+         FROM plaid_accounts WHERE userId = ? ORDER BY itemId, plaidAccountId`,
+        [userId]
+    );
+    const accountsByItem = new Map();
+    for (const account of accounts) {
+        if (!accountsByItem.has(account.itemId)) accountsByItem.set(account.itemId, []);
+        accountsByItem.get(account.itemId).push(account);
+    }
+    const fingerprint = (item) => {
+        const itemAccounts = accountsByItem.get(item.itemId) || [];
+        if (!itemAccounts.length) return null;
+        const institution = String(item.institutionId || item.institutionName || '').trim().toLowerCase();
+        const accountFingerprint = itemAccounts.map((account) => [
+            account.name, account.officialName, account.mask, account.type, account.subtype,
+        ].map((value) => String(value || '').trim().toLowerCase()).join('|')).sort().join(';;');
+        return `${institution}::${itemAccounts.length}::${accountFingerprint}`;
+    };
+    const kept = new Map();
+    const duplicates = [];
+    for (const item of items) {
+        const key = fingerprint(item);
+        if (!key) continue;
+        if (kept.has(key)) duplicates.push(item);
+        else kept.set(key, item);
+    }
+    if (!duplicates.length) return 0;
+    await db.run('BEGIN IMMEDIATE');
+    try {
+        for (const duplicate of duplicates) {
+            await db.run(
+                `DELETE FROM transaction_sources WHERE itemId = ? AND userId = ?`,
+                [duplicate.itemId, userId]
+            );
+            await db.run('DELETE FROM plaid_accounts WHERE itemId = ? AND userId = ?', [duplicate.itemId, userId]);
+            await db.run('DELETE FROM plaid_items WHERE itemId = ? AND userId = ?', [duplicate.itemId, userId]);
+        }
+        await db.run('COMMIT');
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+    return duplicates.length;
 }
 
 async function disconnectItem(userId, itemId) {
