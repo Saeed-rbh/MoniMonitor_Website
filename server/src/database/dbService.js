@@ -45,6 +45,20 @@ function withDisplayAmounts(transactions) {
     return transactions.map(withDisplayAmount);
 }
 
+function serializeSourcePayload(payload) {
+    if (payload === undefined || payload === null) return null;
+    return JSON.stringify(payload);
+}
+
+function parseSourcePayload(payload) {
+    if (!payload) return null;
+    try {
+        return JSON.parse(payload);
+    } catch {
+        return { raw: payload };
+    }
+}
+
 async function createUser(id, username, hashedPassword) {
     const db = await getDb();
     await db.run(
@@ -260,6 +274,67 @@ async function getTransactionBySourceEmailKey(userId, sourceEmailKey) {
         'SELECT * FROM transactions WHERE userId = ? AND SourceEmailKey = ?',
         [userId, sourceEmailKey]
     ));
+}
+
+/**
+ * Store the complete source record separately from the normalized transaction.
+ * A transaction may have both an email source and a Plaid source, so the
+ * provider/externalId pair remains the source record's identity.
+ */
+async function upsertTransactionSource({
+    userId,
+    provider,
+    externalId,
+    transactionId,
+    itemId = null,
+    ownsTransaction = false,
+    rawPayload = null,
+    contextPayload = null,
+}) {
+    if (!userId || !provider || !externalId || !transactionId) return false;
+    const db = await getDb();
+    const now = new Date().toISOString();
+    await db.run(
+        `INSERT INTO transaction_sources
+            (provider, externalId, userId, transactionId, itemId, ownsTransaction,
+             rawPayloadJson, contextPayloadJson, capturedAt, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(provider, externalId) DO UPDATE SET
+            userId = excluded.userId,
+            transactionId = excluded.transactionId,
+            itemId = excluded.itemId,
+            ownsTransaction = excluded.ownsTransaction,
+            rawPayloadJson = COALESCE(excluded.rawPayloadJson, transaction_sources.rawPayloadJson),
+            contextPayloadJson = COALESCE(excluded.contextPayloadJson, transaction_sources.contextPayloadJson),
+            capturedAt = COALESCE(excluded.capturedAt, transaction_sources.capturedAt),
+            updatedAt = excluded.updatedAt`,
+        [provider, String(externalId), userId, transactionId, itemId, ownsTransaction ? 1 : 0,
+            serializeSourcePayload(rawPayload), serializeSourcePayload(contextPayload), now, now, now]
+    );
+    return true;
+}
+
+async function getTransactionSourcesForUser(transactionId, userId) {
+    const db = await getDb();
+    const rows = await db.all(
+        `SELECT provider, externalId, itemId, ownsTransaction,
+                rawPayloadJson, contextPayloadJson, capturedAt, createdAt, updatedAt
+         FROM transaction_sources
+         WHERE transactionId = ? AND userId = ?
+         ORDER BY provider, createdAt`,
+        [transactionId, userId]
+    );
+    return rows.map((row) => ({
+        provider: row.provider,
+        externalId: row.externalId,
+        itemId: row.itemId,
+        ownsTransaction: Boolean(row.ownsTransaction),
+        rawPayload: parseSourcePayload(row.rawPayloadJson),
+        contextPayload: parseSourcePayload(row.contextPayloadJson),
+        capturedAt: row.capturedAt,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+    }));
 }
 
 async function getAccountsForUser(userId) {
@@ -1657,6 +1732,8 @@ module.exports = {
     addTransaction,
     getTransactionById,
     getTransactionBySourceEmailKey,
+    upsertTransactionSource,
+    getTransactionSourcesForUser,
     updateTransaction,
     updateTransactionForUser,
     deleteTransaction,

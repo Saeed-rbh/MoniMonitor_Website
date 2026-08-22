@@ -150,7 +150,12 @@ class ImapService {
             const emailBody = headers + (parsedMail.text || parsedMail.html || '');
             const receivedAt = parsedMail.date ? parsedMail.date.toISOString() : new Date().toISOString();
             const sourceEmailKey = `${this.mailboxKey}:${uidValidity}:${uid}`;
-            const success = await this.onNewEmail(emailBody, `Email UID ${uid}`, receivedAt, { sourceEmailKey });
+            const success = await this.onNewEmail(emailBody, `Email UID ${uid}`, receivedAt, {
+                sourceEmailKey,
+                rawEmailSource: Buffer.isBuffer(message.source)
+                    ? message.source.toString('utf8')
+                    : String(message.source || ''),
+            });
 
             if (success) {
                 await database.markEmailProcessed(uid, this.mailboxKey, uidValidity);

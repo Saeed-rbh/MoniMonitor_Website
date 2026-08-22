@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { FiCalendar, FiCreditCard, FiTag, FiRepeat, FiCheckCircle, FiCheck, FiRefreshCw } from "react-icons/fi";
+import { FiCalendar, FiCreditCard, FiTag, FiRepeat, FiCheckCircle, FiCheck, FiRefreshCw, FiDatabase } from "react-icons/fi";
 import { getTransactionIcon, CATEGORY_GROUPS, getCategoryForLabel } from "../Categories";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
-import { updateTransactionAPI } from "../../services/apiService";
+import { getTransactionSourcesAPI, updateTransactionAPI } from "../../services/apiService";
 import {
   isDateOnlyTransactionTimestamp,
   parseTransactionDate,
@@ -56,6 +56,8 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
   const [activeGroupTab, setActiveGroupTab] = useState("Expense");
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
+  const [sourceDetails, setSourceDetails] = useState([]);
+  const [sourceDetailsLoading, setSourceDetailsLoading] = useState(false);
 
   useEffect(() => {
     setCurrentTx(transaction);
@@ -65,6 +67,31 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
     setSelectedLabel(transaction?.Label || transaction?.Category || "");
     setActiveGroupTab(normalized);
     setSaveStatus(null);
+  }, [transaction]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!transaction?.id) {
+      setSourceDetails([]);
+      setSourceDetailsLoading(false);
+      return undefined;
+    }
+
+    setSourceDetailsLoading(true);
+    getTransactionSourcesAPI(transaction.id)
+      .then((sources) => {
+        if (!cancelled) setSourceDetails(Array.isArray(sources) ? sources : []);
+      })
+      .catch(() => {
+        if (!cancelled) setSourceDetails([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSourceDetailsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [transaction]);
 
   const hasChanges = Boolean(
@@ -344,6 +371,41 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
           <strong className="TxDetail_RowRight status-verified">Verified & Recorded</strong>
         </div>
       </div>
+
+      <section className="TxDetail_SourceCard">
+        <div className="TxDetail_SourceHeader">
+          <span className="TxDetail_SectionTitle">
+            <FiDatabase className="TxDetail_RowIcon" /> Captured source data
+          </span>
+          {sourceDetailsLoading && <span className="TxDetail_SourceStatus">Loading…</span>}
+        </div>
+        {!sourceDetailsLoading && sourceDetails.length === 0 && (
+          <p className="TxDetail_SourceEmpty">No email or Plaid source is linked to this transaction.</p>
+        )}
+        {sourceDetails.map((source) => {
+          const capturedPayload = {
+            rawPayload: source.rawPayload,
+            contextPayload: source.contextPayload,
+          };
+          return (
+            <div className="TxDetail_SourceEntry" key={`${source.provider}:${source.externalId}`}>
+              <div className="TxDetail_SourceEntryTopline">
+                <strong>{String(source.provider || "source").replace(/_/g, " ")}</strong>
+                <span>{source.capturedAt ? formatFullDate(source.capturedAt) : "Captured source"}</span>
+              </div>
+              <div className="TxDetail_SourceReference">Reference: {source.externalId || "not provided"}</div>
+              {source.rawPayload || source.contextPayload ? (
+                <details className="TxDetail_SourcePayload">
+                  <summary>View captured source payload</summary>
+                  <pre>{JSON.stringify(capturedPayload, null, 2)}</pre>
+                </details>
+              ) : (
+                <div className="TxDetail_SourceEmpty">Source linked; payload will be captured on the next sync.</div>
+              )}
+            </div>
+          );
+        })}
+      </section>
 
       {onEdit && (
         <button

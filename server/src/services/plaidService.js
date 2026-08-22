@@ -223,6 +223,37 @@ function accountTypeLabel(account = {}) {
     return account.subtype || account.type || 'Bank Account';
 }
 
+const genericPlaidDescriptions = new Set([
+    'transfer', 'transfer in', 'transfer out', 'deposit', 'withdrawal',
+    'bank deposit', 'bank withdrawal', 'e-transfer', 'electronic transfer',
+]);
+
+function firstNonEmpty(...values) {
+    return values.find((value) => value !== null && value !== undefined && String(value).trim()) || null;
+}
+
+function plaidCounterpartyName(transaction = {}) {
+    return transaction.counterparties?.find((counterparty) => counterparty?.name)?.name || null;
+}
+
+function plaidTransactionReason(transaction = {}) {
+    const merchantName = firstNonEmpty(transaction.merchant_name);
+    const counterparty = firstNonEmpty(plaidCounterpartyName(transaction));
+    const paymentParty = firstNonEmpty(
+        transaction.payment_meta?.payee,
+        transaction.payment_meta?.payer,
+        transaction.payment_meta?.by_order_of
+    );
+    const originalDescription = firstNonEmpty(transaction.original_description);
+    const primary = firstNonEmpty(merchantName, counterparty, paymentParty, transaction.name);
+    const isGeneric = genericPlaidDescriptions.has(String(primary || '').trim().toLowerCase());
+    return String(firstNonEmpty(isGeneric ? originalDescription : null, primary, originalDescription, 'Bank transaction')).slice(0, 500);
+}
+
+function plaidReferenceNumber(transaction = {}) {
+    return firstNonEmpty(transaction.payment_meta?.reference_number, transaction.reference_number);
+}
+
 function classifyPlaidTransaction(transaction = {}) {
     const primary = transaction.personal_finance_category?.primary || '';
     const detailed = transaction.personal_finance_category?.detailed || '';
@@ -273,12 +304,12 @@ function toAppTransaction(transaction, account, institutionName) {
         Amount: amountMinor / 100,
         Currency: String(transaction.iso_currency_code || transaction.unofficial_currency_code || 'CAD').toUpperCase(),
         ...classification,
-        Reason: String(transaction.merchant_name || transaction.name || 'Bank transaction').slice(0, 500),
+        Reason: plaidTransactionReason(transaction),
         Timestamp: plaidTimestamp(transaction),
         Type: accountTypeLabel(account),
         Account: account?.mask || account?.name || null,
         BankName: institutionName || null,
-        ReferenceNumber: null,
+        ReferenceNumber: plaidReferenceNumber(transaction),
         AccountFlow: Number(transaction.amount) > 0 ? 'OUT' : 'IN',
     };
 }
@@ -517,18 +548,11 @@ async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
     return accountsUpdated;
 }
 
-async function linkSource(userId, itemId, externalId, transactionId, ownsTransaction, provider = 'plaid') {
-    const db = await dbService.getDb();
-    const now = new Date().toISOString();
-    await db.run(
-        `INSERT INTO transaction_sources
-            (provider, externalId, userId, transactionId, itemId, ownsTransaction, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(provider, externalId) DO UPDATE SET
-            transactionId = excluded.transactionId, itemId = excluded.itemId,
-            ownsTransaction = excluded.ownsTransaction, updatedAt = excluded.updatedAt`,
-        [provider, externalId, userId, transactionId, itemId, ownsTransaction ? 1 : 0, now, now]
-    );
+async function linkSource(userId, itemId, externalId, transactionId, ownsTransaction, provider = 'plaid', rawPayload = null, contextPayload = null) {
+    await dbService.upsertTransactionSource({
+        userId, provider, externalId, transactionId, itemId, ownsTransaction,
+        rawPayload, contextPayload,
+    });
 }
 
 async function importAddedTransaction(userId, item, transaction, accountMap) {
@@ -537,9 +561,15 @@ async function importAddedTransaction(userId, item, transaction, accountMap) {
         `SELECT * FROM transaction_sources WHERE provider = 'plaid' AND externalId = ? AND userId = ?`,
         [transaction.transaction_id, userId]
     );
-    if (existingSource) return { status: 'known', transactionId: existingSource.transactionId };
-
     const account = accountMap.get(transaction.account_id) || {};
+    const sourceContext = { account, institutionName: item.institutionName };
+    if (existingSource) {
+        await linkSource(
+            userId, item.itemId, transaction.transaction_id, existingSource.transactionId,
+            Boolean(existingSource.ownsTransaction), 'plaid', transaction, sourceContext
+        );
+        return { status: 'known', transactionId: existingSource.transactionId };
+    }
     const appTransaction = toAppTransaction(transaction, account, item.institutionName);
     if (!appTransaction) return { status: 'ignored' };
 
@@ -562,7 +592,10 @@ async function importAddedTransaction(userId, item, transaction, accountMap) {
                 match.id, userId, preserveLinkedInternalTransfer(match, appTransaction)
             );
         }
-        await linkSource(userId, item.itemId, transaction.transaction_id, match.id, Boolean(replacement?.ownsTransaction));
+        await linkSource(
+            userId, item.itemId, transaction.transaction_id, match.id,
+            Boolean(replacement?.ownsTransaction), 'plaid', transaction, sourceContext
+        );
         if (replacement) {
             await db.run(
                 `DELETE FROM transaction_sources WHERE provider = 'plaid' AND externalId = ? AND userId = ?`,
@@ -573,7 +606,7 @@ async function importAddedTransaction(userId, item, transaction, accountMap) {
     }
 
     const transactionId = await dbService.addTransaction({ ...appTransaction, userId });
-    await linkSource(userId, item.itemId, transaction.transaction_id, transactionId, true);
+    await linkSource(userId, item.itemId, transaction.transaction_id, transactionId, true, 'plaid', transaction, sourceContext);
     if (account.appAccountId) {
         await dbService.syncTransactionAccountBalance(userId, transactionId, {
             accountId: account.appAccountId,
@@ -593,9 +626,14 @@ async function applyModifiedTransaction(userId, item, transaction, accountMap) {
          WHERE s.provider = 'plaid' AND s.externalId = ? AND s.userId = ?`,
         [transaction.transaction_id, userId]
     );
-    if (!source) return importAddedTransaction(userId, item, transaction, accountMap);
-    if (!source.ownsTransaction || source.SourceEmailKey) return { status: 'linked_source_preserved' };
     const account = accountMap.get(transaction.account_id) || {};
+    const sourceContext = { account, institutionName: item.institutionName };
+    if (!source) return importAddedTransaction(userId, item, transaction, accountMap);
+    await linkSource(
+        userId, item.itemId, transaction.transaction_id, source.transactionId,
+        Boolean(source.ownsTransaction), 'plaid', transaction, sourceContext
+    );
+    if (!source.ownsTransaction || source.SourceEmailKey) return { status: 'linked_source_preserved' };
     const appTransaction = toAppTransaction(transaction, account, item.institutionName);
     if (!appTransaction) return { status: 'ignored' };
     await dbService.updateTransactionForUser(
@@ -638,7 +676,10 @@ async function fetchSyncPages(accessToken, startingCursor) {
                 const page = await plaidRequest('/transactions/sync', {
                     access_token: accessToken,
                     ...(cursor ? { cursor } : {}),
-                    options: { include_personal_finance_category: true },
+                    options: {
+                        include_personal_finance_category: true,
+                        include_original_description: true,
+                    },
                 });
                 changes.added.push(...(page.added || []));
                 changes.modified.push(...(page.modified || []));
@@ -798,11 +839,21 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
         [externalId, userId]
     );
     const account = accountMap.get(transaction.account_id) || {};
+    const security = securities.get(transaction.security_id) || {};
+    const sourceContext = {
+        account,
+        security,
+        institutionName: item.institutionName,
+    };
     const appTransaction = toAppInvestmentTransaction(
-        transaction, account, securities.get(transaction.security_id) || {}, item.institutionName
+        transaction, account, security, item.institutionName
     );
     if (!appTransaction) return { status: 'ignored' };
     if (existing) {
+        await linkSource(
+            userId, item.itemId, externalId, existing.transactionId,
+            Boolean(existing.ownsTransaction), 'plaid_investments', transaction, sourceContext
+        );
         if (existing.ownsTransaction && !existing.SourceEmailKey) {
             await dbService.updateTransactionForUser(
                 existing.transactionId, userId,
@@ -814,11 +865,17 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
     }
     const match = await findInvestmentFallbackMatch(userId, appTransaction);
     if (match) {
-        await linkSource(userId, item.itemId, externalId, match.id, false, 'plaid_investments');
+        await linkSource(
+            userId, item.itemId, externalId, match.id, false,
+            'plaid_investments', transaction, sourceContext
+        );
         return { status: 'matched_email', transactionId: match.id };
     }
     const transactionId = await dbService.addTransaction({ ...appTransaction, userId });
-    await linkSource(userId, item.itemId, externalId, transactionId, true, 'plaid_investments');
+    await linkSource(
+        userId, item.itemId, externalId, transactionId, true,
+        'plaid_investments', transaction, sourceContext
+    );
     return { status: 'imported', transactionId };
 }
 

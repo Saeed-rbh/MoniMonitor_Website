@@ -92,6 +92,26 @@ export const updateTransactionAPI = async (id, updates) => {
     }
 };
 
+export const getTransactionSourcesAPI = async (id) => {
+    try {
+        const token = localStorage.getItem("token");
+        if (!token) return [];
+
+        const response = await fetch(apiUrl(`/transactions/${id}/sources`), {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+            handleExpiredSession(response);
+            return [];
+        }
+        const payload = await response.json();
+        return Array.isArray(payload) ? payload : payload.sources || [];
+    } catch (error) {
+        console.error("Error fetching transaction sources:", error);
+        return [];
+    }
+};
+
 export const deleteTransactionAPI = async (id) => {
     try {
         const token = localStorage.getItem("token");

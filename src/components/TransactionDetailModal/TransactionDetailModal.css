@@ -469,6 +469,73 @@
   color: var(--Fc-1);
 }
 
+.TxDetail_SourceCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 12px 16px;
+  border-radius: 20px;
+  background: var(--Ac-5);
+  border: 1px solid var(--Ac-3);
+}
+
+.TxDetail_SourceHeader,
+.TxDetail_SourceEntryTopline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.TxDetail_SourceStatus,
+.TxDetail_SourceEntryTopline span,
+.TxDetail_SourceReference,
+.TxDetail_SourceEmpty {
+  color: var(--Ac-2);
+  font-size: 0.72rem;
+}
+
+.TxDetail_SourceEntry {
+  padding: 9px 0;
+  border-top: 1px solid var(--Ac-4);
+}
+
+.TxDetail_SourceEntryTopline strong {
+  color: var(--Ac-1);
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+.TxDetail_SourceReference {
+  margin-top: 3px;
+  word-break: break-all;
+}
+
+.TxDetail_SourcePayload {
+  margin-top: 8px;
+  color: var(--Bc-1);
+  font-size: 0.74rem;
+}
+
+.TxDetail_SourcePayload summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+
+.TxDetail_SourcePayload pre {
+  max-height: 280px;
+  margin: 8px 0 0;
+  padding: 10px;
+  overflow: auto;
+  border-radius: 10px;
+  background: var(--Ac-4);
+  color: var(--Ac-2);
+  font: 0.68rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .TxDetail_EditBtn {
   display: flex;
   align-items: center;

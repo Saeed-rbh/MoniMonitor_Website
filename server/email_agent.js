@@ -123,6 +123,29 @@ async function syncPortfolioFromEmail(transactionId, data, idInfo) {
     return result;
 }
 
+async function captureEmailSource(transactionId, sourceEmailKey, emailBody, rawEmailSource, receivedAt, parsedTransaction = null, idInfo = null) {
+    if (!transactionId || !sourceEmailKey) return;
+    await dbService.upsertTransactionSource({
+        userId: USER_ID,
+        provider: 'email',
+        externalId: sourceEmailKey,
+        transactionId,
+        ownsTransaction: true,
+        rawPayload: {
+            source: 'email',
+            rawMime: rawEmailSource || null,
+            rawBody: String(emailBody || ''),
+            receivedAt: receivedAt || null,
+            messageId: idInfo || null,
+            parsedTransaction,
+        },
+        contextPayload: {
+            mailboxKey: sourceEmailKey.split(':').slice(0, 2).join(':'),
+            sourceEmailKey,
+        },
+    });
+}
+
 async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
     try {
         const {
@@ -130,8 +153,16 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             suppressNotifications = false,
             accountCutoffs = null,
             sourceEmailKey = null,
+            rawEmailSource = null,
         } = options;
-        if (sourceEmailKey && await dbService.getTransactionBySourceEmailKey(USER_ID, sourceEmailKey)) {
+        const existingEmailTransaction = sourceEmailKey
+            ? await dbService.getTransactionBySourceEmailKey(USER_ID, sourceEmailKey)
+            : null;
+        if (existingEmailTransaction) {
+            await captureEmailSource(
+                existingEmailTransaction.id, sourceEmailKey, emailBody, rawEmailSource,
+                receivedAt, null, idInfo
+            );
             console.log(`[${idInfo}] Transaction was already saved for this email; completing the queue item.`);
             return true;
         }
@@ -241,6 +272,10 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             if (sourceEmailKey && !duplicate.SourceEmailKey) {
                 await updateAgentTransaction(duplicate.id, { SourceEmailKey: sourceEmailKey });
             }
+            await captureEmailSource(
+                duplicate.id, sourceEmailKey, emailBody, rawEmailSource,
+                receivedAt, expenseData, idInfo
+            );
             await syncPortfolioFromEmail(duplicate.id, expenseData, idInfo);
             return true;
         }
@@ -338,6 +373,11 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                 if (!suppressNotifications) await notifyAndSave({ ...expenseData, id: newId });
             }
         }
+
+        await captureEmailSource(
+            activeId, sourceEmailKey, emailBody, rawEmailSource,
+            receivedAt, expenseData, idInfo
+        );
 
         // Account tracking
         // Apply an explicit portfolio cash movement once, linked to the source transaction.

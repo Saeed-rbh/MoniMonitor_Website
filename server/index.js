@@ -22,11 +22,11 @@ if (!process.env.JWT_SECRET) {
     if (isProduction) {
         throw new Error("JWT_SECRET must be configured in production");
     } else {
-        console.warn("[WARNING] JWT_SECRET is not configured in environment. Using static development fallback key.");
+        console.warn("[WARNING] JWT_SECRET is not configured in environment. Using an ephemeral development key; sessions reset when the server restarts.");
     }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || "monimonitor_development_jwt_secret_key_change_in_prod";
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString("hex");
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "8h";
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_USER_ID = process.env.TELEGRAM_USER_ID || process.env.TELEGRAM_CHAT_ID;
@@ -211,6 +211,21 @@ app.get("/transactions", authenticateToken, async (req, res) => {
             limit: req.query.limit,
         };
         return res.json(await dbService.getAllTransactionsForUser(req.user.userId, filters));
+    } catch (error) {
+        return sendValidationError(res, error);
+    }
+});
+
+app.get("/transactions/:id/sources", authenticateToken, async (req, res) => {
+    const transactionId = Number(req.params.id);
+    if (!Number.isSafeInteger(transactionId) || transactionId <= 0) {
+        return res.status(400).json({ error: "Invalid transaction id" });
+    }
+    try {
+        const transaction = await dbService.getTransactionById(transactionId, req.user.userId);
+        if (!transaction) return res.status(404).json({ error: "Transaction not found" });
+        const sources = await dbService.getTransactionSourcesForUser(transactionId, req.user.userId);
+        return res.json({ sources });
     } catch (error) {
         return sendValidationError(res, error);
     }

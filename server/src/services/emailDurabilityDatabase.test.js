@@ -81,5 +81,19 @@ test('prevents a crash retry from inserting the same source email twice', async 
 
     const id = await dbService.addTransaction(transaction);
     assert.equal((await dbService.getTransactionBySourceEmailKey(userId, transaction.SourceEmailKey)).id, id);
+    await dbService.upsertTransactionSource({
+        userId,
+        provider: 'email',
+        externalId: transaction.SourceEmailKey,
+        transactionId: id,
+        ownsTransaction: true,
+        rawPayload: { rawBody: 'Subject: Example Cafe\n\nPaid $12.34', parsed: transaction },
+        contextPayload: { mailboxKey: 'owner@example.com:INBOX' },
+    });
+    const sources = await dbService.getTransactionSourcesForUser(id, userId);
+    assert.equal(sources.length, 1);
+    assert.equal(sources[0].provider, 'email');
+    assert.equal(sources[0].rawPayload.rawBody, 'Subject: Example Cafe\n\nPaid $12.34');
+    assert.equal(sources[0].contextPayload.mailboxKey, 'owner@example.com:INBOX');
     await assert.rejects(() => dbService.addTransaction(transaction), /UNIQUE constraint failed/);
 });

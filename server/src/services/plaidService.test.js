@@ -45,6 +45,26 @@ test('normalizes a Plaid transaction without exposing signed amounts', () => {
     assert.equal(result.Account, '1234');
 });
 
+test('keeps Plaid transfer descriptions and payment references when available', () => {
+    const result = toAppTransaction({
+        amount: -250,
+        date: '2026-08-20',
+        name: 'Transfer in',
+        merchant_name: 'Transfer in',
+        original_description: 'INTERAC E-TRANSFER FROM JANE DOE',
+        payment_meta: {
+            payer: 'Jane Doe',
+            reference_number: 'REF-123',
+        },
+        counterparties: [{ name: 'Jane Doe', type: 'income_source' }],
+        personal_finance_category: { primary: 'TRANSFER_IN', detailed: 'TRANSFER_IN_ACCOUNT_TRANSFER' },
+    }, { mask: '1234', type: 'depository', subtype: 'checking' }, 'Test Bank');
+
+    assert.equal(result.Reason, 'INTERAC E-TRANSFER FROM JANE DOE');
+    assert.equal(result.ReferenceNumber, 'REF-123');
+    assert.equal(result.AccountFlow, 'IN');
+});
+
 test('preserves an established internal transfer during Plaid refreshes', () => {
     const result = preserveLinkedInternalTransfer({
         Category: 'Internal',

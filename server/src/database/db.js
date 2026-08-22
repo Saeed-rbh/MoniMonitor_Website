@@ -302,6 +302,9 @@ async function getDb() {
                     transactionId INTEGER NOT NULL,
                     itemId TEXT,
                     ownsTransaction INTEGER NOT NULL DEFAULT 0,
+                    rawPayloadJson TEXT,
+                    contextPayloadJson TEXT,
+                    capturedAt TEXT,
                     createdAt TEXT NOT NULL,
                     updatedAt TEXT NOT NULL,
                     PRIMARY KEY (provider, externalId),
@@ -364,16 +367,8 @@ async function getDb() {
             }
             await db.exec(`
                 UPDATE investment_accounts
-                SET accountRef = CASE name
-                    WHEN 'CIBC Chequing' THEN '6768237'
-                    WHEN 'RBC Chequing' THEN '03481-5026554'
-                    WHEN 'RBC Visa' THEN '4510 **** **** 2379'
-                    WHEN 'TFSA' THEN 'TFSA'
-                    WHEN 'Future' THEN '•••• 1234'
-                    WHEN 'Earnings' THEN '•••• 1832'
-                    ELSE accountRef
-                END
-                WHERE accountRef IS NULL
+                SET accountRef = name
+                WHERE accountRef IS NULL AND name IS NOT NULL
             `);
             const portfolioTransactionColumns = await db.all('PRAGMA table_info(portfolio_transactions)');
             if (!portfolioTransactionColumns.some((column) => column.name === 'sourceTransactionId')) {
@@ -399,6 +394,26 @@ async function getDb() {
             await db.run('UPDATE investment_holdings SET averageCostMicros = averageCostMinor * 10000 WHERE averageCostMicros IS NULL');
             await db.run('UPDATE investment_holdings SET priceMicros = priceMinor * 10000 WHERE priceMicros IS NULL');
 
+            const transactionSourceColumns = await db.all('PRAGMA table_info(transaction_sources)');
+            if (!transactionSourceColumns.some((column) => column.name === 'rawPayloadJson')) {
+                await db.exec('ALTER TABLE transaction_sources ADD COLUMN rawPayloadJson TEXT');
+            }
+            if (!transactionSourceColumns.some((column) => column.name === 'contextPayloadJson')) {
+                await db.exec('ALTER TABLE transaction_sources ADD COLUMN contextPayloadJson TEXT');
+            }
+            if (!transactionSourceColumns.some((column) => column.name === 'capturedAt')) {
+                await db.exec('ALTER TABLE transaction_sources ADD COLUMN capturedAt TEXT');
+            }
+            const sourceMigrationTime = new Date().toISOString();
+            await db.run(
+                `INSERT OR IGNORE INTO transaction_sources
+                    (provider, externalId, userId, transactionId, ownsTransaction, createdAt, updatedAt)
+                 SELECT 'email', SourceEmailKey, userId, id, 1, ?, ?
+                 FROM transactions
+                 WHERE SourceEmailKey IS NOT NULL AND TRIM(SourceEmailKey) <> ''`,
+                [sourceMigrationTime, sourceMigrationTime]
+            );
+
             await db.exec(`
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_timestamp ON transactions(userId, Timestamp DESC);
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_category ON transactions(userId, Category);
@@ -416,6 +431,7 @@ async function getDb() {
                 CREATE INDEX IF NOT EXISTS idx_plaid_items_user ON plaid_items(userId);
                 CREATE INDEX IF NOT EXISTS idx_plaid_accounts_item ON plaid_accounts(itemId);
                 CREATE INDEX IF NOT EXISTS idx_transaction_sources_transaction ON transaction_sources(transactionId);
+                CREATE INDEX IF NOT EXISTS idx_transaction_sources_user_provider ON transaction_sources(userId, provider, updatedAt DESC);
                 CREATE INDEX IF NOT EXISTS idx_plaid_webhook_events_pending
                     ON plaid_webhook_events(status, nextAttemptAt, id);
             `);
