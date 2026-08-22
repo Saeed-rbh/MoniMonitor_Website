@@ -7,6 +7,7 @@ const {
 } = require('../services/accountDiscovery');
 const { getSavingEffectMinor } = require('../services/transactionClassification');
 const { CATEGORY_LABELS } = require('../services/transactionCategories');
+const { findTransactionMatch } = require('../services/transactionDeduplication');
 
 const portfolioActivityCategories = new Set(['Saving', 'SavingWithdrawal', 'Investment']);
 const portfolioActivityLabels = new Set([
@@ -204,7 +205,7 @@ async function deleteTransaction(id, userId) {
 // For deduplication in email agent.
 // Match a reference only within the same dated amount. Some bank exports reuse a
 // reference for related adjustments, and internal transfers legitimately have two sides.
-async function findDuplicateTransaction(userId, amount, category, datePrefix, reason, referenceNumber, account) {
+async function findDuplicateTransaction(userId, amount, category, datePrefix, reason, referenceNumber, account, metadata = {}) {
     const db = await getDb();
     const amountMinor = toMinorUnits(amount);
 
@@ -225,7 +226,7 @@ async function findDuplicateTransaction(userId, amount, category, datePrefix, re
 
     // Fallback: exact reason, amount, category, and day. Prefer the same account
     // so equal purchases from different accounts are not collapsed together.
-    return withDisplayAmount(await db.get(
+    const exactReasonMatch = await db.get(
         `SELECT * FROM transactions
          WHERE userId = ? AND AmountMinor = ? AND Category = ? AND Timestamp LIKE ?
            AND Reason = ? COLLATE NOCASE
@@ -233,7 +234,23 @@ async function findDuplicateTransaction(userId, amount, category, datePrefix, re
                        THEN 0 ELSE 1 END, id
          LIMIT 1`,
         [userId, amountMinor, category, datePrefix + '%', reason, account || null]
-    ));
+    );
+    if (exactReasonMatch) return withDisplayAmount(exactReasonMatch);
+
+    // Email and Plaid often describe the same bank event differently. Use the
+    // shared cross-provider matcher as a final fallback so a transfer reference
+    // embedded in a Plaid description can match an email's ReferenceNumber.
+    const crossProviderMatch = await findTransactionMatch(db, userId, {
+        ...metadata,
+        Amount: amount,
+        AmountMinor: amountMinor,
+        Category: category,
+        Reason: reason,
+        ReferenceNumber: referenceNumber,
+        Account: account,
+        Timestamp: `${datePrefix}T12:00:00.000Z`,
+    }, { mode: 'bank' });
+    return withDisplayAmount(crossProviderMatch);
 }
 
 async function getTransactionBySourceEmailKey(userId, sourceEmailKey) {

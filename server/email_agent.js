@@ -228,7 +228,13 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         const datePrefix = expenseData.Timestamp.substring(0, 10);
         const duplicate = await dbService.findDuplicateTransaction(
             USER_ID, expenseData.Amount, expenseData.Category, datePrefix,
-            expenseData.Reason, expenseData.ReferenceNumber, expenseData.Account
+            expenseData.Reason, expenseData.ReferenceNumber, expenseData.Account,
+            {
+                BankName: expenseData.BankName,
+                Type: expenseData.Type,
+                AccountFlow: expenseData.AccountFlow,
+                Currency: expenseData.Currency,
+            }
         );
         if (duplicate) {
             console.log(`[${idInfo}] Duplicate expense detected. Skipping save.`);

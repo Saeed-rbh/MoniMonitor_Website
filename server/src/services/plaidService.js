@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const dbService = require('../database/dbService');
 const { reconcileHistoricalInternalTransfers } = require('../database/historicalTransferReconciliation');
+const { findTransactionMatch, reasonOverlap } = require('./transactionDeduplication');
 
 const PLAID_ENVIRONMENTS = new Set(['sandbox', 'development', 'production']);
 const syncPromises = new Map();
@@ -296,48 +297,9 @@ function preserveLinkedInternalTransfer(existing, updates) {
     };
 }
 
-function normalizedWords(value) {
-    return new Set(String(value || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ')
-        .split(/\s+/).filter((word) => word.length > 2));
-}
-
-function reasonOverlap(left, right) {
-    const a = normalizedWords(left);
-    const b = normalizedWords(right);
-    if (!a.size || !b.size) return false;
-    return [...a].some((word) => b.has(word));
-}
-
-function lastFour(value) {
-    const digits = String(value || '').replace(/\D/g, '');
-    return digits.length >= 4 ? digits.slice(-4) : null;
-}
-
 async function findFallbackMatch(userId, appTransaction) {
     const db = await dbService.getDb();
-    const timestamp = new Date(appTransaction.Timestamp);
-    const from = new Date(timestamp.getTime() - 2 * 86400000).toISOString();
-    const to = new Date(timestamp.getTime() + 2 * 86400000).toISOString();
-    const candidates = await db.all(
-        `SELECT t.* FROM transactions t
-         WHERE t.userId = ? AND t.AmountMinor = ? AND t.Timestamp BETWEEN ? AND ?
-           AND NOT EXISTS (
-               SELECT 1 FROM transaction_sources s
-               WHERE s.transactionId = t.id AND s.provider = 'plaid'
-           )`,
-        [userId, appTransaction.AmountMinor, from, to]
-    );
-    const targetAccount = lastFour(appTransaction.Account);
-    return candidates.map((candidate) => {
-        const sameDay = String(candidate.Timestamp).slice(0, 10) === appTransaction.Timestamp.slice(0, 10);
-        const accountMatch = targetAccount && lastFour(candidate.Account) === targetAccount;
-        const reasonMatch = reasonOverlap(candidate.Reason, appTransaction.Reason);
-        const categoryMatch = candidate.Category === appTransaction.Category;
-        const score = (sameDay ? 3 : 0) + (accountMatch ? 4 : 0) +
-            (reasonMatch ? 3 : 0) + (categoryMatch ? 1 : 0) + (candidate.SourceEmailKey ? 1 : 0);
-        return { candidate, score, accountMatch, reasonMatch };
-    }).filter(({ score, accountMatch, reasonMatch }) => score >= 6 && (accountMatch || reasonMatch))
-        .sort((a, b) => b.score - a.score)[0]?.candidate || null;
+    return findTransactionMatch(db, userId, appTransaction, { mode: 'bank' });
 }
 
 async function upsertPlaidAccounts(userId, item, accounts = []) {
@@ -817,7 +779,8 @@ async function findInvestmentFallbackMatch(userId, appTransaction) {
         const quantities = [Number(candidate.PortfolioQuantity), Number(appTransaction.PortfolioQuantity)];
         const sameQuantity = quantities.every(Number.isFinite) && Math.abs(quantities[0] - quantities[1]) < 1e-8;
         const score = (sameDate ? 4 : 0) + (sameAccount ? 6 : 0) + (sameAction ? 5 : 0) +
-            (sameSymbol ? 5 : 0) + (sameQuantity ? 5 : 0) + (reasonOverlap(candidate.Reason, appTransaction.Reason) ? 1 : 0);
+            (sameSymbol ? 5 : 0) + (sameQuantity ? 5 : 0) +
+            (reasonOverlap(candidate.Reason, appTransaction.Reason).length > 0 ? 1 : 0);
         return { candidate, score };
     }).filter(({ score }) => score >= 10).sort((a, b) => b.score - a.score);
     if (!ranked.length || ranked[0].score === ranked[1]?.score) return null;
