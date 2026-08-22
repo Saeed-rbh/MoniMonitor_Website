@@ -65,6 +65,31 @@ test('keeps Plaid transfer descriptions and payment references when available', 
     assert.equal(result.AccountFlow, 'IN');
 });
 
+test('uses a Plaid counterparty when the bank description is generic', () => {
+    const result = toAppTransaction({
+        amount: -75,
+        date: '2026-08-20',
+        name: 'E-Transfer',
+        merchant_name: 'E-Transfer',
+        counterparties: [{ name: 'Jane Doe', type: 'person' }],
+        personal_finance_category: { primary: 'TRANSFER_IN', detailed: 'TRANSFER_IN_ACCOUNT_TRANSFER' },
+    }, { mask: '1234', type: 'depository', subtype: 'checking' }, 'Test Bank');
+
+    assert.equal(result.Reason, 'Jane Doe');
+});
+
+test('adds account context when Plaid supplies only a generic description', () => {
+    const result = toAppTransaction({
+        amount: -75,
+        date: '2026-08-20',
+        name: 'Deposit',
+        merchant_name: 'Deposit',
+        personal_finance_category: { primary: 'TRANSFER_IN', detailed: 'TRANSFER_IN_ACCOUNT_TRANSFER' },
+    }, { mask: '1234', name: 'Primary Chequing', type: 'depository', subtype: 'checking' }, 'Test Bank');
+
+    assert.equal(result.Reason, 'Deposit - Test Bank Primary Chequing ••••1234');
+});
+
 test('preserves an established internal transfer during Plaid refreshes', () => {
     const result = preserveLinkedInternalTransfer({
         Category: 'Internal',
@@ -286,4 +311,13 @@ test('maps TFSA cash contributions and dividends', () => {
     assert.equal(dividend.PortfolioAction, 'DIVIDEND');
     assert.equal(dividend.AmountMinor, 425);
     assert.equal(dividend.AccountFlow, 'IN');
+});
+
+test('adds available security details to generic investment transfer names', () => {
+    const result = toAppInvestmentTransaction({
+        date: '2026-08-02', name: 'Transfer in', amount: -250, quantity: 2,
+        type: 'transfer', subtype: 'transfer', iso_currency_code: 'CAD',
+    }, { appAccountId: 10, name: 'TFSA', type: 'investment' }, { ticker_symbol: 'VFV' }, 'Test Bank');
+
+    assert.equal(result.Reason, 'Transfer in - VFV');
 });

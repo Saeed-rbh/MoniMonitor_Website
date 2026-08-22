@@ -25,6 +25,7 @@ class ImapService {
         this.password = password;
         this.onNewEmail = onNewEmail;
         this.database = options.database || null;
+        this.userId = options.userId || null;
         this.mailboxName = options.mailboxName || 'INBOX';
         this.mailboxKey = `${String(user || '').trim().toLowerCase()}:${this.mailboxName}`;
         this.initialSyncSince = validDate(options.initialSyncSince) ||
@@ -70,6 +71,7 @@ class ImapService {
 
             this.lock = await this.client.getMailboxLock(this.mailboxName);
             try {
+                await this.backfillMissingSources();
                 await this.processUnseen();
                 this.startRetryPolling();
 
@@ -126,10 +128,11 @@ class ImapService {
         return uidValidity;
     }
 
-    async processOne(uid, uidValidity) {
+    async processOne(uid, uidValidity, options = {}) {
         const database = this.getDatabase();
+        const { force = false, onNewEmailOptions = {} } = options;
         try {
-            if (await database.isEmailProcessed(uid, this.mailboxKey, uidValidity)) return;
+            if (!force && await database.isEmailProcessed(uid, this.mailboxKey, uidValidity)) return;
 
             const message = await this.client.fetchOne(
                 uid,
@@ -151,6 +154,7 @@ class ImapService {
             const receivedAt = parsedMail.date ? parsedMail.date.toISOString() : new Date().toISOString();
             const sourceEmailKey = `${this.mailboxKey}:${uidValidity}:${uid}`;
             const success = await this.onNewEmail(emailBody, `Email UID ${uid}`, receivedAt, {
+                ...onNewEmailOptions,
                 sourceEmailKey,
                 rawEmailSource: Buffer.isBuffer(message.source)
                     ? message.source.toString('utf8')
@@ -168,6 +172,34 @@ class ImapService {
             await database.markEmailFailed(uid, this.mailboxKey, uidValidity, error).catch(() => {});
             console.error(`Error processing email ${uid}:`, error);
         }
+    }
+
+    async backfillMissingSources() {
+        const database = this.getDatabase();
+        if (!this.userId || typeof database.getEmailSourceKeysNeedingReplay !== 'function') return 0;
+        const uidValidity = this.getUidValidity();
+        const prefix = `${this.mailboxKey}:${uidValidity}:`;
+        const sourceKeys = await database.getEmailSourceKeysNeedingReplay(
+            this.userId, this.mailboxKey, PENDING_BATCH_SIZE
+        );
+        const uids = sourceKeys
+            .filter((sourceKey) => String(sourceKey).startsWith(prefix))
+            .map((sourceKey) => Number(String(sourceKey).slice(prefix.length)))
+            .filter((uid) => Number.isSafeInteger(uid) && uid > 0);
+        if (!uids.length) return 0;
+
+        console.log(`Backfilling captured source details for ${uids.length} processed email(s).`);
+        for (let index = 0; index < uids.length; index += CONCURRENCY) {
+            const batch = uids.slice(index, index + CONCURRENCY);
+            await Promise.all(batch.map((uid) => this.processOne(uid, uidValidity, {
+                force: true,
+                onNewEmailOptions: {
+                    allowBeforeSnapshot: true,
+                    suppressNotifications: true,
+                },
+            })));
+        }
+        return uids.length;
     }
 
     async processUnseen() {

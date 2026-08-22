@@ -337,6 +337,32 @@ async function getTransactionSourcesForUser(transactionId, userId) {
     }));
 }
 
+async function getEmailSourceKeysNeedingReplay(userId, mailboxKey, limit = 250) {
+    const normalizedMailboxKey = String(mailboxKey || '').trim();
+    if (!userId || !normalizedMailboxKey) return [];
+    const safeLimit = Number.isSafeInteger(limit) ? Math.min(1000, Math.max(1, limit)) : 250;
+    const prefix = `${normalizedMailboxKey}:`;
+    const db = await getDb();
+    const rows = await db.all(
+        `SELECT s.externalId FROM transaction_sources s
+         JOIN transactions t ON t.id = s.transactionId AND t.userId = s.userId
+         WHERE s.provider = 'email' AND s.userId = ?
+           AND substr(s.externalId, 1, ?) = ?
+           AND (
+               s.rawPayloadJson IS NULL OR length(s.rawPayloadJson) <= 2 OR
+               lower(trim(COALESCE(t.Reason, ''))) IN (
+                   'deposit', 'deposit notice', 'withdrawal', 'bank deposit',
+                   'bank withdrawal', 'e-transfer', 'interac e-transfer',
+                   'electronic transfer', 'funds transfer', 'transfer',
+                   'transfer in', 'transfer out'
+               )
+           )
+         ORDER BY s.createdAt ASC LIMIT ?`,
+        [userId, prefix.length, prefix, safeLimit]
+    );
+    return rows.map(({ externalId }) => externalId);
+}
+
 async function getAccountsForUser(userId) {
     const db = await getDb();
     return await db.all('SELECT * FROM accounts WHERE userId = ?', [userId]);
@@ -1734,6 +1760,7 @@ module.exports = {
     getTransactionBySourceEmailKey,
     upsertTransactionSource,
     getTransactionSourcesForUser,
+    getEmailSourceKeysNeedingReplay,
     updateTransaction,
     updateTransactionForUser,
     deleteTransaction,

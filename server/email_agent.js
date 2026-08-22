@@ -60,6 +60,31 @@ const isGeneric = (l = "", r = "") => {
     return genericReasons.includes(reason) || (genericLabels.includes(label) && genericReasons.some(gr => reason.includes(gr)));
 };
 
+function enrichGenericEmailReason(transaction = {}) {
+    if (!isGeneric(transaction.Label, transaction.Reason)) return transaction.Reason;
+    const reason = String(transaction.Reason || transaction.Label || 'Bank transaction').trim();
+    const accountText = String(transaction.Account || '').trim();
+    const compactAccount = accountText.replace(/[^a-z0-9]/gi, '');
+    const looksLikeReference = /[*•]/.test(accountText) || (/\d/.test(accountText) && compactAccount.length <= 20);
+    const accountHint = looksLikeReference && compactAccount.length >= 4
+        ? `••••${compactAccount.slice(-4)}`
+        : accountText || null;
+    const context = [transaction.BankName, transaction.Type, accountHint]
+        .map((value) => String(value || '').trim())
+        .filter((value, index, values) => value && values.indexOf(value) === index)
+        .join(' ');
+    if (!context) return reason;
+
+    const normalized = reason.toLowerCase();
+    if (normalized.includes('e-transfer') || normalized.includes('etransfer')) {
+        if (transaction.AccountFlow === 'IN') return `${reason} received in ${context}`;
+        if (transaction.AccountFlow === 'OUT') return `${reason} sent from ${context}`;
+    }
+    if (normalized === 'deposit' || normalized === 'transfer in') return `${reason} to ${context}`;
+    if (normalized === 'withdrawal' || normalized === 'transfer out') return `${reason} from ${context}`;
+    return `${reason} - ${context}`;
+}
+
 async function notifyAndSave(tx) {
     const replyMarkup = {
         inline_keyboard: [
@@ -158,7 +183,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         const existingEmailTransaction = sourceEmailKey
             ? await dbService.getTransactionBySourceEmailKey(USER_ID, sourceEmailKey)
             : null;
-        if (existingEmailTransaction) {
+        if (existingEmailTransaction && !isGeneric(existingEmailTransaction.Label, existingEmailTransaction.Reason)) {
             await captureEmailSource(
                 existingEmailTransaction.id, sourceEmailKey, emailBody, rawEmailSource,
                 receivedAt, null, idInfo
@@ -219,6 +244,8 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
 
         // Format e-Transfer reasons to standard "E-Transfer - [Name]"
         expenseData.Reason = formatETransferReason(expenseData.Reason, expenseData.Label, expenseData.Type);
+        expenseData.Reason = enrichGenericEmailReason(expenseData);
+        const newIsGeneric = isGeneric(expenseData.Label, expenseData.Reason);
 
         console.log(`[${idInfo}] Successfully extracted expense:`, expenseData);
         expenseData.userId = USER_ID;
@@ -257,7 +284,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
 
         // 1. Exact duplicate check
         const datePrefix = expenseData.Timestamp.substring(0, 10);
-        const duplicate = await dbService.findDuplicateTransaction(
+        const detectedDuplicate = await dbService.findDuplicateTransaction(
             USER_ID, expenseData.Amount, expenseData.Category, datePrefix,
             expenseData.Reason, expenseData.ReferenceNumber, expenseData.Account,
             {
@@ -267,10 +294,28 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                 Currency: expenseData.Currency,
             }
         );
+        const duplicate = existingEmailTransaction || detectedDuplicate;
         if (duplicate) {
             console.log(`[${idInfo}] Duplicate expense detected. Skipping save.`);
-            if (sourceEmailKey && !duplicate.SourceEmailKey) {
-                await updateAgentTransaction(duplicate.id, { SourceEmailKey: sourceEmailKey });
+            let duplicateUpdates = sourceEmailKey && !duplicate.SourceEmailKey
+                ? { SourceEmailKey: sourceEmailKey }
+                : {};
+            if (isGeneric(duplicate.Label, duplicate.Reason) && !newIsGeneric) {
+                duplicateUpdates = {
+                    ...duplicateUpdates,
+                    Category: expenseData.Category || duplicate.Category,
+                    Label: expenseData.Label,
+                    Reason: expenseData.Reason,
+                    Type: expenseData.Type || duplicate.Type,
+                    Account: expenseData.Account || duplicate.Account,
+                    BankName: expenseData.BankName || duplicate.BankName,
+                    ReferenceNumber: expenseData.ReferenceNumber || duplicate.ReferenceNumber,
+                    Timestamp: expenseData.Timestamp || duplicate.Timestamp,
+                };
+                console.log(`[${idInfo}] Upgrading generic duplicate to specific: ${expenseData.Reason}`);
+            }
+            if (Object.keys(duplicateUpdates).length) {
+                await updateAgentTransaction(duplicate.id, duplicateUpdates);
             }
             await captureEmailSource(
                 duplicate.id, sourceEmailKey, emailBody, rawEmailSource,
@@ -279,8 +324,6 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             await syncPortfolioFromEmail(duplicate.id, expenseData, idInfo);
             return true;
         }
-
-        const newIsGeneric = isGeneric(expenseData.Label, expenseData.Reason);
 
         // 2. Fetch all matching transactions within the time window
         const rawMatches = await dbService.getDb().then(db => db.all(
@@ -668,7 +711,7 @@ async function startAgent() {
             IMAP_USER,
             IMAP_PASSWORD,
             onNewEmail,
-            { initialSyncSince: IMAP_INITIAL_SYNC_SINCE }
+            { initialSyncSince: IMAP_INITIAL_SYNC_SINCE, userId: USER_ID }
         );
         await emailListener.start();
     } else {
@@ -683,4 +726,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = { onNewEmail, notifyAndSave, onTelegramUpdate };
+module.exports = { startAgent, onNewEmail, notifyAndSave, onTelegramUpdate, enrichGenericEmailReason };

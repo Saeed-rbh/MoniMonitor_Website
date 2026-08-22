@@ -679,6 +679,12 @@ if (require.main === module) {
         backupService.startAutomaticBackups();
         plaidService.startAutomaticReconciliation();
         plaidService.startPlaidWebhookWorker();
+        if (process.env.AI_INGESTION_ENABLED === 'true') {
+            const { startAgent } = require('./email_agent');
+            startAgent().catch((error) => {
+                console.error('[Agent] Startup failed:', error);
+            });
+        }
     });
 }
 

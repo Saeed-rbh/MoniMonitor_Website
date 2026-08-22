@@ -236,7 +236,7 @@ function plaidCounterpartyName(transaction = {}) {
     return transaction.counterparties?.find((counterparty) => counterparty?.name)?.name || null;
 }
 
-function plaidTransactionReason(transaction = {}) {
+function plaidTransactionReason(transaction = {}, account = {}, institutionName = null) {
     const merchantName = firstNonEmpty(transaction.merchant_name);
     const counterparty = firstNonEmpty(plaidCounterpartyName(transaction));
     const paymentParty = firstNonEmpty(
@@ -247,7 +247,22 @@ function plaidTransactionReason(transaction = {}) {
     const originalDescription = firstNonEmpty(transaction.original_description);
     const primary = firstNonEmpty(merchantName, counterparty, paymentParty, transaction.name);
     const isGeneric = genericPlaidDescriptions.has(String(primary || '').trim().toLowerCase());
-    return String(firstNonEmpty(isGeneric ? originalDescription : null, primary, originalDescription, 'Bank transaction')).slice(0, 500);
+    const specificParty = firstNonEmpty(counterparty, paymentParty);
+    const accountMask = String(account.mask || '').replace(/[^a-z0-9]/gi, '');
+    const accountHint = accountMask ? `••••${accountMask.slice(-4)}` : null;
+    const sourceContext = [institutionName, account.name, accountHint]
+        .map((value) => String(value || '').trim())
+        .filter((value, index, values) => value && values.indexOf(value) === index)
+        .join(' ');
+    const contextualReason = isGeneric && primary && sourceContext ? `${primary} - ${sourceContext}` : null;
+    return String(firstNonEmpty(
+        isGeneric ? originalDescription : null,
+        isGeneric ? specificParty : null,
+        contextualReason,
+        primary,
+        originalDescription,
+        'Bank transaction'
+    )).slice(0, 500);
 }
 
 function plaidReferenceNumber(transaction = {}) {
@@ -304,7 +319,7 @@ function toAppTransaction(transaction, account, institutionName) {
         Amount: amountMinor / 100,
         Currency: String(transaction.iso_currency_code || transaction.unofficial_currency_code || 'CAD').toUpperCase(),
         ...classification,
-        Reason: plaidTransactionReason(transaction),
+        Reason: plaidTransactionReason(transaction, account, institutionName),
         Timestamp: plaidTimestamp(transaction),
         Type: accountTypeLabel(account),
         Account: account?.mask || account?.name || null,
@@ -568,6 +583,15 @@ async function importAddedTransaction(userId, item, transaction, accountMap) {
             userId, item.itemId, transaction.transaction_id, existingSource.transactionId,
             Boolean(existingSource.ownsTransaction), 'plaid', transaction, sourceContext
         );
+        const existingTransaction = await dbService.getTransactionById(existingSource.transactionId, userId);
+        const appTransaction = toAppTransaction(transaction, account, item.institutionName);
+        if (existingTransaction && appTransaction && existingSource.ownsTransaction && !existingTransaction.SourceEmailKey) {
+            await dbService.updateTransactionForUser(
+                existingSource.transactionId, userId,
+                preserveLinkedInternalTransfer(existingTransaction, appTransaction)
+            );
+            return { status: 'updated', transactionId: existingSource.transactionId };
+        }
         return { status: 'known', transactionId: existingSource.transactionId };
     }
     const appTransaction = toAppTransaction(transaction, account, item.institutionName);
@@ -751,13 +775,26 @@ function toAppInvestmentTransaction(transaction, account = {}, security = {}, in
         (/^\d{4}-\d{2}-\d{2}$/.test(transaction.date || '') ? `${transaction.date}T12:00:00.000Z` : new Date().toISOString());
     const quantity = Math.abs(Number(transaction.quantity) || 0);
     const price = Number(transaction.price);
+    const primaryReason = firstNonEmpty(transaction.name, subtype, type, 'Investment transaction');
+    const genericReason = genericPlaidDescriptions.has(String(primaryReason).trim().toLowerCase());
+    const reasonDetail = firstNonEmpty(
+        security.ticker_symbol,
+        security.name,
+        subtype && subtype !== String(primaryReason).trim().toLowerCase() &&
+            !genericPlaidDescriptions.has(subtype) ? subtype : null,
+        account.officialName,
+        account.name
+    );
+    const reason = genericReason && reasonDetail
+        ? `${primaryReason} - ${reasonDetail}`
+        : primaryReason;
     return {
         AmountMinor: amountMinor,
         Amount: amountMinor / 100,
         Currency: String(transaction.iso_currency_code || transaction.unofficial_currency_code || account.currency || 'CAD').toUpperCase(),
         Category,
         Label,
-        Reason: String(transaction.name || subtype || 'Investment transaction').slice(0, 500),
+        Reason: String(reason).slice(0, 500),
         Timestamp: transactionDate,
         Type: accountTypeLabel(account),
         Account: account.mask || account.name || null,
@@ -903,7 +940,44 @@ async function removeMissingInvestmentTransactions(userId, itemId, startDate, cu
     return removed;
 }
 
-async function performItemSync(item, { forceHoldings = false } = {}) {
+function parseStoredSourcePayload(value) {
+    if (!value) return null;
+    try { return JSON.parse(value); }
+    catch { return null; }
+}
+
+async function refreshStoredPlaidSourceDetails(userId) {
+    const db = await dbService.getDb();
+    const rows = await db.all(
+        `SELECT s.provider, s.rawPayloadJson, s.contextPayloadJson, s.ownsTransaction, t.*
+         FROM transaction_sources s
+         JOIN transactions t ON t.id = s.transactionId AND t.userId = s.userId
+         WHERE s.userId = ? AND s.provider IN ('plaid', 'plaid_investments')
+           AND s.rawPayloadJson IS NOT NULL AND length(s.rawPayloadJson) > 2`,
+        [userId]
+    );
+    const refreshed = { bank: 0, investments: 0 };
+    for (const row of rows) {
+        if (!row.ownsTransaction || row.SourceEmailKey) continue;
+        const rawPayload = parseStoredSourcePayload(row.rawPayloadJson);
+        const context = parseStoredSourcePayload(row.contextPayloadJson) || {};
+        if (!rawPayload) continue;
+        const updates = row.provider === 'plaid'
+            ? toAppTransaction(rawPayload, context.account || {}, context.institutionName)
+            : toAppInvestmentTransaction(
+                rawPayload, context.account || {}, context.security || {}, context.institutionName
+            );
+        if (!updates) continue;
+        await dbService.updateTransactionForUser(
+            row.id, userId, preserveLinkedInternalTransfer(row, updates)
+        );
+        if (row.provider === 'plaid') refreshed.bank += 1;
+        else refreshed.investments += 1;
+    }
+    return refreshed;
+}
+
+async function performItemSync(item, { forceHoldings = false, backfillSources = false } = {}) {
     const db = await dbService.getDb();
     try {
         const accessToken = decryptAccessToken(item.accessTokenEncrypted);
@@ -914,9 +988,16 @@ async function performItemSync(item, { forceHoldings = false } = {}) {
             new Date(item.investmentTransactionsLastSyncedAt).getTime() < Date.now() - 6 * 60 * 60 * 1000;
         const shouldFetchInvestmentTransactions = forceHoldings ||
             item.investmentTransactionsStatus !== 'active' || investmentTransactionsStale;
-        const [changes, accountResponse] = await Promise.all([
+        const missingBankSources = backfillSources ? await db.all(
+            `SELECT externalId FROM transaction_sources
+             WHERE provider = 'plaid' AND itemId = ? AND userId = ?
+               AND (rawPayloadJson IS NULL OR length(rawPayloadJson) <= 2)`,
+            [item.itemId, item.userId]
+        ) : [];
+        const [changes, accountResponse, bankReplay] = await Promise.all([
             fetchSyncPages(accessToken, item.cursor),
             plaidRequest('/accounts/get', { access_token: accessToken }),
+            missingBankSources.length ? fetchSyncPages(accessToken, null) : Promise.resolve(null),
         ]);
         const accounts = accountResponse.accounts?.length
             ? accountResponse.accounts
@@ -938,10 +1019,22 @@ async function performItemSync(item, { forceHoldings = false } = {}) {
             ])
             : [{ notApplicable: true }, { notApplicable: true }];
         const totals = { imported: 0, matched: 0, updated: 0, removed: changes.removed.length };
+        totals.sourceDetailsBackfilled = 0;
+        if (bankReplay) {
+            const missingIds = new Set(missingBankSources.map(({ externalId }) => externalId));
+            const replayTransactions = [...bankReplay.added, ...bankReplay.modified];
+            for (const transaction of replayTransactions) {
+                if (!missingIds.has(transaction.transaction_id)) continue;
+                const result = await applyModifiedTransaction(item.userId, item, transaction, accountMap);
+                if (result.status !== 'ignored') totals.sourceDetailsBackfilled += 1;
+                if (result.status === 'updated') totals.updated += 1;
+            }
+        }
         for (const transaction of changes.added) {
             const result = await importAddedTransaction(item.userId, item, transaction, accountMap);
             if (result.status === 'imported') totals.imported += 1;
             if (result.status === 'matched_email' || result.status === 'replaced_pending') totals.matched += 1;
+            if (result.status === 'updated') totals.updated += 1;
         }
         for (const transaction of changes.modified) {
             const result = await applyModifiedTransaction(item.userId, item, transaction, accountMap);
@@ -1040,7 +1133,7 @@ async function syncItem(item, options = {}) {
     return promise;
 }
 
-async function syncUserItems(userId, { force = false, forceHoldings = force } = {}) {
+async function syncUserItems(userId, { force = false, forceHoldings = force, backfillSources = force } = {}) {
     if (!isConfigured()) return { configured: false, results: [] };
     const db = await dbService.getDb();
     const items = await db.all('SELECT * FROM plaid_items WHERE userId = ?', [userId]);
@@ -1049,13 +1142,16 @@ async function syncUserItems(userId, { force = false, forceHoldings = force } = 
     const results = [];
     for (const item of eligible) {
         try {
-            results.push({ itemId: item.itemId, ok: true, ...(await syncItem(item, { forceHoldings })) });
+            results.push({ itemId: item.itemId, ok: true, ...(await syncItem(item, { forceHoldings, backfillSources })) });
         } catch (error) {
             console.error(`[Plaid] Sync failed for item ${item.itemId}:`, error.message);
             results.push({ itemId: item.itemId, ok: false, error: error.message });
         }
     }
-    return { configured: true, results };
+    const storedSourcesRefreshed = force
+        ? await refreshStoredPlaidSourceDetails(userId)
+        : { bank: 0, investments: 0 };
+    return { configured: true, results, storedSourcesRefreshed };
 }
 
 function reconciliationIntervalMs(value = process.env.PLAID_RECONCILIATION_INTERVAL_HOURS) {
@@ -1408,6 +1504,7 @@ module.exports = {
     plaidBalanceMinor,
     fetchCurrentMarketPrices,
     normalizeInvestmentSnapshot,
+    refreshStoredPlaidSourceDetails,
     preserveLinkedInternalTransfer,
     encryptAccessToken,
     decryptAccessToken,

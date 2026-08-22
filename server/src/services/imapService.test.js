@@ -92,6 +92,36 @@ test('initial durable sync includes messages already marked read', async () => {
     assert.equal(Object.hasOwn(searchQuery, 'unseen'), false);
 });
 
+test('silently backfills raw source data for processed transaction emails', async () => {
+    const calls = [];
+    const service = Object.create(ImapService.prototype);
+    service.userId = '1';
+    service.mailboxKey = 'owner@example.com:INBOX';
+    service.database = {
+        getEmailSourceKeysNeedingReplay: async () => [
+            'owner@example.com:INBOX:456:77',
+        ],
+        isEmailProcessed: async () => assert.fail('forced backfill must bypass processed check'),
+        markEmailProcessed: async () => {},
+        markEmailFailed: async () => {},
+    };
+    service.client = {
+        mailbox: { uidValidity: '456' },
+        fetchOne: async () => ({
+            source: Buffer.from('Date: Thu, 13 Aug 2026 12:00:00 -0400\r\nSubject: Deposit\r\n\r\nTransaction details'),
+        }),
+        messageFlagsAdd: async () => {},
+    };
+    service.onNewEmail = async (...args) => { calls.push(args); return true; };
+
+    assert.equal(await service.backfillMissingSources(), 1);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][3].sourceEmailKey, 'owner@example.com:INBOX:456:77');
+    assert.equal(calls[0][3].allowBeforeSnapshot, true);
+    assert.equal(calls[0][3].suppressNotifications, true);
+    assert.match(calls[0][3].rawEmailSource, /Transaction details/);
+});
+
 test('keeps unsuccessful analysis in the durable retry queue', async () => {
     const failures = [];
     let markedProcessed = false;
