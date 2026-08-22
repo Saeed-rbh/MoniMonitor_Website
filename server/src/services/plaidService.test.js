@@ -11,6 +11,7 @@ const {
     plaidBalanceMinor,
     fetchCurrentMarketPrices,
     normalizeInvestmentSnapshot,
+    preserveLinkedInternalTransfer,
     verifyPlaidWebhook,
     webhookSyncOptions,
     reconciliationIntervalMs,
@@ -42,6 +43,26 @@ test('normalizes a Plaid transaction without exposing signed amounts', () => {
     assert.equal(result.AccountFlow, 'OUT');
     assert.equal(result.Timestamp, '2026-08-20T12:00:00.000Z');
     assert.equal(result.Account, '1234');
+});
+
+test('preserves an established internal transfer during Plaid refreshes', () => {
+    const result = preserveLinkedInternalTransfer({
+        Category: 'Internal',
+        Label: 'Internal Transfer',
+        Reason: 'Internal transfer: Future -> TFSA',
+        ReferenceNumber: 'XFER-HIST-20260821-1000-1-2',
+    }, {
+        Category: 'Investment',
+        Label: 'Asset Distribution',
+        Reason: 'Transfer in',
+        PortfolioAction: 'TRANSFER',
+    });
+
+    assert.equal(result.Category, 'Internal');
+    assert.equal(result.Label, 'Internal Transfer');
+    assert.equal(result.Reason, 'Internal transfer: Future -> TFSA');
+    assert.equal(result.ReferenceNumber, 'XFER-HIST-20260821-1000-1-2');
+    assert.equal(result.PortfolioAction, 'TRANSFER');
 });
 
 test('encrypts stored Plaid access tokens with authenticated encryption', () => {

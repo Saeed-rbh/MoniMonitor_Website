@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const dbService = require('../database/dbService');
+const { reconcileHistoricalInternalTransfers } = require('../database/historicalTransferReconciliation');
 
 const PLAID_ENVIRONMENTS = new Set(['sandbox', 'development', 'production']);
 const syncPromises = new Map();
@@ -278,6 +279,20 @@ function toAppTransaction(transaction, account, institutionName) {
         BankName: institutionName || null,
         ReferenceNumber: null,
         AccountFlow: Number(transaction.amount) > 0 ? 'OUT' : 'IN',
+    };
+}
+
+function preserveLinkedInternalTransfer(existing, updates) {
+    const reference = String(existing?.ReferenceNumber || '').trim();
+    const isLinkedInternal = existing?.Category === 'Internal' &&
+        existing?.Label === 'Internal Transfer' && /^XFER-/i.test(reference);
+    if (!isLinkedInternal) return updates;
+    return {
+        ...updates,
+        Category: existing.Category,
+        Label: existing.Label,
+        Reason: existing.Reason,
+        ReferenceNumber: existing.ReferenceNumber,
     };
 }
 
@@ -581,7 +596,9 @@ async function importAddedTransaction(userId, item, transaction, accountMap) {
         : await findFallbackMatch(userId, appTransaction);
     if (match) {
         if (replacement?.ownsTransaction && !match.SourceEmailKey) {
-            await dbService.updateTransactionForUser(match.id, userId, appTransaction);
+            await dbService.updateTransactionForUser(
+                match.id, userId, preserveLinkedInternalTransfer(match, appTransaction)
+            );
         }
         await linkSource(userId, item.itemId, transaction.transaction_id, match.id, Boolean(replacement?.ownsTransaction));
         if (replacement) {
@@ -608,7 +625,8 @@ async function importAddedTransaction(userId, item, transaction, accountMap) {
 async function applyModifiedTransaction(userId, item, transaction, accountMap) {
     const db = await dbService.getDb();
     const source = await db.get(
-        `SELECT s.*, t.SourceEmailKey FROM transaction_sources s
+        `SELECT s.*, t.SourceEmailKey, t.Category, t.Label, t.Reason, t.ReferenceNumber
+         FROM transaction_sources s
          JOIN transactions t ON t.id = s.transactionId AND t.userId = s.userId
          WHERE s.provider = 'plaid' AND s.externalId = ? AND s.userId = ?`,
         [transaction.transaction_id, userId]
@@ -618,7 +636,9 @@ async function applyModifiedTransaction(userId, item, transaction, accountMap) {
     const account = accountMap.get(transaction.account_id) || {};
     const appTransaction = toAppTransaction(transaction, account, item.institutionName);
     if (!appTransaction) return { status: 'ignored' };
-    await dbService.updateTransactionForUser(source.transactionId, userId, appTransaction);
+    await dbService.updateTransactionForUser(
+        source.transactionId, userId, preserveLinkedInternalTransfer(source, appTransaction)
+    );
     if (account.appAccountId) {
         await dbService.syncTransactionAccountBalance(userId, source.transactionId, {
             accountId: account.appAccountId, confidence: 'HIGH',
@@ -630,7 +650,8 @@ async function applyModifiedTransaction(userId, item, transaction, accountMap) {
 async function applyRemovedTransaction(userId, removed) {
     const db = await dbService.getDb();
     const source = await db.get(
-        `SELECT s.*, t.SourceEmailKey FROM transaction_sources s
+        `SELECT s.*, t.SourceEmailKey
+         FROM transaction_sources s
          JOIN transactions t ON t.id = s.transactionId AND t.userId = s.userId
          WHERE s.provider = 'plaid' AND s.externalId = ? AND s.userId = ?`,
         [removed.transaction_id, userId]
@@ -807,7 +828,8 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
     const db = await dbService.getDb();
     const externalId = transaction.investment_transaction_id;
     const existing = await db.get(
-        `SELECT s.*, t.SourceEmailKey FROM transaction_sources s
+        `SELECT s.*, t.SourceEmailKey, t.Category, t.Label, t.Reason, t.ReferenceNumber
+         FROM transaction_sources s
          JOIN transactions t ON t.id = s.transactionId AND t.userId = s.userId
          WHERE s.provider = 'plaid_investments' AND s.externalId = ? AND s.userId = ?`,
         [externalId, userId]
@@ -819,7 +841,10 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
     if (!appTransaction) return { status: 'ignored' };
     if (existing) {
         if (existing.ownsTransaction && !existing.SourceEmailKey) {
-            await dbService.updateTransactionForUser(existing.transactionId, userId, appTransaction);
+            await dbService.updateTransactionForUser(
+                existing.transactionId, userId,
+                preserveLinkedInternalTransfer(existing, appTransaction)
+            );
             return { status: 'updated', transactionId: existing.transactionId };
         }
         return { status: 'known', transactionId: existing.transactionId };
@@ -935,6 +960,9 @@ async function performItemSync(item, { forceHoldings = false } = {}) {
         } else {
             totals.investmentTransactionsStatus = item.investmentTransactionsStatus || 'unknown';
         }
+        const transferReconciliation = await reconcileHistoricalInternalTransfers(db, item.userId);
+        totals.internalTransfersMatched = transferReconciliation.matched;
+        totals.internalTransferLegsRestored = transferReconciliation.restored;
         // Transaction events preserve edit/delete behavior, but a partial history
         // cannot reconstruct an account's opening balance. Plaid's current balance
         // is the authoritative anchor after every completed sync.
@@ -1360,6 +1388,7 @@ module.exports = {
     plaidBalanceMinor,
     fetchCurrentMarketPrices,
     normalizeInvestmentSnapshot,
+    preserveLinkedInternalTransfer,
     encryptAccessToken,
     decryptAccessToken,
 };

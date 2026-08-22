@@ -12,9 +12,12 @@ const normalizeAccountKey = (bankName, account) => {
 const dateKey = (value) => String(value || '').slice(0, 10);
 
 /**
- * Reclassify safe historical transfer pairs that predate the email pipeline.
- * Only the explicit imported pattern is considered: a "Transfer out" expense
- * and a same-day, same-amount TFSA "Transfer in" on different accounts.
+ * Reclassify safe provider/imported transfer pairs that can arrive at different
+ * times. This is intentionally rerunnable: Plaid's depository feed often lands
+ * before its investment feed.
+ *
+ * Only the explicit pattern is considered: a "Transfer out" expense and a
+ * same-day, same-amount TFSA "Transfer in" on different accounts.
  */
 async function reconcileHistoricalInternalTransfers(db, userId) {
     if (!db || !userId) return { matched: 0, skipped: 0, alreadyApplied: false };
@@ -29,24 +32,51 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
         )
     `);
 
-    if (await db.get('SELECT id FROM app_migrations WHERE id = ?', [migrationId])) {
-        return { matched: 0, skipped: 0, alreadyApplied: true };
-    }
+    const alreadyApplied = Boolean(await db.get('SELECT id FROM app_migrations WHERE id = ?', [migrationId]));
 
     await db.run('BEGIN IMMEDIATE');
     try {
+        // A provider refresh must not undo an already-linked transfer. Older
+        // builds allowed Plaid Investments to reset the destination leg to
+        // Investment/Transfer in while leaving the shared XFER reference.
+        const linkedGroups = await db.all(
+            `SELECT ReferenceNumber,
+                    MAX(CASE WHEN Reason LIKE 'Internal transfer:%' THEN Reason END) AS sharedReason
+             FROM transactions
+             WHERE userId = ? AND ReferenceNumber LIKE 'XFER-HIST-%'
+             GROUP BY ReferenceNumber
+             HAVING sharedReason IS NOT NULL`,
+            [userId]
+        );
+        const restored = [];
+        for (const group of linkedGroups) {
+            const result = await db.run(
+                `UPDATE transactions
+                 SET Category = 'Internal', Label = 'Internal Transfer', Reason = ?
+                 WHERE userId = ? AND ReferenceNumber = ?
+                   AND (Category != 'Internal' OR Label != 'Internal Transfer' OR Reason != ?)`,
+                [group.sharedReason, userId, group.ReferenceNumber, group.sharedReason]
+            );
+            if (result.changes) restored.push({ reference: group.ReferenceNumber, legs: result.changes });
+        }
+
         const [outgoing, incoming] = await Promise.all([
             db.all(
                 `SELECT * FROM transactions
-                 WHERE userId = ? AND Category = 'Expense'
-                   AND Label = 'Personal Transfers' AND Reason = 'Transfer out'
-                   AND AccountFlow = 'OUT' AND AmountMinor > 0`,
+                 WHERE userId = ? AND AccountFlow = 'OUT' AND AmountMinor > 0
+                   AND (
+                       (Category = 'Expense' AND Label = 'Personal Transfers' AND Reason = 'Transfer out')
+                       OR
+                       (Category = 'Internal' AND Label = 'Internal Transfer'
+                        AND ReferenceNumber LIKE 'XFER-PENDING-%')
+                   )`,
                 [userId]
             ),
             db.all(
                 `SELECT * FROM transactions
                  WHERE userId = ? AND Category = 'Investment'
                    AND Reason = 'Transfer in' AND AmountMinor > 0
+                   AND (ReferenceNumber IS NULL OR ReferenceNumber NOT LIKE 'XFER-HIST-%')
                    AND (PortfolioAction = 'TRANSFER' OR LOWER(Type) = 'tfsa')`,
                 [userId]
             ),
@@ -92,18 +122,26 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
         }
 
         const appliedAt = new Date().toISOString();
-        const details = { matched: changes.length, skipped: outgoing.length - changes.length };
-        await db.run(
-            `INSERT INTO app_migrations (id, userId, appliedAt, details) VALUES (?, ?, ?, ?)`,
-            [migrationId, userId, appliedAt, JSON.stringify(details)]
-        );
-        await db.run(
-            `INSERT INTO agent_audit_log (userId, action, status, details, createdAt)
-             VALUES (?, 'historical_transfer_reconciliation', 'success', ?, ?)`,
-            [userId, JSON.stringify({ ...details, changes }), appliedAt]
-        );
+        const details = {
+            matched: changes.length,
+            restored: restored.reduce((total, group) => total + group.legs, 0),
+            skipped: outgoing.length - changes.length,
+        };
+        if (!alreadyApplied) {
+            await db.run(
+                `INSERT INTO app_migrations (id, userId, appliedAt, details) VALUES (?, ?, ?, ?)`,
+                [migrationId, userId, appliedAt, JSON.stringify(details)]
+            );
+        }
+        if (details.matched || details.restored) {
+            await db.run(
+                `INSERT INTO agent_audit_log (userId, action, status, details, createdAt)
+                 VALUES (?, 'historical_transfer_reconciliation', 'success', ?, ?)`,
+                [userId, JSON.stringify({ ...details, changes, restored }), appliedAt]
+            );
+        }
         await db.run('COMMIT');
-        return { ...details, alreadyApplied: false };
+        return { ...details, alreadyApplied };
     } catch (error) {
         await db.run('ROLLBACK');
         throw error;
