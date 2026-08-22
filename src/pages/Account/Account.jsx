@@ -440,7 +440,11 @@ const Account = () => {
                                 <div style={{ minWidth: 0 }}>
                                     <div>{item.institutionName || "Connected bank"}</div>
                                     <div style={{ color: item.status === 'active' ? "var(--Ac-3)" : "var(--Gc-2)", fontSize: "0.68rem", marginTop: "2px" }}>
-                                        {item.status === 'active' ? `${item.accountCount} account${item.accountCount === 1 ? '' : 's'} · Last sync ${item.lastSyncedAt ? new Date(item.lastSyncedAt).toLocaleString() : 'pending'}${Number(item.investmentAccountCount) > 0 && item.holdingsStatus !== 'active' ? ' · Holdings authorization needed' : ''}` : item.lastError || 'Connection needs attention'}
+                                        {item.status === 'active' ? <>
+                                            <div>{item.accountCount} account{item.accountCount === 1 ? '' : 's'}</div>
+                                            <div style={{ marginTop: "2px" }}>Last sync {item.lastSyncedAt ? new Date(item.lastSyncedAt).toLocaleString() : 'pending'}</div>
+                                            {Number(item.investmentAccountCount) > 0 && item.holdingsStatus !== 'active' && <div style={{ marginTop: "2px" }}>Holdings authorization needed</div>}
+                                        </> : item.lastError || 'Connection needs attention'}
                                     </div>
                                 </div>
                                 <div style={{ display: "flex", gap: "8px", alignItems: "center", flexShrink: 0 }}>
