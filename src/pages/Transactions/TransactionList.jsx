@@ -195,6 +195,28 @@ const TransactionList = ({
     }, [selectedData, isMoreClicked]);
 
   const monthlyMainRef = useRef(null);
+
+  useEffect(() => {
+    const listContainer = monthlyMainRef.current;
+    if (!listContainer) return undefined;
+
+    // The transaction sheet can scroll on its outer wall on smaller screens,
+    // while the list itself is the scroll container on larger layouts.
+    const scrollContainer =
+      listContainer.closest(".MoreOpen_Wall") || listContainer;
+
+    scrollContainer.addEventListener("scroll", handleTransactionListScroll, {
+      passive: true,
+    });
+
+    return () => {
+      scrollContainer.removeEventListener(
+        "scroll",
+        handleTransactionListScroll
+      );
+    };
+  }, [handleTransactionListScroll]);
+
   const [transactionListHeight, setTransactionListHeight] = useState(1);
 
   useEffect(() => {
