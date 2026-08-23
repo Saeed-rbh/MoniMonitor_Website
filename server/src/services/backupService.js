@@ -22,6 +22,7 @@ const INSERT_ORDER = [
     'accounts',
     'investment_accounts',
     'transactions',
+    'expense_forecast_points',
     'merchant_rules',
     'processed_emails',
     'email_sync_state',

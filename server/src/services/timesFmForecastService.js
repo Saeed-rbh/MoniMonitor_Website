@@ -2,15 +2,30 @@ const { BigQuery } = require("@google-cloud/bigquery");
 const dbService = require("../database/dbService");
 
 const FORECAST_DAYS = 30;
-const MIN_HISTORY_DAYS = 21;
+const MIN_HISTORY_DAYS = 90;
+const MIN_EVALUATED_DAYS = 7;
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const forecastCache = new Map();
 
-const isExpense = (transaction) => (
-    transaction.Category === "Expense" ||
+const normalize = (value) => String(value || "").trim().toLowerCase();
+const isExcludedSpend = (transaction) => {
+    const category = normalize(transaction.Category);
+    if (["income", "internal", "transfer", "investment", "saving"].includes(category)) return true;
+
+    // These descriptions occur in older/manual imports that may have been
+    // incorrectly classified as expenses. Newer Plaid and AI imports classify
+    // them as Income or Internal before they reach this service.
+    const description = [transaction.Label, transaction.Reason, transaction.Type]
+        .map(normalize)
+        .join(" ");
+    return /\b(refund|reversal|chargeback|internal transfer|credit.?card payment)\b/.test(description);
+};
+
+const isExpense = (transaction) => !isExcludedSpend(transaction) && (
+    normalize(transaction.Category) === "expense" ||
     (!transaction.Category && (
-        transaction.Type === "Expense" ||
-        transaction.Type === "Debit" ||
+        normalize(transaction.Type) === "expense" ||
+        normalize(transaction.Type) === "debit" ||
         String(transaction.AccountFlow || "").toUpperCase() === "OUT"
     ))
 );
@@ -28,7 +43,7 @@ function forecastError(code, message) {
     return error;
 }
 
-function buildDailyExpenseSeries(transactions) {
+function buildDailyExpenseSeries(transactions, { completeThrough } = {}) {
     const expenseByDay = new Map();
     transactions.filter(isExpense).forEach((transaction) => {
         const day = dayKey(transaction.Timestamp);
@@ -42,12 +57,78 @@ function buildDailyExpenseSeries(transactions) {
     const dates = [...expenseByDay.keys()].sort();
     if (!dates.length) return null;
     const start = dates[0];
-    const end = dates.at(-1);
+    const completeThroughDay = /^\d{4}-\d{2}-\d{2}$/.test(completeThrough || "")
+        ? completeThrough
+        : null;
+    const end = completeThroughDay && completeThroughDay > dates.at(-1)
+        ? completeThroughDay
+        : dates.at(-1);
     const values = [];
     for (let cursor = start; cursor <= end; cursor = addDays(cursor, 1)) {
         values.push(Number((expenseByDay.get(cursor) || 0).toFixed(2)));
     }
     return { start, end, values };
+}
+
+function dailyAmountsByDate(series) {
+    return new Map(series.values.map((amount, index) => [addDays(series.start, index), amount]));
+}
+
+function summarizeForecastAccuracy(points, actualAmounts) {
+    if (!points.length) {
+        return { status: "collecting", evaluatedDays: 0, minimumEvaluatedDays: MIN_EVALUATED_DAYS };
+    }
+
+    const totalActual = points.reduce((sum, point) => sum + (actualAmounts.get(point.forecastDate) || 0), 0);
+    const absoluteError = points.reduce(
+        (sum, point) => sum + Math.abs(Number(point.forecastAmount) - (actualAmounts.get(point.forecastDate) || 0)),
+        0
+    );
+    const meanAbsoluteError = Number((absoluteError / points.length).toFixed(2));
+    if (points.length < MIN_EVALUATED_DAYS) {
+        return { status: "collecting", evaluatedDays: points.length, minimumEvaluatedDays: MIN_EVALUATED_DAYS, meanAbsoluteError };
+    }
+    return {
+        status: "measured",
+        evaluatedDays: points.length,
+        meanAbsoluteError,
+        // WAPE remains meaningful with individual zero-spend days, unlike MAPE.
+        wape: totalActual > 0 ? Number((absoluteError / totalActual * 100).toFixed(1)) : null,
+    };
+}
+
+async function getForecastAccuracy(db, userId, series) {
+    const today = new Date().toISOString().slice(0, 10);
+    const points = await db.all(
+        `SELECT forecastDate, forecastAmount
+         FROM expense_forecast_points
+         WHERE userId = ? AND forecastDate < ? AND id IN (
+             SELECT MAX(id) FROM expense_forecast_points
+             WHERE userId = ? AND forecastDate < ?
+             GROUP BY forecastDate
+         )
+         ORDER BY forecastDate ASC`,
+        [userId, today, userId, today]
+    );
+    return summarizeForecastAccuracy(points, dailyAmountsByDate(series));
+}
+
+async function saveForecastPoints(db, userId, generatedAt, days) {
+    if (!days.length) return;
+    const placeholders = days.map(() => "(?, ?, ?, ?, ?, ?)").join(", ");
+    const values = days.flatMap((day) => [
+        userId, generatedAt, day.date, day.amount, day.lower, day.upper,
+    ]);
+    await db.run(
+        `INSERT OR IGNORE INTO expense_forecast_points
+            (userId, generatedAt, forecastDate, forecastAmount, lowerAmount, upperAmount)
+         VALUES ${placeholders}`,
+        values
+    );
+    await db.run(
+        "DELETE FROM expense_forecast_points WHERE userId = ? AND forecastDate < ?",
+        [userId, addDays(new Date().toISOString().slice(0, 10), -365)]
+    );
 }
 
 const toDateParam = (date) => {
@@ -127,9 +208,13 @@ async function getExpenseForecast(userId) {
          FROM transactions WHERE userId = ? ORDER BY Timestamp ASC`,
         [userId]
     );
-    const series = buildDailyExpenseSeries(transactions);
+    // A forecast must start after the last complete day, even if the user had
+    // no spending on recent days. Otherwise TimesFM can forecast dates that
+    // have already happened and make the result look stale.
+    const yesterday = addDays(new Date().toISOString().slice(0, 10), -1);
+    const series = buildDailyExpenseSeries(transactions, { completeThrough: yesterday });
     if (!series || series.values.length < MIN_HISTORY_DAYS) {
-        throw forecastError("INSUFFICIENT_HISTORY", "Add at least 21 days of expense history to generate a forecast.");
+        throw forecastError("INSUFFICIENT_HISTORY", "Add at least 90 days of expense history to generate a reliable forecast.");
     }
 
     const values = series.values.slice(-365);
@@ -139,6 +224,9 @@ async function getExpenseForecast(userId) {
     if (cached && Date.now() - cached.createdAt < CACHE_TTL_MS) return cached.payload;
 
     const days = await runTimesFm(dates, values);
+    const generatedAt = new Date().toISOString();
+    await saveForecastPoints(db, userId, generatedAt, days);
+    const accuracy = await getForecastAccuracy(db, userId, series);
     const total = (field) => Number(days.reduce((sum, day) => sum + Number(day[field] || 0), 0).toFixed(2));
     const payload = {
         model: "TimesFM 2.5 via BigQuery",
@@ -150,10 +238,15 @@ async function getExpenseForecast(userId) {
         lowerTotal: total("lower"),
         upperTotal: total("upper"),
         days,
+        accuracy,
     };
     forecastCache.set(cacheKey, { createdAt: Date.now(), payload });
     if (forecastCache.size > 100) forecastCache.delete(forecastCache.keys().next().value);
     return payload;
 }
 
-module.exports = { buildDailyExpenseSeries, getExpenseForecast };
+module.exports = {
+    buildDailyExpenseSeries,
+    getExpenseForecast,
+    summarizeForecastAccuracy,
+};

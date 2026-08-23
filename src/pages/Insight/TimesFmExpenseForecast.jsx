@@ -12,6 +12,16 @@ const labelFor = (date) => new Date(`${date}T12:00:00`).toLocaleDateString("en-C
     day: "numeric",
 });
 
+const accuracyLabel = (accuracy) => {
+    if (!accuracy) return null;
+    if (accuracy.status === "measured") {
+        return accuracy.wape === null
+            ? `${accuracy.evaluatedDays}-day accuracy measured`
+            : `WAPE ${accuracy.wape}%`;
+    }
+    return `Measuring ${accuracy.evaluatedDays}/${accuracy.minimumEvaluatedDays} days`;
+};
+
 const TimesFmExpenseForecast = () => {
     const [forecast, setForecast] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -90,6 +100,7 @@ const TimesFmExpenseForecast = () => {
 
                     <footer>
                         <span><CalendarDays aria-hidden="true" /> {forecast.historyDays} days of history</span>
+                        {accuracyLabel(forecast.accuracy) && <span>{accuracyLabel(forecast.accuracy)}</span>}
                         <span><TrendingUp aria-hidden="true" /> {forecast.model}</span>
                     </footer>
                 </>

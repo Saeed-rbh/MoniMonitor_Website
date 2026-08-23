@@ -116,6 +116,18 @@ async function getDb() {
                     count INTEGER NOT NULL,
                     startedAt INTEGER NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS expense_forecast_points (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    userId TEXT NOT NULL,
+                    generatedAt TEXT NOT NULL,
+                    forecastDate TEXT NOT NULL,
+                    forecastAmount REAL NOT NULL CHECK(forecastAmount >= 0),
+                    lowerAmount REAL NOT NULL CHECK(lowerAmount >= 0),
+                    upperAmount REAL NOT NULL CHECK(upperAmount >= 0),
+                    UNIQUE(userId, generatedAt, forecastDate),
+                    FOREIGN KEY (userId) REFERENCES users(id)
+                );
             `);
             const userColumns = await db.all("PRAGMA table_info(users)");
             if (!userColumns.some((column) => column.name === "profilePhotoUrl")) {
@@ -418,6 +430,8 @@ async function getDb() {
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_timestamp ON transactions(userId, Timestamp DESC);
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_category ON transactions(userId, Category);
                 CREATE INDEX IF NOT EXISTS idx_transactions_user_reference ON transactions(userId, ReferenceNumber);
+                CREATE INDEX IF NOT EXISTS idx_expense_forecast_points_user_date
+                    ON expense_forecast_points(userId, forecastDate DESC, id DESC);
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_transactions_source_email
                     ON transactions(SourceEmailKey) WHERE SourceEmailKey IS NOT NULL;
                 CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(userId);

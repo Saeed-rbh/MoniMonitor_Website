@@ -77,7 +77,9 @@ TIMESFM_MAX_BYTES_BILLED=10485760
 
 Forecasts are cached for six hours while the expense history is unchanged. The
 10 MB maximum-bytes-billed guard keeps a personal forecast at BigQuery's minimum
-query size; at least 21 days of expense history are required.
+query size; at least 90 days of expense history are required. Forecast points
+are retained for one year and compared with actual spending as data arrives, so
+the API can report a measured WAPE and mean absolute error after seven days.
 
 ## Project Structure
 
