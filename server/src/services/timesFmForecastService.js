@@ -1,5 +1,4 @@
-const path = require("path");
-const { spawn } = require("child_process");
+const { BigQuery } = require("@google-cloud/bigquery");
 const dbService = require("../database/dbService");
 
 const FORECAST_DAYS = 30;
@@ -51,45 +50,73 @@ function buildDailyExpenseSeries(transactions) {
     return { start, end, values };
 }
 
-async function runTimesFm(values) {
-    const python = process.env.TIMESFM_PYTHON || "python";
-    const script = path.resolve(__dirname, "../../scripts/timesfm_forecast.py");
+const toDateParam = (date) => {
+    const value = date?.value || date;
+    if (value instanceof Date) return value.toISOString().slice(0, 10);
+    return String(value).slice(0, 10);
+};
+
+function getBigQueryClient() {
+    const projectId = process.env.GCP_PROJECT_ID;
+    if (!projectId) {
+        throw forecastError("BIGQUERY_NOT_CONFIGURED", "Set GCP_PROJECT_ID and GOOGLE_APPLICATION_CREDENTIALS to enable hosted TimesFM forecasts.");
+    }
+    return new BigQuery({
+        projectId,
+        ...(process.env.GOOGLE_APPLICATION_CREDENTIALS
+            ? { keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS }
+            : {}),
+    });
+}
+
+async function runTimesFm(dates, values) {
+    const client = getBigQueryClient();
     try {
-        const stdout = await new Promise((resolve, reject) => {
-            const child = spawn(python, [script], { windowsHide: true });
-            let output = "";
-            let errorOutput = "";
-            const timer = setTimeout(() => {
-                child.kill();
-                reject(forecastError("TIMESFM_TIMEOUT", "TimesFM took too long to generate this forecast."));
-            }, Number(process.env.TIMESFM_TIMEOUT_MS || 180000));
-            child.stdout.on("data", (chunk) => { output += chunk; });
-            child.stderr.on("data", (chunk) => { errorOutput += chunk; });
-            child.on("error", () => {
-                clearTimeout(timer);
-                reject(forecastError("TIMESFM_UNAVAILABLE", "TimesFM could not be started by the configured Python runtime."));
-            });
-            child.on("close", (code) => {
-                clearTimeout(timer);
-                if (code === 0) return resolve(output);
-                const error = forecastError("TIMESFM_FAILED", errorOutput.slice(0, 300) || "TimesFM did not return a forecast.");
-                error.stdout = output;
-                reject(error);
-            });
-            child.stdin.end(JSON.stringify({ values, horizon: FORECAST_DAYS }));
+        const [rows] = await client.query({
+            query: `
+                WITH history AS (
+                    SELECT
+                        PARSE_DATE('%F', date_value) AS expense_date,
+                        CAST(@historyAmounts[OFFSET(position)] AS FLOAT64) AS expense_amount
+                    FROM UNNEST(@historyDates) AS date_value WITH OFFSET AS position
+                )
+                SELECT *
+                FROM AI.FORECAST(
+                    (SELECT expense_date, expense_amount FROM history),
+                    data_col => 'expense_amount',
+                    timestamp_col => 'expense_date',
+                    horizon => ${FORECAST_DAYS},
+                    model => 'TimesFM 2.5',
+                    confidence_level => 0.8
+                )
+            `,
+            params: {
+                historyDates: dates.map(toDateParam),
+                historyAmounts: values,
+            },
+            location: process.env.BIGQUERY_LOCATION || "US",
+            // A personal daily series is far below this. The cap prevents an
+            // accidental query change from turning a refresh into a large bill.
+            maximumBytesBilled: String(process.env.TIMESFM_MAX_BYTES_BILLED || 10 * 1024 * 1024),
         });
-        const payload = JSON.parse(stdout);
-        if (!payload.ok) throw forecastError(payload.code || "TIMESFM_FAILED", payload.message || "TimesFM did not return a forecast.");
-        return payload;
+        if (!rows.length || rows.some((row) => row.ai_forecast_status)) {
+            throw forecastError("TIMESFM_API_FAILED", rows.find((row) => row.ai_forecast_status)?.ai_forecast_status || "BigQuery TimesFM did not return a forecast.");
+        }
+        return rows.map((row) => {
+            const lower = Math.max(Number(row.prediction_interval_lower_bound || 0), 0);
+            return {
+                date: toDateParam(row.forecast_timestamp),
+                amount: Math.max(Number(row.forecast_value || 0), 0),
+                lower,
+                upper: Math.max(Number(row.prediction_interval_upper_bound || 0), lower),
+            };
+        });
     } catch (error) {
-        if (error.code && ["TIMESFM_NOT_INSTALLED", "INSUFFICIENT_HISTORY", "INVALID_HORIZON", "TIMESFM_TIMEOUT", "TIMESFM_UNAVAILABLE"].includes(error.code)) {
+        if (error.code && ["BIGQUERY_NOT_CONFIGURED", "TIMESFM_API_FAILED"].includes(error.code)) {
             throw error;
         }
-        const processPayload = (() => {
-            try { return JSON.parse(String(error.stdout || "")); } catch { return null; }
-        })();
-        if (processPayload?.code) throw forecastError(processPayload.code, processPayload.message);
-        throw forecastError("TIMESFM_UNAVAILABLE", "TimesFM could not be started by the configured Python runtime.");
+        console.error("BigQuery TimesFM request failed:", error.message);
+        throw forecastError("TIMESFM_API_FAILED", "BigQuery could not generate a TimesFM forecast. Check the project, credentials, and BigQuery API access.");
     }
 }
 
@@ -106,20 +133,15 @@ async function getExpenseForecast(userId) {
     }
 
     const values = series.values.slice(-365);
+    const dates = Array.from({ length: values.length }, (_, index) => addDays(series.end, index - values.length + 1));
     const cacheKey = `${userId}:${series.end}:${values.join(",")}`;
     const cached = forecastCache.get(cacheKey);
     if (cached && Date.now() - cached.createdAt < CACHE_TTL_MS) return cached.payload;
 
-    const result = await runTimesFm(values);
-    const days = result.forecast.map((amount, index) => ({
-        date: addDays(series.end, index + 1),
-        amount,
-        lower: result.lower[index],
-        upper: result.upper[index],
-    }));
+    const days = await runTimesFm(dates, values);
     const total = (field) => Number(days.reduce((sum, day) => sum + Number(day[field] || 0), 0).toFixed(2));
     const payload = {
-        model: result.model,
+        model: "TimesFM 2.5 via BigQuery",
         horizonDays: FORECAST_DAYS,
         historyDays: values.length,
         forecastStart: days[0].date,

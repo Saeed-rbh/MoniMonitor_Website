@@ -595,7 +595,7 @@ app.get("/insights/expense-forecast", authenticateToken, insightRateLimit, async
     try {
         return res.json(await getExpenseForecast(req.user.userId));
     } catch (error) {
-        if (["INSUFFICIENT_HISTORY", "TIMESFM_NOT_INSTALLED", "TIMESFM_UNAVAILABLE", "TIMESFM_TIMEOUT"].includes(error.code)) {
+        if (["INSUFFICIENT_HISTORY", "BIGQUERY_NOT_CONFIGURED"].includes(error.code)) {
             return res.status(422).json({ code: error.code, error: error.message });
         }
         console.error("TimesFM forecast error:", error.message);
