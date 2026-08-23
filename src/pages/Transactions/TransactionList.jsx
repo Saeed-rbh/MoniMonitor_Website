@@ -114,8 +114,21 @@ const TransactionList = ({
   );
   const hasMoreTransactions = visibleCount < sortedTransactions.length;
   const loadMoreTransactions = React.useCallback(() => {
-    setVisibleCount((current) => Math.min(current + ITEMS_PER_BATCH, sortedTransactions.length));
+    setVisibleCount((current) => {
+      if (current >= sortedTransactions.length) return current;
+      return Math.min(current + ITEMS_PER_BATCH, sortedTransactions.length);
+    });
   }, [sortedTransactions.length]);
+
+  const handleTransactionListScroll = React.useCallback((event) => {
+    const container = event.currentTarget;
+    const distanceFromBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
+
+    if (distanceFromBottom <= 240) {
+      loadMoreTransactions();
+    }
+  }, [loadMoreTransactions]);
 
   const { totalAmount, currentMonth, currentYear, labelDistribution } =
     React.useMemo(() => {
@@ -413,6 +426,7 @@ const TransactionList = ({
             <animated.div
               className="TransactionList_MonthlyMain"
               ref={monthlyMainRef}
+              onScroll={handleTransactionListScroll}
             >
               {selectedData && Object.keys(selectedData).length !== 0 && (
                 <TransactionListMonthly
@@ -449,3 +463,4 @@ const TransactionList = ({
 };
 
 export default TransactionList;
+

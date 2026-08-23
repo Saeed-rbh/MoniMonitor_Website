@@ -638,7 +638,8 @@
   justify-content: flex-start;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   scroll-behavior: smooth;
 }
 
@@ -909,3 +910,4 @@
   background: var(--Bc-5);
   outline: 1px solid var(--Bc-3);
 }
+
