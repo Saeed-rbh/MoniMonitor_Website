@@ -28,7 +28,6 @@ if errorlevel 1 (
 echo Starting MoniMonitor public services...
 
 call :update_from_github
-call :ensure_auto_updater
 
 if not exist "%TAILSCALE_EXE%" (
   echo Tailscale is not installed in the expected location.
@@ -62,6 +61,7 @@ if not errorlevel 1 (
     if not errorlevel 1 (
       call :ensure_public_health
       if errorlevel 1 goto :error
+      call :ensure_auto_updater
       echo MoniMonitor is already fully running at the current Git commit.
       if not defined AUTO_UPDATE_RESTART start "" "%PUBLIC_URL%"
       powershell -NoProfile -Command "Start-Sleep -Seconds 3"
@@ -94,6 +94,7 @@ call :ensure_public_health
 if errorlevel 1 goto :error
 call :record_running_commit
 if errorlevel 1 goto :error
+call :ensure_auto_updater
 
 echo.
 echo Website, API, email analyzer, Telegram connector, and tunnel are running.
@@ -180,6 +181,10 @@ if not exist "%~dp0monimonitor-auto-update.ps1" (
   exit /b 0
 )
 
+rem Start the watcher only after this launcher has either verified the
+rem already-running service or recorded the commit of a newly-ready one.
+rem Starting it during boot can make the watcher restart the service before
+rem :record_running_commit runs, leaving its old marker in place forever.
 start "" powershell -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "%~dp0monimonitor-auto-update.ps1"
 exit /b 0
 
