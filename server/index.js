@@ -18,6 +18,10 @@ const app = express();
 app.set("trust proxy", 1);
 const PORT = Number(process.env.PORT || 3001);
 const isProduction = process.env.NODE_ENV === "production";
+const agentStatus = {
+    enabled: process.env.AI_INGESTION_ENABLED === "true",
+    state: process.env.AI_INGESTION_ENABLED === "true" ? "starting" : "disabled",
+};
 
 if (!process.env.JWT_SECRET) {
     if (isProduction) {
@@ -108,7 +112,13 @@ app.get("/health", async (_req, res) => {
     try {
         const db = await dbService.getDb();
         await db.get("SELECT 1 AS ready");
-        return res.json({ status: "ok" });
+        return res.json({
+            status: "ok",
+            agent: {
+                enabled: agentStatus.enabled,
+                state: agentStatus.state,
+            },
+        });
     } catch (error) {
         console.error("Database health check failed:", error);
         return res.status(503).json({ status: "unavailable" });
@@ -694,9 +704,15 @@ if (require.main === module) {
         plaidService.startPlaidWebhookWorker();
         if (process.env.AI_INGESTION_ENABLED === 'true') {
             const { startAgent } = require('./email_agent');
-            startAgent().catch((error) => {
-                console.error('[Agent] Startup failed:', error);
-            });
+            startAgent()
+                .then(() => {
+                    agentStatus.state = "ready";
+                    console.log("[Agent] Email and Telegram agent is ready.");
+                })
+                .catch((error) => {
+                    agentStatus.state = "failed";
+                    console.error('[Agent] Startup failed:', error);
+                });
         }
     });
 }

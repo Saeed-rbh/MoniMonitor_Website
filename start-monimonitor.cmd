@@ -51,7 +51,7 @@ if errorlevel 1 goto :error
 
 powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/health' -TimeoutSec 2 | Out-Null; exit 0 } catch { exit 1 }"
 if not errorlevel 1 (
-  powershell -NoProfile -Command "$agent = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' | Where-Object { $_.CommandLine -match 'email_agent\.js' }; if ($agent) { exit 0 } else { exit 1 }"
+  powershell -NoProfile -Command "try { $health = Invoke-RestMethod 'http://localhost:3001/health' -TimeoutSec 2; if ($health.agent.enabled -eq $true -and $health.agent.state -eq 'ready') { exit 0 } else { exit 1 } } catch { exit 1 }"
   if errorlevel 1 (
     echo The API is running without the email and Telegram agent. Restarting it under the full service supervisor...
     call :stop_standalone_api
@@ -84,9 +84,9 @@ if errorlevel 1 (
   echo The backend did not become healthy within 60 seconds.
   goto :error
 )
-powershell -NoProfile -Command "$agent = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' | Where-Object { $_.CommandLine -match 'email_agent\.js' }; if ($agent) { exit 0 } else { exit 1 }"
+powershell -NoProfile -Command "$deadline = (Get-Date).AddSeconds(60); do { try { $health = Invoke-RestMethod 'http://localhost:3001/health' -TimeoutSec 2; if ($health.agent.enabled -eq $true -and $health.agent.state -eq 'ready') { exit 0 } } catch {} Start-Sleep -Seconds 1 } while ((Get-Date) -lt $deadline); exit 1"
 if errorlevel 1 (
-  echo The API is healthy, but the email and Telegram agent was not detected.
+  echo The API is healthy, but the email and Telegram agent did not become ready within 60 seconds.
   goto :error
 )
 
