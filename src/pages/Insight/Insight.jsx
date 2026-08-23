@@ -25,6 +25,7 @@ import {
     Sparkles,
 } from "lucide-react";
 import MonthlyAiBrief from "./MonthlyAiBrief";
+import TimesFmExpenseForecast from "./TimesFmExpenseForecast";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import {
     buildAllTimeInsightData,
@@ -1340,11 +1341,14 @@ const Insight = () => {
             </div>
 
             {viewMode === 'monthly' && (
-                <MonthlyAiBrief
-                    month={`${year}-${String(month + 1).padStart(2, '0')}`}
-                    transactions={transactions || []}
-                    allTransactions={allTransactions}
-                />
+                <>
+                    <MonthlyAiBrief
+                        month={`${year}-${String(month + 1).padStart(2, '0')}`}
+                        transactions={transactions || []}
+                        allTransactions={allTransactions}
+                    />
+                    <TimesFmExpenseForecast />
+                </>
             )}
 
             <section className="Insight_ChartCard" style={{ width: "100%", flexShrink: 0 }}>

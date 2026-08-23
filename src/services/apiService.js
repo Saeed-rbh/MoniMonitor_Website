@@ -254,6 +254,24 @@ export const getMonthlyAiBriefAPI = async (month, refresh = false) => {
     }
 };
 
+export const getExpenseForecastAPI = async () => {
+    try {
+        const token = localStorage.getItem("token");
+        if (!token) return { error: "Authentication required" };
+        const response = await fetch(apiUrl("/insights/expense-forecast"), {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!response.ok) {
+            handleExpiredSession(response);
+            return await response.json().catch(() => ({ error: "Unable to load forecast" }));
+        }
+        return response.json();
+    } catch (error) {
+        console.error("Error fetching TimesFM forecast:", error);
+        return { error: "Unable to load forecast" };
+    }
+};
+
 const backupRequest = async (path = "", options = {}) => {
     const token = localStorage.getItem("token");
     if (!token) return null;

@@ -11,6 +11,7 @@ const { parseTransaction, transactionUpdateSchema } = require("./src/validation/
 const { validateTelegramInitData, normalizeTelegramPhotoUrl } = require("./src/services/telegramAuthService");
 const backupService = require("./src/services/backupService");
 const { getMonthlyInsightBrief } = require("./src/services/monthlyInsightService");
+const { getExpenseForecast } = require("./src/services/timesFmForecastService");
 const plaidService = require("./src/services/plaidService");
 
 const app = express();
@@ -587,6 +588,18 @@ app.get("/insights/monthly", authenticateToken, insightRateLimit, async (req, re
         }));
     } catch (error) {
         return sendValidationError(res, error);
+    }
+});
+
+app.get("/insights/expense-forecast", authenticateToken, insightRateLimit, async (req, res) => {
+    try {
+        return res.json(await getExpenseForecast(req.user.userId));
+    } catch (error) {
+        if (["INSUFFICIENT_HISTORY", "TIMESFM_NOT_INSTALLED", "TIMESFM_UNAVAILABLE", "TIMESFM_TIMEOUT"].includes(error.code)) {
+            return res.status(422).json({ code: error.code, error: error.message });
+        }
+        console.error("TimesFM forecast error:", error.message);
+        return res.status(503).json({ code: "TIMESFM_FAILED", error: "Unable to generate a TimesFM forecast right now." });
     }
 });
 

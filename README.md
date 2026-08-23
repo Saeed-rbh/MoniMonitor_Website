@@ -55,6 +55,32 @@ This project currently uses:
   ```
   *(Check `package.json` for specific server scripts)*
 
+### TimesFM spending forecast
+
+The monthly Insight page can predict the next 30 days of expenses with Google's
+TimesFM 2.5 model. The model runs only on the API server: transaction data is
+aggregated into daily expense totals before the model is called, and neither the
+model nor the ledger is sent to the browser.
+
+Install TimesFM in a dedicated Python 3.10+ virtual environment, then point the
+API at that executable in `server/.env`:
+
+```bash
+git clone https://github.com/google-research/timesfm.git
+python -m venv .venv-timesfm
+.venv-timesfm\\Scripts\\activate
+pip install -e .[torch]
+```
+
+```env
+TIMESFM_PYTHON=C:\\full\\path\\to\\.venv-timesfm\\Scripts\\python.exe
+TIMESFM_TIMEOUT_MS=180000
+```
+
+The first forecast downloads the TimesFM 2.5 200M checkpoint and can take a few
+minutes. Later forecasts are cached for six hours while the transaction history
+is unchanged. At least 21 days of expense history are required.
+
 ## Project Structure
 
 ```
