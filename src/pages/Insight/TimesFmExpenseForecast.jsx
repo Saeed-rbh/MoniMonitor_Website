@@ -43,6 +43,7 @@ const TimesFmExpenseForecast = () => {
         return forecast.days.filter((_, index) => index % 3 === 0 || index === forecast.days.length - 1);
     }, [forecast]);
     const maxAmount = useMemo(() => Math.max(...chartDays.map((day) => day.upper || day.amount), 1), [chartDays]);
+    const confidenceLevel = forecast?.confidenceLevel || 80;
 
     return (
         <section className="TimesFmForecast" aria-label="TimesFM expense forecast" aria-live="polite">
@@ -77,9 +78,14 @@ const TimesFmExpenseForecast = () => {
                             <strong>{money(forecast.expectedTotal)}</strong>
                         </div>
                         <div>
-                            <span>Expected range</span>
+                            <span>Likely total range ({confidenceLevel}%)</span>
                             <strong>{money(forecast.lowerTotal)}–{money(forecast.upperTotal)}</strong>
                         </div>
+                    </div>
+
+                    <div className="TimesFmForecast_Legend" aria-label="Forecast chart legend">
+                        <span><i className="TimesFmForecast_LegendExpected" aria-hidden="true" /> Expected daily spending</span>
+                        <span><i className="TimesFmForecast_LegendRange" aria-hidden="true" /> {confidenceLevel}% likely daily range</span>
                     </div>
 
                     <div className="TimesFmForecast_Chart" role="img" aria-label={`Predicted expenses from ${labelFor(forecast.forecastStart)} to ${labelFor(forecast.forecastEnd)}`}>
@@ -97,6 +103,10 @@ const TimesFmExpenseForecast = () => {
                             );
                         })}
                     </div>
+
+                    <p className="TimesFmForecast_Explanation">
+                        The range shows where spending is likely to land, not a budget limit. A wider range means recent spending has been less consistent.
+                    </p>
 
                     <footer>
                         <span><CalendarDays aria-hidden="true" /> {forecast.historyDays} days of history</span>

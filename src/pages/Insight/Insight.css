@@ -2723,6 +2723,11 @@
 .TimesFmForecast_Summary span { display: block; margin-bottom: 3px; color: var(--Ac-3); font-size: 0.62rem; font-weight: 650; }
 .TimesFmForecast_Summary strong { color: var(--Ac-1); font-size: 0.88rem; font-weight: 720; white-space: nowrap; }
 .TimesFmForecast_Summary > div:first-child strong { color: #c2b7ff; }
+.TimesFmForecast_Legend { display: flex; flex-wrap: wrap; gap: 5px 12px; margin-top: 11px; color: var(--Ac-3); font-size: 0.57rem; font-weight: 650; }
+.TimesFmForecast_Legend span { display: inline-flex; align-items: center; gap: 5px; }
+.TimesFmForecast_Legend i { display: inline-block; flex: 0 0 auto; }
+.TimesFmForecast_LegendExpected { width: 10px; height: 7px; border-radius: 3px 3px 1px 1px; background: #a99bff; }
+.TimesFmForecast_LegendRange { width: 2px; height: 11px; border-radius: 99px; background: rgba(196, 184, 255, 0.7); }
 
 .TimesFmForecast_Chart { display: flex; height: 94px; margin: 13px 0 8px; align-items: flex-end; justify-content: space-between; gap: 3px; }
 .TimesFmForecast_Column { position: relative; display: flex; flex: 1; min-width: 0; height: 100%; flex-direction: column; align-items: center; justify-content: flex-end; }
@@ -2730,6 +2735,7 @@
 .TimesFmForecast_Bar { position: relative; z-index: 1; width: min(11px, 76%); min-height: 3px; border-radius: 5px 5px 2px 2px; background: linear-gradient(180deg, #c2b7ff, #7968e8); box-shadow: 0 0 10px rgba(150, 129, 255, 0.25); }
 .TimesFmForecast_Range { position: absolute; width: 2px; border-radius: 99px; background: rgba(196, 184, 255, 0.5); }
 .TimesFmForecast_Column small { position: absolute; bottom: 0; color: var(--Ac-3); font-size: 0.5rem; font-weight: 650; white-space: nowrap; }
+.TimesFmForecast_Explanation { margin: 0 0 9px; color: var(--Ac-3); font-size: 0.59rem; line-height: 1.45; }
 .TimesFmForecast footer { align-items: center; justify-content: space-between; gap: 9px; color: var(--Ac-3); font-size: 0.57rem; }
 .TimesFmForecast footer span { display: flex; min-width: 0; align-items: center; gap: 4px; }
 .TimesFmForecast footer svg { flex: 0 0 auto; width: 11px; height: 11px; color: #ae9eff; }

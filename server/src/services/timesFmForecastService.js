@@ -2,6 +2,7 @@ const { BigQuery } = require("@google-cloud/bigquery");
 const dbService = require("../database/dbService");
 
 const FORECAST_DAYS = 30;
+const CONFIDENCE_LEVEL = 0.8;
 const MIN_HISTORY_DAYS = 90;
 const MIN_EVALUATED_DAYS = 7;
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
@@ -168,7 +169,7 @@ async function runTimesFm(dates, values) {
                     timestamp_col => 'expense_date',
                     horizon => ${FORECAST_DAYS},
                     model => 'TimesFM 2.5',
-                    confidence_level => 0.8
+                    confidence_level => ${CONFIDENCE_LEVEL}
                 )
             `,
             params: {
@@ -231,6 +232,7 @@ async function getExpenseForecast(userId) {
     const payload = {
         model: "TimesFM 2.5 via BigQuery",
         horizonDays: FORECAST_DAYS,
+        confidenceLevel: Math.round(CONFIDENCE_LEVEL * 100),
         historyDays: values.length,
         forecastStart: days[0].date,
         forecastEnd: days.at(-1).date,
