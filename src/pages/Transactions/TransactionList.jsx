@@ -471,6 +471,7 @@ const TransactionList = ({
                   setOpen={setOpen}
                   setShowTransaction={setShowTransaction}
                   height={transactionListHeight}
+                  totalTransactionCount={sortedTransactions.length}
                   hasMore={hasMoreTransactions}
                   onLoadMore={loadMoreTransactions}
                 />

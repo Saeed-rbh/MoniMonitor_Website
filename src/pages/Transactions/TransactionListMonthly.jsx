@@ -144,8 +144,10 @@ const TransactionListMonthly = ({
   isAddClicked,
   setOpen,
   setShowTransaction,
+  totalTransactionCount = null,
 }) => {
   const filteredTransactions = useMemo(() => transactions || [], [transactions]);
+  const transactionCount = totalTransactionCount ?? filteredTransactions.length;
 
   const sections = useMemo(
     () => groupTransactionsByTimeline(filteredTransactions),
@@ -173,7 +175,7 @@ const TransactionListMonthly = ({
           <div className="TransactionList_TimelineHeader">
             <span className="TransactionList_TimelineTitle">{section.title}</span>
             <span className="TransactionList_TimelineCount">
-              {section.items.length} {section.items.length === 1 ? "transaction" : "transactions"}
+              {transactionCount} {transactionCount === 1 ? "transaction" : "transactions"}
             </span>
           </div>
           <ul className="TransactionList_TransactionList">
@@ -224,3 +226,4 @@ const TransactionListMonthly = ({
 };
 
 export default TransactionListMonthly;
+
