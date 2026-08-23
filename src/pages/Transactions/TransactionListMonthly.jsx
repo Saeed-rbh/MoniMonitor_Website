@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from "react";
+import React, { useMemo, useCallback, useEffect, useRef } from "react";
 import TransactionListItem from "./TransactionListItem";
 import { parseTransactionDate } from "../../utils/transactionDate";
 
@@ -145,9 +145,12 @@ const TransactionListMonthly = ({
   setOpen,
   setShowTransaction,
   totalTransactionCount = null,
+  hasMore = false,
+  onLoadMore,
 }) => {
   const filteredTransactions = useMemo(() => transactions || [], [transactions]);
   const transactionCount = totalTransactionCount ?? filteredTransactions.length;
+  const loadMoreSentinelRef = useRef(null);
 
   const sections = useMemo(
     () => groupTransactionsByTimeline(filteredTransactions),
@@ -165,6 +168,27 @@ const TransactionListMonthly = ({
     (transaction) => handleTransactionClick(transaction),
     [handleTransactionClick]
   );
+
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || !hasMore || typeof onLoadMore !== "function") {
+      return undefined;
+    }
+
+    if (typeof IntersectionObserver === "undefined") return undefined;
+
+    // Use the viewport as the root so this works whether Telegram scrolls the
+    // inner transaction list or the surrounding bottom sheet.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) onLoadMore();
+      },
+      { root: null, rootMargin: "400px 0px", threshold: 0 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filteredTransactions.length, hasMore, onLoadMore]);
 
   let globalIndex = 0;
 
@@ -219,6 +243,15 @@ const TransactionListMonthly = ({
           }}
         >
           No transactions found
+        </div>
+      )}
+      {hasMore && (
+        <div
+          ref={loadMoreSentinelRef}
+          className="TransactionList_LoadMoreSentinel"
+          aria-label={`Loading more transactions. ${filteredTransactions.length} of ${transactionCount} shown.`}
+        >
+          Loading more…
         </div>
       )}
     </div>

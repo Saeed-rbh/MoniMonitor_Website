@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { groupTransactionsByTimeline } from "./TransactionListMonthly";
+import { render, screen, waitFor } from "@testing-library/react";
+import TransactionListMonthly, { groupTransactionsByTimeline } from "./TransactionListMonthly";
 
 describe("groupTransactionsByTimeline", () => {
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
 
   it("orders Today, Yesterday, and This Week explicitly", () => {
     vi.useFakeTimers();
@@ -31,4 +35,53 @@ describe("groupTransactionsByTimeline", () => {
 
     expect(sections[0].title).toBe("Today");
   });
+
+  it("shows the full count and loads the next batch when the sentinel is visible", async () => {
+    const onLoadMore = vi.fn();
+
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class IntersectionObserverMock {
+        constructor(callback) {
+          this.callback = callback;
+        }
+
+        observe() {
+          this.callback([{ isIntersecting: true }]);
+        }
+
+        disconnect() {}
+      }
+    );
+
+    render(
+      <TransactionListMonthly
+        swipedIndex={[null, null]}
+        handleUnSwipe={vi.fn()}
+        handleSwipe={vi.fn()}
+        handleTransactionClick={vi.fn()}
+        transactions={[
+          {
+            id: 1,
+            Amount: 10,
+            Category: "Expense",
+            Label: "Groceries",
+            Reason: "Test transaction",
+            Timestamp: "2026-06-30T12:00:00.000Z",
+            Type: "Daily",
+          },
+        ]}
+        totalTransactionCount={65}
+        hasMore
+        onLoadMore={onLoadMore}
+        isAddClicked={null}
+        setOpen={vi.fn()}
+        setShowTransaction={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText("65 transactions")).toBeInTheDocument();
+    await waitFor(() => expect(onLoadMore).toHaveBeenCalledTimes(1));
+  });
 });
+

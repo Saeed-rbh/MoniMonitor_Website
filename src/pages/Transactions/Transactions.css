@@ -649,6 +649,17 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.TransactionList_LoadMoreSentinel {
+  width: 100%;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--Ac-3);
+  font-size: 0.68rem;
+  flex-shrink: 0;
+}
+
 .TransactionList_MonthlyFooter {
   /* padding: 30px 0; */
   position: absolute;
