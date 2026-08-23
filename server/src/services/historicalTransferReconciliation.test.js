@@ -112,3 +112,105 @@ test('finalizes a user-confirmed pending transfer when Plaid later sends the TFS
     assert.equal(incoming.ReferenceNumber, outgoing.ReferenceNumber);
     assert.equal(incoming.Category, 'Internal');
 });
+
+test('reclassifies owner-named e-transfers and links them to existing account legs', async () => {
+    const db = await dbService.getDb();
+    const userId = 'self-transfer-user';
+    await db.run(
+        `INSERT OR IGNORE INTO users (id, username, password, createdAt)
+         VALUES (?, ?, ?, ?)`,
+        [userId, 'saeedarabha', 'test-password', new Date().toISOString()]
+    );
+    await db.run(
+        `INSERT INTO investment_accounts
+            (userId, name, institution, accountType, accountRef, currency, cashMinor, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?), (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+        [
+            userId, 'CIBC Chequing', 'CIBC', 'Chequing', '6768237', 'CAD', new Date().toISOString(), new Date().toISOString(),
+            userId, 'Future', 'Wealthsimple', 'Savings', '•••• 1234', 'CAD', new Date().toISOString(), new Date().toISOString(),
+        ]
+    );
+
+    const outgoingId = await dbService.addTransaction({
+        userId,
+        Amount: 3000,
+        AmountMinor: 300000,
+        Currency: 'CAD',
+        Category: 'Internal',
+        Label: 'Internal Transfer',
+        Reason: 'Internal transfer: CIBC Chequing -> Future',
+        ReferenceNumber: 'XFER-EXISTING-3000',
+        Timestamp: '2026-06-29T16:00:00.000Z',
+        Account: 'CIBC Chequing',
+        BankName: 'CIBC',
+        AccountFlow: 'OUT',
+    });
+    const incomingId = await dbService.addTransaction({
+        userId,
+        Amount: 3000,
+        AmountMinor: 300000,
+        Currency: 'CAD',
+        Category: 'Internal',
+        Label: 'Internal Transfer',
+        Reason: 'Internal transfer: CIBC Chequing -> Future',
+        ReferenceNumber: 'XFER-EXISTING-3000',
+        Timestamp: '2026-06-29T16:00:00.000Z',
+        Account: 'Future',
+        BankName: 'Wealthsimple',
+        AccountFlow: 'IN',
+    });
+    const selfInId = await dbService.addTransaction({
+        userId,
+        Amount: 3000,
+        AmountMinor: 300000,
+        Currency: 'CAD',
+        Category: 'Income',
+        Label: 'Personal Transfers Received',
+        Reason: 'SAEED ARABHA - INTERAC e-Transfer®',
+        Timestamp: '2026-06-26T12:00:00.000Z',
+        Account: '1234',
+        BankName: 'Wealthsimple (Canada)',
+        AccountFlow: 'IN',
+    });
+    const selfOutId = await dbService.addTransaction({
+        userId,
+        Amount: 3000,
+        AmountMinor: 300000,
+        Currency: 'CAD',
+        Category: 'Expense',
+        Label: 'Personal Transfers',
+        Reason: 'E-TRANSFER 106010575055 Saeed@wealthsimple',
+        Timestamp: '2026-06-29T12:00:00.000Z',
+        Account: '8237',
+        BankName: 'CIBC',
+        AccountFlow: 'OUT',
+    });
+    const externalId = await dbService.addTransaction({
+        userId,
+        Amount: 3000,
+        AmountMinor: 300000,
+        Currency: 'CAD',
+        Category: 'Income',
+        Label: 'Personal Transfers Received',
+        Reason: 'E-Transfer - Jane Doe',
+        Timestamp: '2026-06-26T12:00:00.000Z',
+        Account: '1234',
+        BankName: 'Wealthsimple (Canada)',
+        AccountFlow: 'IN',
+    });
+
+    const result = await reconcileHistoricalInternalTransfers(db, userId);
+    assert.equal(result.selfReclassified, 2);
+    assert.equal(result.selfLinked, 2);
+
+    const selfIn = await dbService.getTransactionById(selfInId, userId);
+    const selfOut = await dbService.getTransactionById(selfOutId, userId);
+    const external = await dbService.getTransactionById(externalId, userId);
+    assert.equal(selfIn.Category, 'Internal');
+    assert.equal(selfOut.Category, 'Internal');
+    assert.equal(selfIn.ReferenceNumber, 'XFER-EXISTING-3000');
+    assert.equal(selfOut.ReferenceNumber, 'XFER-EXISTING-3000');
+    assert.equal(external.Category, 'Income');
+    assert.equal(outgoingId > 0, true);
+    assert.equal(incomingId > 0, true);
+});

@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const dbService = require('../database/dbService');
 const { reconcileHistoricalInternalTransfers } = require('../database/historicalTransferReconciliation');
 const { findTransactionMatch, reasonOverlap } = require('./transactionDeduplication');
+const { isExplicitSelfTransferDescription } = require('./selfTransfer');
 
 const PLAID_ENVIRONMENTS = new Set(['sandbox', 'development', 'production']);
 const syncPromises = new Map();
@@ -269,10 +270,14 @@ function plaidReferenceNumber(transaction = {}) {
     return firstNonEmpty(transaction.payment_meta?.reference_number, transaction.reference_number);
 }
 
-function classifyPlaidTransaction(transaction = {}) {
+function classifyPlaidTransaction(transaction = {}, { ownerUsername = null } = {}) {
     const primary = transaction.personal_finance_category?.primary || '';
     const detailed = transaction.personal_finance_category?.detailed || '';
     const outflow = Number(transaction.amount) > 0;
+    const transferReason = plaidTransactionReason(transaction);
+    if (isExplicitSelfTransferDescription(transferReason, ownerUsername)) {
+        return { Category: 'Internal', Label: 'Internal Transfer' };
+    }
     if (!outflow) {
         if (primary === 'INCOME' && /WAGES|PAYCHECK|PAYROLL/.test(detailed)) {
             return { Category: 'Income', Label: 'Employment Income' };
@@ -310,10 +315,10 @@ function plaidTimestamp(transaction = {}) {
         : new Date().toISOString();
 }
 
-function toAppTransaction(transaction, account, institutionName) {
+function toAppTransaction(transaction, account, institutionName, options = {}) {
     const amountMinor = Math.abs(Math.round(Number(transaction.amount) * 100));
     if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) return null;
-    const classification = classifyPlaidTransaction(transaction);
+    const classification = classifyPlaidTransaction(transaction, options);
     return {
         AmountMinor: amountMinor,
         Amount: amountMinor / 100,
@@ -570,7 +575,7 @@ async function linkSource(userId, itemId, externalId, transactionId, ownsTransac
     });
 }
 
-async function importAddedTransaction(userId, item, transaction, accountMap) {
+async function importAddedTransaction(userId, item, transaction, accountMap, ownerUsername = null) {
     const db = await dbService.getDb();
     const existingSource = await db.get(
         `SELECT * FROM transaction_sources WHERE provider = 'plaid' AND externalId = ? AND userId = ?`,
@@ -584,7 +589,7 @@ async function importAddedTransaction(userId, item, transaction, accountMap) {
             Boolean(existingSource.ownsTransaction), 'plaid', transaction, sourceContext
         );
         const existingTransaction = await dbService.getTransactionById(existingSource.transactionId, userId);
-        const appTransaction = toAppTransaction(transaction, account, item.institutionName);
+        const appTransaction = toAppTransaction(transaction, account, item.institutionName, { ownerUsername });
         if (existingTransaction && appTransaction && existingSource.ownsTransaction && !existingTransaction.SourceEmailKey) {
             await dbService.updateTransactionForUser(
                 existingSource.transactionId, userId,
@@ -594,7 +599,7 @@ async function importAddedTransaction(userId, item, transaction, accountMap) {
         }
         return { status: 'known', transactionId: existingSource.transactionId };
     }
-    const appTransaction = toAppTransaction(transaction, account, item.institutionName);
+    const appTransaction = toAppTransaction(transaction, account, item.institutionName, { ownerUsername });
     if (!appTransaction) return { status: 'ignored' };
 
     let replacement = null;
@@ -641,7 +646,7 @@ async function importAddedTransaction(userId, item, transaction, accountMap) {
     return { status: 'imported', transactionId };
 }
 
-async function applyModifiedTransaction(userId, item, transaction, accountMap) {
+async function applyModifiedTransaction(userId, item, transaction, accountMap, ownerUsername = null) {
     const db = await dbService.getDb();
     const source = await db.get(
         `SELECT s.*, t.SourceEmailKey, t.Category, t.Label, t.Reason, t.ReferenceNumber
@@ -652,13 +657,13 @@ async function applyModifiedTransaction(userId, item, transaction, accountMap) {
     );
     const account = accountMap.get(transaction.account_id) || {};
     const sourceContext = { account, institutionName: item.institutionName };
-    if (!source) return importAddedTransaction(userId, item, transaction, accountMap);
+    if (!source) return importAddedTransaction(userId, item, transaction, accountMap, ownerUsername);
     await linkSource(
         userId, item.itemId, transaction.transaction_id, source.transactionId,
         Boolean(source.ownsTransaction), 'plaid', transaction, sourceContext
     );
     if (!source.ownsTransaction || source.SourceEmailKey) return { status: 'linked_source_preserved' };
-    const appTransaction = toAppTransaction(transaction, account, item.institutionName);
+    const appTransaction = toAppTransaction(transaction, account, item.institutionName, { ownerUsername });
     if (!appTransaction) return { status: 'ignored' };
     await dbService.updateTransactionForUser(
         source.transactionId, userId, preserveLinkedInternalTransfer(source, appTransaction)
@@ -948,6 +953,7 @@ function parseStoredSourcePayload(value) {
 
 async function refreshStoredPlaidSourceDetails(userId) {
     const db = await dbService.getDb();
+    const user = await db.get('SELECT username FROM users WHERE id = ?', [userId]);
     const rows = await db.all(
         `SELECT s.provider, s.rawPayloadJson, s.contextPayloadJson, s.ownsTransaction, t.*
          FROM transaction_sources s
@@ -963,7 +969,7 @@ async function refreshStoredPlaidSourceDetails(userId) {
         const context = parseStoredSourcePayload(row.contextPayloadJson) || {};
         if (!rawPayload) continue;
         const updates = row.provider === 'plaid'
-            ? toAppTransaction(rawPayload, context.account || {}, context.institutionName)
+            ? toAppTransaction(rawPayload, context.account || {}, context.institutionName, { ownerUsername: user?.username })
             : toAppInvestmentTransaction(
                 rawPayload, context.account || {}, context.security || {}, context.institutionName
             );
@@ -980,6 +986,8 @@ async function refreshStoredPlaidSourceDetails(userId) {
 async function performItemSync(item, { forceHoldings = false, backfillSources = false } = {}) {
     const db = await dbService.getDb();
     try {
+        const user = await db.get('SELECT username FROM users WHERE id = ?', [item.userId]);
+        const ownerUsername = user?.username || null;
         const accessToken = decryptAccessToken(item.accessTokenEncrypted);
         const holdingsStale = !item.holdingsLastSyncedAt ||
             new Date(item.holdingsLastSyncedAt).getTime() < Date.now() - INVESTMENT_HOLDINGS_REFRESH_MS;
@@ -1025,19 +1033,19 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
             const replayTransactions = [...bankReplay.added, ...bankReplay.modified];
             for (const transaction of replayTransactions) {
                 if (!missingIds.has(transaction.transaction_id)) continue;
-                const result = await applyModifiedTransaction(item.userId, item, transaction, accountMap);
+                const result = await applyModifiedTransaction(item.userId, item, transaction, accountMap, ownerUsername);
                 if (result.status !== 'ignored') totals.sourceDetailsBackfilled += 1;
                 if (result.status === 'updated') totals.updated += 1;
             }
         }
         for (const transaction of changes.added) {
-            const result = await importAddedTransaction(item.userId, item, transaction, accountMap);
+            const result = await importAddedTransaction(item.userId, item, transaction, accountMap, ownerUsername);
             if (result.status === 'imported') totals.imported += 1;
             if (result.status === 'matched_email' || result.status === 'replaced_pending') totals.matched += 1;
             if (result.status === 'updated') totals.updated += 1;
         }
         for (const transaction of changes.modified) {
-            const result = await applyModifiedTransaction(item.userId, item, transaction, accountMap);
+            const result = await applyModifiedTransaction(item.userId, item, transaction, accountMap, ownerUsername);
             if (result.status === 'updated') totals.updated += 1;
         }
         for (const transaction of changes.removed) await applyRemovedTransaction(item.userId, transaction);
@@ -1076,6 +1084,7 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
         const transferReconciliation = await reconcileHistoricalInternalTransfers(db, item.userId);
         totals.internalTransfersMatched = transferReconciliation.matched;
         totals.internalTransferLegsRestored = transferReconciliation.restored;
+        totals.selfTransfersReclassified = transferReconciliation.selfReclassified;
         // Transaction events preserve edit/delete behavior, but a partial history
         // cannot reconstruct an account's opening balance. Plaid's current balance
         // is the authoritative anchor after every completed sync.

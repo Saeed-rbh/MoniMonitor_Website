@@ -65,6 +65,25 @@ test('keeps Plaid transfer descriptions and payment references when available', 
     assert.equal(result.AccountFlow, 'IN');
 });
 
+test('classifies an owner-named Plaid e-transfer as internal', () => {
+    const result = toAppTransaction({
+        amount: -3000,
+        date: '2026-06-26',
+        name: 'SAEED ARABHA - INTERAC e-Transfer®',
+        personal_finance_category: {
+            primary: 'TRANSFER_IN',
+            detailed: 'TRANSFER_IN_TRANSFER_IN_FROM_APPS',
+        },
+    }, { mask: '1234', type: 'depository', subtype: 'checking' }, 'Wealthsimple (Canada)', {
+        ownerUsername: 'saeedarabha',
+    });
+
+    assert.deepEqual(
+        { Category: result.Category, Label: result.Label },
+        { Category: 'Internal', Label: 'Internal Transfer' }
+    );
+});
+
 test('uses a Plaid counterparty when the bank description is generic', () => {
     const result = toAppTransaction({
         amount: -75,

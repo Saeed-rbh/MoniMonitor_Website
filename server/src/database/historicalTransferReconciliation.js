@@ -1,3 +1,5 @@
+const { isExplicitSelfTransferDescription, normalizeIdentity, getTransactionDirection } = require('../services/selfTransfer');
+
 const MIGRATION_PREFIX = 'historical-internal-transfer-reconciliation-v1';
 
 const normalizeAccountKey = (bankName, account) => {
@@ -10,6 +12,153 @@ const normalizeAccountKey = (bankName, account) => {
 };
 
 const dateKey = (value) => String(value || '').slice(0, 10);
+
+const normalizeBank = (value) => {
+    const normalized = normalizeIdentity(value);
+    if (normalized.includes('wealthsimple')) return 'wealthsimple';
+    if (normalized.includes('royalbank') || normalized.includes('rbc')) return 'rbc';
+    if (normalized.includes('cibc')) return 'cibc';
+    return normalized;
+};
+
+function lastFour(value) {
+    const digits = String(value || '').replace(/\D/g, '');
+    return digits.length >= 4 ? digits.slice(-4) : null;
+}
+
+function buildKnownAccountAliases(rows) {
+    return rows.map((row) => ({
+        id: `${row.kind}:${row.id}`,
+        bank: normalizeBank(row.bank),
+        aliases: [row.name, row.accountRef]
+            .filter(Boolean)
+            .map(normalizeIdentity)
+            .filter(Boolean),
+        last4: lastFour(row.accountRef),
+    }));
+}
+
+function resolveAccountIdentity(transaction, knownAccounts) {
+    const bank = normalizeBank(transaction?.BankName);
+    const account = normalizeIdentity(transaction?.Account);
+    const accountLast4 = lastFour(transaction?.Account);
+
+    const known = knownAccounts.find((candidate) => {
+        if (candidate.bank && bank && candidate.bank !== bank) return false;
+        return candidate.aliases.includes(account) ||
+            Boolean(accountLast4 && candidate.last4 && accountLast4 === candidate.last4);
+    });
+    if (known) return known.id;
+
+    return `${bank}|${account}`;
+}
+
+function sameAccount(left, right, knownAccounts) {
+    return resolveAccountIdentity(left, knownAccounts) ===
+        resolveAccountIdentity(right, knownAccounts);
+}
+
+function accountDisplayName(transaction) {
+    return transaction?.Account || transaction?.BankName || 'account';
+}
+
+async function reconcileExplicitSelfTransfers(db, userId) {
+    const user = await db.get('SELECT username FROM users WHERE id = ?', [userId]);
+    if (!user?.username) return { reclassified: 0, linked: 0, changes: [] };
+
+    const [transactions, investmentAccounts, accounts] = await Promise.all([
+        db.all(
+            `SELECT * FROM transactions
+             WHERE userId = ? AND Category IN ('Income', 'Expense')
+             ORDER BY Timestamp ASC, id ASC`,
+            [userId]
+        ),
+        db.all(
+            `SELECT id, name, institution AS bank, accountRef
+             FROM investment_accounts WHERE userId = ?`,
+            [userId]
+        ),
+        db.all(
+            `SELECT id, Account AS name, BankName AS bank, Account AS accountRef
+             FROM accounts WHERE userId = ?`,
+            [userId]
+        ),
+    ]);
+
+    const knownAccounts = buildKnownAccountAliases([
+        ...investmentAccounts.map((row) => ({ ...row, kind: 'investment' })),
+        ...accounts.map((row) => ({ ...row, kind: 'account' })),
+    ]);
+    const selfTransfers = transactions.filter((transaction) =>
+        isExplicitSelfTransferDescription(transaction.Reason, user.username)
+    );
+    if (!selfTransfers.length) return { reclassified: 0, linked: 0, changes: [] };
+
+    const matchWindowDays = 7;
+    const changes = [];
+    let linked = 0;
+
+    for (const selfTransfer of selfTransfers) {
+        const direction = getTransactionDirection(selfTransfer);
+        const timestamp = new Date(selfTransfer.Timestamp).getTime();
+        if (!direction || !Number.isFinite(timestamp)) continue;
+        const candidates = await db.all(
+            `SELECT * FROM transactions
+             WHERE userId = ? AND id != ? AND AmountMinor = ?
+               AND Currency = ? AND Category = 'Internal'
+               AND Label = 'Internal Transfer'
+               AND AccountFlow = ?
+               AND Timestamp BETWEEN ? AND ?`,
+            [
+                userId,
+                selfTransfer.id,
+                selfTransfer.AmountMinor,
+                selfTransfer.Currency || 'CAD',
+                direction,
+                new Date(timestamp - matchWindowDays * 86400000).toISOString(),
+                new Date(timestamp + matchWindowDays * 86400000).toISOString(),
+            ]
+        );
+
+        const matchingCandidates = candidates
+            .filter((candidate) => sameAccount(selfTransfer, candidate, knownAccounts))
+            .sort((left, right) => {
+                const leftDistance = Math.abs(new Date(left.Timestamp).getTime() - timestamp);
+                const rightDistance = Math.abs(new Date(right.Timestamp).getTime() - timestamp);
+                return leftDistance - rightDistance || left.id - right.id;
+            });
+        const match = matchingCandidates[0] || null;
+        const reference = match?.ReferenceNumber ||
+            `XFER-SELF-${dateKey(selfTransfer.Timestamp).replace(/-/g, '')}-${selfTransfer.AmountMinor}-${selfTransfer.id}`;
+        const reason = match?.Reason ||
+            `Internal transfer: ${accountDisplayName(selfTransfer)} -> own account`;
+        const wasInternal = selfTransfer.Category === 'Internal' &&
+            selfTransfer.Label === 'Internal Transfer';
+
+        await db.run(
+            `UPDATE transactions
+             SET Category = 'Internal', Label = 'Internal Transfer',
+                 Reason = ?, ReferenceNumber = ?
+             WHERE id = ? AND userId = ?`,
+            [reason, reference, selfTransfer.id, userId]
+        );
+
+        if (!wasInternal) {
+            changes.push({
+                id: selfTransfer.id,
+                oldCategory: selfTransfer.Category,
+                oldLabel: selfTransfer.Label,
+                newCategory: 'Internal',
+                newLabel: 'Internal Transfer',
+                matchedTransactionId: match?.id || null,
+                reference,
+            });
+        }
+        if (match) linked += 1;
+    }
+
+    return { reclassified: changes.length, linked, changes };
+}
 
 /**
  * Reclassify safe provider/imported transfer pairs that can arrive at different
@@ -36,6 +185,8 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
 
     await db.run('BEGIN IMMEDIATE');
     try {
+        const selfTransferSummary = await reconcileExplicitSelfTransfers(db, userId);
+
         // A provider refresh must not undo an already-linked transfer. Older
         // builds allowed Plaid Investments to reset the destination leg to
         // Investment/Transfer in while leaving the shared XFER reference.
@@ -126,6 +277,8 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
             matched: changes.length,
             restored: restored.reduce((total, group) => total + group.legs, 0),
             skipped: outgoing.length - changes.length,
+            selfReclassified: selfTransferSummary.reclassified,
+            selfLinked: selfTransferSummary.linked,
         };
         if (!alreadyApplied) {
             await db.run(
@@ -133,11 +286,11 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
                 [migrationId, userId, appliedAt, JSON.stringify(details)]
             );
         }
-        if (details.matched || details.restored) {
+        if (details.matched || details.restored || details.selfReclassified) {
             await db.run(
                 `INSERT INTO agent_audit_log (userId, action, status, details, createdAt)
                  VALUES (?, 'historical_transfer_reconciliation', 'success', ?, ?)`,
-                [userId, JSON.stringify({ ...details, changes, restored }), appliedAt]
+                [userId, JSON.stringify({ ...details, changes, restored, selfChanges: selfTransferSummary.changes }), appliedAt]
             );
         }
         await db.run('COMMIT');
@@ -148,5 +301,5 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
     }
 }
 
-module.exports = { reconcileHistoricalInternalTransfers };
+module.exports = { reconcileExplicitSelfTransfers, reconcileHistoricalInternalTransfers };
 
