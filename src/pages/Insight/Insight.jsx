@@ -1419,9 +1419,8 @@ const Insight = () => {
                 </section>
             )}
 
-            {/* ═══════════════════════════════════════════════════
-                STATISTICAL BREAKDOWN — Bento System
-                ═══════════════════════════════════════════════════ */}
+            {false && (
+                <>
 
             {/* Section Header */}
             <div className="Insight_SectionHeader">
@@ -1845,7 +1844,10 @@ const Insight = () => {
                 </div>
             )}
 
-            {/* Category Breakdown */}
+                </>
+            )}
+
+            {/* Expense Breakdown */}
             <InsightCategoryBreakdown transactions={currentViewTransactions} />
 
             {/* Transaction Detail Modal for Clicked Anomaly */}
