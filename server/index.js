@@ -12,6 +12,7 @@ const { validateTelegramInitData, normalizeTelegramPhotoUrl } = require("./src/s
 const backupService = require("./src/services/backupService");
 const { getMonthlyInsightBrief } = require("./src/services/monthlyInsightService");
 const { getExpenseForecast } = require("./src/services/timesFmForecastService");
+const { buildCashFlowWidgetPayload } = require("./src/services/cashFlowWidgetService");
 const plaidService = require("./src/services/plaidService");
 
 const app = express();
@@ -22,6 +23,8 @@ const agentStatus = {
     enabled: process.env.AI_INGESTION_ENABLED === "true",
     state: process.env.AI_INGESTION_ENABLED === "true" ? "starting" : "disabled",
 };
+const cashFlowWidgetCache = new Map();
+const CASH_FLOW_WIDGET_CACHE_MS = 60 * 1000;
 
 if (!process.env.JWT_SECRET) {
     if (isProduction) {
@@ -225,6 +228,39 @@ app.get("/transactions", authenticateToken, async (req, res) => {
     } catch (error) {
         return sendValidationError(res, error);
     }
+});
+
+// Fast, precomputed payload for the Scriptable cash-flow widget. This route
+// reads the local database only and never makes the widget wait for Plaid.
+app.get("/widget/cash-flow", authenticateToken, async (req, res) => {
+    const userId = req.user.userId;
+    const cached = cashFlowWidgetCache.get(userId);
+
+    if (cached && Date.now() - cached.createdAt < CASH_FLOW_WIDGET_CACHE_MS) {
+        res.set("Cache-Control", "private, max-age=60");
+        res.json(cached.payload);
+    } else {
+        try {
+            const [transactions, portfolio] = await Promise.all([
+                dbService.getAllTransactionsForUser(userId),
+                dbService.getPortfolioSummary(userId),
+            ]);
+            const payload = buildCashFlowWidgetPayload(transactions, portfolio);
+            cashFlowWidgetCache.set(userId, { createdAt: Date.now(), payload });
+            res.set("Cache-Control", "private, max-age=60");
+            res.json(payload);
+        } catch (error) {
+            return sendValidationError(res, error);
+        }
+    }
+
+    // Refresh the database for a future widget request after this response has
+    // already been sent. syncUserItems applies its own ten-minute cooldown.
+    setImmediate(() => {
+        plaidService.syncUserItems(userId).catch((error) => {
+            console.error("Background widget Plaid sync error:", error.message);
+        });
+    });
 });
 
 app.get("/transactions/:id/sources", authenticateToken, async (req, res) => {
@@ -718,3 +754,4 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
