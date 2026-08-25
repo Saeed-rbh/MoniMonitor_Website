@@ -1,7 +1,7 @@
 import "./App.css";
 import React, { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "react-router-dom";
-import { TransactionProvider, useTransactions } from "./context/TransactionContext";
+import { TransactionProvider } from "./context/TransactionContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import MainMenu from "./components/MainMenu/MainMenu";
@@ -63,32 +63,28 @@ const PrivateRoute = ({ children }) => {
 
 // Layout for authenticated routes
 const AuthenticatedLayout = () => {
-  const { dataLoaded } = useTransactions();
-
   return (
     <div className="App">
       <Header />
       <div style={{ flex: 1, width: '100%', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <Suspense fallback={<DashboardSkeleton />}>
-          {dataLoaded ? (
-            <Routes>
-              <Route path="/" element={<Telegram />} />
-              <Route path="/Transactions" element={<><Telegram /><Transactions /></>} />
-              <Route path="/AddTransaction" element={<AddTransaction />} />
-              <Route path="/Insight" element={<Insight />} />
-              <Route path="/Profile" element={<Account />} />
-              <Route path="/Account" element={<Navigate to="/Profile" replace />} />
-              <Route path="/Finance" element={<Finance />} />
-              <Route path="/Accounts" element={<SaveInvestInsights />} />
-              <Route path="/Accounts/Manage" element={<SaveInvestAccounts />} />
-              <Route
-                path="/Accounts/:accountId/Transactions"
-                element={<><SaveInvestInsights /><AccountTransactions /></>}
-              />
-              <Route path="/SaveInvest" element={<Navigate to="/Accounts" replace />} />
-              <Route path="/SaveInvest/Accounts" element={<Navigate to="/Accounts/Manage" replace />} />
-            </Routes>
-          ) : <DashboardSkeleton />}
+          <Routes>
+            <Route path="/" element={<Telegram />} />
+            <Route path="/Transactions" element={<><Telegram /><Transactions /></>} />
+            <Route path="/AddTransaction" element={<AddTransaction />} />
+            <Route path="/Insight" element={<Insight />} />
+            <Route path="/Profile" element={<Account />} />
+            <Route path="/Account" element={<Navigate to="/Profile" replace />} />
+            <Route path="/Finance" element={<Finance />} />
+            <Route path="/Accounts" element={<SaveInvestInsights />} />
+            <Route path="/Accounts/Manage" element={<SaveInvestAccounts />} />
+            <Route
+              path="/Accounts/:accountId/Transactions"
+              element={<><SaveInvestInsights /><AccountTransactions /></>}
+            />
+            <Route path="/SaveInvest" element={<Navigate to="/Accounts" replace />} />
+            <Route path="/SaveInvest/Accounts" element={<Navigate to="/Accounts/Manage" replace />} />
+          </Routes>
         </Suspense>
       </div>
       <MainMenu />
