@@ -12,6 +12,8 @@ let reconciliationStartupTimer = null;
 let reconciliationPromise = null;
 let webhookWorkerTimer = null;
 let webhookProcessingPromise = null;
+let marketPriceTimer = null;
+let marketPriceRefreshPromise = null;
 const USER_SYNC_COOLDOWN_MS = 10 * 60 * 1000;
 const INVESTMENT_HOLDINGS_REFRESH_MS = 10 * 60 * 1000;
 const WEBHOOK_MAX_AGE_SECONDS = 5 * 60;
@@ -21,6 +23,10 @@ const RECONCILIATION_STARTUP_DELAY_MS = 15 * 1000;
 const WEBHOOK_WORKER_INTERVAL_MS = 60 * 1000;
 const WEBHOOK_PROCESSING_STALE_MS = 5 * 60 * 1000;
 const WEBHOOK_MAX_RETRY_MS = 6 * 60 * 60 * 1000;
+const MARKET_PRICE_REFRESH_INTERVAL_MS = 15 * 60 * 1000;
+const MARKET_QUOTES_TIMEZONE = process.env.MARKET_QUOTES_TIMEZONE || 'America/Toronto';
+const MARKET_QUOTES_START_MINUTE = 9 * 60;
+const MARKET_QUOTES_END_MINUTE = 14 * 60;
 
 function getConfig() {
     const environment = PLAID_ENVIRONMENTS.has(process.env.PLAID_ENV)
@@ -394,6 +400,15 @@ function plaidBalanceMinor(account = {}) {
         : null;
 }
 
+function plaidAvailableBalanceMinor(account = {}) {
+    const rawAvailable = account.balances?.available;
+    if (rawAvailable === null || rawAvailable === undefined || rawAvailable === '') return null;
+    const available = Number(rawAvailable);
+    return Number.isFinite(available)
+        ? Math.sign(available) * Math.round(Math.abs(available) * 100)
+        : null;
+}
+
 async function applyAuthoritativeBalances(userId, accountMap) {
     const db = await dbService.getDb();
     const now = new Date().toISOString();
@@ -430,6 +445,31 @@ const yahooSymbol = (ticker, currency) => {
     return currency === 'CAD' && !normalized.includes('.') ? `${normalized}.TO` : normalized;
 };
 
+async function fetchYahooMarketPrice(ticker, currency = 'CAD', fetchImpl = fetch) {
+    const normalizedCurrency = String(currency || 'CAD').trim().toUpperCase();
+    const symbol = yahooSymbol(ticker, normalizedCurrency);
+    if (!symbol) return null;
+    try {
+        const response = await fetchImpl(
+            `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d`,
+            { headers: { 'User-Agent': 'MoniMonitor/1.0' }, signal: AbortSignal.timeout(5000) }
+        );
+        if (!response.ok) return null;
+        const result = (await response.json())?.chart?.result?.[0];
+        const price = Number(result?.meta?.regularMarketPrice);
+        if (!(price > 0)) return null;
+        const marketTime = Number(result?.meta?.regularMarketTime);
+        return {
+            price,
+            updatedAt: Number.isFinite(marketTime)
+                ? new Date(marketTime * 1000).toISOString()
+                : new Date().toISOString(),
+        };
+    } catch {
+        return null;
+    }
+}
+
 async function fetchCurrentMarketPrices(snapshot = {}, fetchImpl = fetch) {
     if (process.env.MARKET_QUOTES_ENABLED === 'false') return new Map();
     const securities = new Map((snapshot.securities || []).map((security) => [security.security_id, security]));
@@ -445,29 +485,119 @@ async function fetchCurrentMarketPrices(snapshot = {}, fetchImpl = fetch) {
             holding.iso_currency_code || holding.unofficial_currency_code ||
             security.iso_currency_code || security.unofficial_currency_code || ''
         ).toUpperCase();
-        const symbol = yahooSymbol(security.ticker_symbol, currency);
-        if (!symbol) return;
-        try {
-            const response = await fetchImpl(
-                `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d`,
-                { headers: { 'User-Agent': 'MoniMonitor/1.0' }, signal: AbortSignal.timeout(5000) }
-            );
-            if (!response.ok) return;
-            const result = (await response.json())?.chart?.result?.[0];
-            const price = Number(result?.meta?.regularMarketPrice);
-            if (!(price > 0)) return;
-            const marketTime = Number(result?.meta?.regularMarketTime);
-            prices.set(holding.security_id, {
-                price,
-                updatedAt: Number.isFinite(marketTime)
-                    ? new Date(marketTime * 1000).toISOString()
-                    : new Date().toISOString(),
-            });
-        } catch {
-            // Plaid's close price remains a safe fallback when live quotes are unavailable.
-        }
+        const quote = await fetchYahooMarketPrice(security.ticker_symbol, currency, fetchImpl);
+        if (quote) prices.set(holding.security_id, quote);
     }));
     return prices;
+}
+
+function zonedMarketClock(value = new Date(), timeZone = MARKET_QUOTES_TIMEZONE) {
+    try {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            timeZone,
+            weekday: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+        }).formatToParts(value);
+        const values = Object.fromEntries(parts.map(({ type, value: partValue }) => [type, partValue]));
+        return {
+            weekday: values.weekday,
+            hour: Number(values.hour),
+            minute: Number(values.minute),
+        };
+    } catch {
+        return null;
+    }
+}
+
+function isMarketPriceRefreshWindow(value = new Date(), timeZone = MARKET_QUOTES_TIMEZONE) {
+    const clock = zonedMarketClock(value, timeZone);
+    if (!clock || ['Sat', 'Sun'].includes(clock.weekday)) return false;
+    const minute = clock.hour * 60 + clock.minute;
+    return minute >= MARKET_QUOTES_START_MINUTE && minute <= MARKET_QUOTES_END_MINUTE;
+}
+
+async function refreshStoredMarketPrices({ fetchImpl = fetch } = {}) {
+    if (process.env.MARKET_QUOTES_ENABLED === 'false') {
+        return { enabled: false, holdings: 0, updated: 0, unavailable: 0 };
+    }
+    const db = await dbService.getDb();
+    const holdings = await db.all(
+        `SELECT h.id, h.userId, h.symbol, h.quantity,
+                COALESCE(NULLIF(h.currency, ''), NULLIF(a.currency, ''), 'CAD') AS currency
+         FROM investment_holdings h
+         JOIN investment_accounts a ON a.id = h.accountId AND a.userId = h.userId
+         WHERE h.quantity > 0
+         ORDER BY h.userId, h.id`
+    );
+    const quoteKeys = new Map();
+    for (const holding of holdings) {
+        const currency = String(holding.currency || 'CAD').toUpperCase();
+        const symbol = yahooSymbol(holding.symbol, currency);
+        if (symbol) quoteKeys.set(`${holding.symbol}|${currency}`, { ticker: holding.symbol, currency });
+    }
+    const quotes = new Map();
+    await Promise.all([...quoteKeys.entries()].map(async ([key, target]) => {
+        const quote = await fetchYahooMarketPrice(target.ticker, target.currency, fetchImpl);
+        if (quote) quotes.set(key, quote);
+    }));
+
+    let updated = 0;
+    let unavailable = 0;
+    for (const holding of holdings) {
+        const currency = String(holding.currency || 'CAD').toUpperCase();
+        const quote = quotes.get(`${holding.symbol}|${currency}`);
+        if (!quote) {
+            unavailable += 1;
+            continue;
+        }
+        const priceMicros = toMicros(quote.price);
+        const result = await db.run(
+            `UPDATE investment_holdings
+             SET priceMinor = ?, priceMicros = ?, updatedAt = ?
+             WHERE id = ? AND userId = ?`,
+            [Math.round(priceMicros / 10000), priceMicros, quote.updatedAt, holding.id, holding.userId]
+        );
+        updated += result.changes;
+    }
+    return { enabled: true, holdings: holdings.length, updated, unavailable };
+}
+
+function nextMarketPriceRefreshDelayMs(value = Date.now()) {
+    const remainder = Number(value) % MARKET_PRICE_REFRESH_INTERVAL_MS;
+    return remainder === 0
+        ? MARKET_PRICE_REFRESH_INTERVAL_MS
+        : MARKET_PRICE_REFRESH_INTERVAL_MS - remainder;
+}
+
+function startAutomaticMarketPriceRefresh() {
+    if (marketPriceTimer) return marketPriceTimer;
+    const run = () => {
+        if (!isMarketPriceRefreshWindow()) return Promise.resolve({ skipped: 'outside_market_window' });
+        if (marketPriceRefreshPromise) return marketPriceRefreshPromise;
+        marketPriceRefreshPromise = refreshStoredMarketPrices()
+            .then((summary) => {
+                console.log(`[Market] CAD price refresh updated ${summary.updated}/${summary.holdings} holding(s).`);
+                return summary;
+            })
+            .catch((error) => {
+                console.error('[Market] CAD price refresh failed:', error.message);
+                return { enabled: true, updated: 0, error: error.message };
+            })
+            .finally(() => { marketPriceRefreshPromise = null; });
+        return marketPriceRefreshPromise;
+    };
+    const schedule = () => {
+        marketPriceTimer = setTimeout(() => {
+            marketPriceTimer = null;
+            run().finally(schedule);
+        }, nextMarketPriceRefreshDelayMs());
+        marketPriceTimer.unref?.();
+    };
+    if (isMarketPriceRefreshWindow()) run();
+    schedule();
+    return marketPriceTimer;
 }
 
 function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
@@ -521,9 +651,17 @@ function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
     }
     for (const account of snapshot.accounts || []) {
         const entry = byAccount.get(account.account_id) || { cashMinor: 0, hasExplicitCash: false, holdings: [] };
+        const availableMinor = plaidAvailableBalanceMinor(account);
         const totalMinor = plaidBalanceMinor(account);
         const investedMinor = entry.holdings.reduce((sum, holding) => sum + holding.valueMinor, 0);
-        if (!entry.hasExplicitCash && totalMinor !== null) entry.cashMinor = Math.max(0, totalMinor - investedMinor);
+        // For investment accounts Plaid defines `available` as cash available
+        // to withdraw, while `current` is the total value of all assets. Use
+        // the institution-reported cash value whenever it is present, then
+        // fall back to an explicit cash holding or the derived remainder.
+        if (availableMinor !== null) entry.cashMinor = Math.max(0, availableMinor);
+        else if (!entry.hasExplicitCash && totalMinor !== null) {
+            entry.cashMinor = Math.max(0, totalMinor - investedMinor);
+        }
         byAccount.set(account.account_id, entry);
     }
     return byAccount;
@@ -1496,6 +1634,7 @@ module.exports = {
     reconciliationIntervalMs,
     reconcileAllPlaidItems,
     startAutomaticReconciliation,
+    startAutomaticMarketPriceRefresh,
     verifyPlaidWebhook,
     webhookSyncOptions,
     processPlaidWebhook,
@@ -1511,7 +1650,12 @@ module.exports = {
     toAppTransaction,
     toAppInvestmentTransaction,
     plaidBalanceMinor,
+    plaidAvailableBalanceMinor,
     fetchCurrentMarketPrices,
+    fetchYahooMarketPrice,
+    isMarketPriceRefreshWindow,
+    nextMarketPriceRefreshDelayMs,
+    refreshStoredMarketPrices,
     normalizeInvestmentSnapshot,
     refreshStoredPlaidSourceDetails,
     preserveLinkedInternalTransfer,

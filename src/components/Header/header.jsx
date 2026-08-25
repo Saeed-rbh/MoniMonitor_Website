@@ -47,11 +47,11 @@ function Header() {
         <div className="MoneyMonitor_User">
           <div className="MoneyMonitor_Logo">
             <img
-              src={user?.profilePhotoUrl || "/MoneyMonitor.jpg"}
+              src={user?.profilePhotoUrl || "/monimonitor-logo.png"}
               alt={`${user?.username || "User"} profile`}
               onError={({ currentTarget }) => {
                 currentTarget.onerror = null;
-                currentTarget.src = "/MoneyMonitor.jpg";
+                currentTarget.src = "/monimonitor-logo.png";
               }}
             />
           </div>

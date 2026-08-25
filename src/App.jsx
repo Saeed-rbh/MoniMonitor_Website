@@ -1,7 +1,7 @@
 import "./App.css";
 import React, { lazy, Suspense } from "react";
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "react-router-dom";
-import { TransactionProvider } from "./context/TransactionContext";
+import { TransactionProvider, useTransactions } from "./context/TransactionContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import MainMenu from "./components/MainMenu/MainMenu";
@@ -20,15 +20,43 @@ const SaveInvestAccounts = lazy(() => import("./pages/SaveInvest/SaveInvest"));
 const SaveInvestInsights = lazy(() => import("./pages/SaveInvest/SaveInvestInsights"));
 const AccountTransactions = lazy(() => import("./pages/SaveInvest/AccountTransactions"));
 
-const BrandedLoader = ({ label = "Loading MoniMonitor" }) => (
+const BrandedLoader = ({
+  label = "Loading MoniMonitor",
+  detail = "Preparing your secure financial overview",
+}) => (
   <div className="MoniLoader" role="status" aria-label={label}>
+    <div className="MoniLoader_Ambient MoniLoader_Ambient--one" aria-hidden="true" />
+    <div className="MoniLoader_Ambient MoniLoader_Ambient--two" aria-hidden="true" />
     <div className="MoniLoader_Content">
-      <img className="MoniLoader_Logo" src="/monimonitor-logo.png" alt="MoniMonitor" />
-      <div className="MoniLoader_Track" aria-hidden="true" />
-      <span className="MoniLoader_SrOnly">{label}</span>
+      <img className="MoniLoader_Logo" src="/monimonitor-logo.png" alt="" aria-hidden="true" />
+      <div className="MoniLoader_Copy">
+        <strong>{label}</strong>
+        <span>{detail}</span>
+      </div>
+      <div className="MoniLoader_Track" aria-hidden="true"><span /></div>
+      <div className="MoniLoader_Secure" aria-hidden="true">
+        <span className="MoniLoader_SecureDot" />
+        Secure connection
+      </div>
+      <span className="MoniLoader_SrOnly">{label}. {detail}</span>
     </div>
   </div>
 );
+
+const InitialDataGate = ({ children }) => {
+  const { dataLoaded } = useTransactions();
+
+  if (!dataLoaded) {
+    return (
+      <BrandedLoader
+        label="Preparing your dashboard"
+        detail="Loading balances and this month’s activity"
+      />
+    );
+  }
+
+  return children;
+};
 
 const DashboardSkeleton = () => (
   <div className="DashboardSkeleton" role="status" aria-label="Loading your dashboard">
@@ -52,7 +80,9 @@ const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
-  if (loading) return <BrandedLoader label="Checking your session" />;
+  if (loading) {
+    return <BrandedLoader label="Welcome back" detail="Checking your secure session" />;
+  }
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -95,7 +125,9 @@ const AuthenticatedLayout = () => {
 const AppRoutes = () => {
   const { loading } = useAuth();
 
-  if (loading) return <BrandedLoader label="Checking your session" />;
+  if (loading) {
+    return <BrandedLoader label="Welcome back" detail="Checking your secure session" />;
+  }
 
   return (
     <Router>
@@ -110,7 +142,9 @@ const AppRoutes = () => {
             element={
               <PrivateRoute>
                 <TransactionProvider>
-                  <AuthenticatedLayout />
+                  <InitialDataGate>
+                    <AuthenticatedLayout />
+                  </InitialDataGate>
                 </TransactionProvider>
               </PrivateRoute>
             }

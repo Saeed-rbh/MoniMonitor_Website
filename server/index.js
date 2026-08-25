@@ -761,6 +761,7 @@ if (require.main === module) {
         console.log(`API server listening on http://localhost:${PORT}`);
         backupService.startAutomaticBackups();
         plaidService.startAutomaticReconciliation();
+        plaidService.startAutomaticMarketPriceRefresh();
         plaidService.startPlaidWebhookWorker();
         if (process.env.AI_INGESTION_ENABLED === 'true') {
             const { startAgent } = require('./email_agent');
@@ -778,4 +779,3 @@ if (require.main === module) {
 }
 
 module.exports = app;
-

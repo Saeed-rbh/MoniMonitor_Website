@@ -9,8 +9,11 @@ const {
     encryptAccessToken,
     decryptAccessToken,
     plaidBalanceMinor,
+    plaidAvailableBalanceMinor,
     fetchCurrentMarketPrices,
     normalizeInvestmentSnapshot,
+    isMarketPriceRefreshWindow,
+    nextMarketPriceRefreshDelayMs,
     preserveLinkedInternalTransfer,
     verifyPlaidWebhook,
     webhookSyncOptions,
@@ -157,6 +160,28 @@ test('converts Plaid current balances to integer minor units', () => {
     assert.equal(plaidBalanceMinor({ balances: {} }), null);
 });
 
+test('converts Plaid available investment cash to integer minor units', () => {
+    assert.equal(plaidAvailableBalanceMinor({ balances: { available: 540.30 } }), 54030);
+    assert.equal(plaidAvailableBalanceMinor({ balances: { available: 0 } }), 0);
+    assert.equal(plaidAvailableBalanceMinor({ balances: { available: null } }), null);
+    assert.equal(plaidAvailableBalanceMinor({ balances: {} }), null);
+});
+
+test('prefers Plaid available cash over total investment value and cash holdings', () => {
+    const result = normalizeInvestmentSnapshot({
+        accounts: [{ account_id: 'tfsa', balances: { current: 9435.30, available: 612.45 } }],
+        securities: [
+            { security_id: 'vfv', ticker_symbol: 'VFV', type: 'etf' },
+            { security_id: 'cash', ticker_symbol: 'CAD', name: 'Cash', type: 'cash', is_cash_equivalent: true },
+        ],
+        holdings: [
+            { account_id: 'tfsa', security_id: 'vfv', quantity: 20.5, institution_price: 190, institution_value: 3895, cost_basis: 3300, iso_currency_code: 'CAD' },
+            { account_id: 'tfsa', security_id: 'cash', quantity: 540.3, institution_price: 1, institution_value: 540.3, iso_currency_code: 'CAD' },
+        ],
+    }).get('tfsa');
+    assert.equal(result.cashMinor, 61245);
+});
+
 test('normalizes authoritative investment quantities, prices, cost, and cash', () => {
     const result = normalizeInvestmentSnapshot({
         accounts: [{ account_id: 'tfsa', balances: { current: 9435.30 } }],
@@ -241,6 +266,18 @@ test('fetches TSX quotes for zero-price Canadian holdings', async () => {
     });
     assert.match(requested[0], /VFV.TO/);
     assert.equal(prices.get('vfv').price, 187.08);
+});
+
+test('limits automatic market refreshes to weekdays from 9am through 2pm Toronto time', () => {
+    assert.equal(isMarketPriceRefreshWindow(new Date('2026-08-24T13:00:00.000Z'), 'America/Toronto'), true);
+    assert.equal(isMarketPriceRefreshWindow(new Date('2026-08-24T18:00:00.000Z'), 'America/Toronto'), true);
+    assert.equal(isMarketPriceRefreshWindow(new Date('2026-08-24T18:01:00.000Z'), 'America/Toronto'), false);
+    assert.equal(isMarketPriceRefreshWindow(new Date('2026-08-22T15:00:00.000Z'), 'America/Toronto'), false);
+});
+
+test('aligns market refresh scheduling to a 15-minute boundary', () => {
+    assert.equal(nextMarketPriceRefreshDelayMs(0), 15 * 60 * 1000);
+    assert.equal(nextMarketPriceRefreshDelayMs(60 * 1000), 14 * 60 * 1000);
 });
 
 test('verifies Plaid webhook signatures and exact request bodies', async () => {

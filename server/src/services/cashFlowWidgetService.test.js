@@ -26,4 +26,3 @@ test('builds a compact current-month widget payload', () => {
     assert.equal(payload.chartItems.at(-1).active, true);
     assert.ok(payload.maxChartTotal >= 1);
 });
-

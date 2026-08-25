@@ -597,7 +597,7 @@ const Account = () => {
                     <div className={`modal-content-ios ${closingAbout ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
                         <button style={closeButtonStyle} onClick={closeAbout}>×</button>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1rem' }}>
-                            <img src="/MoneyMonitor.jpg" alt="Logo" style={{ width: '60px', height: '60px', borderRadius: '15px', marginBottom: '0.5rem' }} />
+                            <img src="/monimonitor-logo.png" alt="MoniMonitor logo" style={{ width: '110px', height: '110px', objectFit: 'contain', marginBottom: '0.5rem' }} />
                             <h2 style={{ margin: 0, color: 'var(--Bc-1)', fontSize: '1.2rem' }}>MoniMonitor</h2>
                             <span style={{ color: 'var(--Ac-3)', fontSize: '0.8rem' }}>v{APP_VERSION}</span>
                         </div>

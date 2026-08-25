@@ -188,4 +188,3 @@ function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
 }
 
 module.exports = { buildCashFlowWidgetPayload };
-

@@ -35,7 +35,7 @@ const RegisterPage = () => {
         <div className="auth-container">
             <div className="auth-box">
                 <div className="auth-logo">
-                    <img src="/MoneyMonitor.jpg" alt="MoneyMonitor Logo" />
+                    <img src="/monimonitor-logo.png" alt="MoniMonitor logo" />
                 </div>
                 <h2>Create an Account</h2>
                 {error && <p className="error-message">{error}</p>}
