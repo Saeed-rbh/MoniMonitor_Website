@@ -211,9 +211,6 @@ app.post("/telegram-auth", authRateLimit, async (req, res) => {
 });
 app.get("/transactions", authenticateToken, async (req, res) => {
     try {
-        await plaidService.syncUserItems(req.user.userId).catch((error) => {
-            console.error("Background Plaid sync error:", error.message);
-        });
         const filters = {
             category: req.query.category,
             label: req.query.label,
@@ -224,7 +221,16 @@ app.get("/transactions", authenticateToken, async (req, res) => {
             page: req.query.page,
             limit: req.query.limit,
         };
-        return res.json(await dbService.getAllTransactionsForUser(req.user.userId, filters));
+        const transactions = await dbService.getAllTransactionsForUser(req.user.userId, filters);
+        res.json(transactions);
+
+        // Keep the read path fast. Plaid refreshes the database for the next request
+        // and applies its own cooldown, so users do not need to wait for the bank API.
+        setImmediate(() => {
+            plaidService.syncUserItems(req.user.userId).catch((error) => {
+                console.error("Background Plaid sync error:", error.message);
+            });
+        });
     } catch (error) {
         return sendValidationError(res, error);
     }
@@ -692,10 +698,15 @@ app.post("/MoniMonitor_ToDB", authenticateToken, async (req, res) => {
     const { status, record_entry, record_type, ...filters } = req.body || {};
     try {
         if (status === "read") {
-            await plaidService.syncUserItems(req.user.userId).catch((error) => {
-                console.error("Background Plaid sync error:", error.message);
+            const transactions = await dbService.getAllTransactionsForUser(req.user.userId, filters);
+            res.json(transactions);
+
+            setImmediate(() => {
+                plaidService.syncUserItems(req.user.userId).catch((error) => {
+                    console.error("Background Plaid sync error:", error.message);
+                });
             });
-            return res.json(await dbService.getAllTransactionsForUser(req.user.userId, filters));
+            return;
         }
         if (status !== "record") return res.status(400).json({ error: "Invalid status" });
 

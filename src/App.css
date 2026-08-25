@@ -410,6 +410,63 @@ body {
   border: 0;
 }
 
+.DashboardSkeleton {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  padding: 18px 16px 12px;
+  box-sizing: border-box;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.DashboardSkeleton_Hero,
+.DashboardSkeleton_Stats span,
+.DashboardSkeleton_List span {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 245, 240, 0.04);
+  background: rgba(255, 245, 240, 0.055);
+}
+
+.DashboardSkeleton_Hero {
+  height: 138px;
+  border-radius: 28px;
+}
+
+.DashboardSkeleton_Stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.DashboardSkeleton_Stats span {
+  height: 68px;
+  border-radius: 18px;
+}
+
+.DashboardSkeleton_List {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.DashboardSkeleton_List span {
+  height: 54px;
+  border-radius: 16px;
+}
+
+.DashboardSkeleton_Hero::after,
+.DashboardSkeleton_Stats span::after,
+.DashboardSkeleton_List span::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 25%, rgba(255, 245, 240, 0.075) 48%, transparent 72%);
+  content: "";
+  transform: translateX(-100%);
+  animation: dashboard-skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
 @keyframes moni-loader-breathe {
   0%, 100% {
     opacity: 0.8;
@@ -428,9 +485,16 @@ body {
   100% { transform: translateX(215%); }
 }
 
+@keyframes dashboard-skeleton-shimmer {
+  to { transform: translateX(100%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .MoniLoader_Logo,
-  .MoniLoader_Track::after {
+  .MoniLoader_Track::after,
+  .DashboardSkeleton_Hero::after,
+  .DashboardSkeleton_Stats span::after,
+  .DashboardSkeleton_List span::after {
     animation: none;
   }
 
@@ -541,3 +605,4 @@ body {
   font-size: 0.57rem;
   text-transform: lowercase;
 }
+

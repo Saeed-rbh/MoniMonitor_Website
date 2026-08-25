@@ -19,6 +19,28 @@ import {
     syncPlaidAPI,
 } from "../../services/apiService";
 
+let plaidScriptPromise;
+const loadPlaidLink = () => {
+    if (window.Plaid?.create) return Promise.resolve(window.Plaid);
+    if (plaidScriptPromise) return plaidScriptPromise;
+
+    plaidScriptPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
+        script.async = true;
+        script.onload = () => window.Plaid?.create
+            ? resolve(window.Plaid)
+            : reject(new Error("Plaid Link could not be loaded"));
+        script.onerror = () => reject(new Error("Plaid Link could not be loaded"));
+        document.head.appendChild(script);
+    }).catch((error) => {
+        plaidScriptPromise = null;
+        throw error;
+    });
+
+    return plaidScriptPromise;
+};
+
 const Account = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
@@ -155,8 +177,10 @@ const Account = () => {
         setPlaidBusy(true);
         setPlaidMessage("Preparing secure bank connection…");
         try {
-            const { linkToken } = await createPlaidLinkTokenAPI(item?.itemId);
-            if (!window.Plaid?.create) throw new Error("Plaid Link could not be loaded");
+            const [{ linkToken }] = await Promise.all([
+                createPlaidLinkTokenAPI(item?.itemId),
+                loadPlaidLink(),
+            ]);
             const handler = window.Plaid.create({
                 token: linkToken,
                 onSuccess: async (publicToken, metadata) => {
@@ -190,8 +214,10 @@ const Account = () => {
         setPlaidBusy(true);
         setPlaidMessage("Preparing secure investment authorization…");
         try {
-            const { linkToken } = await createPlaidLinkTokenAPI(item.itemId);
-            if (!window.Plaid?.create) throw new Error("Plaid Link could not be loaded");
+            const [{ linkToken }] = await Promise.all([
+                createPlaidLinkTokenAPI(item.itemId),
+                loadPlaidLink(),
+            ]);
             const handler = window.Plaid.create({
                 token: linkToken,
                 onSuccess: async () => {
@@ -586,3 +612,4 @@ const Account = () => {
 };
 
 export default Account;
+
