@@ -622,6 +622,19 @@ app.get("/summary", authenticateToken, async (req, res) => {
     }
 });
 
+app.get("/dashboard-bootstrap", authenticateToken, async (req, res) => {
+    const month = String(req.query.month || '');
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ error: "month must be YYYY-MM" });
+    }
+    try {
+        res.set("Cache-Control", "private, no-cache");
+        return res.json(await dbService.getDashboardBootstrapForUser(req.user.userId, month));
+    } catch (error) {
+        return sendValidationError(res, error);
+    }
+});
+
 app.get("/accounts", authenticateToken, async (req, res) => {
     try {
         return res.json(await dbService.getAccountsForUser(req.user.userId));

@@ -1220,6 +1220,32 @@ async function getSummaryForUser(userId) {
     };
 }
 
+async function getDashboardBootstrapForUser(userId, month) {
+    const normalizedMonth = String(month || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(normalizedMonth)) {
+        throw new Error('month must be YYYY-MM');
+    }
+
+    const start = `${normalizedMonth}-01`;
+    const nextMonthDate = new Date(`${start}T00:00:00.000Z`);
+    nextMonthDate.setUTCMonth(nextMonthDate.getUTCMonth() + 1);
+    const nextMonth = nextMonthDate.toISOString().slice(0, 10);
+
+    const [summary, currentTransactions] = await Promise.all([
+        getSummaryForUser(userId),
+        getAllTransactionsForUser(userId, { from: start, to: nextMonth }),
+    ]);
+
+    return {
+        currentMonth: normalizedMonth,
+        transactions: currentTransactions.filter(
+            (transaction) => String(transaction.Timestamp || '').slice(0, 7) === normalizedMonth
+        ),
+        byMonth: summary.byMonth,
+        generatedAt: new Date().toISOString(),
+    };
+}
+
 function normalizeEmailUid(uid) {
     const numericUid = Number(uid);
     if (!Number.isSafeInteger(numericUid) || numericUid <= 0) throw new Error('Invalid email UID');
@@ -1790,6 +1816,7 @@ module.exports = {
     deleteGoal,
     writeAgentAudit,
     getSummaryForUser,
+    getDashboardBootstrapForUser,
     prepareEmailSync,
     enqueueDiscoveredEmails,
     getPendingEmails,

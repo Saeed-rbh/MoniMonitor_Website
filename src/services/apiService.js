@@ -15,7 +15,7 @@ const handleExpiredSession = (response) => {
     return true;
 };
 
-export const GetDataFromDB = async () => {
+export const GetDataFromDB = async ({ throwOnError = false } = {}) => {
     try {
         const token = localStorage.getItem("token");
         if (!token) return [];
@@ -32,12 +32,14 @@ export const GetDataFromDB = async () => {
         if (!response.ok) {
             handleExpiredSession(response);
             console.error("Failed to fetch data", response.status);
+            if (throwOnError) throw new Error(`Failed to fetch transactions (${response.status})`);
             return [];
         }
 
         return await response.json();
     } catch (error) {
         console.error("Error fetching data:", error);
+        if (throwOnError) throw error;
         return [];
     }
 };
@@ -63,6 +65,28 @@ export const GetSummary = async () => {
         return await response.json();
     } catch (error) {
         console.error("Error fetching summary:", error);
+        return null;
+    }
+};
+
+export const GetDashboardBootstrap = async (month) => {
+    try {
+        const token = localStorage.getItem("token");
+        if (!token) return null;
+
+        const response = await fetch(apiUrl(`/dashboard-bootstrap?month=${encodeURIComponent(month)}`), {
+            headers: { "Authorization": `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            handleExpiredSession(response);
+            console.error("Failed to fetch dashboard bootstrap", response.status);
+            return null;
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching dashboard bootstrap:", error);
         return null;
     }
 };

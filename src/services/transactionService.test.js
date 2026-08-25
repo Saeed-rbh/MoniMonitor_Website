@@ -1,11 +1,48 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildDashboardBootstrapData,
   getNetAmounts,
   getSavingEffect,
   groupTransactionsByMonth,
   isSaveInvestTransaction,
   uniqueInternalTransfers,
 } from "./transactionService";
+
+describe("buildDashboardBootstrapData", () => {
+  it("uses compact server totals while keeping current-month transactions ready", () => {
+    const currentDate = new Date();
+    const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
+    const previousDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    const previousMonth = `${previousDate.getFullYear()}-${String(previousDate.getMonth() + 1).padStart(2, "0")}`;
+    const result = buildDashboardBootstrapData({
+      currentMonth,
+      transactions: [
+        { id: 1, Amount: 500, Category: "Income", Label: "Deposit", Timestamp: `${currentMonth}-05T12:00:00Z` },
+        { id: 2, Amount: 100, Category: "Expense", Label: "Groceries", Timestamp: `${currentMonth}-06T12:00:00Z` },
+      ],
+      byMonth: [
+        { month: currentMonth, income: 500, expenses: 100, savings: 0 },
+        { month: previousMonth, income: 1000, expenses: 200, savings: 100 },
+      ],
+    });
+
+    expect(result.bootstrap).toBe(true);
+    expect(result.totalTransactions[currentMonth]).toMatchObject({
+      totalIncome: 500,
+      totalExpense: 100,
+      netTotal: 400,
+    });
+    expect(result.totalTransactions[currentMonth].transactions).toHaveLength(2);
+    expect(result.totalTransactions[previousMonth]).toMatchObject({
+      totalIncome: 1000,
+      totalExpense: 200,
+      totalSaving: 100,
+      netTotal: 700,
+      transactions: [],
+    });
+    expect(result.netAmounts[currentMonth]).toMatchObject({ income: 500, Expense: 100, net: 400 });
+  });
+});
 
 describe("getNetAmounts", () => {
   it("keeps months older than the newest transaction in the dashboard series", () => {

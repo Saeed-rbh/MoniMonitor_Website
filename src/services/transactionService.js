@@ -1,5 +1,5 @@
 import { format, parse, addMonths, isBefore } from "date-fns";
-import { GetDataFromDB } from "./apiService";
+import { GetDashboardBootstrap, GetDataFromDB } from "./apiService";
 import { parseTransactionDate } from "../utils/transactionDate";
 
 const monthsNames = [
@@ -395,7 +395,7 @@ export const getNetAmounts = (Transactions) => {
 };
 
 export const fetchAllTransactionData = async () => {
-  let allTransactions = await GetDataFromDB();
+  let allTransactions = await GetDataFromDB({ throwOnError: true });
   if (!Array.isArray(allTransactions)) allTransactions = [];
 
   const totalTransactions = groupTransactionsByMonth(allTransactions);
@@ -411,6 +411,73 @@ export const fetchAllTransactionData = async () => {
     Availability,
     netAmounts,
   };
+};
+
+export const buildDashboardBootstrapData = (payload) => {
+  if (!payload || !Array.isArray(payload.byMonth)) return null;
+
+  const currentMonth = String(payload.currentMonth || "");
+  const currentMonthData = groupTransactionsByMonth(payload.transactions || [])[currentMonth];
+  const summarizedMonths = {};
+
+  [...payload.byMonth]
+    .sort((a, b) => String(a.month).localeCompare(String(b.month)))
+    .forEach((summary) => {
+      const monthKey = String(summary.month || "");
+      if (!/^\d{4}-\d{2}$/.test(monthKey)) return;
+      const [year, monthNumber] = monthKey.split("-").map(Number);
+      const totalIncome = Number(summary.income || 0);
+      const totalExpense = Number(summary.expenses || 0);
+      const totalSaving = Number(summary.savings || 0);
+
+      summarizedMonths[monthKey] = {
+        transactions: [],
+        totalExpense,
+        totalIncome,
+        totalSaving,
+        totalSaveInvest: Math.abs(totalSaving),
+        totalInternal: 0,
+        netTotal: totalIncome - totalExpense - totalSaving,
+        month: monthsNames[monthNumber - 1],
+        year,
+        percentageChange: null,
+        labelDistributionExpense: {},
+        labelDistributionIncome: {},
+        labelDistributionSaving: {},
+        labelDistributionSaveInvest: {},
+        labelDistributionInternal: {},
+        labelDistribution: {},
+      };
+    });
+
+  if (currentMonthData) summarizedMonths[currentMonth] = currentMonthData;
+
+  const sortedEntries = Object.entries(summarizedMonths).sort(([a], [b]) => a.localeCompare(b));
+  let previousNetTotal = null;
+  sortedEntries.forEach(([monthKey, monthData]) => {
+    if (previousNetTotal !== null && previousNetTotal !== 0) {
+      monthData.percentageChange = Math.round(
+        ((monthData.netTotal - previousNetTotal) / Math.abs(previousNetTotal)) * 100
+      );
+    }
+    previousNetTotal = monthData.netTotal;
+    summarizedMonths[monthKey] = monthData;
+  });
+
+  const totalTransactions = Object.fromEntries(fillMissingMonths(sortedEntries));
+  return {
+    totalTransactions,
+    Availability: Object.entries(getMonthDataAvailability(totalTransactions)).reverse(),
+    netAmounts: getNetAmounts(totalTransactions),
+    bootstrap: true,
+  };
+};
+
+export const fetchDashboardBootstrapData = async () => {
+  const now = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const payload = await GetDashboardBootstrap(month);
+  return buildDashboardBootstrapData(payload);
 };
 
 export const getSelectedMonthData = (transactionsByMonth, whichMonth) => {

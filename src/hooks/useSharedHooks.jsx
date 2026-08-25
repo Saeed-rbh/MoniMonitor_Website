@@ -1,5 +1,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { fetchAllTransactionData, getSelectedMonthData } from "../services/transactionService";
+import {
+  fetchAllTransactionData,
+  fetchDashboardBootstrapData,
+  getSelectedMonthData,
+} from "../services/transactionService";
 
 const emptyDisplayData = {
   selected: {},
@@ -58,6 +62,17 @@ export const useTransactionData = (whichMonth, userId) => {
     }
   }, []);
 
+  const loadInitialData = useCallback(async () => {
+    setDisplayData((current) => ({ ...current, isLoading: true, error: null }));
+
+    const bootstrapData = await fetchDashboardBootstrapData();
+    if (bootstrapData) setFullData(bootstrapData);
+
+    // The compact dashboard response renders first. Full history replaces it
+    // when ready for Insights, Accounts, and older transaction details.
+    loadAllData();
+  }, [loadAllData]);
+
   useEffect(() => {
     if (userId) {
       const cameBackOnline = prevIsOfflineRef.current && !isOffline;
@@ -65,7 +80,7 @@ export const useTransactionData = (whichMonth, userId) => {
       prevUserIdRef.current = userId;
 
       if (userChanged || cameBackOnline || fullDataRef.current === null) {
-        loadAllData();
+        loadInitialData();
       }
     } else {
       prevUserIdRef.current = null;
@@ -74,7 +89,7 @@ export const useTransactionData = (whichMonth, userId) => {
     }
     prevIsOfflineRef.current = isOffline;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, loadAllData, isOffline]);
+  }, [userId, loadInitialData, isOffline]);
 
   useEffect(() => {
     if (!fullData) return;
