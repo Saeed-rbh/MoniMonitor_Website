@@ -5,9 +5,12 @@ const {
     getAccountReference,
     resolveAccountCandidate,
 } = require('../services/accountDiscovery');
-const { getSavingEffectMinor } = require('../services/transactionClassification');
 const { CATEGORY_LABELS } = require('../services/transactionCategories');
 const { findTransactionMatch } = require('../services/transactionDeduplication');
+const {
+    getStoredMonthlySummaries,
+    refreshTransactionMonths,
+} = require('./monthlySummaries');
 
 const portfolioActivityCategories = new Set(['Saving', 'SavingWithdrawal', 'Investment']);
 const portfolioActivityLabels = new Set([
@@ -165,6 +168,7 @@ async function addTransaction(transaction) {
             [transaction.BalanceAccountId, result.lastID]
         );
     }
+    await refreshTransactionMonths(db, [transaction]);
     return result.lastID;
 }
 
@@ -185,6 +189,7 @@ function normalizeTransactionUpdate(updates) {
 
 async function updateTransaction(id, updates) {
     const db = await getDb();
+    const previous = await db.get('SELECT userId, Timestamp FROM transactions WHERE id = ?', [id]);
     const normalized = normalizeTransactionUpdate(updates);
     const keys = Object.keys(normalized);
     const values = Object.values(normalized);
@@ -192,10 +197,16 @@ async function updateTransaction(id, updates) {
     const setClause = keys.map(k => `${k} = ?`).join(', ');
     values.push(id);
     await db.run(`UPDATE transactions SET ${setClause} WHERE id = ?`, values);
+    const current = await db.get('SELECT userId, Timestamp FROM transactions WHERE id = ?', [id]);
+    await refreshTransactionMonths(db, [previous, current]);
 }
 
 async function updateTransactionForUser(id, userId, updates) {
     const db = await getDb();
+    const previous = await db.get(
+        'SELECT userId, Timestamp FROM transactions WHERE id = ? AND userId = ?',
+        [id, userId]
+    );
     const normalized = normalizeTransactionUpdate(updates);
     const keys = Object.keys(normalized);
     if (keys.length === 0) return false;
@@ -203,16 +214,28 @@ async function updateTransactionForUser(id, userId, updates) {
     const setClause = keys.map((key) => key + " = ?").join(", ");
     values.push(id, userId);
     const result = await db.run("UPDATE transactions SET " + setClause + " WHERE id = ? AND userId = ?", values);
+    if (result.changes > 0) {
+        const current = await db.get(
+            'SELECT userId, Timestamp FROM transactions WHERE id = ? AND userId = ?',
+            [id, userId]
+        );
+        await refreshTransactionMonths(db, [previous, current]);
+    }
     return result.changes > 0;
 }
 
 async function deleteTransaction(id, userId) {
     const db = await getDb();
+    const previous = await db.get(
+        'SELECT userId, Timestamp FROM transactions WHERE id = ? AND userId = ?',
+        [id, userId]
+    );
     await removeTransactionAccountBalance(userId, id);
     const result = await db.run(
         'DELETE FROM transactions WHERE id = ? AND userId = ?',
         [id, userId]
     );
+    if (result.changes > 0) await refreshTransactionMonths(db, [previous]);
     return result.changes > 0;
 }
 
@@ -1173,54 +1196,35 @@ async function writeAgentAudit(userId, action, status, details = null) {
 
 async function getSummaryForUser(userId) {
     const db = await getDb();
-
-    const summaryTransactions = await db.all(`
-        SELECT AmountMinor, Category, Label, Reason, Account, Timestamp, PortfolioAction
-        FROM transactions WHERE userId = ?
-    `, [userId]);
-    const totals = summaryTransactions.reduce((result, transaction) => {
-        if (transaction.Category === 'Income') result.totalIncome += Number(transaction.AmountMinor || 0);
-        if (transaction.Category === 'Expense') result.totalExpenses += Number(transaction.AmountMinor || 0);
-        result.totalSavings += getSavingEffectMinor(transaction);
-        return result;
-    }, { totalIncome: 0, totalExpenses: 0, totalSavings: 0 });
-
-    const byLabel = await db.all(`
-        SELECT Label, Category,
-            SUM(AmountMinor) / 100.0 as total,
-            COUNT(*) as count
-        FROM transactions WHERE userId = ?
-        GROUP BY Label, Category
-        ORDER BY total DESC
-    `, [userId]);
-
-    const monthlyTotals = new Map();
-    summaryTransactions.forEach((transaction) => {
-        const month = String(transaction.Timestamp || '').slice(0, 7);
-        if (!/^\d{4}-\d{2}$/.test(month)) return;
-        if (!monthlyTotals.has(month)) {
-            monthlyTotals.set(month, { month, income: 0, expenses: 0, savings: 0, count: 0 });
-        }
-        const total = monthlyTotals.get(month);
-        const amountMinor = Number(transaction.AmountMinor || 0);
-        if (transaction.Category === 'Income') total.income += amountMinor / 100;
-        if (transaction.Category === 'Expense') total.expenses += amountMinor / 100;
-        total.savings += getSavingEffectMinor(transaction) / 100;
-        total.count += 1;
-    });
-    const byMonth = [...monthlyTotals.values()].sort((a, b) => b.month.localeCompare(a.month));
+    const [byMonth, byLabel] = await Promise.all([
+        getStoredMonthlySummaries(db, userId),
+        db.all(`
+            SELECT Label, Category,
+                SUM(AmountMinor) / 100.0 as total,
+                COUNT(*) as count
+            FROM transactions WHERE userId = ?
+            GROUP BY Label, Category
+            ORDER BY total DESC
+        `, [userId]),
+    ]);
+    const totals = byMonth.reduce((result, month) => ({
+        totalIncome: result.totalIncome + month.income,
+        totalExpenses: result.totalExpenses + month.expenses,
+        totalSavings: result.totalSavings + month.savings,
+    }), { totalIncome: 0, totalExpenses: 0, totalSavings: 0 });
 
     return {
-        totalIncome:    (totals.totalIncome || 0) / 100,
-        totalExpenses:  (totals.totalExpenses || 0) / 100,
-        totalSavings:   (totals.totalSavings || 0) / 100,
-        balance:        ((totals.totalIncome || 0) - (totals.totalExpenses || 0) - (totals.totalSavings || 0)) / 100,
+        totalIncome: totals.totalIncome,
+        totalExpenses: totals.totalExpenses,
+        totalSavings: totals.totalSavings,
+        balance: totals.totalIncome - totals.totalExpenses - totals.totalSavings,
         byLabel,
         byMonth
     };
 }
 
 async function getDashboardBootstrapForUser(userId, month) {
+    const db = await getDb();
     const normalizedMonth = String(month || '').trim();
     if (!/^\d{4}-\d{2}$/.test(normalizedMonth)) {
         throw new Error('month must be YYYY-MM');
@@ -1231,8 +1235,8 @@ async function getDashboardBootstrapForUser(userId, month) {
     nextMonthDate.setUTCMonth(nextMonthDate.getUTCMonth() + 1);
     const nextMonth = nextMonthDate.toISOString().slice(0, 10);
 
-    const [summary, currentTransactions] = await Promise.all([
-        getSummaryForUser(userId),
+    const [byMonth, currentTransactions] = await Promise.all([
+        getStoredMonthlySummaries(db, userId),
         getAllTransactionsForUser(userId, { from: start, to: nextMonth }),
     ]);
 
@@ -1241,7 +1245,7 @@ async function getDashboardBootstrapForUser(userId, month) {
         transactions: currentTransactions.filter(
             (transaction) => String(transaction.Timestamp || '').slice(0, 7) === normalizedMonth
         ),
-        byMonth: summary.byMonth,
+        byMonth,
         generatedAt: new Date().toISOString(),
     };
 }
@@ -1640,6 +1644,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
                     newLabel: 'Internal Transfer',
                 });
             }
+            await refreshTransactionMonths(db, [outCandidate, inCandidate]);
             return reclassified;
         }
     }
@@ -1771,6 +1776,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
         }
     }
 
+    await refreshTransactionMonths(db, legsToUpdate);
     return reclassified;
 }
 

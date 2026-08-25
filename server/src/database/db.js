@@ -4,6 +4,7 @@ const path = require('path');
 const { applyFinancialSnapshot } = require('./financialSnapshot');
 const { reconcileHistoricalInternalTransfers } = require('./historicalTransferReconciliation');
 const { reconcileTransactionDuplicates } = require('../services/transactionDeduplication');
+const { refreshDirtyMonthlySummaries } = require('./monthlySummaries');
 
 const DB_PATH = process.env.MONIMONITOR_DB_PATH
     ? path.resolve(process.env.MONIMONITOR_DB_PATH)
@@ -274,6 +275,27 @@ async function getDb() {
                     UNIQUE(userId, month)
                 );
 
+                CREATE TABLE IF NOT EXISTS monthly_transaction_summaries (
+                    userId TEXT NOT NULL,
+                    month TEXT NOT NULL,
+                    incomeMinor INTEGER NOT NULL DEFAULT 0,
+                    expensesMinor INTEGER NOT NULL DEFAULT 0,
+                    savingsMinor INTEGER NOT NULL DEFAULT 0,
+                    transactionCount INTEGER NOT NULL DEFAULT 0,
+                    updatedAt TEXT NOT NULL,
+                    PRIMARY KEY (userId, month),
+                    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+                );
+
+                CREATE TABLE IF NOT EXISTS monthly_summary_dirty (
+                    userId TEXT NOT NULL,
+                    month TEXT NOT NULL,
+                    revision INTEGER NOT NULL DEFAULT 1,
+                    changedAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (userId, month),
+                    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
+                );
+
                 CREATE TABLE IF NOT EXISTS plaid_items (
                     itemId TEXT PRIMARY KEY,
                     userId TEXT NOT NULL,
@@ -343,7 +365,62 @@ async function getDb() {
                 );
             `);
             await db.exec(`
+                CREATE TRIGGER IF NOT EXISTS trg_monthly_summary_transaction_insert
+                AFTER INSERT ON transactions
+                WHEN SUBSTR(NEW.Timestamp, 1, 7) GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
+                BEGIN
+                    INSERT INTO monthly_summary_dirty (userId, month, revision, changedAt)
+                    VALUES (NEW.userId, SUBSTR(NEW.Timestamp, 1, 7), 1, CURRENT_TIMESTAMP)
+                    ON CONFLICT(userId, month) DO UPDATE SET
+                        revision = monthly_summary_dirty.revision + 1,
+                        changedAt = CURRENT_TIMESTAMP;
+                END;
+
+                CREATE TRIGGER IF NOT EXISTS trg_monthly_summary_transaction_delete
+                AFTER DELETE ON transactions
+                WHEN SUBSTR(OLD.Timestamp, 1, 7) GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
+                BEGIN
+                    INSERT INTO monthly_summary_dirty (userId, month, revision, changedAt)
+                    VALUES (OLD.userId, SUBSTR(OLD.Timestamp, 1, 7), 1, CURRENT_TIMESTAMP)
+                    ON CONFLICT(userId, month) DO UPDATE SET
+                        revision = monthly_summary_dirty.revision + 1,
+                        changedAt = CURRENT_TIMESTAMP;
+                END;
+
+                CREATE TRIGGER IF NOT EXISTS trg_monthly_summary_transaction_update
+                AFTER UPDATE OF userId, AmountMinor, Category, Label, Reason, Timestamp, PortfolioAction, Account
+                ON transactions
+                BEGIN
+                    INSERT INTO monthly_summary_dirty (userId, month, revision, changedAt)
+                    SELECT OLD.userId, SUBSTR(OLD.Timestamp, 1, 7), 1, CURRENT_TIMESTAMP
+                    WHERE SUBSTR(OLD.Timestamp, 1, 7) GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
+                    ON CONFLICT(userId, month) DO UPDATE SET
+                        revision = monthly_summary_dirty.revision + 1,
+                        changedAt = CURRENT_TIMESTAMP;
+
+                    INSERT INTO monthly_summary_dirty (userId, month, revision, changedAt)
+                    SELECT NEW.userId, SUBSTR(NEW.Timestamp, 1, 7), 1, CURRENT_TIMESTAMP
+                    WHERE SUBSTR(NEW.Timestamp, 1, 7) GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
+                    ON CONFLICT(userId, month) DO UPDATE SET
+                        revision = monthly_summary_dirty.revision + 1,
+                        changedAt = CURRENT_TIMESTAMP;
+                END;
+            `);
+            await db.run(`
+                INSERT INTO monthly_summary_dirty (userId, month, revision, changedAt)
+                SELECT DISTINCT transactions.userId, SUBSTR(transactions.Timestamp, 1, 7), 1, CURRENT_TIMESTAMP
+                FROM transactions
+                LEFT JOIN monthly_transaction_summaries
+                  ON monthly_transaction_summaries.userId = transactions.userId
+                 AND monthly_transaction_summaries.month = SUBSTR(transactions.Timestamp, 1, 7)
+                WHERE monthly_transaction_summaries.userId IS NULL
+                  AND SUBSTR(transactions.Timestamp, 1, 7) GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]'
+                ON CONFLICT(userId, month) DO NOTHING
+            `);
+            await db.exec(`
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_monthly_ai_briefs_user_month ON monthly_ai_briefs(userId, month);
+                CREATE INDEX IF NOT EXISTS idx_monthly_transaction_summaries_user_month
+                    ON monthly_transaction_summaries(userId, month DESC);
             `).catch(() => {});
             const plaidItemColumns = await db.all('PRAGMA table_info(plaid_items)');
             if (!plaidItemColumns.some((column) => column.name === 'holdingsStatus')) {
@@ -467,6 +544,7 @@ async function getDb() {
             if (historicalTransfers.matched) {
                 console.log(`[Historical transfers] Reclassified ${historicalTransfers.matched} matched pair(s).`);
             }
+            await refreshDirtyMonthlySummaries(db);
             return db;
         });
 
