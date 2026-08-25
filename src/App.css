@@ -356,136 +356,31 @@ body {
   z-index: 9999;
   display: grid;
   place-items: center;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 35%, rgba(25, 161, 147, 0.16), transparent 32%),
-    radial-gradient(circle at 15% 85%, rgba(46, 84, 147, 0.12), transparent 36%),
-    linear-gradient(160deg, #17191e 0%, var(--Ec-1) 58%, #14171b 100%);
-  isolation: isolate;
-}
-
-.MoniLoader::before {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  opacity: 0.18;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 32px 32px;
-  content: "";
-  mask-image: linear-gradient(to bottom, black, transparent 78%);
-}
-
-.MoniLoader_Ambient {
-  position: absolute;
-  z-index: -1;
-  width: 220px;
-  height: 220px;
-  border: 1px solid rgba(131, 255, 201, 0.08);
-  border-radius: 50%;
-  animation: moni-loader-orbit 7s ease-in-out infinite;
-}
-
-.MoniLoader_Ambient--one {
-  top: 19%;
-  right: -112px;
-}
-
-.MoniLoader_Ambient--two {
-  bottom: 12%;
-  left: -150px;
-  width: 280px;
-  height: 280px;
-  border-color: rgba(160, 143, 255, 0.07);
-  animation-delay: -3.5s;
+  background: var(--Ec-1);
 }
 
 .MoniLoader_Content {
   display: flex;
-  width: min(82vw, 320px);
   flex-direction: column;
   align-items: center;
-  gap: 0;
-  padding: 30px 24px 24px;
-  border: 1px solid rgba(255, 245, 240, 0.07);
-  border-radius: 30px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.012));
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.28);
-  box-sizing: border-box;
-  backdrop-filter: blur(18px);
+  gap: 18px;
 }
 
 .MoniLoader_Logo {
   display: block;
-  width: min(100%, 214px);
+  width: min(64vw, 250px);
   height: auto;
-  margin: -18px 0 -10px;
   filter: drop-shadow(0 16px 30px rgba(0, 0, 0, 0.24));
   animation: moni-loader-breathe 2.1s ease-in-out infinite;
 }
 
-.MoniLoader_Copy {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 7px;
-  text-align: center;
-}
-
-.MoniLoader_Copy strong {
-  color: var(--Ac-1);
-  font-size: 1rem;
-  font-weight: 650;
-  letter-spacing: -0.015em;
-}
-
-.MoniLoader_Copy span {
-  max-width: 240px;
-  color: rgba(255, 245, 240, 0.5);
-  font-size: 0.72rem;
-  line-height: 1.55;
-}
-
-.MoniLoader_Track {
-  position: relative;
-  width: 100%;
-  height: 3px;
-  margin-top: 22px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgba(255, 245, 240, 0.065);
-}
-
-.MoniLoader_Track span {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 46%;
-  border-radius: inherit;
-  background: linear-gradient(90deg, rgba(16, 148, 138, 0.15), #19a193 48%, var(--Bc-1));
-  box-shadow: 0 0 16px rgba(25, 161, 147, 0.34);
-  animation: moni-loader-progress 1.25s ease-in-out infinite;
-}
-
-.MoniLoader_Secure {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 15px;
-  color: rgba(255, 245, 240, 0.34);
-  font-size: 0.62rem;
-  font-weight: 550;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
-}
-
-.MoniLoader_SecureDot {
-  width: 5px;
-  height: 5px;
+.MoniLoader_Spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(42, 226, 203, 0.2);
+  border-top-color: #2ae2cb;
   border-radius: 50%;
-  background: var(--Fc-1);
-  box-shadow: 0 0 8px rgba(131, 255, 201, 0.5);
+  animation: moni-loader-spin 800ms linear infinite;
 }
 
 .MoniLoader_SrOnly {
@@ -500,63 +395,6 @@ body {
   border: 0;
 }
 
-.DashboardSkeleton {
-  display: flex;
-  width: 100%;
-  height: 100%;
-  padding: 18px 16px 12px;
-  box-sizing: border-box;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.DashboardSkeleton_Hero,
-.DashboardSkeleton_Stats span,
-.DashboardSkeleton_List span {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid rgba(255, 245, 240, 0.04);
-  background: rgba(255, 245, 240, 0.055);
-}
-
-.DashboardSkeleton_Hero {
-  height: 138px;
-  border-radius: 28px;
-}
-
-.DashboardSkeleton_Stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
-
-.DashboardSkeleton_Stats span {
-  height: 68px;
-  border-radius: 18px;
-}
-
-.DashboardSkeleton_List {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.DashboardSkeleton_List span {
-  height: 54px;
-  border-radius: 16px;
-}
-
-.DashboardSkeleton_Hero::after,
-.DashboardSkeleton_Stats span::after,
-.DashboardSkeleton_List span::after {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(100deg, transparent 25%, rgba(255, 245, 240, 0.075) 48%, transparent 72%);
-  content: "";
-  transform: translateX(-100%);
-  animation: dashboard-skeleton-shimmer 1.6s ease-in-out infinite;
-}
-
 @keyframes moni-loader-breathe {
   0%, 100% {
     opacity: 0.8;
@@ -569,35 +407,14 @@ body {
   }
 }
 
-@keyframes moni-loader-progress {
-  0% { transform: translateX(-115%); }
-  50% { transform: translateX(48%); }
-  100% { transform: translateX(245%); }
-}
-
-@keyframes moni-loader-orbit {
-  0%, 100% { transform: scale(0.96); opacity: 0.5; }
-  50% { transform: scale(1.04); opacity: 1; }
-}
-
-@keyframes dashboard-skeleton-shimmer {
-  to { transform: translateX(100%); }
+@keyframes moni-loader-spin {
+  to { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .MoniLoader_Logo,
-  .MoniLoader_Track span,
-  .MoniLoader_Ambient,
-  .DashboardSkeleton_Hero::after,
-  .DashboardSkeleton_Stats span::after,
-  .DashboardSkeleton_List span::after {
+  .MoniLoader_Spinner {
     animation: none;
-  }
-
-  .MoniLoader_Track span {
-    width: 100%;
-    opacity: 0.72;
-    transform: none;
   }
 }
 

@@ -31,38 +31,26 @@
 
       .MoniLoader_Content {
         display: flex;
-        width: min(86vw, 390px);
         flex-direction: column;
         align-items: center;
-        gap: 4px;
+        gap: 18px;
       }
 
       .MoniLoader_Logo {
         display: block;
-        width: 100%;
+        width: min(64vw, 250px);
         height: auto;
         filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.28));
         animation: moni-loader-breathe 2.1s ease-in-out infinite;
       }
 
-      .MoniLoader_Track {
-        position: relative;
-        width: min(42vw, 164px);
-        height: 2px;
-        margin-top: -20px;
-        overflow: hidden;
-        border-radius: 999px;
-        background: rgba(255, 245, 240, 0.09);
-      }
-
-      .MoniLoader_Track::after {
-        position: absolute;
-        inset: 0;
-        width: 52%;
-        border-radius: inherit;
-        background: linear-gradient(90deg, #0c948b, #d49d81);
-        content: "";
-        animation: moni-loader-progress 1.25s ease-in-out infinite;
+      .MoniLoader_Spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(42, 226, 203, 0.2);
+        border-top-color: #2ae2cb;
+        border-radius: 50%;
+        animation: moni-loader-spin 800ms linear infinite;
       }
 
       .MoniLoader_SrOnly {
@@ -82,16 +70,13 @@
         50% { opacity: 1; transform: translateY(-3px) scale(1); }
       }
 
-      @keyframes moni-loader-progress {
-        0% { transform: translateX(-115%); }
-        50% { transform: translateX(48%); }
-        100% { transform: translateX(215%); }
+      @keyframes moni-loader-spin {
+        to { transform: rotate(360deg); }
       }
 
       @media (prefers-reduced-motion: reduce) {
         .MoniLoader_Logo,
-        .MoniLoader_Track::after { animation: none; }
-        .MoniLoader_Track::after { width: 100%; opacity: 0.72; }
+        .MoniLoader_Spinner { animation: none; }
       }
     </style>
   </head>
@@ -100,7 +85,7 @@
       <div class="MoniLoader" role="status" aria-label="Loading MoniMonitor">
         <div class="MoniLoader_Content">
           <img class="MoniLoader_Logo" src="/monimonitor-logo.png" alt="MoniMonitor" />
-          <div class="MoniLoader_Track" aria-hidden="true"></div>
+          <div class="MoniLoader_Spinner" aria-hidden="true"></div>
           <span class="MoniLoader_SrOnly">Loading MoniMonitor</span>
         </div>
       </div>

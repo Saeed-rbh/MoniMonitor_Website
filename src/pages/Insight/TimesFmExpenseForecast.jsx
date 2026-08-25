@@ -59,7 +59,8 @@ const TimesFmExpenseForecast = () => {
 
             {loading && (
                 <div className="TimesFmForecast_Loading">
-                    <div /><div /><div />
+                    <RefreshCw className="is-spinning" aria-hidden="true" />
+                    <span>Preparing forecast…</span>
                 </div>
             )}
 

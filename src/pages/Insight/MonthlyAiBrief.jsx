@@ -333,20 +333,8 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
   if (loading) {
     return (
       <section className="MonthlyAiBrief MonthlyAiBrief_Loading" aria-label="Loading monthly AI brief" aria-live="polite">
-        <div className="ai-skeleton-header">
-          <Sparkles className="MonthlyAiBrief_Spark" aria-hidden="true" />
-          <div className="ai-skeleton-line short" />
-        </div>
-        <div className="ai-skeleton-block">
-          <div className="ai-skeleton-line medium" />
-          <div className="ai-skeleton-line long" />
-          <div className="ai-skeleton-line full" />
-        </div>
-        <div className="ai-skeleton-block">
-          <div className="ai-skeleton-line short" />
-          <div className="ai-skeleton-line long" />
-          <div className="ai-skeleton-line full" />
-        </div>
+        <Sparkles className="MonthlyAiBrief_Spark is-spinning" aria-hidden="true" />
+        <span>Preparing your monthly insights…</span>
       </section>
     );
   }

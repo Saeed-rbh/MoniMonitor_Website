@@ -20,25 +20,12 @@ const SaveInvestAccounts = lazy(() => import("./pages/SaveInvest/SaveInvest"));
 const SaveInvestInsights = lazy(() => import("./pages/SaveInvest/SaveInvestInsights"));
 const AccountTransactions = lazy(() => import("./pages/SaveInvest/AccountTransactions"));
 
-const BrandedLoader = ({
-  label = "Loading MoniMonitor",
-  detail = "Preparing your secure financial overview",
-}) => (
+const BrandedLoader = ({ label = "Loading MoniMonitor" }) => (
   <div className="MoniLoader" role="status" aria-label={label}>
-    <div className="MoniLoader_Ambient MoniLoader_Ambient--one" aria-hidden="true" />
-    <div className="MoniLoader_Ambient MoniLoader_Ambient--two" aria-hidden="true" />
     <div className="MoniLoader_Content">
       <img className="MoniLoader_Logo" src="/monimonitor-logo.png" alt="" aria-hidden="true" />
-      <div className="MoniLoader_Copy">
-        <strong>{label}</strong>
-        <span>{detail}</span>
-      </div>
-      <div className="MoniLoader_Track" aria-hidden="true"><span /></div>
-      <div className="MoniLoader_Secure" aria-hidden="true">
-        <span className="MoniLoader_SecureDot" />
-        Secure connection
-      </div>
-      <span className="MoniLoader_SrOnly">{label}. {detail}</span>
+      <span className="MoniLoader_Spinner" aria-hidden="true" />
+      <span className="MoniLoader_SrOnly">{label}</span>
     </div>
   </div>
 );
@@ -48,32 +35,12 @@ const InitialDataGate = ({ children }) => {
 
   if (!dataLoaded) {
     return (
-      <BrandedLoader
-        label="Preparing your dashboard"
-        detail="Loading balances and this month’s activity"
-      />
+      <BrandedLoader label="Preparing your dashboard" />
     );
   }
 
   return children;
 };
-
-const DashboardSkeleton = () => (
-  <div className="DashboardSkeleton" role="status" aria-label="Loading your dashboard">
-    <div className="DashboardSkeleton_Hero" />
-    <div className="DashboardSkeleton_Stats">
-      <span />
-      <span />
-      <span />
-    </div>
-    <div className="DashboardSkeleton_List">
-      <span />
-      <span />
-      <span />
-    </div>
-    <span className="MoniLoader_SrOnly">Loading your dashboard</span>
-  </div>
-);
 
 // Private Route Component
 const PrivateRoute = ({ children }) => {
@@ -81,7 +48,7 @@ const PrivateRoute = ({ children }) => {
   const location = useLocation();
 
   if (loading) {
-    return <BrandedLoader label="Welcome back" detail="Checking your secure session" />;
+    return <BrandedLoader label="Welcome back" />;
   }
 
   if (!user) {
@@ -97,7 +64,7 @@ const AuthenticatedLayout = () => {
     <div className="App">
       <Header />
       <div style={{ flex: 1, width: '100%', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <Suspense fallback={<DashboardSkeleton />}>
+        <Suspense fallback={<BrandedLoader label="Loading page" />}>
           <Routes>
             <Route path="/" element={<Telegram />} />
             <Route path="/Transactions" element={<><Telegram /><Transactions /></>} />
@@ -126,7 +93,7 @@ const AppRoutes = () => {
   const { loading } = useAuth();
 
   if (loading) {
-    return <BrandedLoader label="Welcome back" detail="Checking your secure session" />;
+    return <BrandedLoader label="Welcome back" />;
   }
 
   return (
