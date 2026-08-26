@@ -3,15 +3,6 @@ const https = require('https');
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
-function escapeRichHtml(value) {
-    return String(value ?? 'N/A')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-}
-
 function telegramJsonRequest(method, payload) {
     if (!TELEGRAM_BOT_TOKEN) return Promise.resolve(null);
     const body = JSON.stringify(payload);
@@ -193,57 +184,23 @@ function formatTransactionMessage(tx, action = 'new') {
     return lines.join('\n');
 }
 
-function formatRichTransactionMessage(tx, action = 'new') {
-    const isIncome = tx.Category === 'Income';
-    const isInternal = tx.Category === 'Internal';
-    const isTrade = tx.PortfolioAction === 'BUY' || tx.PortfolioAction === 'SELL';
-    const sign = isTrade || isInternal ? '' : (isIncome ? '+' : '-');
-    const amount = `${sign}$${Number(tx.Amount || 0).toFixed(2)}`;
-    const title = action === 'updated' ? 'Transaction Updated' :
-        (isTrade ? `${tx.PortfolioAction} Order Filled` : (isInternal ? 'Internal Transfer' : (isIncome ? 'Income Received' : 'Expense Detected')));
-    const date = tx.Timestamp ? new Date(tx.Timestamp).toLocaleString('en-CA', {
-        timeZone: 'America/Toronto', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    }) : 'Date unrecorded';
-    const dashboardUrl = process.env.PUBLIC_APP_URL || (process.env.FRONTEND_URL || '').split(',').map((url) => url.trim()).find((url) => url.startsWith('https://'));
-    const dashboardButton = dashboardUrl
-        ? `<tg-button type="url" style="primary" url="${escapeRichHtml(dashboardUrl)}">Open dashboard</tg-button>`
-        : '';
-    const transferButton = tx.id
-        ? `<tg-button type="callback_data" style="success" data="transfer:${tx.id}">Internal transfer</tg-button>`
-        : '';
-    const recategorizeButton = tx.id
-        ? `<tg-button type="callback_data" style="primary" data="recat:${tx.id}">Recategorize</tg-button>`
-        : '';
-
+function transactionActionKeyboard(tx) {
+    if (!tx?.id) return null;
     return {
-        html: `<h3>${escapeRichHtml(title)}</h3>
-<p><strong>${escapeRichHtml(amount)}</strong></p>
-<table compact><tr><th>Label</th><td>${escapeRichHtml(tx.Label)}</td></tr><tr><th>Account</th><td>${escapeRichHtml(tx.Account || tx.BankName)}</td></tr><tr><th>Type</th><td>${escapeRichHtml(tx.Type)}</td></tr></table>
-<blockquote expandable>${escapeRichHtml(tx.Reason)}<cite>Transaction details</cite></blockquote>
-<footer>${escapeRichHtml(date)}${tx.ReferenceNumber ? ` · Ref ${escapeRichHtml(tx.ReferenceNumber)}` : ''}</footer>
-<tg-button-row align="center">${recategorizeButton}${transferButton}${dashboardButton}</tg-button-row>`,
-        skip_entity_detection: true,
+        inline_keyboard: [[
+            { text: '🏷️ Recategorize', callback_data: `recat:${tx.id}` },
+            { text: '🔄 Internal Transfer', callback_data: `transfer:${tx.id}` },
+        ]],
     };
-}
-
-async function sendRichTransactionMessage(tx, { silent = false, protectContent = true } = {}) {
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return null;
-    return telegramJsonRequest('sendRichMessage', {
-        chat_id: TELEGRAM_CHAT_ID,
-        rich_message: formatRichTransactionMessage(tx),
-        protect_content: protectContent,
-        ...(silent ? { disable_notification: true } : {}),
-    });
 }
 
 async function editTelegramTransactionMessage(messageId, tx, action = 'updated') {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID || !messageId) return null;
-    const result = await telegramJsonRequest('editMessageText', {
-        chat_id: TELEGRAM_CHAT_ID,
-        message_id: messageId,
-        rich_message: formatRichTransactionMessage(tx, action),
-    });
-    return result?.ok ? result : editTelegramMessage(messageId, formatTransactionMessage(tx, action));
+    return editTelegramMessage(
+        messageId,
+        formatTransactionMessage(tx, action),
+        transactionActionKeyboard(tx)
+    );
 }
 
 function categoryPickerRichMessage(txId) {
@@ -429,4 +386,4 @@ async function answerTelegramInlineQuery(inlineQueryId, results) {
     });
 }
 
-module.exports = { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, formatRichTransactionMessage, sendRichTransactionMessage, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e };
+module.exports = { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e };

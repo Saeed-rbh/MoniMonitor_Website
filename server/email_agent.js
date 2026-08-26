@@ -3,7 +3,7 @@ const { ImapService } = require('./src/services/imapService');
 const { parseEmailWithGemini, formatETransferReason } = require('./src/services/aiService');
 const dbService = require('./src/database/dbService');
 const { SNAPSHOT_CAPTURED_AT } = require('./src/database/financialSnapshot');
-const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, sendRichTransactionMessage, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e } = require('./src/services/telegramService');
+const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e } = require('./src/services/telegramService');
 
 const IMAP_HOST = 'imap.gmail.com';
 const IMAP_PORT = 993;
@@ -86,23 +86,14 @@ function enrichGenericEmailReason(transaction = {}) {
 }
 
 async function notifyAndSave(tx, { forceSilent = false } = {}) {
-    const replyMarkup = {
-        inline_keyboard: [
-            [
-                { text: "🏷️ Recategorize", callback_data: `recat:${tx.id}` },
-                { text: "🔄 Internal Transfer", callback_data: `transfer:${tx.id}` }
-            ]
-        ]
-    };
-
     const silent = forceSilent || isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0;
 
-    const richResult = await sendRichTransactionMessage(tx, { silent, protectContent: true });
-    // Rich messages are available in Bot API 10.1+. Retain the former alert
-    // shape when a client, gateway, or self-hosted Bot API server lacks it.
-    const result = richResult?.ok
-        ? richResult
-        : await sendTelegramMessage(formatTransactionMessage(tx), replyMarkup, silent, true);
+    const result = await sendTelegramMessage(
+        formatTransactionMessage(tx),
+        transactionActionKeyboard(tx),
+        silent,
+        true
+    );
     const msgId = result?.result?.message_id || null;
     if (msgId) {
         await updateAgentTransaction(tx.id, { TelegramMessageId: msgId });
