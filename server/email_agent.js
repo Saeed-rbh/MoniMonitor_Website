@@ -3,7 +3,7 @@ const { ImapService } = require('./src/services/imapService');
 const { parseEmailWithGemini, formatETransferReason } = require('./src/services/aiService');
 const dbService = require('./src/database/dbService');
 const { SNAPSHOT_CAPTURED_AT } = require('./src/database/financialSnapshot');
-const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e } = require('./src/services/telegramService');
+const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, sendRichTransactionMessage, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e } = require('./src/services/telegramService');
 
 const IMAP_HOST = 'imap.gmail.com';
 const IMAP_PORT = 993;
@@ -85,7 +85,7 @@ function enrichGenericEmailReason(transaction = {}) {
     return `${reason} - ${context}`;
 }
 
-async function notifyAndSave(tx) {
+async function notifyAndSave(tx, { forceSilent = false } = {}) {
     const replyMarkup = {
         inline_keyboard: [
             [
@@ -95,9 +95,14 @@ async function notifyAndSave(tx) {
         ]
     };
 
-    const silent = isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0;
+    const silent = forceSilent || isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0;
 
-    const result = await sendTelegramMessage(formatTransactionMessage(tx), replyMarkup, silent, true);
+    const richResult = await sendRichTransactionMessage(tx, { silent, protectContent: true });
+    // Rich messages are available in Bot API 10.1+. Retain the former alert
+    // shape when a client, gateway, or self-hosted Bot API server lacks it.
+    const result = richResult?.ok
+        ? richResult
+        : await sendTelegramMessage(formatTransactionMessage(tx), replyMarkup, silent, true);
     const msgId = result?.result?.message_id || null;
     if (msgId) {
         await updateAgentTransaction(tx.id, { TelegramMessageId: msgId });
@@ -113,7 +118,9 @@ async function replaceNotification(tx) {
     if (tx.TelegramMessageId) {
         await deleteTelegramMessage(tx.TelegramMessageId);
     }
-    await notifyAndSave(tx);
+    // A replacement represents an update to an alert the user has already
+    // seen, so do not generate a second Telegram notification.
+    await notifyAndSave(tx, { forceSilent: true });
 }
 
 async function syncPortfolioFromEmail(transactionId, data, idInfo) {
@@ -483,8 +490,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                                 [change.id, USER_ID]
                             );
                             if (reclassifiedTx && reclassifiedTx.TelegramMessageId) {
-                                const updatedText = formatTransactionMessage(reclassifiedTx, 'updated');
-                                await editTelegramMessage(reclassifiedTx.TelegramMessageId, updatedText);
+                                await editTelegramTransactionMessage(reclassifiedTx.TelegramMessageId, reclassifiedTx);
                                 console.log(`[InternalPairing] Updated Telegram message ${reclassifiedTx.TelegramMessageId} for tx ${change.id}.`);
                             }
                         } catch (telegramErr) {
@@ -504,6 +510,28 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         console.error(`[${idInfo}] Unexpected error processing email:`, err);
         return false;
     }
+}
+
+const csvCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+
+async function sendMonthlyStatement(month) {
+    const db = await dbService.getDb();
+    const rows = await db.all(
+        `SELECT Timestamp, Amount, Currency, Category, Label, Reason, Account, BankName, ReferenceNumber
+         FROM transactions WHERE userId = ? AND substr(Timestamp, 1, 7) = ?
+         ORDER BY Timestamp ASC, id ASC`,
+        [USER_ID, month]
+    );
+    const headers = ['Timestamp', 'Amount', 'Currency', 'Category', 'Label', 'Reason', 'Account', 'BankName', 'ReferenceNumber'];
+    const csv = [headers, ...rows.map((row) => headers.map((key) => row[key]))]
+        .map((row) => row.map(csvCell).join(','))
+        .join('\r\n');
+    return sendTelegramDocument(
+        `MoniMonitor-statement-${month}.csv`,
+        `\uFEFF${csv}`,
+        `MoniMonitor statement for ${month} (${rows.length} transactions).`,
+        { silent: true, protectContent: true }
+    );
 }
 
 async function onTelegramUpdate(update) {
@@ -554,7 +582,7 @@ async function onTelegramUpdate(update) {
         if (update.callback_query) {
             const query = update.callback_query;
             const data = query.data;
-            const messageId = query.message.message_id;
+            const messageId = query.message?.message_id;
             
             if (data.startsWith('transfer:') || data.startsWith('save:')) {
                 const txId = data.split(':')[1];
@@ -600,13 +628,14 @@ async function onTelegramUpdate(update) {
 
                     const updatedTx = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [txId, USER_ID]);
                     if (updatedTx) {
-                        const newText = formatTransactionMessage(updatedTx, 'updated');
-                        await editTelegramMessage(messageId, newText);
+                        await editTelegramTransactionMessage(updatedTx.TelegramMessageId || messageId, updatedTx);
                     }
                 }
             }
             else if (data.startsWith('recat:')) {
                 const txId = data.split(':')[1];
+                const ephemeralResult = await sendEphemeralCategoryPicker(query, txId);
+                if (ephemeralResult?.ok) return;
                 const replyMarkup = {
                     inline_keyboard: [
                         [
@@ -639,8 +668,7 @@ async function onTelegramUpdate(update) {
                 const tx = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [txId, USER_ID]);
                 if (tx && tx.Reason) {
                     await dbService.saveMerchantRule(tx.userId, tx.Reason, newCat, newLabel);
-                    const newText = formatTransactionMessage(tx, 'updated');
-                    await editTelegramMessage(messageId, newText);
+                    await editTelegramTransactionMessage(tx.TelegramMessageId || messageId, tx);
                 }
             }
             else if (data.startsWith('cancel:')) {
@@ -648,16 +676,7 @@ async function onTelegramUpdate(update) {
                 const db = await dbService.getDb();
                 const tx = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [txId, USER_ID]);
                 if (tx) {
-                    const newText = formatTransactionMessage(tx);
-                    const replyMarkup = {
-                        inline_keyboard: [
-                            [
-                                { text: "🏷️ Recategorize", callback_data: `recat:${tx.id}` },
-                                { text: "🔄 Internal Transfer", callback_data: `transfer:${tx.id}` }
-                            ]
-                        ]
-                    };
-                    await editTelegramMessage(messageId, newText, replyMarkup);
+                    await editTelegramTransactionMessage(tx.TelegramMessageId || messageId, tx, 'new');
                 }
             }
         }
@@ -665,7 +684,17 @@ async function onTelegramUpdate(update) {
         if (update.message && update.message.text) {
             const text = update.message.text;
             const messageId = update.message.message_id;
-            
+
+            const statementMatch = text.match(/^\/statement(?:\s+(\d{4}-\d{2}))?\s*$/i);
+            if (statementMatch) {
+                const month = statementMatch[1] || new Date().toISOString().slice(0, 7);
+                await setTelegramReaction(messageId, '👀');
+                const result = await sendMonthlyStatement(month);
+                if (!result?.ok) {
+                    await sendTelegramMessage(`I couldn't create the ${month} statement right now\\.`, null, true);
+                }
+                return;
+            }
             if (text.startsWith('/summary') || text.startsWith('/recent')) {
                 await setTelegramReaction(messageId, "👀");
                 const webAppUrl = WEB_APP_URL;

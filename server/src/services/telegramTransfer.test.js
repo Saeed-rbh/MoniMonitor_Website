@@ -11,7 +11,7 @@ process.env.TELEGRAM_BOT_TOKEN = 'test-token';
 process.env.TELEGRAM_CHAT_ID = '123456';
 
 const dbService = require('../database/dbService');
-const { formatTransactionMessage } = require('./telegramService');
+const { formatTransactionMessage, formatRichTransactionMessage } = require('./telegramService');
 const { onTelegramUpdate } = require('../../email_agent');
 
 test.after(async () => {
@@ -35,6 +35,24 @@ test('formatTransactionMessage formats internal transfer cleanly', () => {
     assert.match(message, /Internal Transfer/);
     assert.match(message, /75/);
     assert.match(message, /RBC Chequing/);
+});
+
+test('formatRichTransactionMessage embeds native actions and keeps details expandable', () => {
+    const richMessage = formatRichTransactionMessage({
+        id: 42,
+        Amount: 75,
+        Category: 'Expense',
+        Label: 'Groceries',
+        Reason: 'Payment & purchase <Merchant>',
+        Account: 'RBC Chequing',
+        Type: 'Chequing',
+        Timestamp: '2026-08-21T10:00:00Z',
+    });
+    assert.match(richMessage.html, /tg-button-row/);
+    assert.match(richMessage.html, /data="recat:42"/);
+    assert.match(richMessage.html, /data="transfer:42"/);
+    assert.match(richMessage.html, /blockquote expandable/);
+    assert.match(richMessage.html, /Payment &amp; purchase &lt;Merchant&gt;/);
 });
 
 test('handles Telegram transfer callback: sets Internal and Temporary route', async () => {

@@ -3,6 +3,36 @@ const https = require('https');
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
+function escapeRichHtml(value) {
+    return String(value ?? 'N/A')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
+function telegramJsonRequest(method, payload) {
+    if (!TELEGRAM_BOT_TOKEN) return Promise.resolve(null);
+    const body = JSON.stringify(payload);
+    return new Promise((resolve) => {
+        const req = https.request({
+            hostname: 'api.telegram.org', path: `/bot${TELEGRAM_BOT_TOKEN}/${method}`,
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+        }, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try { resolve(JSON.parse(data)); }
+                catch { resolve(null); }
+            });
+        });
+        req.on('error', () => resolve(null));
+        req.write(body);
+        req.end();
+    });
+}
+
 /**
  * Sends a message to the configured Telegram chat using MarkdownV2.
  */
@@ -163,6 +193,111 @@ function formatTransactionMessage(tx, action = 'new') {
     return lines.join('\n');
 }
 
+function formatRichTransactionMessage(tx, action = 'new') {
+    const isIncome = tx.Category === 'Income';
+    const isInternal = tx.Category === 'Internal';
+    const isTrade = tx.PortfolioAction === 'BUY' || tx.PortfolioAction === 'SELL';
+    const sign = isTrade || isInternal ? '' : (isIncome ? '+' : '-');
+    const amount = `${sign}$${Number(tx.Amount || 0).toFixed(2)}`;
+    const title = action === 'updated' ? 'Transaction Updated' :
+        (isTrade ? `${tx.PortfolioAction} Order Filled` : (isInternal ? 'Internal Transfer' : (isIncome ? 'Income Received' : 'Expense Detected')));
+    const date = tx.Timestamp ? new Date(tx.Timestamp).toLocaleString('en-CA', {
+        timeZone: 'America/Toronto', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    }) : 'Date unrecorded';
+    const dashboardUrl = process.env.PUBLIC_APP_URL || (process.env.FRONTEND_URL || '').split(',').map((url) => url.trim()).find((url) => url.startsWith('https://'));
+    const dashboardButton = dashboardUrl
+        ? `<tg-button type="url" style="primary" url="${escapeRichHtml(dashboardUrl)}">Open dashboard</tg-button>`
+        : '';
+    const transferButton = tx.id
+        ? `<tg-button type="callback_data" style="success" data="transfer:${tx.id}">Internal transfer</tg-button>`
+        : '';
+    const recategorizeButton = tx.id
+        ? `<tg-button type="callback_data" style="primary" data="recat:${tx.id}">Recategorize</tg-button>`
+        : '';
+
+    return {
+        html: `<h3>${escapeRichHtml(title)}</h3>
+<p><strong>${escapeRichHtml(amount)}</strong></p>
+<table compact><tr><th>Label</th><td>${escapeRichHtml(tx.Label)}</td></tr><tr><th>Account</th><td>${escapeRichHtml(tx.Account || tx.BankName)}</td></tr><tr><th>Type</th><td>${escapeRichHtml(tx.Type)}</td></tr></table>
+<blockquote expandable>${escapeRichHtml(tx.Reason)}<cite>Transaction details</cite></blockquote>
+<footer>${escapeRichHtml(date)}${tx.ReferenceNumber ? ` · Ref ${escapeRichHtml(tx.ReferenceNumber)}` : ''}</footer>
+<tg-button-row align="center">${recategorizeButton}${transferButton}${dashboardButton}</tg-button-row>`,
+        skip_entity_detection: true,
+    };
+}
+
+async function sendRichTransactionMessage(tx, { silent = false, protectContent = true } = {}) {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return null;
+    return telegramJsonRequest('sendRichMessage', {
+        chat_id: TELEGRAM_CHAT_ID,
+        rich_message: formatRichTransactionMessage(tx),
+        protect_content: protectContent,
+        ...(silent ? { disable_notification: true } : {}),
+    });
+}
+
+async function editTelegramTransactionMessage(messageId, tx, action = 'updated') {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID || !messageId) return null;
+    const result = await telegramJsonRequest('editMessageText', {
+        chat_id: TELEGRAM_CHAT_ID,
+        message_id: messageId,
+        rich_message: formatRichTransactionMessage(tx, action),
+    });
+    return result?.ok ? result : editTelegramMessage(messageId, formatTransactionMessage(tx, action));
+}
+
+function categoryPickerRichMessage(txId) {
+    const button = (label, category, value, style = 'primary') =>
+        `<tg-button type="callback_data" style="${style}" data="setcat:${txId}:${category}:${value}">${label}</tg-button>`;
+    return {
+        html: `<h3>Choose a category</h3><p>This selection is temporary and will not add another chat message.</p>
+<tg-button-row align="center">${button('Groceries', 'Expense', 'Groceries')}${button('Dining', 'Expense', 'Dining')}</tg-button-row>
+<tg-button-row align="center">${button('Transport', 'Expense', 'Transportation')}${button('Shopping', 'Expense', 'Shopping')}</tg-button-row>
+<tg-button-row align="center">${button('Housing', 'Expense', 'Housing &amp; Utilities')}<tg-button type="callback_data" style="link" data="cancel:${txId}">Cancel</tg-button></tg-button-row>`,
+        skip_entity_detection: true,
+    };
+}
+
+async function sendEphemeralCategoryPicker(callbackQuery, txId) {
+    const receiverUserId = callbackQuery?.from?.id;
+    if (!TELEGRAM_CHAT_ID || !receiverUserId || !callbackQuery?.id) return null;
+    return telegramJsonRequest('sendRichMessage', {
+        chat_id: TELEGRAM_CHAT_ID,
+        rich_message: categoryPickerRichMessage(txId),
+        disable_notification: true,
+        ephemeral_message_parameters: {
+            receiver_user_id: receiverUserId,
+            callback_query_id: callbackQuery.id,
+            replace_callback_query_message: true,
+        },
+    });
+}
+
+async function sendTelegramDocument(filename, content, caption = '', { silent = true, protectContent = true } = {}) {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return null;
+    const boundary = `----MoniMonitor${Date.now().toString(16)}`;
+    const fields = [
+        ['chat_id', TELEGRAM_CHAT_ID], ['caption', caption],
+        ['disable_notification', String(silent)], ['protect_content', String(protectContent)],
+    ].map(([name, value]) => Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`));
+    const document = Buffer.from(content);
+    const fileHeader = Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="document"; filename="${filename}"\r\nContent-Type: text/csv; charset=utf-8\r\n\r\n`);
+    const body = Buffer.concat([...fields, fileHeader, document, Buffer.from(`\r\n--${boundary}--\r\n`)]);
+    return new Promise((resolve) => {
+        const req = https.request({
+            hostname: 'api.telegram.org', path: `/bot${TELEGRAM_BOT_TOKEN}/sendDocument`, method: 'POST',
+            headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': body.length }
+        }, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(null); } });
+        });
+        req.on('error', () => resolve(null));
+        req.write(body);
+        req.end();
+    });
+}
+
 let lastUpdateId = 0;
 
 function startTelegramPolling(onUpdate) {
@@ -294,4 +429,4 @@ async function answerTelegramInlineQuery(inlineQueryId, results) {
     });
 }
 
-module.exports = { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e };
+module.exports = { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, formatRichTransactionMessage, sendRichTransactionMessage, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e };

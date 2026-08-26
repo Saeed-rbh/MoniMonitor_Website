@@ -39,12 +39,9 @@ async function refreshReconciledTelegramMessages(userId, transactionIds = []) {
     );
     if (!rows.length) return;
 
-    const { editTelegramMessage, formatTransactionMessage } = require('./telegramService');
+    const { editTelegramTransactionMessage } = require('./telegramService');
     for (const transaction of rows) {
-        await editTelegramMessage(
-            transaction.TelegramMessageId,
-            formatTransactionMessage(transaction, 'updated')
-        );
+        await editTelegramTransactionMessage(transaction.TelegramMessageId, transaction);
     }
 }
 
