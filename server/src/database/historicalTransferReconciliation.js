@@ -29,6 +29,7 @@ function lastFour(value) {
 function buildKnownAccountAliases(rows) {
     return rows.map((row) => ({
         id: `${row.kind}:${row.id}`,
+        displayName: row.name || row.accountRef || 'account',
         bank: normalizeBank(row.bank),
         aliases: [row.name, row.accountRef]
             .filter(Boolean)
@@ -58,8 +59,10 @@ function sameAccount(left, right, knownAccounts) {
         resolveAccountIdentity(right, knownAccounts);
 }
 
-function accountDisplayName(transaction) {
-    return transaction?.Account || transaction?.BankName || 'account';
+function accountDisplayName(transaction, knownAccounts = []) {
+    const identity = resolveAccountIdentity(transaction, knownAccounts);
+    const known = knownAccounts.find((candidate) => candidate.id === identity);
+    return known?.displayName || transaction?.Account || transaction?.BankName || 'account';
 }
 
 async function reconcileExplicitSelfTransfers(db, userId) {
@@ -69,7 +72,10 @@ async function reconcileExplicitSelfTransfers(db, userId) {
     const [transactions, investmentAccounts, accounts] = await Promise.all([
         db.all(
             `SELECT * FROM transactions
-             WHERE userId = ? AND Category IN ('Income', 'Expense')
+             WHERE userId = ? AND (
+                 Category IN ('Income', 'Expense')
+                 OR (Category = 'Internal' AND Label = 'Internal Transfer')
+             )
              ORDER BY Timestamp ASC, id ASC`,
             [userId]
         ),
@@ -96,13 +102,14 @@ async function reconcileExplicitSelfTransfers(db, userId) {
 
     const matchWindowDays = 7;
     const changes = [];
+    const affectedTransactionIds = new Set();
     let linked = 0;
 
     for (const selfTransfer of selfTransfers) {
         const direction = getTransactionDirection(selfTransfer);
         const timestamp = new Date(selfTransfer.Timestamp).getTime();
         if (!direction || !Number.isFinite(timestamp)) continue;
-        const candidates = await db.all(
+        const sameLegCandidates = await db.all(
             `SELECT * FROM transactions
              WHERE userId = ? AND id != ? AND AmountMinor = ?
                AND Currency = ? AND Category = 'Internal'
@@ -120,18 +127,55 @@ async function reconcileExplicitSelfTransfers(db, userId) {
             ]
         );
 
-        const matchingCandidates = candidates
+        const matchingCandidates = sameLegCandidates
             .filter((candidate) => sameAccount(selfTransfer, candidate, knownAccounts))
             .sort((left, right) => {
                 const leftDistance = Math.abs(new Date(left.Timestamp).getTime() - timestamp);
                 const rightDistance = Math.abs(new Date(right.Timestamp).getTime() - timestamp);
                 return leftDistance - rightDistance || left.id - right.id;
             });
-        const match = matchingCandidates[0] || null;
+        let match = matchingCandidates[0] || null;
+
+        // A provider-owned self-transfer can be classified as Internal before
+        // its opposite bank/email leg is linked. Match that opposite leg as a
+        // real account-to-account transfer instead of leaving two unrelated
+        // "own account" records (for example RBC Chequing -> Future).
+        if (!match) {
+            const oppositeDirection = direction === 'IN' ? 'OUT' : 'IN';
+            const oppositeCandidates = await db.all(
+                `SELECT * FROM transactions
+                 WHERE userId = ? AND id != ? AND AmountMinor = ?
+                   AND Currency = ? AND Category = 'Internal'
+                   AND Label = 'Internal Transfer'
+                   AND AccountFlow = ?
+                   AND Timestamp BETWEEN ? AND ?`,
+                [
+                    userId,
+                    selfTransfer.id,
+                    selfTransfer.AmountMinor,
+                    selfTransfer.Currency || 'CAD',
+                    oppositeDirection,
+                    new Date(timestamp - matchWindowDays * 86400000).toISOString(),
+                    new Date(timestamp + matchWindowDays * 86400000).toISOString(),
+                ]
+            );
+            match = oppositeCandidates
+                .filter((candidate) => !sameAccount(selfTransfer, candidate, knownAccounts))
+                .sort((left, right) => {
+                    const leftDistance = Math.abs(new Date(left.Timestamp).getTime() - timestamp);
+                    const rightDistance = Math.abs(new Date(right.Timestamp).getTime() - timestamp);
+                    return leftDistance - rightDistance || left.id - right.id;
+                })[0] || null;
+        }
+
         const reference = match?.ReferenceNumber ||
             `XFER-SELF-${dateKey(selfTransfer.Timestamp).replace(/-/g, '')}-${selfTransfer.AmountMinor}-${selfTransfer.id}`;
-        const reason = match?.Reason ||
-            `Internal transfer: ${accountDisplayName(selfTransfer)} -> own account`;
+        const isOppositeLegMatch = Boolean(match && getTransactionDirection(match) !== direction);
+        const outgoingLeg = isOppositeLegMatch && direction === 'IN' ? match : selfTransfer;
+        const incomingLeg = isOppositeLegMatch && direction === 'OUT' ? match : selfTransfer;
+        const reason = isOppositeLegMatch
+            ? `Internal transfer: ${accountDisplayName(outgoingLeg, knownAccounts)} -> ${accountDisplayName(incomingLeg, knownAccounts)}`
+            : (match?.Reason || `Internal transfer: ${accountDisplayName(selfTransfer, knownAccounts)} -> own account`);
         const wasInternal = selfTransfer.Category === 'Internal' &&
             selfTransfer.Label === 'Internal Transfer';
 
@@ -142,6 +186,18 @@ async function reconcileExplicitSelfTransfers(db, userId) {
              WHERE id = ? AND userId = ?`,
             [reason, reference, selfTransfer.id, userId]
         );
+        affectedTransactionIds.add(selfTransfer.id);
+
+        if (isOppositeLegMatch) {
+            await db.run(
+                `UPDATE transactions
+                 SET Category = 'Internal', Label = 'Internal Transfer',
+                     Reason = ?, ReferenceNumber = ?
+                 WHERE id = ? AND userId = ?`,
+                [reason, reference, match.id, userId]
+            );
+            affectedTransactionIds.add(match.id);
+        }
 
         if (!wasInternal) {
             changes.push({
@@ -157,7 +213,12 @@ async function reconcileExplicitSelfTransfers(db, userId) {
         if (match) linked += 1;
     }
 
-    return { reclassified: changes.length, linked, changes };
+    return {
+        reclassified: changes.length,
+        linked,
+        changes,
+        affectedTransactionIds: [...affectedTransactionIds],
+    };
 }
 
 /**
@@ -280,6 +341,10 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
             selfReclassified: selfTransferSummary.reclassified,
             selfLinked: selfTransferSummary.linked,
         };
+        const affectedTransactionIds = [...new Set([
+            ...(selfTransferSummary.affectedTransactionIds || []),
+            ...changes.flatMap((change) => [change.outgoingId, change.incomingId]),
+        ])];
         if (!alreadyApplied) {
             await db.run(
                 `INSERT INTO app_migrations (id, userId, appliedAt, details) VALUES (?, ?, ?, ?)`,
@@ -294,7 +359,7 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
             );
         }
         await db.run('COMMIT');
-        return { ...details, alreadyApplied };
+        return { ...details, affectedTransactionIds, alreadyApplied };
     } catch (error) {
         await db.run('ROLLBACK');
         throw error;

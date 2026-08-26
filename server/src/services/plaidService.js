@@ -28,6 +28,26 @@ const MARKET_QUOTES_TIMEZONE = process.env.MARKET_QUOTES_TIMEZONE || 'America/To
 const MARKET_QUOTES_START_MINUTE = 9 * 60;
 const MARKET_QUOTES_END_MINUTE = 14 * 60;
 
+async function refreshReconciledTelegramMessages(userId, transactionIds = []) {
+    if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID || !transactionIds.length) return;
+    const db = await dbService.getDb();
+    const placeholders = transactionIds.map(() => '?').join(',');
+    const rows = await db.all(
+        `SELECT * FROM transactions
+         WHERE userId = ? AND id IN (${placeholders}) AND TelegramMessageId IS NOT NULL`,
+        [userId, ...transactionIds]
+    );
+    if (!rows.length) return;
+
+    const { editTelegramMessage, formatTransactionMessage } = require('./telegramService');
+    for (const transaction of rows) {
+        await editTelegramMessage(
+            transaction.TelegramMessageId,
+            formatTransactionMessage(transaction, 'updated')
+        );
+    }
+}
+
 function getConfig() {
     const environment = PLAID_ENVIRONMENTS.has(process.env.PLAID_ENV)
         ? process.env.PLAID_ENV
@@ -1220,6 +1240,10 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
             totals.investmentTransactionsStatus = item.investmentTransactionsStatus || 'unknown';
         }
         const transferReconciliation = await reconcileHistoricalInternalTransfers(db, item.userId);
+        await refreshReconciledTelegramMessages(
+            item.userId,
+            transferReconciliation.affectedTransactionIds
+        ).catch((error) => console.warn('[Internal transfer] Telegram refresh failed:', error.message));
         totals.internalTransfersMatched = transferReconciliation.matched;
         totals.internalTransferLegsRestored = transferReconciliation.restored;
         totals.selfTransfersReclassified = transferReconciliation.selfReclassified;

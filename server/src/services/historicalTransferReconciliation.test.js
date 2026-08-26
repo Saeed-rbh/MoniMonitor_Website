@@ -214,3 +214,62 @@ test('reclassifies owner-named e-transfers and links them to existing account le
     assert.equal(outgoingId > 0, true);
     assert.equal(incomingId > 0, true);
 });
+
+test('links an owner-named incoming transfer to its opposite account leg and uses canonical account names', async () => {
+    const db = await dbService.getDb();
+    const userId = 'recent-self-transfer-user';
+    await db.run(
+        `INSERT OR IGNORE INTO users (id, username, password, createdAt)
+         VALUES (?, ?, ?, ?)`,
+        [userId, 'recentowner', 'test-password', new Date().toISOString()]
+    );
+    await db.run(
+        `INSERT INTO investment_accounts
+            (userId, name, institution, accountType, accountRef, currency, cashMinor, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?), (?, ?, ?, ?, ?, ?, 0, ?, ?)`,
+        [
+            userId, 'RBC Chequing', 'RBC', 'Chequing', '03481-5026554', 'CAD', new Date().toISOString(), new Date().toISOString(),
+            userId, 'Future', 'Wealthsimple', 'Savings', '•••• 1234', 'CAD', new Date().toISOString(), new Date().toISOString(),
+        ]
+    );
+
+    const outgoingId = await dbService.addTransaction({
+        userId,
+        Amount: 4500,
+        AmountMinor: 450000,
+        Currency: 'CAD',
+        Category: 'Internal',
+        Label: 'Internal Transfer',
+        Reason: 'Internal transfer: ********6554 -> own account',
+        ReferenceNumber: 'XFER-SELF-20260826-450000-out',
+        Timestamp: '2026-08-26T00:00:00.000Z',
+        Account: '********6554',
+        BankName: 'RBC Royal Bank',
+        AccountFlow: 'OUT',
+    });
+    const incomingId = await dbService.addTransaction({
+        userId,
+        Amount: 4500,
+        AmountMinor: 450000,
+        Currency: 'CAD',
+        Category: 'Internal',
+        Label: 'Internal Transfer',
+        Reason: 'RECENT OWNER - INTERAC e-Transfer®',
+        Timestamp: '2026-08-26T12:00:00.000Z',
+        Account: '1234',
+        BankName: 'Wealthsimple (Canada)',
+        AccountFlow: 'IN',
+    });
+
+    const result = await reconcileHistoricalInternalTransfers(db, userId);
+    assert.equal(result.selfReclassified, 0);
+    assert.equal(result.selfLinked, 1);
+    assert.deepEqual(new Set(result.affectedTransactionIds), new Set([outgoingId, incomingId]));
+
+    const outgoing = await dbService.getTransactionById(outgoingId, userId);
+    const incoming = await dbService.getTransactionById(incomingId, userId);
+    assert.equal(incoming.Category, 'Internal');
+    assert.equal(outgoing.Reason, 'Internal transfer: RBC Chequing -> Future');
+    assert.equal(incoming.Reason, outgoing.Reason);
+    assert.equal(incoming.ReferenceNumber, outgoing.ReferenceNumber);
+});
