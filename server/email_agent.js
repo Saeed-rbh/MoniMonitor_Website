@@ -3,6 +3,7 @@ const { ImapService } = require('./src/services/imapService');
 const { parseEmailWithGemini, formatETransferReason } = require('./src/services/aiService');
 const dbService = require('./src/database/dbService');
 const { SNAPSHOT_CAPTURED_AT } = require('./src/database/financialSnapshot');
+const { normalizeTransactionSemantics } = require('./src/services/transactionSemantics');
 const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e } = require('./src/services/telegramService');
 
 const IMAP_HOST = 'imap.gmail.com';
@@ -201,7 +202,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             dbService.getAccountsForUser(USER_ID),
             dbService.getInvestmentAccounts(USER_ID),
         ]);
-        const expenseData = await parseEmailWithGemini(emailBody, knownAccounts, investmentAccounts);
+        let expenseData = await parseEmailWithGemini(emailBody, knownAccounts, investmentAccounts);
 
         if (!expenseData) {
             console.log(`[${idInfo}] Parsing failed due to error or hallucination. Retrying later.`);
@@ -239,6 +240,10 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             expenseData.Category = rule.category;
             expenseData.Label = rule.label;
         }
+
+        // Provider wording can make a credit-card payment look like an OUT
+        // flow. On the card account it is an IN flow because it reduces debt.
+        expenseData = normalizeTransactionSemantics(expenseData);
 
         // Format e-Transfer reasons to standard "E-Transfer - [Name]"
         expenseData.Reason = formatETransferReason(expenseData.Reason, expenseData.Label, expenseData.Type);

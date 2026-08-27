@@ -178,3 +178,82 @@ test('pairs an outgoing Temporary transfer with money transferred back into the 
     assert.ok(leg1.ReferenceNumber.startsWith('XFER-'));
     assert.equal(leg1.ReferenceNumber, leg2.ReferenceNumber);
 });
+
+test('pairs a near-simultaneous outgoing e-transfer with its credit-card payment email', async () => {
+    const outgoingId = await dbService.addTransaction({
+        userId: 'test-user-transfer', Amount: 449.17, AmountMinor: 44917, Currency: 'CAD',
+        Category: 'Expense', Label: 'Other Expense',
+        Reason: 'E-Transfer sent from RBC Royal Bank e-Transfer ••••6554',
+        Type: 'e-Transfer', BankName: 'RBC Royal Bank', Account: '********6554',
+        AccountFlow: 'OUT', Timestamp: '2026-08-26T00:00:00.000Z',
+        ReceivedAt: '2026-08-27T11:45:27.000Z', SourceEmailKey: 'mailbox:589',
+    });
+    const cardId = await dbService.addTransaction({
+        userId: 'test-user-transfer', Amount: 449.17, AmountMinor: 44917, Currency: 'CAD',
+        Category: 'Internal', Label: 'Internal Transfer', Reason: 'Credit Card Payment',
+        Type: 'Credit Card', BankName: 'RBC Royal Bank', Account: '************2379',
+        // Deliberately far from the other provider timestamp: receipt time is
+        // the reliable evidence for these adjacent notification emails.
+        AccountFlow: 'OUT', Timestamp: '2026-08-27T20:00:00.000Z',
+        ReceivedAt: '2026-08-27T11:45:33.000Z', SourceEmailKey: 'mailbox:590',
+    });
+
+    const changes = await dbService.detectAndReclassifyInternalCounterparts('test-user-transfer', cardId);
+    assert.deepEqual(new Set(changes.map(change => change.id)), new Set([outgoingId, cardId]));
+
+    const db = await dbService.getDb();
+    const outgoing = await db.get('SELECT * FROM transactions WHERE id = ?', [outgoingId]);
+    const card = await db.get('SELECT * FROM transactions WHERE id = ?', [cardId]);
+    assert.equal(outgoing.Category, 'Internal');
+    assert.equal(outgoing.AccountFlow, 'OUT');
+    assert.equal(card.Category, 'Internal');
+    assert.equal(card.AccountFlow, 'IN');
+    assert.equal(outgoing.ReferenceNumber, card.ReferenceNumber);
+    assert.match(outgoing.ReferenceNumber, /^XFER-CARD-/);
+});
+
+test('does not pair same-amount card activity without all conservative evidence', async () => {
+    const base = {
+        userId: 'test-user-transfer', Amount: 88.88, AmountMinor: 8888, Currency: 'CAD',
+        Timestamp: '2026-08-27T00:00:00.000Z', ReceivedAt: '2026-08-27T12:00:00.000Z',
+    };
+    const transferId = await dbService.addTransaction({
+        ...base, Category: 'Expense', Label: 'Other Expense',
+        Reason: 'E-Transfer sent from RBC account', Type: 'e-Transfer',
+        BankName: 'RBC', Account: '1111', AccountFlow: 'OUT',
+    });
+    const unrelatedCardId = await dbService.addTransaction({
+        ...base, Category: 'Expense', Label: 'Shopping', Reason: 'Retail purchase',
+        Type: 'Credit Card', BankName: 'RBC', Account: '2222', AccountFlow: 'OUT',
+        ReceivedAt: '2026-08-27T12:00:05.000Z',
+    });
+
+    const changes = await dbService.detectAndReclassifyInternalCounterparts(
+        'test-user-transfer', unrelatedCardId
+    );
+    assert.equal(changes.length, 0);
+    assert.equal((await dbService.getTransactionById(transferId, 'test-user-transfer')).Category, 'Expense');
+    assert.equal((await dbService.getTransactionById(unrelatedCardId, 'test-user-transfer')).Category, 'Expense');
+});
+
+test('does not pair credit-card payment emails across banks', async () => {
+    const base = {
+        userId: 'test-user-transfer', Amount: 77.77, AmountMinor: 7777, Currency: 'CAD',
+        Timestamp: '2026-08-28T00:00:00.000Z',
+    };
+    await dbService.addTransaction({
+        ...base, Category: 'Expense', Label: 'Other Expense',
+        Reason: 'E-Transfer sent from RBC account', Type: 'e-Transfer',
+        BankName: 'RBC', Account: '3333', AccountFlow: 'OUT',
+        ReceivedAt: '2026-08-28T12:00:00.000Z',
+    });
+    const otherBankCardId = await dbService.addTransaction({
+        ...base, Category: 'Internal', Label: 'Internal Transfer', Reason: 'Credit Card Payment',
+        Type: 'Credit Card', BankName: 'TD', Account: '4444', AccountFlow: 'OUT',
+        ReceivedAt: '2026-08-28T12:00:05.000Z',
+    });
+    const changes = await dbService.detectAndReclassifyInternalCounterparts(
+        'test-user-transfer', otherBankCardId
+    );
+    assert.equal(changes.length, 0);
+});

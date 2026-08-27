@@ -8,6 +8,10 @@ const {
 const { CATEGORY_LABELS } = require('../services/transactionCategories');
 const { findTransactionMatch } = require('../services/transactionDeduplication');
 const {
+    isCreditCardPayment,
+    isOutgoingEmailTransfer,
+} = require('../services/transactionSemantics');
+const {
     getStoredMonthlySummaries,
     refreshTransactionMonths,
 } = require('./monthlySummaries');
@@ -1529,6 +1533,78 @@ function normalizeAccountKey(bankName, account) {
     return `${bank}|${accountIdentity}`;
 }
 
+function normalizeBankKey(bankName) {
+    return String(bankName || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function receivedTime(transaction) {
+    const value = new Date(transaction?.ReceivedAt || '').getTime();
+    return Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Match the two emails emitted for one credit-card payment. This deliberately
+ * uses stronger evidence than ordinary amount matching: one explicit outgoing
+ * e-Transfer, one explicit credit-card payment, same institution/currency and
+ * amount, different accounts, and email receipt times within ten minutes.
+ */
+async function pairCreditCardPaymentEmails(db, userId, transactions, amountMinor) {
+    const unlinked = transactions.filter(t => !/^XFER-/i.test(String(t.ReferenceNumber || '')));
+    const transferCandidates = unlinked.filter(t => t.ReceivedAt && isOutgoingEmailTransfer(t));
+    const cardCandidates = unlinked.filter(t => t.ReceivedAt && isCreditCardPayment(t));
+    if (transferCandidates.length !== 1 || cardCandidates.length !== 1) return [];
+
+    const outgoing = transferCandidates[0];
+    const cardPayment = cardCandidates[0];
+    if (outgoing.id === cardPayment.id) return [];
+    if (normalizeAccountKey(outgoing.BankName, outgoing.Account) ===
+        normalizeAccountKey(cardPayment.BankName, cardPayment.Account)) return [];
+
+    const outgoingBank = normalizeBankKey(outgoing.BankName);
+    const cardBank = normalizeBankKey(cardPayment.BankName);
+    if (!outgoingBank || outgoingBank !== cardBank) return [];
+
+    const outgoingReceived = receivedTime(outgoing);
+    const cardReceived = receivedTime(cardPayment);
+    const maxReceiptGapMs = 10 * 60 * 1000;
+    if (outgoingReceived === null || cardReceived === null ||
+        Math.abs(outgoingReceived - cardReceived) > maxReceiptGapMs) return [];
+
+    const source = describeDiscoveredAccount(outgoing)?.name || outgoing.Account || outgoing.BankName || 'Bank account';
+    const destination = describeDiscoveredAccount(cardPayment)?.name || cardPayment.Account || 'Credit card';
+    const reason = `Internal transfer: ${source} -> ${destination}`;
+    const groupTime = Math.min(outgoingReceived, cardReceived);
+    const reference = `XFER-CARD-${groupTime}-${amountMinor}`;
+
+    await db.run(
+        `UPDATE transactions
+         SET Category = 'Internal', Label = 'Internal Transfer', Reason = ?,
+             ReferenceNumber = ?, AccountFlow = 'OUT'
+         WHERE id = ? AND userId = ?`,
+        [reason, reference, outgoing.id, userId]
+    );
+    await db.run(
+        `UPDATE transactions
+         SET Category = 'Internal', Label = 'Internal Transfer', Reason = ?,
+             ReferenceNumber = ?, AccountFlow = 'IN'
+         WHERE id = ? AND userId = ?`,
+        [reason, reference, cardPayment.id, userId]
+    );
+
+    // The card email may already have posted with the wrong OUT direction.
+    // Re-syncing is idempotent and reverses that event before applying IN.
+    await syncTransactionAccountBalance(userId, cardPayment.id);
+    await refreshTransactionMonths(db, [outgoing, cardPayment]);
+
+    return [outgoing, cardPayment].map(leg => ({
+        id: leg.id,
+        oldCategory: leg.Category,
+        oldLabel: leg.Label,
+        newCategory: 'Internal',
+        newLabel: 'Internal Transfer',
+    }));
+}
+
 /**
  * After any transaction is saved or marked, detect whether it is part of an
  * internal transfer (including Temporary transfers and multi-email transfers)
@@ -1563,6 +1639,29 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     );
 
     let all = [tx, ...siblings];
+
+    // Transaction timestamps can use different provider conventions (posting
+    // date at midnight versus an actual event time). For this strict email
+    // pattern, collect by receipt time so timezone differences cannot hide the
+    // counterpart. The evidence checks below still require a unique pair.
+    let cardPaymentEmailCandidates = all;
+    if (tx.ReceivedAt) {
+        const receivedSiblings = await db.all(
+            `SELECT * FROM transactions
+             WHERE userId = ? AND AmountMinor = ? AND Currency = ?
+               AND id != ? AND ReceivedAt IS NOT NULL
+               AND ABS(JULIANDAY(ReceivedAt) - JULIANDAY(?)) * 24 <= ?`,
+            [userId, tx.AmountMinor, tx.Currency || 'CAD', transactionId, tx.ReceivedAt, 10 / 60]
+        );
+        cardPaymentEmailCandidates = [...new Map(
+            [tx, ...receivedSiblings].map(candidate => [candidate.id, candidate])
+        ).values()];
+    }
+
+    const cardPaymentPair = await pairCreditCardPaymentEmails(
+        db, userId, cardPaymentEmailCandidates, tx.AmountMinor
+    );
+    if (cardPaymentPair.length) return cardPaymentPair;
 
     // If neither tx nor siblings are temporary, check if an unpaired temporary transfer exists in a 30-day window
     const hasTemporary = all.some(t => isTemporaryInternalTransfer(t));
