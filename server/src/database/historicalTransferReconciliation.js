@@ -1,4 +1,5 @@
 const { isExplicitSelfTransferDescription, normalizeIdentity, getTransactionDirection } = require('../services/selfTransfer');
+const { mergeTransactionRows } = require('../services/transactionDeduplication');
 
 const MIGRATION_PREFIX = 'historical-internal-transfer-reconciliation-v1';
 
@@ -287,7 +288,7 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
             db.all(
                 `SELECT * FROM transactions
                  WHERE userId = ? AND Category = 'Investment'
-                   AND Reason = 'Transfer in' AND AmountMinor > 0
+                   AND Reason LIKE 'Transfer in%' AND AmountMinor > 0
                    AND (ReferenceNumber IS NULL OR ReferenceNumber NOT LIKE 'XFER-HIST-%')
                    AND (PortfolioAction = 'TRANSFER' OR LOWER(Type) = 'tfsa')`,
                 [userId]
@@ -305,7 +306,27 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
         const changes = [];
 
         for (const [key, outs] of Object.entries(outgoingByKey)) {
-            const ins = incomingByKey[key] || [];
+            let ins = incomingByKey[key] || [];
+            // Portfolio imports can contain the exact same destination row
+            // twice. Treat only byte-for-byte equivalent transfer-in rows as
+            // duplicates; distinct same-day transfers remain ambiguous.
+            if (outs.length === 1 && ins.length > 1) {
+                const duplicateKey = (row) => [
+                    row.AmountMinor, row.Currency || 'CAD', row.Category, row.Label,
+                    row.Reason, row.Type, row.BankName, row.Account, row.AccountFlow,
+                    row.PortfolioAction, row.PortfolioAccountId, row.PortfolioSymbol,
+                    row.PortfolioQuantity, row.PortfolioPrice, row.Timestamp,
+                ].map((value) => String(value ?? '')).join('|');
+                const signatures = new Set(ins.map(duplicateKey));
+                if (signatures.size === 1) {
+                    const sorted = [...ins].sort((left, right) => left.id - right.id);
+                    const canonical = sorted[0];
+                    for (const duplicate of sorted.slice(1)) {
+                        await mergeTransactionRows(db, canonical, duplicate);
+                    }
+                    ins = [canonical];
+                }
+            }
             if (!ins.length || outs.length !== ins.length) continue;
 
             const outgoingAccounts = new Set(outs.map((row) => normalizeAccountKey(row.BankName, row.Account)));
