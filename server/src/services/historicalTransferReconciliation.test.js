@@ -241,6 +241,32 @@ test('collapses exact duplicate TFSA rows before pairing a Transfer out expense'
     assert.equal(await dbService.getTransactionById(duplicateIncomingId, userId), undefined);
 });
 
+test('collapses exact duplicate TFSA rows before pairing a Transfer out expense', async () => {
+    const userId = process.env.USER_ID;
+    const db = await dbService.getDb();
+    const outgoingId = await dbService.addTransaction({
+        userId, Amount: 12, AmountMinor: 1200, Currency: 'CAD',
+        Category: 'Expense', Label: 'Personal Transfers', Reason: 'Transfer out',
+        Timestamp: '2026-08-30T12:00:00.000Z', Type: 'Chequing', Account: '1234',
+        BankName: 'Wealthsimple (Canada)', AccountFlow: 'OUT',
+    });
+    const incoming = {
+        userId, Amount: 12, AmountMinor: 1200, Currency: 'CAD',
+        Category: 'Investment', Label: 'Asset Distribution', Reason: 'Transfer in',
+        Timestamp: '2026-08-30T12:00:00.000Z', Type: 'tfsa', Account: 'S0K7',
+        BankName: 'Wealthsimple (Canada)', PortfolioAction: 'TRANSFER',
+        PortfolioAccountId: 10, AccountFlow: 'NONE',
+    };
+    const firstIncomingId = await dbService.addTransaction(incoming);
+    const duplicateIncomingId = await dbService.addTransaction(incoming);
+
+    const result = await reconcileHistoricalInternalTransfers(db, userId);
+    assert.equal(result.matched, 1);
+    assert.equal((await dbService.getTransactionById(outgoingId, userId)).Category, 'Internal');
+    assert.equal((await dbService.getTransactionById(firstIncomingId, userId)).Category, 'Internal');
+    assert.equal(await dbService.getTransactionById(duplicateIncomingId, userId), undefined);
+});
+
 test('links an owner-named incoming transfer to its opposite account leg and uses canonical account names', async () => {
     const db = await dbService.getDb();
     const userId = 'recent-self-transfer-user';
