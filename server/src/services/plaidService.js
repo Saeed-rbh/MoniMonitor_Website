@@ -373,7 +373,21 @@ function preserveLinkedInternalTransfer(existing, updates) {
 
 async function findFallbackMatch(userId, appTransaction) {
     const db = await dbService.getDb();
-    return findTransactionMatch(db, userId, appTransaction, { mode: 'bank' });
+    return findTransactionMatch(db, userId, appTransaction, {
+        mode: 'bank',
+        incomingProvider: 'plaid',
+    });
+}
+
+function plaidCanonicalUpdates(existing, plaidTransaction) {
+    const updates = { Timestamp: plaidTransaction.Timestamp };
+    for (const column of ['Type', 'Account', 'BankName', 'ReferenceNumber', 'AccountFlow']) {
+        if ((existing[column] === null || existing[column] === undefined || existing[column] === '') &&
+            plaidTransaction[column] !== null && plaidTransaction[column] !== undefined && plaidTransaction[column] !== '') {
+            updates[column] = plaidTransaction[column];
+        }
+    }
+    return updates;
 }
 
 async function upsertPlaidAccounts(userId, item, accounts = []) {
@@ -788,6 +802,13 @@ async function importAddedTransaction(userId, item, transaction, accountMap, own
         if (replacement?.ownsTransaction && !match.SourceEmailKey) {
             await dbService.updateTransactionForUser(
                 match.id, userId, preserveLinkedInternalTransfer(match, appTransaction)
+            );
+        } else if (match.SourceEmailKey && !replacement) {
+            // The email received time can fall on the previous local calendar
+            // day. Once Plaid confirms the event, use its bank transaction date
+            // while preserving the email's richer category and description.
+            await dbService.updateTransactionForUser(
+                match.id, userId, plaidCanonicalUpdates(match, appTransaction)
             );
         }
         await linkSource(

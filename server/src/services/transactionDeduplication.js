@@ -1,4 +1,5 @@
 const PLAID_PROVIDERS = new Set(['plaid', 'plaid_investments']);
+const { refreshTransactionMonths } = require('../database/monthlySummaries');
 
 const GENERIC_WORDS = new Set([
     'the', 'and', 'for', 'from', 'into', 'with', 'transfer', 'transfers',
@@ -130,7 +131,17 @@ function compareCanonicalRows(left, right) {
     return Number(right.id || 0) - Number(left.id || 0);
 }
 
-function scoreTransactionMatch(candidate, incoming) {
+function areComplementaryBankSources(candidate, incoming, options = {}) {
+    const incomingProvider = String(options.incomingProvider || '').toLowerCase();
+    const candidateHasEmail = Boolean(candidate.SourceEmailKey);
+    const incomingHasEmail = Boolean(incoming.SourceEmailKey) || incomingProvider === 'email';
+    const candidateHasPlaid = Boolean(candidate.hasPlaidSource);
+    const incomingHasPlaid = Boolean(incoming.hasPlaidSource) || incomingProvider === 'plaid';
+    return (candidateHasEmail && incomingHasPlaid) ||
+        (incomingHasEmail && candidateHasPlaid);
+}
+
+function scoreTransactionMatch(candidate, incoming, options = {}) {
     const incomingAmount = Number.isSafeInteger(incoming.AmountMinor)
         ? incoming.AmountMinor
         : toMinorUnits(incoming.Amount);
@@ -160,6 +171,7 @@ function scoreTransactionMatch(candidate, incoming) {
     const sameAccount = candidateAccount && incomingAccount && candidateAccount === incomingAccount;
     const overlap = reasonOverlap(candidate.Reason, incoming.Reason);
     const referenceMatch = hasReferenceMatch(candidate, incoming);
+    const complementaryBankSources = areComplementaryBankSources(candidate, incoming, options);
 
     if (referenceMatch) {
         // A shared transfer reference is authoritative only when the money is
@@ -179,12 +191,19 @@ function scoreTransactionMatch(candidate, incoming) {
     if (candidate.Category === 'Internal' || incoming.Category === 'Internal') return null;
 
     // Without a reference, require a same-day match plus enough independent
-    // identity evidence. Amount alone is intentionally never sufficient.
-    if (!sameDay || overlap.length < 2 && !(sameAccount && overlap.length >= 1)) return null;
+    // identity evidence. A complementary email/Plaid pair may have a shortened
+    // merchant description (for example, "Uber Holdings C" versus "Uber").
+    // Permit one shared merchant word only when bank and direction also agree;
+    // amount alone is intentionally never sufficient.
+    const hasStrongDescriptionMatch = overlap.length >= 2 ||
+        (sameAccount && overlap.length >= 1) ||
+        (complementaryBankSources && sameBank && sameDirection && overlap.length >= 1);
+    if (!sameDay || !hasStrongDescriptionMatch) return null;
 
     return {
         score: 20 + overlap.length * 5 + (sameDirection ? 5 : 0) +
-            (sameBank ? 4 : 0) + (sameAccount ? 8 : 0),
+            (sameBank ? 4 : 0) + (sameAccount ? 8 : 0) +
+            (complementaryBankSources ? 6 : 0),
         referenceMatch: false,
         overlapCount: overlap.length,
     };
@@ -227,7 +246,7 @@ async function findTransactionMatch(db, userId, incoming, options = {}) {
         .filter((candidate) => options.mode !== 'investment' || matchesInvestmentIdentity(candidate, incoming))
         .map((candidate) => ({
             candidate,
-            match: scoreTransactionMatch(candidate, incoming),
+            match: scoreTransactionMatch(candidate, incoming, options),
         }))
         .filter(({ match }) => match)
         .sort((left, right) => {
@@ -269,6 +288,13 @@ async function mergeTransactionRows(db, canonical, duplicate) {
     if (!canonical.SourceEmailKey && duplicate.SourceEmailKey) {
         updates.push('SourceEmailKey = ?');
         values.push(duplicate.SourceEmailKey);
+    }
+    if (canonical.SourceEmailKey && sourceRows.some((source) => source.provider === 'plaid') &&
+        duplicate.Timestamp && canonical.Timestamp !== duplicate.Timestamp) {
+        // Historical reconciliation should make the same date choice as live
+        // Plaid matching: the bank transaction date wins over email receipt time.
+        updates.push('Timestamp = ?');
+        values.push(duplicate.Timestamp);
     }
     if (updates.length) {
         values.push(canonical.id);
@@ -323,6 +349,8 @@ async function mergeTransactionRows(db, canonical, duplicate) {
     }
 
     await db.run('DELETE FROM transactions WHERE id = ?', [duplicate.id]);
+    const updatedCanonical = await db.get('SELECT * FROM transactions WHERE id = ?', [canonical.id]);
+    await refreshTransactionMonths(db, [canonical, duplicate, updatedCanonical]);
     return { canonicalId: canonical.id, removedId: duplicate.id, linkedSources: sourceRows.length };
 }
 
@@ -345,6 +373,7 @@ async function reconcileTransactionDuplicates(db, userId = null, options = {}) {
         : await db.all('SELECT id FROM users ORDER BY id');
     const summary = { users: users.length, merged: 0, removedTransactionIds: [], linkedSources: 0 };
     const dryRun = Boolean(options.dryRun);
+    const dryRunPairs = new Set();
 
     for (const user of users) {
         const rows = await loadDedupRows(db, user.id);
@@ -372,6 +401,9 @@ async function reconcileTransactionDuplicates(db, userId = null, options = {}) {
                 const canonical = compareCanonicalRows(current, match) >= 0 ? current : match;
                 const duplicate = canonical.id === current.id ? match : current;
                 if (dryRun) {
+                    const pairKey = [canonical.id, duplicate.id].sort((a, b) => a - b).join(':');
+                    if (dryRunPairs.has(pairKey)) continue;
+                    dryRunPairs.add(pairKey);
                     summary.merged += 1;
                     summary.removedTransactionIds.push(duplicate.id);
                     continue;
