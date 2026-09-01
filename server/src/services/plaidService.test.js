@@ -10,7 +10,6 @@ const {
     decryptAccessToken,
     plaidBalanceMinor,
     plaidAvailableBalanceMinor,
-    importedBalanceDeltaMinor,
     fetchCurrentMarketPrices,
     normalizeInvestmentSnapshot,
     canonicalPlaidSecuritySymbol,
@@ -169,22 +168,6 @@ test('converts Plaid available investment cash to integer minor units', () => {
     assert.equal(plaidAvailableBalanceMinor({ balances: {} }), null);
 });
 
-test('calculates unconfirmed imported money in and out for an account balance', () => {
-    assert.equal(importedBalanceDeltaMinor([
-        { AmountMinor: 4291082, AccountFlow: 'OUT' },
-    ]), -4291082);
-    assert.equal(importedBalanceDeltaMinor([
-        {
-            AmountMinor: 91082, AccountFlow: 'NONE', Category: 'Internal',
-            PortfolioAction: 'TRANSFER',
-        },
-    ]), 91082);
-    assert.equal(importedBalanceDeltaMinor([
-        { AmountMinor: 4291082, AccountFlow: 'IN' },
-        { AmountMinor: 91082, AccountFlow: 'OUT' },
-    ]), 4200000);
-});
-
 test('prefers Plaid available cash over total investment value and cash holdings', () => {
     const result = normalizeInvestmentSnapshot({
         accounts: [{ account_id: 'tfsa', balances: { current: 9435.30, available: 612.45 } }],
@@ -198,6 +181,24 @@ test('prefers Plaid available cash over total investment value and cash holdings
         ],
     }).get('tfsa');
     assert.equal(result.cashMinor, 61245);
+});
+
+test('stores authoritative Plaid cash without reapplying an uploaded transfer', () => {
+    const result = normalizeInvestmentSnapshot({
+        accounts: [{
+            account_id: 'tfsa',
+            balances: { current: 10503.12, available: 1630.59 },
+        }],
+        securities: [{ security_id: 'vfv', ticker_symbol: 'VFV', type: 'etf' }],
+        holdings: [{
+            account_id: 'tfsa', security_id: 'vfv', quantity: 47,
+            institution_price: 188.33, institution_value: 8872.53,
+            cost_basis: 7816.85, iso_currency_code: 'CAD',
+        }],
+    }).get('tfsa');
+
+    assert.equal(result.cashMinor, 163059);
+    assert.equal(result.holdings.reduce((sum, holding) => sum + holding.valueMinor, 0), 887253);
 });
 
 test('normalizes authoritative investment quantities, prices, cost, and cash', () => {
