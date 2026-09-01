@@ -5,7 +5,7 @@ import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import { useTransactions } from "../../context/TransactionContext";
 import { getPortfolioAPI } from "../../services/apiService";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
-import { getAccountTransactions } from "./accountStatistics";
+import { getAccountTransactionFlow, getAccountTransactions } from "./accountStatistics";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import "./SaveInvestInsights.css";
 
@@ -23,12 +23,7 @@ const money = (transaction, currency = "CAD") => {
 };
 
 const transactionDirection = (transaction) => {
-  const explicitFlow = String(transaction?.AccountFlow || "").toUpperCase();
-  if (explicitFlow === "IN") return "in";
-  if (explicitFlow === "OUT") return "out";
-  const type = String(transaction?.Type || "").toLowerCase();
-  const category = String(transaction?.Category || "").toLowerCase();
-  return type === "income" || type === "credit" || category === "income" ? "in" : "out";
+  return getAccountTransactionFlow(transaction) === "IN" ? "in" : "out";
 };
 
 const transactionDate = (value) => {

@@ -10,6 +10,7 @@ const {
     decryptAccessToken,
     plaidBalanceMinor,
     plaidAvailableBalanceMinor,
+    importedBalanceDeltaMinor,
     fetchCurrentMarketPrices,
     normalizeInvestmentSnapshot,
     canonicalPlaidSecuritySymbol,
@@ -166,6 +167,22 @@ test('converts Plaid available investment cash to integer minor units', () => {
     assert.equal(plaidAvailableBalanceMinor({ balances: { available: 0 } }), 0);
     assert.equal(plaidAvailableBalanceMinor({ balances: { available: null } }), null);
     assert.equal(plaidAvailableBalanceMinor({ balances: {} }), null);
+});
+
+test('calculates unconfirmed imported money in and out for an account balance', () => {
+    assert.equal(importedBalanceDeltaMinor([
+        { AmountMinor: 4291082, AccountFlow: 'OUT' },
+    ]), -4291082);
+    assert.equal(importedBalanceDeltaMinor([
+        {
+            AmountMinor: 91082, AccountFlow: 'NONE', Category: 'Internal',
+            PortfolioAction: 'TRANSFER',
+        },
+    ]), 91082);
+    assert.equal(importedBalanceDeltaMinor([
+        { AmountMinor: 4291082, AccountFlow: 'IN' },
+        { AmountMinor: 91082, AccountFlow: 'OUT' },
+    ]), 4200000);
 });
 
 test('prefers Plaid available cash over total investment value and cash holdings', () => {

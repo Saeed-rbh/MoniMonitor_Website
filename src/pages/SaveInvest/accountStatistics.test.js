@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildAccountStatistics, getAccountTransactions, withRecordedTransactions } from "./accountStatistics";
+import {
+  buildAccountStatistics,
+  getAccountTransactionFlow,
+  getAccountTransactions,
+  withRecordedTransactions,
+} from "./accountStatistics";
 
 describe("buildAccountStatistics", () => {
   it("builds separate flow and activity statistics for each account", () => {
@@ -77,5 +82,25 @@ describe("buildAccountStatistics", () => {
     });
 
     expect(statistics.map((item) => item.transactionCount)).toEqual([1, 0]);
+  });
+});
+
+describe("getAccountTransactionFlow", () => {
+  it("shows a neutral internal portfolio transfer as money into its destination account", () => {
+    expect(getAccountTransactionFlow({
+      Category: "Internal",
+      Label: "Internal Transfer",
+      PortfolioAction: "TRANSFER",
+      AccountFlow: "NONE",
+    })).toBe("IN");
+  });
+
+  it("keeps the source leg of an internal transfer as money out", () => {
+    expect(getAccountTransactionFlow({
+      Category: "Internal",
+      Label: "Internal Transfer",
+      PortfolioAction: "TRANSFER",
+      AccountFlow: "OUT",
+    })).toBe("OUT");
   });
 });

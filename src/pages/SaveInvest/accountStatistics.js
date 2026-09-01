@@ -38,10 +38,16 @@ export const getAccountTransactions = (account, allTransactions = {}, accounts =
     .filter((transaction) => uniquelyMatchesAccount(transaction, account, accounts))
     .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp));
 
-const transactionFlow = (transaction) => {
+export const getAccountTransactionFlow = (transaction) => {
   const explicitFlow = String(transaction?.AccountFlow || "").toUpperCase();
   if (explicitFlow === "IN" || explicitFlow === "OUT") return explicitFlow;
   const category = String(transaction?.Category || "").toLowerCase();
+  const label = String(transaction?.Label || "").toLowerCase();
+  const isInternalTransfer = category === "internal" || label === "internal transfer";
+  if (isInternalTransfer &&
+      String(transaction?.PortfolioAction || "").toUpperCase() === "TRANSFER") {
+    return "IN";
+  }
   const type = String(transaction?.Type || "").toLowerCase();
   if (category === "income" || type === "income" || type === "credit") return "IN";
   if (category === "expense" || type === "expense" || type === "debit") return "OUT";
@@ -58,7 +64,7 @@ export const buildAccountStatistics = (accounts = [], allTransactions = {}) => {
       const amountMinor = Number.isFinite(Number(transaction?.AmountMinor))
         ? Number(transaction.AmountMinor)
         : Math.round((Number(transaction?.Amount) || 0) * 100);
-      const flow = transactionFlow(transaction);
+      const flow = getAccountTransactionFlow(transaction);
       if (flow === "IN") moneyInMinor += amountMinor;
       if (flow === "OUT") moneyOutMinor += amountMinor;
     });

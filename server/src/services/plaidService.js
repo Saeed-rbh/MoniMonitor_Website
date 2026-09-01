@@ -440,6 +440,39 @@ function plaidAvailableBalanceMinor(account = {}) {
         : null;
 }
 
+function importedBalanceDeltaMinor(transactions = []) {
+    return transactions.reduce((total, transaction) => {
+        const amountMinor = Number(transaction?.AmountMinor || 0);
+        const flow = String(transaction?.AccountFlow || '').toUpperCase();
+        if (flow === 'IN') return total + amountMinor;
+        if (flow === 'OUT') return total - amountMinor;
+        const isIncomingInternalTransfer =
+            String(transaction?.Category || '').toLowerCase() === 'internal' &&
+            String(transaction?.PortfolioAction || '').toUpperCase() === 'TRANSFER';
+        return isIncomingInternalTransfer ? total + amountMinor : total;
+    }, 0);
+}
+
+async function pendingImportedBalanceDelta(db, userId, accountId) {
+    const transactions = await db.all(
+        `SELECT t.AmountMinor, t.Category, t.PortfolioAction, t.AccountFlow
+         FROM transactions t
+         JOIN transaction_sources imported
+           ON imported.transactionId = t.id
+          AND imported.userId = t.userId
+          AND imported.provider = 'wealthsimple_activities'
+         WHERE t.userId = ? AND t.BalanceAccountId = ?
+           AND NOT EXISTS (
+             SELECT 1 FROM transaction_sources confirmed
+             WHERE confirmed.transactionId = t.id
+               AND confirmed.userId = t.userId
+               AND confirmed.provider IN ('plaid', 'plaid_investments')
+           )`,
+        [userId, accountId]
+    );
+    return importedBalanceDeltaMinor(transactions);
+}
+
 async function applyAuthoritativeBalances(userId, accountMap) {
     const db = await dbService.getDb();
     const now = new Date().toISOString();
@@ -450,7 +483,10 @@ async function applyAuthoritativeBalances(userId, accountMap) {
         // Without the Investments product, subtracting locally reconstructed
         // positions mixes two different snapshots and corrupts the cash value.
         if (!account.appAccountId || totalBalanceMinor === null || account.type === 'investment') continue;
-        const balanceMinor = totalBalanceMinor;
+        const importedDeltaMinor = await pendingImportedBalanceDelta(
+            db, userId, account.appAccountId
+        );
+        const balanceMinor = Math.max(0, totalBalanceMinor + importedDeltaMinor);
         const currency = String(
             account.balances?.iso_currency_code || account.balances?.unofficial_currency_code || 'CAD'
         ).toUpperCase();
@@ -737,9 +773,13 @@ async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
             }
             const sourceAccount = (snapshot.accounts || []).find((item) => item.account_id === plaidAccountId);
             const currency = String(sourceAccount?.balances?.iso_currency_code || sourceAccount?.balances?.unofficial_currency_code || account.currency || 'CAD').toUpperCase();
+            const importedDeltaMinor = await pendingImportedBalanceDelta(
+                db, userId, account.appAccountId
+            );
+            const reconciledCashMinor = Math.max(0, entry.cashMinor + importedDeltaMinor);
             await db.run(
                 'UPDATE investment_accounts SET cashMinor = ?, currency = ?, updatedAt = ? WHERE id = ? AND userId = ?',
-                [entry.cashMinor, currency, new Date().toISOString(), account.appAccountId, userId]
+                [reconciledCashMinor, currency, new Date().toISOString(), account.appAccountId, userId]
             );
             accountsUpdated += 1;
         }
@@ -1708,6 +1748,7 @@ module.exports = {
     toAppInvestmentTransaction,
     plaidBalanceMinor,
     plaidAvailableBalanceMinor,
+    importedBalanceDeltaMinor,
     fetchCurrentMarketPrices,
     fetchYahooMarketPrice,
     isMarketPriceRefreshWindow,
