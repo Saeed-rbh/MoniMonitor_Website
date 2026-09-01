@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { buildCashFlowWidgetPayload } = require('./cashFlowWidgetService');
+const { buildCashFlowWidgetPayload, transactionCalendarDate } = require('./cashFlowWidgetService');
 
 const transaction = (Timestamp, AmountMinor, Category) => ({
     Timestamp,
@@ -50,4 +50,22 @@ test('reports investment contributions separately from portfolio value changes',
     assert.equal(payload.investmentTotal, 910.82);
     assert.equal(payload.chartItems[0].investment, 910.82);
     assert.equal(payload.totalExpense, 0);
+});
+
+test('keeps midnight UTC transactions on their stored bank calendar date', () => {
+    assert.deepEqual(transactionCalendarDate('2026-09-01T00:00:00.000Z'), {
+        year: 2026, month: 8, day: 1,
+    });
+
+    const payload = buildCashFlowWidgetPayload([
+        transaction('2026-09-01T00:00:00.000Z', 2259, 'Expense'),
+        transaction('2026-09-01T00:00:00.000Z', 6950, 'Expense'),
+        transaction('2026-09-01T00:00:00.000Z', 974, 'Expense'),
+        transaction('2026-09-01T12:00:00.000Z', 1524, 'Income'),
+    ], { accounts: [] }, new Date('2026-09-01T18:00:00.000Z'));
+
+    assert.equal(payload.totalIncome, 15.24);
+    assert.equal(payload.totalExpense, 101.83);
+    assert.equal(payload.balance, -86.59);
+    assert.equal(payload.chartItems[0].expense, 101.83);
 });

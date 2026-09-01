@@ -17,6 +17,22 @@ const isExpense = (transaction) => (
     transaction?.Type === 'Debit'
 );
 
+function transactionCalendarDate(timestamp) {
+    // Transaction timestamps use their YYYY-MM-DD prefix as the bank's
+    // calendar date. Date-only activity is stored at midnight UTC; converting
+    // that instant to Eastern time would incorrectly move it to the prior day.
+    const match = String(timestamp || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    const checked = new Date(Date.UTC(year, month, day));
+    if (checked.getUTCFullYear() !== year || checked.getUTCMonth() !== month || checked.getUTCDate() !== day) {
+        return null;
+    }
+    return { year, month, day };
+}
+
 function investmentKind(account) {
     const type = String(account?.accountType || '').toLowerCase();
     const name = String(account?.name || '').toLowerCase();
@@ -58,12 +74,11 @@ function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
         .filter(investmentKind)
         .map((account) => Number(account.id)));
 
-    const current = transactions.filter((transaction) => {
-        const date = new Date(transaction.Timestamp);
-        return date.getFullYear() === year && date.getMonth() === month;
-    });
-    for (const transaction of current) {
-        const day = new Date(transaction.Timestamp).getDate();
+    const current = transactions
+        .map((transaction) => ({ transaction, date: transactionCalendarDate(transaction.Timestamp) }))
+        .filter(({ date }) => date?.year === year && date?.month === month);
+    for (const { transaction, date } of current) {
+        const { day } = date;
         if (day < 1 || day > daysInMonth) continue;
         if (isIncome(transaction)) incomeByDay[day - 1] += amountOf(transaction);
         else if (isExpense(transaction)) expenseByDay[day - 1] += amountOf(transaction);
@@ -77,12 +92,12 @@ function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
     let previousIncome = 0;
     let previousExpense = 0;
     const maxDay = current.length
-        ? Math.max(...current.map((transaction) => new Date(transaction.Timestamp).getDate()))
+        ? Math.max(...current.map(({ date }) => date.day))
         : now.getDate();
 
     for (const transaction of transactions) {
-        const date = new Date(transaction.Timestamp);
-        if (date.getFullYear() !== previousDate.getFullYear() || date.getMonth() !== previousDate.getMonth() || date.getDate() > maxDay) continue;
+        const date = transactionCalendarDate(transaction.Timestamp);
+        if (!date || date.year !== previousDate.getFullYear() || date.month !== previousDate.getMonth() || date.day > maxDay) continue;
         if (isIncome(transaction)) previousIncome += amountOf(transaction);
         else if (isExpense(transaction)) previousExpense += amountOf(transaction);
     }
@@ -123,4 +138,4 @@ function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
     };
 }
 
-module.exports = { buildCashFlowWidgetPayload };
+module.exports = { buildCashFlowWidgetPayload, transactionCalendarDate };
