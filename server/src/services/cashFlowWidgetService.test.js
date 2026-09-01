@@ -26,3 +26,28 @@ test('builds a compact current-month widget payload', () => {
     assert.equal(payload.chartItems.at(-1).active, true);
     assert.ok(payload.maxChartTotal >= 1);
 });
+
+test('reports investment contributions separately from portfolio value changes', () => {
+    const payload = buildCashFlowWidgetPayload([
+        {
+            ...transaction('2026-09-01T11:37:28.000Z', 91082, 'Internal'),
+            Account: 'S0K7',
+            AccountFlow: 'NONE',
+            PortfolioAction: 'TRANSFER',
+            PortfolioAccountId: 10,
+        },
+        {
+            ...transaction('2026-09-01T12:01:00.000Z', 1000, 'Investment'),
+            Account: 'TFSA',
+            AccountFlow: 'OUT',
+            PortfolioAction: 'BUY',
+            PortfolioAccountId: 10,
+        },
+    ], {
+        accounts: [{ id: 10, name: 'TFSA', accountType: 'TFSA', totalValueMinor: 1050312 }],
+    }, new Date('2026-09-01T18:00:00.000Z'));
+
+    assert.equal(payload.investmentTotal, 910.82);
+    assert.equal(payload.chartItems[0].investment, 910.82);
+    assert.equal(payload.totalExpense, 0);
+});

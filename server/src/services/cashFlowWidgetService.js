@@ -25,90 +25,26 @@ function investmentKind(account) {
     return null;
 }
 
-function investmentTimeline(transactions, portfolio, currentTimestamp = Date.now()) {
-    const accountKinds = new Map();
-    for (const account of portfolio?.accounts || []) {
-        const kind = investmentKind(account);
-        if (kind) accountKinds.set(Number(account.id), kind);
-    }
+function investmentContributionDelta(transaction, investmentAccountIds) {
+    const accountName = String(transaction?.Account || '').toLowerCase();
+    const accountId = Number(transaction?.PortfolioAccountId ?? transaction?.BalanceAccountId);
+    const belongsToInvestmentAccount = accountName.includes('tfsa') ||
+        accountName.includes('crypto') || investmentAccountIds.has(accountId);
+    if (!belongsToInvestmentAccount) return 0;
 
-    const states = new Map([
-        ['tfsa', { cashMinor: 0, positions: new Map() }],
-        ['crypto', { cashMinor: 0, positions: new Map() }],
-    ]);
-    const sorted = [...transactions].sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
+    const action = String(transaction?.PortfolioAction || '').toUpperCase();
+    if (!['TRANSFER', 'CONTRIBUTION', 'DEPOSIT', 'WITHDRAWAL'].includes(action)) return 0;
 
-    const currentValue = () => {
-        let totalMinor = 0;
-        for (const state of states.values()) {
-            totalMinor += state.cashMinor;
-            for (const position of state.positions.values()) {
-                totalMinor += Math.round(position.quantity * position.priceMicros / 10000);
-            }
-        }
-        return totalMinor / 100;
-    };
+    const amount = amountOf(transaction);
+    const flow = String(transaction?.AccountFlow || '').toUpperCase();
+    if (flow === 'OUT' || action === 'WITHDRAWAL') return -amount;
+    if (flow === 'IN' || ['CONTRIBUTION', 'DEPOSIT'].includes(action)) return amount;
 
-    const timeline = [];
-    for (const transaction of sorted) {
-        const accountName = String(transaction?.Account || '').toLowerCase();
-        let kind = accountName.includes('tfsa') ? 'tfsa' : accountName.includes('crypto') ? 'crypto' : null;
-        if (!kind) kind = accountKinds.get(Number(transaction?.PortfolioAccountId));
-        if (!kind) continue;
-
-        const timestamp = new Date(transaction.Timestamp).getTime();
-        if (!Number.isFinite(timestamp)) continue;
-
-        const state = states.get(kind);
-        const amountMinor = Number.isFinite(Number(transaction.AmountMinor))
-            ? Number(transaction.AmountMinor)
-            : Math.round(amountOf(transaction) * 100);
-        const action = String(transaction?.PortfolioAction || '').toUpperCase();
-        const flow = String(transaction?.AccountFlow || '').toUpperCase();
-
-        if (flow === 'IN') state.cashMinor += amountMinor;
-        else if (flow === 'OUT') state.cashMinor -= amountMinor;
-        else if (action === 'BUY') state.cashMinor -= amountMinor;
-        else if (['SELL', 'DIVIDEND', 'INTEREST', 'REIMBURSEMENT', 'CONTRIBUTION', 'DEPOSIT'].includes(action)) state.cashMinor += amountMinor;
-        else if (['WITHDRAWAL', 'FEE', 'TAX'].includes(action)) state.cashMinor -= amountMinor;
-
-        const symbol = String(transaction?.PortfolioSymbol || '').trim().toUpperCase();
-        const quantity = Number(transaction?.PortfolioQuantity);
-        const price = Number(transaction?.PortfolioPrice);
-        let position = symbol ? state.positions.get(symbol) : null;
-        if (symbol && !position) {
-            position = { quantity: 0, priceMicros: 0 };
-            state.positions.set(symbol, position);
-        }
-        if (position && Number.isFinite(price) && price > 0) position.priceMicros = Math.round(price * 1000000);
-        if (position && Number.isFinite(quantity)) {
-            if (action === 'BUY') position.quantity += Math.abs(quantity);
-            else if (action === 'SELL' || action === 'FEE') position.quantity -= Math.abs(quantity);
-            else if (['REWARD', 'DISTRIBUTION'].includes(action)) position.quantity += quantity;
-        }
-        timeline.push({ timestamp, value: currentValue() });
-    }
-
-    const currentPortfolioValue = (portfolio?.accounts || [])
-        .filter(investmentKind)
-        .reduce((sum, account) => sum + Number(account?.totalValueMinor || 0), 0) / 100;
-    if ((portfolio?.accounts || []).length) timeline.push({ timestamp: currentTimestamp, value: currentPortfolioValue });
-    return timeline.sort((a, b) => a.timestamp - b.timestamp);
-}
-
-function dailyInvestmentValues(timeline, year, month, daysInMonth) {
-    const start = new Date(year, month, 1).getTime();
-    let index = 0;
-    let latest = 0;
-    while (index < timeline.length && timeline[index].timestamp < start) latest = Number(timeline[index++].value) || 0;
-    const opening = latest;
-    const values = [];
-    for (let day = 1; day <= daysInMonth; day++) {
-        const endOfDay = new Date(year, month, day + 1).getTime() - 1;
-        while (index < timeline.length && timeline[index].timestamp <= endOfDay) latest = Number(timeline[index++].value) || 0;
-        values.push(latest - opening);
-    }
-    return values;
+    // Imported internal-transfer destination legs use NONE because their paired
+    // source leg already describes the cash direction. At the destination,
+    // this is still money contributed to the investment account.
+    if (action === 'TRANSFER' && transaction?.Category === 'Internal') return amount;
+    return 0;
 }
 
 function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
@@ -117,6 +53,10 @@ function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const incomeByDay = Array(daysInMonth).fill(0);
     const expenseByDay = Array(daysInMonth).fill(0);
+    const investmentByDay = Array(daysInMonth).fill(0);
+    const investmentAccountIds = new Set((portfolio?.accounts || [])
+        .filter(investmentKind)
+        .map((account) => Number(account.id)));
 
     const current = transactions.filter((transaction) => {
         const date = new Date(transaction.Timestamp);
@@ -127,6 +67,7 @@ function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
         if (day < 1 || day > daysInMonth) continue;
         if (isIncome(transaction)) incomeByDay[day - 1] += amountOf(transaction);
         else if (isExpense(transaction)) expenseByDay[day - 1] += amountOf(transaction);
+        investmentByDay[day - 1] += investmentContributionDelta(transaction, investmentAccountIds);
     }
 
     const totalIncome = incomeByDay.reduce((sum, value) => sum + value, 0);
@@ -150,25 +91,20 @@ function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
     const percentageChange = previousBalance === 0
         ? null
         : Math.round(((balance - previousBalance) / Math.abs(previousBalance)) * 100);
-    const investmentValues = dailyInvestmentValues(
-        investmentTimeline(transactions, portfolio, now.getTime()),
-        year,
-        month,
-        daysInMonth
-    );
     const anchorDay = Math.min(daysInMonth, now.getDate());
+    const investmentTotal = investmentByDay
+        .slice(0, anchorDay)
+        .reduce((sum, value) => sum + value, 0);
     const endDay = Math.min(daysInMonth, Math.max(1, anchorDay - 11) + 11);
     const startDay = Math.max(1, endDay - 11);
     const chartItems = [];
 
     for (let day = startDay; day <= endDay; day++) {
-        const currentInvestment = investmentValues[day - 1] || 0;
-        const previousInvestment = day > 1 ? investmentValues[day - 2] || 0 : 0;
         chartItems.push({
             day: String(day),
             income: incomeByDay[day - 1] || 0,
             expense: expenseByDay[day - 1] || 0,
-            investment: Math.max(0, currentInvestment - previousInvestment),
+            investment: Math.max(0, investmentByDay[day - 1] || 0),
             active: day === now.getDate(),
         });
     }
@@ -181,7 +117,7 @@ function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
         totalExpense,
         balance,
         percentageChange,
-        investmentTotal: investmentValues[anchorDay - 1] || 0,
+        investmentTotal,
         chartItems,
         maxChartTotal: Math.max(1, ...chartItems.map((item) => item.income + item.expense + item.investment)),
     };
