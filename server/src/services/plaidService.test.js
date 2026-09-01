@@ -12,6 +12,7 @@ const {
     plaidAvailableBalanceMinor,
     fetchCurrentMarketPrices,
     normalizeInvestmentSnapshot,
+    canonicalPlaidSecuritySymbol,
     isMarketPriceRefreshWindow,
     nextMarketPriceRefreshDelayMs,
     preserveLinkedInternalTransfer,
@@ -266,6 +267,33 @@ test('fetches TSX quotes for zero-price Canadian holdings', async () => {
     });
     assert.match(requested[0], /VFV.TO/);
     assert.equal(prices.get('vfv').price, 187.08);
+});
+
+test('uses the TSX QQQ symbol when Plaid reports its OTC alias for unhedged CAD units', () => {
+    const security = {
+        security_id: 'qqc',
+        ticker_symbol: 'QQCFF',
+        market_identifier_code: 'OOTC',
+        name: 'Invesco Canada Ltd - CI Invesco NASDAQ 100 Index ETF (CAD Units)',
+        type: 'etf',
+    };
+    assert.equal(canonicalPlaidSecuritySymbol(security), 'QQC');
+
+    const result = normalizeInvestmentSnapshot({
+        accounts: [{ account_id: 'tfsa', balances: { current: 1645.5 } }],
+        securities: [security],
+        holdings: [{
+            account_id: 'tfsa', security_id: 'qqc', quantity: 47.6958,
+            institution_price: 34.5, institution_value: 1645.5051,
+            cost_basis: 2071.8, iso_currency_code: 'CAD',
+        }],
+    }).get('tfsa');
+    assert.equal(result.holdings[0].symbol, 'QQC');
+
+    assert.equal(canonicalPlaidSecuritySymbol({
+        ...security,
+        name: 'Invesco NASDAQ 100 Index ETF (CAD Hedged Units)',
+    }), 'QQCFF');
 });
 
 test('limits automatic market refreshes to weekdays from 9am through 2pm Toronto time', () => {

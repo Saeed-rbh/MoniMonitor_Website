@@ -462,6 +462,20 @@ const yahooSymbol = (ticker, currency) => {
     return currency === 'CAD' && !normalized.includes('.') ? `${normalized}.TO` : normalized;
 };
 
+/**
+ * Plaid currently identifies Wealthsimple's TSX-listed, unhedged QQQ holding
+ * with its US OTC symbol (QQCFF). Keep the correction deliberately narrow so
+ * the separate CAD-hedged QQQ.F units are never folded into QQQ by accident.
+ */
+function canonicalPlaidSecuritySymbol(security = {}) {
+    const ticker = String(security.ticker_symbol || '').trim().toUpperCase();
+    const name = String(security.name || '').trim();
+    const isUnhedgedQqc = ticker === 'QQCFF' &&
+        /\binvesco\b.*\bnasdaq\s*100\b.*\bcad units\b/i.test(name) &&
+        !/\bhedged\b/i.test(name);
+    return isUnhedgedQqc ? 'QQC' : ticker || null;
+}
+
 async function fetchYahooMarketPrice(ticker, currency = 'CAD', fetchImpl = fetch) {
     const normalizedCurrency = String(currency || 'CAD').trim().toUpperCase();
     const symbol = yahooSymbol(ticker, normalizedCurrency);
@@ -502,7 +516,7 @@ async function fetchCurrentMarketPrices(snapshot = {}, fetchImpl = fetch) {
             holding.iso_currency_code || holding.unofficial_currency_code ||
             security.iso_currency_code || security.unofficial_currency_code || ''
         ).toUpperCase();
-        const quote = await fetchYahooMarketPrice(security.ticker_symbol, currency, fetchImpl);
+        const quote = await fetchYahooMarketPrice(canonicalPlaidSecuritySymbol(security), currency, fetchImpl);
         if (quote) prices.set(holding.security_id, quote);
     }));
     return prices;
@@ -652,7 +666,7 @@ function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
             const totalCost = Number(holding.cost_basis);
             const averageCost = quantity > 0 && Number.isFinite(totalCost) ? totalCost / quantity : 0;
             entry.holdings.push({
-                symbol: String(security.ticker_symbol || security.name || holding.security_id || 'Holding').trim().slice(0, 40),
+                symbol: String(canonicalPlaidSecuritySymbol(security) || security.name || holding.security_id || 'Holding').trim().slice(0, 40),
                 name: security.name ? String(security.name).trim().slice(0, 160) : null,
                 quantity,
                 averageCostMicros: toMicros(averageCost),
@@ -937,8 +951,9 @@ function toAppInvestmentTransaction(transaction, account = {}, security = {}, in
     const price = Number(transaction.price);
     const primaryReason = firstNonEmpty(transaction.name, subtype, type, 'Investment transaction');
     const genericReason = genericPlaidDescriptions.has(String(primaryReason).trim().toLowerCase());
+    const securitySymbol = canonicalPlaidSecuritySymbol(security);
     const reasonDetail = firstNonEmpty(
-        security.ticker_symbol,
+        securitySymbol,
         security.name,
         subtype && subtype !== String(primaryReason).trim().toLowerCase() &&
             !genericPlaidDescriptions.has(subtype) ? subtype : null,
@@ -964,7 +979,7 @@ function toAppInvestmentTransaction(transaction, account = {}, security = {}, in
         PortfolioAccountId: account.appAccountId || null,
         PortfolioConfidence: account.appAccountId ? 'HIGH' : null,
         PortfolioAccountNumber: account.mask || null,
-        PortfolioSymbol: security.ticker_symbol || null,
+        PortfolioSymbol: securitySymbol,
         PortfolioQuantity: quantity > 0 ? quantity : null,
         PortfolioPrice: Number.isFinite(price) && price > 0 ? price : null,
     };
@@ -1678,6 +1693,7 @@ module.exports = {
     nextMarketPriceRefreshDelayMs,
     refreshStoredMarketPrices,
     normalizeInvestmentSnapshot,
+    canonicalPlaidSecuritySymbol,
     refreshStoredPlaidSourceDetails,
     preserveLinkedInternalTransfer,
     encryptAccessToken,
