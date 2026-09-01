@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTransactions } from "../../context/TransactionContext";
 import { getPortfolioAPI } from "../../services/apiService";
-import { buildAccountStatistics, withRecordedTransactions } from "./accountStatistics";
+import { buildAccountStatistics } from "./accountStatistics";
 import "./SaveInvestInsights.css";
 
 const money = (minorValue, currency = "CAD") =>
@@ -15,6 +15,9 @@ const money = (minorValue, currency = "CAD") =>
 const shortDate = (value) => value
   ? new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
   : "No activity";
+
+const hasAccountValue = (account = {}) =>
+  Number(account.cashMinor || 0) !== 0 || Number(account.holdingsValueMinor || 0) !== 0;
 
 const generateSvgPath = (points, width = 160, height = 48, padding = 5) => {
   if (!points || points.length < 2) {
@@ -65,8 +68,12 @@ const SaveInvestInsights = () => {
     () => buildAccountStatistics(accounts, allTransactions),
     [accounts, allTransactions]
   );
-  const visibleStatistics = useMemo(
-    () => withRecordedTransactions(statistics),
+  const activeStatistics = useMemo(
+    () => statistics.filter(({ account }) => hasAccountValue(account)),
+    [statistics]
+  );
+  const unusedStatistics = useMemo(
+    () => statistics.filter(({ account }) => !hasAccountValue(account)),
     [statistics]
   );
   const currency = accounts[0]?.currency || "CAD";
@@ -75,7 +82,7 @@ const SaveInvestInsights = () => {
     Number(portfolio?.holdingsValueMinor || 0);
   const debtMinor = Number(portfolio?.totalLiabilitiesMinor || 0);
   const holdingsMinor = Number(portfolio?.holdingsValueMinor || 0);
-  const visibleAccounts = visibleStatistics.map((item) => item.account);
+  const visibleAccounts = activeStatistics.map((item) => item.account);
 
   const trendPoints = useMemo(() => {
     if (!allTransactions) return [];
@@ -178,7 +185,7 @@ const SaveInvestInsights = () => {
         </div>
 
         <div className="SaveInvestInsights_Accounts">
-          {visibleStatistics.map(({ account, ...stats }) => {
+          {activeStatistics.map(({ account, ...stats }) => {
             const isDebt = account.accountType === "Credit Card";
             const valueMinor = Number(account.totalValueMinor || 0);
             const displayValueMinor = isDebt ? Math.abs(valueMinor) : valueMinor;
@@ -353,14 +360,53 @@ const SaveInvestInsights = () => {
             );
           })}
 
-          {portfolio && !visibleStatistics.length && (
-            <div className="SaveInvestInsights_Empty">No accounts with recorded transactions.</div>
+          {portfolio && !activeStatistics.length && (
+            <div className="SaveInvestInsights_Empty">No accounts with a current balance.</div>
           )}
           {!portfolio && (
             <div className="SaveInvestInsights_Empty">Loading account summaries…</div>
           )}
         </div>
       </section>
+
+      {unusedStatistics.length > 0 && (
+        <section className="SaveInvestInsights_Card AccountsOverview_ListCard AccountsOverview_UnusedSection">
+          <div className="SaveInvestInsights_CardHeader">
+            <div>
+              <h2>Unused accounts</h2>
+              <p>No current cash balance or investment holdings</p>
+            </div>
+            <span className="AccountsOverview_UnusedCount">{unusedStatistics.length}</span>
+          </div>
+          <div className="AccountsOverview_UnusedList">
+            {unusedStatistics.map(({ account }) => (
+              <article
+                className="AccountsOverview_UnusedAccount"
+                key={account.id}
+                role="link"
+                tabIndex={0}
+                onClick={() => navigate(`/Accounts/${encodeURIComponent(account.id)}/Transactions`)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    navigate(`/Accounts/${encodeURIComponent(account.id)}/Transactions`);
+                  }
+                }}
+              >
+                <div>
+                  <h3>{account.name}</h3>
+                  <p>{account.institution || "Independent"} · {account.accountType}</p>
+                  {account.accountRef && <small>{account.accountRef}</small>}
+                </div>
+                <div className="AccountsOverview_UnusedBalance">
+                  <strong>{money(0, account.currency)}</strong>
+                  <span>View transactions ›</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 };

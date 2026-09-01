@@ -23,6 +23,8 @@ const unitMoney = (micros, currency = 'CAD') => new Intl.NumberFormat(undefined,
 }).format(Number(micros || 0) / 1000000);
 const decimalInput = (micros, minor) =>
     ((Number.isSafeInteger(micros) ? micros / 1000000 : Number(minor || 0) / 100).toFixed(4)).replace(/0+$/, '').replace(/\.$/, '');
+const hasAccountValue = (account = {}) =>
+    Number(account.cashMinor || 0) !== 0 || Number(account.holdingsValueMinor || 0) !== 0;
 const styles = {
     page: { width: '100%', maxWidth: 'var(--app-max-width)', margin: '0 auto', padding: '16px', overflowY: 'auto', color: 'var(--Ac-1)', boxSizing: 'border-box' },
     card: { background: 'linear-gradient(150deg, var(--Ac-4), var(--Ec-4))', border: '1px solid var(--Bc-3)', borderRadius: '18px', padding: '16px', marginBottom: '14px' },
@@ -194,6 +196,13 @@ const SaveInvest = () => {
 
     if (!portfolio) return <main style={styles.page}>Loading portfolio…</main>;
 
+    const activeAccounts = portfolio.accounts.filter(hasAccountValue);
+    const unusedAccounts = portfolio.accounts.filter((item) => !hasAccountValue(item));
+    const sectionHeading = (title, description) => <div style={{ margin: '18px 4px 9px' }}>
+        <h2 style={{ fontSize: '1rem', margin: 0 }}>{title}</h2>
+        <p style={{ ...styles.secondary, margin: '3px 0 0' }}>{description}</p>
+    </div>;
+
     return <main style={styles.page}>
         <div style={{ ...styles.row, alignItems: 'start', flexWrap: 'wrap', marginBottom: '14px' }}>
             <div><h1 style={{ fontSize: '1.35rem', margin: '4px 0' }}>Save & Invest</h1><p style={{ ...styles.secondary, margin: 0 }}>Current account value, separate from contributions.</p></div>
@@ -252,7 +261,16 @@ const SaveInvest = () => {
             <button type='submit' style={{ ...styles.button, marginTop: '10px' }}>Create account</button>
         </form>}
 
-        {portfolio.accounts.length ? portfolio.accounts.map((item) => <AccountCard key={item.id} account={item} onRefresh={load} setStatus={setStatus} />) :
+        {portfolio.accounts.length ? <>
+            {activeAccounts.length > 0 && <>
+                {sectionHeading('Active accounts', 'Accounts with a cash balance or investment holdings.')}
+                {activeAccounts.map((item) => <AccountCard key={item.id} account={item} onRefresh={load} setStatus={setStatus} />)}
+            </>}
+            {unusedAccounts.length > 0 && <>
+                {sectionHeading('Unused accounts', 'Connected accounts with no current cash balance or holdings.')}
+                {unusedAccounts.map((item) => <AccountCard key={item.id} account={item} onRefresh={load} setStatus={setStatus} />)}
+            </>}
+        </> :
             <section style={styles.card}><h2 style={{ fontSize: '1rem', marginTop: 0 }}>No accounts yet</h2><p style={styles.secondary}>Add a savings or investment account. Each account can hold only cash, only stocks, or both.</p></section>}
     </main>;
 };

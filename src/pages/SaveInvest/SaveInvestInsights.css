@@ -794,6 +794,82 @@
   color: var(--Gc-1);
 }
 
+.AccountsOverview_UnusedSection {
+  margin-top: 12px;
+}
+
+.AccountsOverview_UnusedCount {
+  min-width: 26px;
+  height: 26px;
+  border: 1px solid var(--Bc-3);
+  border-radius: 999px;
+  color: var(--Ac-2);
+  display: grid;
+  place-items: center;
+  font-size: 0.68rem;
+}
+
+.AccountsOverview_UnusedList {
+  margin-top: 8px;
+}
+
+.AccountsOverview_UnusedAccount {
+  min-height: 58px;
+  padding: 10px 4px;
+  border-top: 1px solid var(--Ac-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.AccountsOverview_UnusedAccount h3,
+.AccountsOverview_UnusedAccount p {
+  margin: 0;
+}
+
+.AccountsOverview_UnusedAccount h3 {
+  color: var(--Ac-1);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.AccountsOverview_UnusedAccount p,
+.AccountsOverview_UnusedAccount small,
+.AccountsOverview_UnusedBalance span {
+  color: var(--Ac-3);
+  font-size: 0.58rem;
+}
+
+.AccountsOverview_UnusedAccount p {
+  margin-top: 3px;
+}
+
+.AccountsOverview_UnusedAccount small {
+  display: block;
+  margin-top: 2px;
+}
+
+.AccountsOverview_UnusedBalance {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.AccountsOverview_UnusedBalance strong,
+.AccountsOverview_UnusedBalance span {
+  display: block;
+}
+
+.AccountsOverview_UnusedBalance strong {
+  color: var(--Ac-2);
+  font-size: 0.75rem;
+}
+
+.AccountsOverview_UnusedBalance span {
+  margin-top: 3px;
+}
+
 .AccountTransactions_Header {
   align-items: flex-end;
   padding: 28px 58px 14px 4px;
