@@ -1644,12 +1644,29 @@ async function failTelegramOutbox(id, workerId, error, now = new Date()) {
 
 async function getQueueHealth() {
     const db = await getDb();
-    const [email, telegram] = await Promise.all([
+    const [email, telegram, emailRetry, telegramRetry] = await Promise.all([
         db.all("SELECT status, COUNT(*) AS count FROM email_ingestion_queue GROUP BY status"),
         db.all("SELECT status, COUNT(*) AS count FROM telegram_outbox GROUP BY status"),
+        db.get("SELECT MIN(discoveredAt) AS oldest FROM email_ingestion_queue WHERE status IN ('retry', 'dead')"),
+        db.get("SELECT MIN(createdAt) AS oldest FROM telegram_outbox WHERE status IN ('retry', 'dead')"),
     ]);
-    const summarize = (rows) => Object.fromEntries(rows.map((row) => [row.status, Number(row.count)]));
-    return { email: summarize(email), telegram: summarize(telegram) };
+    const summarize = (rows) => ({ pending: 0, processing: 0, retry: 0, dead: 0, processed: 0,
+        ...Object.fromEntries(rows.map((row) => [row.status, Number(row.count)])) });
+    const ageSeconds = (value) => {
+        const age = Date.now() - new Date(value || 0).getTime();
+        return value && Number.isFinite(age) ? Math.max(0, Math.floor(age / 1000)) : null;
+    };
+    const emailQueue = summarize(email);
+    const telegramQueue = summarize(telegram);
+    return {
+        email: { ...emailQueue, retryAgeSeconds: ageSeconds(emailRetry?.oldest), depth: emailQueue.pending + emailQueue.processing + emailQueue.retry },
+        telegram: {
+            ...telegramQueue,
+            retryAgeSeconds: ageSeconds(telegramRetry?.oldest),
+            depth: telegramQueue.pending + telegramQueue.processing + telegramQueue.retry,
+            notificationFailures: telegramQueue.retry + telegramQueue.dead,
+        },
+    };
 }
 
 async function isEmailProcessed(uid, mailboxKey = null, uidValidity = null) {

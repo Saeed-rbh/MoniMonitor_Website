@@ -25,6 +25,7 @@ const { buildCashFlowWidgetPayload } = require("./src/services/cashFlowWidgetSer
 const plaidService = require("./src/services/plaidService");
 const { startTelegramOutboxWorker, getTelegramOutboxWorkerHealth } = require("./src/services/telegramOutboxWorker");
 const { getAllSubsystemHealth } = require("./src/services/subsystemHealth");
+const { logger } = require('./src/services/logger');
 
 const app = express();
 app.set("trust proxy", 1);
@@ -75,7 +76,9 @@ app.use((req, res, next) => {
         "X-Frame-Options": "DENY",
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.plaid.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; frame-src https://cdn.plaid.com; connect-src 'self' http: https: ws: wss:;",
+        "Content-Security-Policy": isProduction
+            ? "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self' https://cdn.plaid.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; frame-src https://cdn.plaid.com; connect-src 'self' https:;"
+            : "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; frame-ancestors 'none'; script-src 'self' 'unsafe-inline' https://cdn.plaid.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; frame-src https://cdn.plaid.com; connect-src 'self' http: https: ws: wss:;",
     };
     if (isProduction || process.env.ENFORCE_HTTPS === "true") {
         headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
@@ -98,6 +101,21 @@ app.use(express.json({
         if (req.path === "/plaid/webhook") req.rawBody = Buffer.from(buffer);
     },
 }));
+app.use((req, res, next) => {
+    const suppliedId = String(req.get('X-Request-Id') || '');
+    req.requestId = /^[A-Za-z0-9._-]{8,128}$/.test(suppliedId) ? suppliedId : crypto.randomUUID();
+    res.set('X-Request-Id', req.requestId);
+    const startedAt = Date.now();
+    res.on('finish', () => logger.info('http.request.completed', {
+        correlationId: req.requestId,
+        method: req.method,
+        path: req.path,
+        statusCode: res.statusCode,
+        durationMs: Date.now() - startedAt,
+        userId: req.user?.userId || null,
+    }));
+    next();
+});
 
 const authRateLimit = createRateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 const insightRateLimit = createRateLimit({ windowMs: 60 * 60 * 1000, max: 180 });
@@ -124,7 +142,7 @@ const credentialsAreValid = (username, password) => (
 
 const sendValidationError = (res, error) => {
     if (error instanceof ZodError) return res.status(400).json({ error: "Invalid request data" });
-    console.error("Request error:", error);
+    logger.error('http.request.validation_failed', { correlationId: res.req?.requestId, error: error.message });
     return res.status(500).json({ error: "Unable to process this request" });
 };
 
@@ -133,11 +151,11 @@ app.get("/health", async (_req, res) => {
         const db = await dbService.getDb();
         await db.get("SELECT 1 AS ready");
         const queues = await dbService.getQueueHealth();
-        const subsystems = getAllSubsystemHealth();
+        const [subsystems, backup] = [getAllSubsystemHealth(), await backupService.getBackupHealth()];
         const hasDeadLetters = (queues.email.dead || 0) > 0 || (queues.telegram.dead || 0) > 0;
         const agentFailed = agentStatus.enabled && agentStatus.state === "failed";
         const outbox = getTelegramOutboxWorkerHealth();
-        const status = agentFailed ? "unavailable" : (hasDeadLetters || outbox.lastError ? "degraded" : "ok");
+        const status = agentFailed ? "unavailable" : (hasDeadLetters || outbox.lastError || backup.stale ? "degraded" : "ok");
         return res.json({
             status,
             database: { state: "ready" },
@@ -147,10 +165,11 @@ app.get("/health", async (_req, res) => {
             },
             telegramOutbox: outbox,
             queues,
+            backup,
             subsystems,
         });
     } catch (error) {
-        console.error("Database health check failed:", error);
+        logger.error('health.check_failed', { correlationId: _req.requestId, error: error.message });
         return res.status(503).json({ status: "unavailable" });
     }
 });

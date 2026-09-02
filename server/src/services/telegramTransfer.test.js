@@ -7,6 +7,7 @@ const path = require('node:path');
 const testDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'monimonitor-telegram-transfer-'));
 process.env.MONIMONITOR_DB_PATH = path.join(testDirectory, 'test.sqlite');
 process.env.USER_ID = 'test-user-transfer';
+process.env.BACKUP_OWNER_USER_ID = process.env.USER_ID;
 process.env.TELEGRAM_BOT_TOKEN = 'test-token';
 process.env.TELEGRAM_CHAT_ID = '123456';
 process.env.TELEGRAM_DISABLE_NETWORK = 'true';

@@ -170,3 +170,24 @@ test('commits new email transaction, source, balance event, and outbox intent to
     assert.equal((await db.get('SELECT COUNT(*) AS count FROM account_balance_events WHERE sourceTransactionId = ?', [transactionId])).count, 1);
     assert.equal((await db.get('SELECT COUNT(*) AS count FROM telegram_outbox WHERE transactionId = ?', [transactionId])).count, 1);
 });
+
+test('rolls every email-ingestion write back when alert creation is injected to fail', async () => {
+    const userId = 'atomic-failure-user';
+    const db = await dbService.getDb();
+    await db.run('INSERT INTO users (id, username, password, createdAt) VALUES (?, ?, ?, ?)', [
+        userId, 'atomic-failure', 'not-used', new Date().toISOString(),
+    ]);
+    await assert.rejects(
+        dbService.commitEmailTransaction({
+            transaction: {
+                userId, Amount: 10, AmountMinor: 1_000, Category: 'Income', Label: 'Deposit',
+                Reason: 'Injected rollback', Timestamp: '2026-09-03T12:00:00.000Z', ReceivedAt: '2026-09-03T12:00:00.000Z',
+            },
+            source: { externalId: 'atomic@example.com:rollback', rawPayload: { rawBody: 'must not persist' } },
+            outbox: { payload: () => { throw new Error('Injected outbox failure'); } },
+        }),
+        /Injected outbox failure/
+    );
+    assert.equal((await db.get("SELECT COUNT(*) AS count FROM transactions WHERE Reason = 'Injected rollback'")).count, 0);
+    assert.equal((await db.get("SELECT COUNT(*) AS count FROM transaction_sources WHERE externalId = 'atomic@example.com:rollback'")).count, 0);
+});

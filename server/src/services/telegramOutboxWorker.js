@@ -2,6 +2,7 @@ const dbService = require('../database/dbService');
 const telegram = require('./telegramService');
 const { reportSubsystem } = require('./subsystemHealth');
 const { workersPaused, registerWorker } = require('./workerLifecycle');
+const { logger } = require('./logger');
 
 const POLL_INTERVAL_MS = Number(process.env.TELEGRAM_OUTBOX_POLL_INTERVAL_MS || 5_000);
 const WORKER_ID = `telegram-outbox-${process.pid}-${Math.random().toString(16).slice(2)}`;
@@ -40,6 +41,7 @@ async function processTelegramOutboxOnce(limit = 50) {
             const result = await deliver(job);
             if (!result?.ok) throw new Error(result?.description || 'Telegram API did not confirm delivery');
             await dbService.completeTelegramOutbox(job.id, WORKER_ID, result?.result?.message_id || null);
+            logger.info('telegram_outbox.delivered', { correlationId: `job:telegram:${job.id}`, jobId: job.id, action: job.action });
             state.lastSuccessAt = new Date().toISOString();
             state.lastError = null;
             reportSubsystem('telegramOutbox', { configured: true, state: 'ready', lastSuccessAt: state.lastSuccessAt, lastError: null });
@@ -47,7 +49,7 @@ async function processTelegramOutboxOnce(limit = 50) {
             state.lastError = String(error?.message || error);
             reportSubsystem('telegramOutbox', { configured: true, state: 'degraded', lastError: state.lastError });
             await dbService.failTelegramOutbox(job.id, WORKER_ID, error);
-            console.error('[Telegram outbox] Delivery failed:', state.lastError);
+            logger.error('telegram_outbox.delivery_failed', { correlationId: `job:telegram:${job.id}`, jobId: job.id, action: job.action, error: state.lastError });
         }
     }
     return jobs.length;

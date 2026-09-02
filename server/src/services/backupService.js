@@ -15,6 +15,10 @@ const BACKUP_INTERVAL_HOURS = Math.max(
     Number(process.env.MONIMONITOR_BACKUP_INTERVAL_HOURS) || 24
 );
 const BACKUP_INTERVAL_MS = BACKUP_INTERVAL_HOURS * 60 * 60 * 1000;
+const OFFSITE_BACKUP_DIRECTORY = process.env.BACKUP_OFFSITE_DIRECTORY
+    ? path.resolve(process.env.BACKUP_OFFSITE_DIRECTORY)
+    : null;
+const RESTORE_DRILL_INTERVAL_MS = Math.max(1, Number(process.env.BACKUP_RESTORE_DRILL_INTERVAL_DAYS) || 30) * 24 * 60 * 60 * 1000;
 const BACKUP_FILE_PATTERN = /^monimonitor-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-(automatic|manual|pre-restore)-[a-f0-9]{8}\.sqlite(?:\.enc)?$/;
 const INSERT_ORDER = [
     'users',
@@ -43,6 +47,8 @@ const INSERT_ORDER = [
 
 let backupPromise = null;
 let scheduler = null;
+let restoreDrillPromise = null;
+let restoreDrill = { lastRunAt: null, lastSuccessAt: null, lastError: null };
 
 const quoteSqlString = (value) => String(value).replaceAll("'", "''");
 const quoteIdentifier = (value) => `"${String(value).replaceAll('"', '""')}"`;
@@ -162,12 +168,17 @@ async function performBackup(reason) {
     }
 
     await pruneBackups();
+    if (OFFSITE_BACKUP_DIRECTORY) {
+        await fs.mkdir(OFFSITE_BACKUP_DIRECTORY, { recursive: true });
+        await fs.copyFile(filePath, path.join(OFFSITE_BACKUP_DIRECTORY, fileName));
+    }
     const stats = await fs.stat(filePath);
     return {
         fileName,
         createdAt: stats.mtime.toISOString(),
         sizeBytes: stats.size,
         reason: safeReason,
+        offsiteStored: Boolean(OFFSITE_BACKUP_DIRECTORY),
     };
 }
 
@@ -181,6 +192,49 @@ async function createBackup(reason = 'manual') {
 async function getBackupStatus() {
     const backups = await listBackups();
     return { lastBackup: backups[0] || null, backups };
+}
+
+async function getBackupHealth() {
+    const { lastBackup } = await getBackupStatus();
+    const ageSeconds = lastBackup ? Math.max(0, Math.floor((Date.now() - new Date(lastBackup.createdAt).getTime()) / 1000)) : null;
+    return {
+        lastBackup,
+        ageSeconds,
+        stale: !lastBackup || ageSeconds > BACKUP_INTERVAL_MS / 1000 * 2,
+        offsiteConfigured: Boolean(OFFSITE_BACKUP_DIRECTORY),
+        restoreDrill,
+    };
+}
+
+async function runRestoreDrill() {
+    if (restoreDrillPromise) return restoreDrillPromise;
+    restoreDrillPromise = (async () => {
+        restoreDrill = { ...restoreDrill, lastRunAt: new Date().toISOString(), lastError: null };
+        const { lastBackup } = await getBackupStatus();
+        if (!lastBackup) throw new Error('No backup is available for a restore drill');
+        const filePath = await resolveBackupPath(lastBackup.fileName);
+        const drillPath = `${filePath}.drill-${crypto.randomUUID()}.sqlite`;
+        try {
+            await decryptFile(filePath, drillPath);
+            await verifyBackupFile(drillPath);
+            restoreDrill = { ...restoreDrill, lastSuccessAt: new Date().toISOString(), lastError: null };
+            return { fileName: lastBackup.fileName, verified: true };
+        } catch (error) {
+            restoreDrill = { ...restoreDrill, lastError: String(error.message || error) };
+            throw error;
+        } finally {
+            await fs.rm(drillPath, { force: true }).catch(() => {});
+        }
+    })().finally(() => { restoreDrillPromise = null; });
+    return restoreDrillPromise;
+}
+
+async function ensureRestoreDrill() {
+    const lastSuccessfulRun = new Date(restoreDrill.lastSuccessAt || 0).getTime();
+    if (!Number.isFinite(lastSuccessfulRun) || Date.now() - lastSuccessfulRun >= RESTORE_DRILL_INTERVAL_MS) {
+        return runRestoreDrill();
+    }
+    return { skipped: true };
 }
 
 async function resolveBackupPath(fileName) {
@@ -282,9 +336,13 @@ async function ensureAutomaticBackup() {
 
 function startAutomaticBackups() {
     if (scheduler) return scheduler;
-    ensureAutomaticBackup().catch((error) => console.error('Automatic backup failed:', error.message));
+    ensureAutomaticBackup()
+        .then(() => ensureRestoreDrill())
+        .catch((error) => console.error('Automatic backup or restore drill failed:', error.message));
     scheduler = setInterval(() => {
-        ensureAutomaticBackup().catch((error) => console.error('Automatic backup failed:', error.message));
+        ensureAutomaticBackup()
+            .then(() => ensureRestoreDrill())
+            .catch((error) => console.error('Automatic backup or restore drill failed:', error.message));
     }, Math.min(BACKUP_INTERVAL_MS, 6 * 60 * 60 * 1000));
     scheduler.unref?.();
     return scheduler;
@@ -293,9 +351,11 @@ function startAutomaticBackups() {
 module.exports = {
     createBackup,
     getBackupStatus,
+    getBackupHealth,
     isSafeBackupFileName,
     listBackups,
     resolveBackupPath,
+    runRestoreDrill,
     restoreBackup,
     selectBackupNamesToKeep,
     startAutomaticBackups,
