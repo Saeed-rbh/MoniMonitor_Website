@@ -68,10 +68,18 @@ function parseSourcePayload(payload) {
 
 async function createUser(id, username, hashedPassword) {
     const db = await getDb();
+    const configuredOwnerId = String(process.env.BACKUP_OWNER_USER_ID || process.env.USER_ID || '').trim();
+    const role = configuredOwnerId && String(id) === configuredOwnerId ? 'owner' : 'user';
     await db.run(
-        'INSERT INTO users (id, username, password, createdAt) VALUES (?, ?, ?, ?)',
-        [id, username, hashedPassword, new Date().toISOString()]
+        'INSERT INTO users (id, username, password, role, createdAt) VALUES (?, ?, ?, ?, ?)',
+        [id, username, hashedPassword, role, new Date().toISOString()]
     );
+}
+
+async function getUserCount() {
+    const db = await getDb();
+    const row = await db.get('SELECT COUNT(*) AS count FROM users');
+    return Number(row?.count || 0);
 }
 
 async function getUserByUsername(username) {
@@ -1882,6 +1890,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
 module.exports = {
     getDb,
     createUser,
+    getUserCount,
     getUserByUsername,
     getUserById,
     updateUserProfilePhoto,

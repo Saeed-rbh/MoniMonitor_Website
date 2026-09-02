@@ -7,6 +7,9 @@ const bcrypt = require("bcryptjs");
 const { ZodError } = require("zod");
 const dbService = require("./src/database/dbService");
 const { createRateLimit } = require("./src/middleware/rateLimit");
+const { requireConfiguredOwner } = require("./src/middleware/ownerAuthorization");
+const { createRegistrationAuthorization } = require("./src/middleware/registrationAuthorization");
+const { requirePrivateBackupNetwork, isLoopbackAddress } = require("./src/middleware/privateNetwork");
 const { parseTransaction, transactionUpdateSchema } = require("./src/validation/transaction");
 const { validateTelegramInitData, normalizeTelegramPhotoUrl } = require("./src/services/telegramAuthService");
 const backupService = require("./src/services/backupService");
@@ -47,7 +50,7 @@ const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:3000,http:
 if (isProduction || process.env.ENFORCE_HTTPS === "true") {
     app.use((req, res, next) => {
         const isHttps = req.secure || req.headers["x-forwarded-proto"] === "https";
-        if (!isHttps && req.headers.host) {
+        if (!isHttps && req.headers.host && !isLoopbackAddress(req.socket?.remoteAddress)) {
             return res.redirect(301, `https://${req.headers.host}${req.url}`);
         }
         next();
@@ -87,6 +90,9 @@ app.use(express.json({
 
 const authRateLimit = createRateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 const insightRateLimit = createRateLimit({ windowMs: 60 * 60 * 1000, max: 180 });
+const requireRegistrationOpen = createRegistrationAuthorization({
+    getUserCount: dbService.getUserCount,
+});
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -128,7 +134,7 @@ app.get("/health", async (_req, res) => {
     }
 });
 
-app.post("/register", authRateLimit, async (req, res) => {
+app.post("/register", authRateLimit, requireRegistrationOpen, async (req, res) => {
     const username = typeof req.body?.username === "string" ? req.body.username.trim().toLowerCase() : "";
     const { password } = req.body || {};
     if (!credentialsAreValid(username, password)) {
@@ -668,7 +674,7 @@ app.get("/insights/expense-forecast", authenticateToken, insightRateLimit, async
     }
 });
 
-app.get("/backups", authenticateToken, async (_req, res) => {
+app.get("/backups", authenticateToken, requireConfiguredOwner, requirePrivateBackupNetwork, async (_req, res) => {
     try {
         return res.json(await backupService.getBackupStatus());
     } catch (error) {
@@ -676,7 +682,7 @@ app.get("/backups", authenticateToken, async (_req, res) => {
     }
 });
 
-app.post("/backups", authenticateToken, async (_req, res) => {
+app.post("/backups", authenticateToken, requireConfiguredOwner, requirePrivateBackupNetwork, async (_req, res) => {
     try {
         return res.status(201).json(await backupService.createBackup("manual"));
     } catch (error) {
@@ -684,7 +690,7 @@ app.post("/backups", authenticateToken, async (_req, res) => {
     }
 });
 
-app.get("/backups/:fileName/download", authenticateToken, async (req, res) => {
+app.get("/backups/:fileName/download", authenticateToken, requireConfiguredOwner, requirePrivateBackupNetwork, async (req, res) => {
     try {
         const filePath = await backupService.resolveBackupPath(req.params.fileName);
         return res.download(filePath, req.params.fileName);
@@ -694,7 +700,7 @@ app.get("/backups/:fileName/download", authenticateToken, async (req, res) => {
     }
 });
 
-app.post("/backups/:fileName/restore", authenticateToken, async (req, res) => {
+app.post("/backups/:fileName/restore", authenticateToken, requireConfiguredOwner, requirePrivateBackupNetwork, async (req, res) => {
     if (req.body?.confirm !== "RESTORE") {
         return res.status(400).json({ error: "Restore confirmation is required" });
     }
@@ -759,6 +765,11 @@ process.on("uncaughtException", (error) => {
 if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`API server listening on http://localhost:${PORT}`);
+        plaidService.migrateAccessTokenEncryption()
+            .then(({ migrated }) => {
+                if (migrated) console.log(`[Plaid] Re-encrypted ${migrated} stored access token(s) with the dedicated key.`);
+            })
+            .catch((error) => console.error("Plaid token encryption migration failed:", error.message));
         backupService.startAutomaticBackups();
         plaidService.startAutomaticReconciliation();
         plaidService.startAutomaticMarketPriceRefresh();

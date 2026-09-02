@@ -9,7 +9,7 @@
         "reconcile:transaction-duplicates": "node scripts/reconcile-transaction-duplicates.js",
         "import:portfolio-history": "node scripts/import-portfolio-history.js",
         "dev": "node startup_banner.js && node index.js",
-        "test": "node --test src/services/*.test.js"
+        "test": "node --test src/services/*.test.js src/middleware/*.test.js"
     },
     "keywords": [],
     "author": "",

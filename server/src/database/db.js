@@ -30,6 +30,7 @@ async function getDb() {
                     id TEXT PRIMARY KEY,
                     username TEXT UNIQUE NOT NULL,
                     password TEXT NOT NULL,
+                    role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('owner', 'user')),
                     profilePhotoUrl TEXT,
                     createdAt TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
@@ -134,12 +135,19 @@ async function getDb() {
             if (!userColumns.some((column) => column.name === "profilePhotoUrl")) {
                 await db.exec("ALTER TABLE users ADD COLUMN profilePhotoUrl TEXT");
             }
+            if (!userColumns.some((column) => column.name === "role")) {
+                await db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('owner', 'user'))");
+            }
             if (!userColumns.some((column) => column.name === "createdAt")) {
                 await db.exec("ALTER TABLE users ADD COLUMN createdAt TEXT");
                 await db.run(
                     "UPDATE users SET createdAt = ? WHERE createdAt IS NULL",
                     [new Date().toISOString()]
                 );
+            }
+            const configuredOwnerId = String(process.env.BACKUP_OWNER_USER_ID || process.env.USER_ID || '').trim();
+            if (configuredOwnerId) {
+                await db.run("UPDATE users SET role = 'owner' WHERE id = ?", [configuredOwnerId]);
             }
             const transactionColumns = await db.all("PRAGMA table_info(transactions)");
             const hasColumn = (name) => transactionColumns.some((column) => column.name === name);

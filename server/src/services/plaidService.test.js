@@ -8,6 +8,7 @@ const {
     toAppInvestmentTransaction,
     encryptAccessToken,
     decryptAccessToken,
+    decryptAccessTokenWithMetadata,
     plaidBalanceMinor,
     plaidAvailableBalanceMinor,
     fetchCurrentMarketPrices,
@@ -181,6 +182,34 @@ test('prefers Plaid available cash over total investment value and cash holdings
         ],
     }).get('tfsa');
     assert.equal(result.cashMinor, 61245);
+});
+
+test('keeps existing Plaid tokens readable while rotating from the JWT secret to a dedicated key', () => {
+    const previousClientId = process.env.PLAID_CLIENT_ID;
+    const previousSecret = process.env.PLAID_SECRET;
+    const previousJwtSecret = process.env.JWT_SECRET;
+    const previousKey = process.env.PLAID_TOKEN_ENCRYPTION_KEY;
+    process.env.PLAID_CLIENT_ID = 'test-client';
+    process.env.PLAID_SECRET = 'test-secret';
+    process.env.JWT_SECRET = 'legacy-jwt-secret';
+    delete process.env.PLAID_TOKEN_ENCRYPTION_KEY;
+    try {
+        const encryptedWithLegacyKey = encryptAccessToken('access-sandbox-sensitive');
+        process.env.PLAID_TOKEN_ENCRYPTION_KEY = 'new-dedicated-encryption-key';
+        const decrypted = decryptAccessTokenWithMetadata(encryptedWithLegacyKey);
+        assert.equal(decrypted.accessToken, 'access-sandbox-sensitive');
+        assert.equal(decrypted.usedLegacyKey, true);
+        assert.equal(decryptAccessToken(encryptedWithLegacyKey), 'access-sandbox-sensitive');
+    } finally {
+        if (previousClientId === undefined) delete process.env.PLAID_CLIENT_ID;
+        else process.env.PLAID_CLIENT_ID = previousClientId;
+        if (previousSecret === undefined) delete process.env.PLAID_SECRET;
+        else process.env.PLAID_SECRET = previousSecret;
+        if (previousJwtSecret === undefined) delete process.env.JWT_SECRET;
+        else process.env.JWT_SECRET = previousJwtSecret;
+        if (previousKey === undefined) delete process.env.PLAID_TOKEN_ENCRYPTION_KEY;
+        else process.env.PLAID_TOKEN_ENCRYPTION_KEY = previousKey;
+    }
 });
 
 test('stores authoritative Plaid cash without reapplying an uploaded transfer', () => {

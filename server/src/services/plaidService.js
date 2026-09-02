@@ -59,6 +59,10 @@ function getConfig() {
         redirectUri: process.env.PLAID_REDIRECT_URI || null,
         webhookUrl: process.env.PLAID_WEBHOOK_URL || null,
         encryptionSecret: process.env.PLAID_TOKEN_ENCRYPTION_KEY || process.env.JWT_SECRET,
+        legacyEncryptionSecret: process.env.PLAID_TOKEN_ENCRYPTION_KEY && process.env.JWT_SECRET &&
+            process.env.PLAID_TOKEN_ENCRYPTION_KEY !== process.env.JWT_SECRET
+            ? process.env.JWT_SECRET
+            : null,
     };
 }
 
@@ -94,8 +98,7 @@ function encryptAccessToken(accessToken) {
     return [iv, cipher.getAuthTag(), encrypted].map((part) => part.toString('base64url')).join('.');
 }
 
-function decryptAccessToken(payload) {
-    const { encryptionSecret } = requireConfig();
+function decryptAccessTokenWithSecret(payload, encryptionSecret) {
     const [ivValue, tagValue, encryptedValue] = String(payload || '').split('.');
     if (!ivValue || !tagValue || !encryptedValue) throw new Error('Invalid encrypted Plaid token');
     const decipher = crypto.createDecipheriv(
@@ -106,6 +109,44 @@ function decryptAccessToken(payload) {
         decipher.update(Buffer.from(encryptedValue, 'base64url')),
         decipher.final(),
     ]).toString('utf8');
+}
+
+function decryptAccessTokenWithMetadata(payload) {
+    const { encryptionSecret, legacyEncryptionSecret } = requireConfig();
+    try {
+        return { accessToken: decryptAccessTokenWithSecret(payload, encryptionSecret), usedLegacyKey: false };
+    } catch (primaryError) {
+        if (!legacyEncryptionSecret) throw primaryError;
+        return { accessToken: decryptAccessTokenWithSecret(payload, legacyEncryptionSecret), usedLegacyKey: true };
+    }
+}
+
+function decryptAccessToken(payload) {
+    return decryptAccessTokenWithMetadata(payload).accessToken;
+}
+
+async function migrateAccessTokenEncryption() {
+    const { legacyEncryptionSecret } = requireConfig();
+    if (!legacyEncryptionSecret) return { migrated: 0, alreadyCurrent: 0 };
+
+    const db = await dbService.getDb();
+    const items = await db.all('SELECT itemId, accessTokenEncrypted FROM plaid_items');
+    let migrated = 0;
+    let alreadyCurrent = 0;
+    for (const item of items) {
+        const decrypted = decryptAccessTokenWithMetadata(item.accessTokenEncrypted);
+        if (!decrypted.usedLegacyKey) {
+            alreadyCurrent += 1;
+            continue;
+        }
+        await db.run(
+            `UPDATE plaid_items SET accessTokenEncrypted = ?, updatedAt = ?
+             WHERE itemId = ? AND accessTokenEncrypted = ?`,
+            [encryptAccessToken(decrypted.accessToken), new Date().toISOString(), item.itemId, item.accessTokenEncrypted]
+        );
+        migrated += 1;
+    }
+    return { migrated, alreadyCurrent };
 }
 
 async function plaidRequest(path, body = {}) {
@@ -1728,4 +1769,6 @@ module.exports = {
     preserveLinkedInternalTransfer,
     encryptAccessToken,
     decryptAccessToken,
+    decryptAccessTokenWithMetadata,
+    migrateAccessTokenEncryption,
 };
