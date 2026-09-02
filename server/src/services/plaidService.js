@@ -16,6 +16,7 @@ let webhookProcessingPromise = null;
 let marketPriceTimer = null;
 let marketPriceRefreshPromise = null;
 const USER_SYNC_COOLDOWN_MS = 10 * 60 * 1000;
+const UNCONFIRMED_EMAIL_TRANSFER_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const INVESTMENT_HOLDINGS_REFRESH_MS = 10 * 60 * 1000;
 const WEBHOOK_MAX_AGE_SECONDS = 5 * 60;
 const WEBHOOK_KEY_CACHE_MS = 6 * 60 * 60 * 1000;
@@ -510,6 +511,67 @@ async function applyAuthoritativeBalances(userId, accountMap) {
         updated += result.changes;
     }
     return updated;
+}
+
+// A transfer confirmation can arrive before Plaid's balance snapshot and
+// transaction feed reflect the movement. Keep that recent, email-confirmed
+// transfer visible in both account balances until Plaid links its own source
+// to the same transaction. Limiting this to short-lived internal transfers
+// avoids treating ordinary email activity as a permanent provider override.
+async function applyRecentUnconfirmedEmailTransferOverrides(userId) {
+    const db = await dbService.getDb();
+    const cutoff = new Date(Date.now() - UNCONFIRMED_EMAIL_TRANSFER_WINDOW_MS).toISOString();
+    const transfers = await db.all(
+        `SELECT t.id, t.AmountMinor, t.BalanceAccountId AS sourceAccountId,
+                t.PortfolioAccountId AS destinationAccountId
+         FROM transactions t
+         WHERE t.userId = ? AND t.Category = 'Internal' AND t.Label = 'Internal Transfer'
+           AND t.PortfolioAction = 'TRANSFER' AND t.AccountFlow = 'OUT'
+           AND t.ReceivedAt >= ?
+           AND t.BalanceAccountId IS NOT NULL AND t.PortfolioAccountId IS NOT NULL
+           AND t.BalanceAccountId != t.PortfolioAccountId
+           AND EXISTS (
+               SELECT 1 FROM transaction_sources emailSource
+               WHERE emailSource.transactionId = t.id AND emailSource.userId = t.userId
+                 AND emailSource.provider = 'email'
+           )
+           AND NOT EXISTS (
+               SELECT 1 FROM transaction_sources plaidSource
+               WHERE plaidSource.transactionId = t.id AND plaidSource.userId = t.userId
+                 AND plaidSource.provider IN ('plaid', 'plaid_investments')
+           )`,
+        [userId, cutoff]
+    );
+
+    let applied = 0;
+    await db.run('BEGIN IMMEDIATE');
+    try {
+        for (const transfer of transfers) {
+            const amountMinor = Number(transfer.AmountMinor);
+            if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) continue;
+            const [source, destination] = await Promise.all([
+                db.get('SELECT cashMinor FROM investment_accounts WHERE id = ? AND userId = ?', [transfer.sourceAccountId, userId]),
+                db.get('SELECT cashMinor FROM investment_accounts WHERE id = ? AND userId = ?', [transfer.destinationAccountId, userId]),
+            ]);
+            if (!source || !destination || Number(source.cashMinor) < amountMinor) continue;
+
+            const now = new Date().toISOString();
+            await db.run(
+                'UPDATE investment_accounts SET cashMinor = cashMinor - ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                [amountMinor, now, transfer.sourceAccountId, userId]
+            );
+            await db.run(
+                'UPDATE investment_accounts SET cashMinor = cashMinor + ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                [amountMinor, now, transfer.destinationAccountId, userId]
+            );
+            applied += 1;
+        }
+        await db.run('COMMIT');
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+    return applied;
 }
 
 const toMicros = (value) => {
@@ -1351,6 +1413,7 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
         } else {
             totals.holdingsStatus = item.holdingsStatus || 'unknown';
         }
+        totals.emailTransferBalanceOverrides = await applyRecentUnconfirmedEmailTransferOverrides(item.userId);
         const holdingsError = investmentResult.error
             ? String(investmentResult.error.message || 'Investment holdings sync failed').slice(0, 500)
             : null;
@@ -1784,6 +1847,7 @@ module.exports = {
     toAppInvestmentTransaction,
     plaidBalanceMinor,
     plaidAvailableBalanceMinor,
+    applyRecentUnconfirmedEmailTransferOverrides,
     fetchCurrentMarketPrices,
     fetchYahooMarketPrice,
     isMarketPriceRefreshWindow,

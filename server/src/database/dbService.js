@@ -1839,6 +1839,15 @@ function receivedTime(transaction) {
     return Number.isFinite(value) ? value : null;
 }
 
+function isOutgoingCreditCardFunding(transaction) {
+    if (!transaction || (transaction.AccountFlow !== 'OUT' && transaction.Category !== 'Expense')) return false;
+    if (isOutgoingEmailTransfer(transaction)) return true;
+
+    const reason = String(transaction.Reason || '');
+    const type = String(transaction.Type || '');
+    return /\bwithdrawal\b/i.test(reason) && /\b(?:checking|chequing)\b/i.test(type);
+}
+
 /**
  * Match the two emails emitted for one credit-card payment. This deliberately
  * uses stronger evidence than ordinary amount matching: one explicit outgoing
@@ -1847,7 +1856,7 @@ function receivedTime(transaction) {
  */
 async function pairCreditCardPaymentEmails(db, userId, transactions, amountMinor) {
     const unlinked = transactions.filter(t => !/^XFER-/i.test(String(t.ReferenceNumber || '')));
-    const transferCandidates = unlinked.filter(t => t.ReceivedAt && isOutgoingEmailTransfer(t));
+    const transferCandidates = unlinked.filter(t => t.ReceivedAt && isOutgoingCreditCardFunding(t));
     const cardCandidates = unlinked.filter(t => t.ReceivedAt && isCreditCardPayment(t));
     if (transferCandidates.length !== 1 || cardCandidates.length !== 1) return [];
 

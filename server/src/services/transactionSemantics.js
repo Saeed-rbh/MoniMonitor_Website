@@ -2,7 +2,7 @@ function isCreditCardPayment(transaction = {}) {
     const reason = String(transaction.Reason || '').trim();
     const type = String(transaction.Type || '').trim();
     const isCreditCardAccount = /\bcredit[\s-]?card\b/i.test(type);
-    const isPayment = /\b(?:credit[\s-]?card|card)\s+payment\b|\bpayment\s+(?:received|posted)\b/i.test(reason);
+    const isPayment = /\b(?:credit[\s-]?card|card)\s+payment\b|\bpayment\s+(?:made|received|posted)\b/i.test(reason);
     return isCreditCardAccount && isPayment;
 }
 

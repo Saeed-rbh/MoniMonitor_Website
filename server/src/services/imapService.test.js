@@ -1,6 +1,22 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
-const { ImapService } = require('./imapService');
+const { ImapService, getEmailContent } = require('./imapService');
+
+test('uses the HTML body when a provider sends an empty text/plain shell', () => {
+    const content = getEmailContent({
+        text: '<body></body>',
+        html: '<p>You made a transfer of <strong>$25.00</strong></p>',
+    });
+
+    assert.equal(content, 'You made a transfer of $25.00');
+});
+
+test('keeps a substantive plain-text body when one is available', () => {
+    assert.equal(
+        getEmailContent({ text: 'Your payment of $25.00 was approved', html: '<p>Different</p>' }),
+        'Your payment of $25.00 was approved'
+    );
+});
 
 test('schedules failed unread emails for another scan every minute', async (t) => {
     const originalSetInterval = global.setInterval;

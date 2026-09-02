@@ -95,6 +95,20 @@ function enrichGenericEmailReason(transaction = {}) {
     return `${reason} - ${context}`;
 }
 
+function isDateOnlyTimestamp(value) {
+    return typeof value === 'string' &&
+        /^\d{4}-\d{2}-\d{2}T00:00:00(?:\.000)?Z$/.test(value.trim());
+}
+
+function resolveEmailTimestamp(timestamp, receivedAt) {
+    const received = receivedAt || new Date().toISOString();
+    if (!timestamp || isDateOnlyTimestamp(timestamp) ||
+        !Number.isFinite(new Date(timestamp).getTime())) {
+        return received;
+    }
+    return timestamp;
+}
+
 async function notifyAndSave(tx, { forceSilent = false } = {}) {
     const silent = forceSilent || isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0;
     return dbService.enqueueTelegramOutbox('sendMessage', {
@@ -302,9 +316,14 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         // intentionally left unmatched to avoid inventing duplicate accounts.
         const accountResolution = await dbService.ensureTransactionAccount(USER_ID, expenseData);
         if (accountResolution.account) {
-            expenseData.BalanceAccountId = accountResolution.account.id;
-            expenseData.BalanceAccountConfidence = 'HIGH';
-            if (expenseData.PortfolioAction) {
+            // A transfer can explicitly name different source and destination
+            // accounts. Keep the AI's high-confidence balance-side match rather
+            // than replacing it with the portfolio destination during discovery.
+            if (!expenseData.BalanceAccountId || expenseData.BalanceAccountConfidence !== 'HIGH') {
+                expenseData.BalanceAccountId = accountResolution.account.id;
+                expenseData.BalanceAccountConfidence = 'HIGH';
+            }
+            if (expenseData.PortfolioAction && !expenseData.PortfolioAccountId) {
                 expenseData.PortfolioAccountId = accountResolution.account.id;
                 expenseData.PortfolioConfidence = 'HIGH';
             }

@@ -28,6 +28,12 @@ test('does not change an ordinary card purchase or non-card payment', () => {
     assert.equal(isCreditCardPayment(bill), false);
 });
 
+test('recognizes a payment-made credit-card confirmation', () => {
+    assert.equal(isCreditCardPayment({
+        Reason: 'Payment Made', Type: 'Credit Card', AccountFlow: 'IN',
+    }), true);
+});
+
 test('requires explicit outgoing language for an e-transfer leg', () => {
     assert.equal(isOutgoingEmailTransfer({
         Reason: 'E-Transfer sent from RBC account', Type: 'e-Transfer', AccountFlow: 'OUT',

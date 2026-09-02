@@ -20,6 +20,37 @@ function validDate(value) {
     return date && Number.isFinite(date.getTime()) ? date : null;
 }
 
+function hasVisibleContent(value) {
+    return String(value || '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&(?:nbsp|#160);/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .length > 0;
+}
+
+function htmlToEmailText(value) {
+    return String(value || '')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<\/?(?:br|p|div|tr|li|h[1-6])\b[^>]*>/gi, '\n')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;|&#160;/gi, ' ')
+        .replace(/&amp;/gi, '&')
+        .replace(/&(?:#\d+|#x[\da-f]+|[a-z]+);/gi, ' ')
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+// Some providers send an empty HTML shell as the text/plain alternative. Prefer
+// the HTML part in that case so the analyzer receives the actual notification.
+function getEmailContent(parsedMail = {}) {
+    return hasVisibleContent(parsedMail.text)
+        ? parsedMail.text
+        : (htmlToEmailText(parsedMail.html) || parsedMail.text || '');
+}
+
 class ImapService {
     constructor(host, port, user, password, onNewEmail, options = {}) {
         this.host = host;
@@ -165,7 +196,7 @@ class ImapService {
             if (parsedMail.to?.text) headers += `To: ${parsedMail.to.text}\n`;
             if (parsedMail.subject) headers += `Subject: ${parsedMail.subject}\n`;
             if (headers) headers += '\n';
-            const emailBody = headers + (parsedMail.text || parsedMail.html || '');
+            const emailBody = headers + getEmailContent(parsedMail);
             const receivedAt = parsedMail.date ? parsedMail.date.toISOString() : new Date().toISOString();
             const sourceEmailKey = `${this.mailboxKey}:${uidValidity}:${uid}`;
             const success = await this.onNewEmail(emailBody, `Email UID ${uid}`, receivedAt, {
@@ -306,4 +337,4 @@ class ImapService {
     }
 }
 
-module.exports = { ImapService };
+module.exports = { ImapService, getEmailContent, htmlToEmailText };

@@ -236,6 +236,37 @@ test('pairs a near-simultaneous outgoing e-transfer with its credit-card payment
     assert.match(outgoing.ReferenceNumber, /^XFER-CARD-/);
 });
 
+test('pairs a near-simultaneous chequing withdrawal with a payment-made card email', async () => {
+    const withdrawalId = await dbService.addTransaction({
+        userId: 'test-user-transfer', Amount: 306.05, AmountMinor: 30605, Currency: 'CAD',
+        Category: 'Expense', Label: 'Other Expense',
+        Reason: 'Withdrawal from RBC Royal Bank Checking Account ••••6554',
+        Type: 'Checking Account', BankName: 'RBC Royal Bank', Account: '********6554',
+        AccountFlow: 'OUT', Timestamp: '2026-09-02T00:00:00.000Z',
+        ReceivedAt: '2026-09-02T17:36:33.000Z', SourceEmailKey: 'mailbox:631',
+    });
+    const paymentId = await dbService.addTransaction({
+        userId: 'test-user-transfer', Amount: 306.05, AmountMinor: 30605, Currency: 'CAD',
+        Category: 'Internal', Label: 'Internal Transfer', Reason: 'Payment Made',
+        Type: 'Credit Card', BankName: 'RBC Royal Bank', Account: '************2379',
+        AccountFlow: 'NONE', Timestamp: '2026-09-02T00:00:00.000Z',
+        ReceivedAt: '2026-09-02T17:36:41.000Z', SourceEmailKey: 'mailbox:632',
+    });
+
+    const changes = await dbService.detectAndReclassifyInternalCounterparts('test-user-transfer', paymentId);
+    assert.deepEqual(new Set(changes.map(change => change.id)), new Set([withdrawalId, paymentId]));
+
+    const db = await dbService.getDb();
+    const withdrawal = await db.get('SELECT * FROM transactions WHERE id = ?', [withdrawalId]);
+    const payment = await db.get('SELECT * FROM transactions WHERE id = ?', [paymentId]);
+    assert.equal(withdrawal.Category, 'Internal');
+    assert.equal(withdrawal.AccountFlow, 'OUT');
+    assert.equal(payment.Category, 'Internal');
+    assert.equal(payment.AccountFlow, 'IN');
+    assert.match(withdrawal.ReferenceNumber, /^XFER-CARD-/);
+    assert.equal(withdrawal.ReferenceNumber, payment.ReferenceNumber);
+});
+
 test('does not pair same-amount card activity without all conservative evidence', async () => {
     const base = {
         userId: 'test-user-transfer', Amount: 88.88, AmountMinor: 8888, Currency: 'CAD',
