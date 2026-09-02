@@ -1,6 +1,7 @@
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
 const { reportSubsystem } = require('./subsystemHealth');
+const { workersPaused, registerWorker } = require('./workerLifecycle');
 
 let dbService = null;
 function getDbService() {
@@ -68,6 +69,10 @@ class ImapService {
         try {
             console.log('Connecting to IMAP server...');
             await this.client.connect();
+            registerWorker('imap', {
+                pause: async () => this.stop(),
+                resume: async () => this.start(),
+            });
             reportSubsystem('imap', { configured: true, state: 'connected', lastSuccessAt: new Date().toISOString(), lastError: null });
             this.reconnectDelay = 5000;
             console.log('Connected to email!');
@@ -235,6 +240,7 @@ class ImapService {
     }
 
     async processUnseenBatch() {
+        if (workersPaused()) return;
         try {
             const uidValidity = await this.discoverMessages();
             const database = this.getDatabase();
@@ -280,6 +286,23 @@ class ImapService {
             this.reconnectDelay = Math.min(this.reconnectDelay * 2, 5 * 60 * 1000);
             await this.start();
         }, this.reconnectDelay);
+    }
+
+    async stop() {
+        if (this.retryUnseenInterval) {
+            clearInterval(this.retryUnseenInterval);
+            this.retryUnseenInterval = null;
+        }
+        if (this.reconnectTimeout) {
+            clearTimeout(this.reconnectTimeout);
+            this.reconnectTimeout = null;
+        }
+        if (this.lock) {
+            try { this.lock.release(); } catch {}
+            this.lock = null;
+        }
+        if (this.client?.usable) await this.client.logout().catch(() => {});
+        reportSubsystem('imap', { configured: true, state: 'paused' });
     }
 }
 

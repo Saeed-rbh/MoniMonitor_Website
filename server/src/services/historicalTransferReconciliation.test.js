@@ -11,6 +11,10 @@ process.env.USER_ID = 'late-transfer-user';
 const dbService = require('../database/dbService');
 const { reconcileHistoricalInternalTransfers } = require('../database/historicalTransferReconciliation');
 
+test.before(async () => {
+    await dbService.createUser(process.env.USER_ID, 'late-transfer-owner', 'test-password-hash');
+});
+
 test.after(async () => {
     const db = await dbService.getDb();
     await db.close();

@@ -15,6 +15,7 @@ const {
     getStoredMonthlySummaries,
     refreshTransactionMonths,
 } = require('./monthlySummaries');
+const { encryptString, decryptString, isEncrypted } = require('../services/encryptionService');
 
 const portfolioActivityCategories = new Set(['Saving', 'SavingWithdrawal', 'Investment']);
 const portfolioActivityLabels = new Set([
@@ -52,15 +53,16 @@ function withDisplayAmounts(transactions) {
     return transactions.map(withDisplayAmount);
 }
 
-function serializeSourcePayload(payload) {
+function serializeSourcePayload(payload, { encrypt = false } = {}) {
     if (payload === undefined || payload === null) return null;
-    return JSON.stringify(payload);
+    const serialized = JSON.stringify(payload);
+    return encrypt ? encryptString(serialized, 'EMAIL_SOURCE_ENCRYPTION_KEY') : serialized;
 }
 
-function parseSourcePayload(payload) {
+function parseSourcePayload(payload, { encrypted = false } = {}) {
     if (!payload) return null;
     try {
-        return JSON.parse(payload);
+        return JSON.parse(encrypted ? decryptString(payload, 'EMAIL_SOURCE_ENCRYPTION_KEY') : payload);
     } catch {
         return { raw: payload };
     }
@@ -402,7 +404,7 @@ async function upsertTransactionSource({
             capturedAt = COALESCE(excluded.capturedAt, transaction_sources.capturedAt),
             updatedAt = excluded.updatedAt`,
         [provider, String(externalId), userId, transactionId, itemId, ownsTransaction ? 1 : 0,
-            serializeSourcePayload(rawPayload), serializeSourcePayload(contextPayload), now, now, now]
+            serializeSourcePayload(rawPayload, { encrypt: provider === 'email' }), serializeSourcePayload(contextPayload), now, now, now]
     );
     return true;
 }
@@ -422,12 +424,37 @@ async function getTransactionSourcesForUser(transactionId, userId) {
         externalId: row.externalId,
         itemId: row.itemId,
         ownsTransaction: Boolean(row.ownsTransaction),
-        rawPayload: parseSourcePayload(row.rawPayloadJson),
+        rawPayload: parseSourcePayload(row.rawPayloadJson, { encrypted: row.provider === 'email' }),
         contextPayload: parseSourcePayload(row.contextPayloadJson),
         capturedAt: row.capturedAt,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
     }));
+}
+
+async function migrateAndPruneRawEmailSources() {
+    const db = await getDb();
+    const retentionDays = Math.max(1, Number(process.env.EMAIL_SOURCE_RETENTION_DAYS) || 90);
+    const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString();
+    const rows = await db.all(
+        `SELECT provider, externalId, rawPayloadJson FROM transaction_sources
+         WHERE provider = 'email' AND rawPayloadJson IS NOT NULL AND rawPayloadJson <> ''`
+    );
+    let encrypted = 0;
+    for (const row of rows) {
+        if (isEncrypted(row.rawPayloadJson)) continue;
+        await db.run(
+            'UPDATE transaction_sources SET rawPayloadJson = ?, updatedAt = ? WHERE provider = ? AND externalId = ?',
+            [encryptString(row.rawPayloadJson, 'EMAIL_SOURCE_ENCRYPTION_KEY'), new Date().toISOString(), row.provider, row.externalId]
+        );
+        encrypted += 1;
+    }
+    const pruned = await db.run(
+        `UPDATE transaction_sources SET rawPayloadJson = NULL, updatedAt = ?
+         WHERE provider = 'email' AND rawPayloadJson IS NOT NULL AND capturedAt IS NOT NULL AND capturedAt < ?`,
+        [new Date().toISOString(), cutoff]
+    );
+    return { encrypted, pruned: Number(pruned.changes || 0), retentionDays };
 }
 
 async function getEmailSourceKeysNeedingReplay(userId, mailboxKey, limit = 250) {
@@ -2163,6 +2190,7 @@ module.exports = {
     getTransactionBySourceEmailKey,
     upsertTransactionSource,
     getTransactionSourcesForUser,
+    migrateAndPruneRawEmailSources,
     getEmailSourceKeysNeedingReplay,
     updateTransaction,
     updateTransactionForUser,

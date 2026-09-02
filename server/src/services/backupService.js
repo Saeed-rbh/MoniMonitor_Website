@@ -4,6 +4,8 @@ const path = require('path');
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const { getDb } = require('../database/db');
+const { encryptFile, decryptFile } = require('./encryptedFileService');
+const { pauseWorkers, resumeWorkers } = require('./workerLifecycle');
 
 const BACKUP_DIRECTORY = process.env.MONIMONITOR_BACKUP_DIR
     ? path.resolve(process.env.MONIMONITOR_BACKUP_DIR)
@@ -13,7 +15,7 @@ const BACKUP_INTERVAL_HOURS = Math.max(
     Number(process.env.MONIMONITOR_BACKUP_INTERVAL_HOURS) || 24
 );
 const BACKUP_INTERVAL_MS = BACKUP_INTERVAL_HOURS * 60 * 60 * 1000;
-const BACKUP_FILE_PATTERN = /^monimonitor-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-(automatic|manual|pre-restore)-[a-f0-9]{8}\.sqlite$/;
+const BACKUP_FILE_PATTERN = /^monimonitor-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-(automatic|manual|pre-restore)-[a-f0-9]{8}\.sqlite(?:\.enc)?$/;
 const INSERT_ORDER = [
     'users',
     'user_settings',
@@ -34,6 +36,7 @@ const INSERT_ORDER = [
     'plaid_accounts',
     'transaction_sources',
     'plaid_webhook_events',
+    'telegram_outbox',
     'agent_audit_log',
     'app_migrations',
 ];
@@ -141,17 +144,21 @@ async function performBackup(reason) {
     await fs.mkdir(BACKUP_DIRECTORY, { recursive: true });
     const safeReason = ['automatic', 'manual', 'pre-restore'].includes(reason) ? reason : 'manual';
     const timestamp = new Date().toISOString().replaceAll(':', '-').replace('.', '-');
-    const fileName = `monimonitor-${timestamp}-${safeReason}-${crypto.randomUUID().slice(0, 8)}.sqlite`;
+    const fileName = `monimonitor-${timestamp}-${safeReason}-${crypto.randomUUID().slice(0, 8)}.sqlite.enc`;
     const filePath = path.join(BACKUP_DIRECTORY, fileName);
+    const temporaryPath = `${filePath}.tmp.sqlite`;
     const db = await getDb();
 
     await db.exec('PRAGMA wal_checkpoint(RESTART)');
     try {
-        await db.exec(`VACUUM INTO '${quoteSqlString(filePath)}'`);
-        await verifyBackupFile(filePath);
+        await db.exec(`VACUUM INTO '${quoteSqlString(temporaryPath)}'`);
+        await verifyBackupFile(temporaryPath);
+        await encryptFile(temporaryPath, filePath);
     } catch (error) {
         await fs.rm(filePath, { force: true }).catch(() => {});
         throw error;
+    } finally {
+        await fs.rm(temporaryPath, { force: true }).catch(() => {});
     }
 
     await pruneBackups();
@@ -186,13 +193,19 @@ async function resolveBackupPath(fileName) {
 
 async function restoreBackup(fileName, restoredByUserId) {
     const filePath = await resolveBackupPath(fileName);
-    await verifyBackupFile(filePath);
-    const safetyBackup = await createBackup('pre-restore');
-    const db = await getDb();
-    const sourcePath = quoteSqlString(filePath);
+    await pauseWorkers();
+    const restoredTempPath = `${filePath}.restore-${crypto.randomUUID()}.sqlite`;
+    let safetyBackup;
+    let db;
     let attached = false;
+    let restored = false;
 
     try {
+        await decryptFile(filePath, restoredTempPath);
+        await verifyBackupFile(restoredTempPath);
+        safetyBackup = await createBackup('pre-restore');
+        db = await getDb();
+        const sourcePath = quoteSqlString(restoredTempPath);
         await db.exec(`ATTACH DATABASE '${sourcePath}' AS restore_source`);
         attached = true;
         const integrity = await db.get('PRAGMA restore_source.integrity_check');
@@ -245,14 +258,17 @@ async function restoreBackup(fileName, restoredByUserId) {
             );
         }
         await db.exec('COMMIT');
+        restored = true;
     } catch (error) {
         await db.exec('ROLLBACK').catch(() => {});
         throw error;
     } finally {
-        if (attached) await db.exec('DETACH DATABASE restore_source').catch(() => {});
+        if (attached) await db?.exec('DETACH DATABASE restore_source').catch(() => {});
+        await fs.rm(restoredTempPath, { force: true }).catch(() => {});
+        if (!restored) await resumeWorkers().catch(() => {});
     }
 
-    return { restoredFrom: fileName, safetyBackup };
+    return { restoredFrom: fileName, safetyBackup, restartRequired: true };
 }
 
 async function ensureAutomaticBackup() {

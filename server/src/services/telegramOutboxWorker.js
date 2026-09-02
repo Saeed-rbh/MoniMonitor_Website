@@ -1,6 +1,7 @@
 const dbService = require('../database/dbService');
 const telegram = require('./telegramService');
 const { reportSubsystem } = require('./subsystemHealth');
+const { workersPaused, registerWorker } = require('./workerLifecycle');
 
 const POLL_INTERVAL_MS = Number(process.env.TELEGRAM_OUTBOX_POLL_INTERVAL_MS || 5_000);
 const WORKER_ID = `telegram-outbox-${process.pid}-${Math.random().toString(16).slice(2)}`;
@@ -57,6 +58,7 @@ function startTelegramOutboxWorker() {
     state.startedAt = new Date().toISOString();
     reportSubsystem('telegramOutbox', { configured: Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID), state: 'starting' });
     const tick = async () => {
+        if (workersPaused()) return;
         if (state.running) return;
         state.running = true;
         try {
@@ -72,6 +74,10 @@ function startTelegramOutboxWorker() {
     state.timer = setInterval(tick, POLL_INTERVAL_MS);
     state.timer.unref?.();
     tick();
+    registerWorker('telegramOutbox', {
+        pause: async () => { if (state.timer) clearInterval(state.timer); state.timer = null; },
+        resume: async () => startTelegramOutboxWorker(),
+    });
 }
 
 function getTelegramOutboxWorkerHealth() {

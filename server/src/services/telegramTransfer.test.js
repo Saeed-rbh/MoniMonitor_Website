@@ -15,6 +15,10 @@ const dbService = require('../database/dbService');
 const { formatTransactionMessage, transactionActionKeyboard } = require('./telegramService');
 const { onTelegramUpdate, resolveEmailTimestamp, isAuthorizedTelegramUpdate } = require('../../email_agent');
 
+test.before(async () => {
+    await dbService.createUser(process.env.USER_ID, 'telegram-transfer-owner', 'test-password-hash');
+});
+
 test('uses the email received time when the parser returns a date-only timestamp', () => {
     assert.equal(
         resolveEmailTimestamp('2026-09-02T00:00:00.000Z', '2026-09-02T17:36:41.000Z'),

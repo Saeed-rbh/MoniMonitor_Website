@@ -3,7 +3,7 @@ require('dotenv').config();
 const dbService = require('./src/database/dbService');
 const { onNewEmail } = require('./email_agent');
 
-const USER_ID = process.env.USER_ID;
+const USER_ID = process.env.BACKUP_OWNER_USER_ID || process.env.USER_ID;
 
 async function main() {
     if (!USER_ID || !process.env.AI_API_KEY || !process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {

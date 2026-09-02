@@ -11,7 +11,7 @@ const IMAP_HOST = 'imap.gmail.com';
 const IMAP_PORT = 993;
 const IMAP_USER = process.env.IMAP_USER;
 const IMAP_PASSWORD = process.env.IMAP_PASSWORD;
-const USER_ID = process.env.USER_ID;
+const USER_ID = process.env.BACKUP_OWNER_USER_ID || process.env.USER_ID;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const TELEGRAM_USER_ID = process.env.TELEGRAM_USER_ID || process.env.TELEGRAM_CHAT_ID;
 const AI_INGESTION_ENABLED = process.env.AI_INGESTION_ENABLED === "true";

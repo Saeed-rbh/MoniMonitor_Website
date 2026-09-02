@@ -3,6 +3,7 @@ const dbService = require('../database/dbService');
 const { reconcileHistoricalInternalTransfers } = require('../database/historicalTransferReconciliation');
 const { findTransactionMatch, reasonOverlap } = require('./transactionDeduplication');
 const { isExplicitSelfTransferDescription } = require('./selfTransfer');
+const { workersPaused, registerWorker } = require('./workerLifecycle');
 
 const PLAID_ENVIRONMENTS = new Set(['sandbox', 'development', 'production']);
 const syncPromises = new Map();
@@ -663,6 +664,7 @@ function nextMarketPriceRefreshDelayMs(value = Date.now()) {
 }
 
 function startAutomaticMarketPriceRefresh() {
+    if (workersPaused()) return null;
     if (marketPriceTimer) return marketPriceTimer;
     const run = () => {
         if (!isMarketPriceRefreshWindow()) return Promise.resolve({ skipped: 'outside_market_window' });
@@ -680,6 +682,7 @@ function startAutomaticMarketPriceRefresh() {
         return marketPriceRefreshPromise;
     };
     const schedule = () => {
+        if (workersPaused()) return;
         marketPriceTimer = setTimeout(() => {
             marketPriceTimer = null;
             run().finally(schedule);
@@ -1433,8 +1436,9 @@ async function reconcileAllPlaidItems() {
 }
 
 function startAutomaticReconciliation() {
+    if (workersPaused()) return null;
     if (reconciliationTimer) return reconciliationTimer;
-    const run = () => reconcileAllPlaidItems().then((summary) => {
+    const run = () => workersPaused() ? Promise.resolve() : reconcileAllPlaidItems().then((summary) => {
         console.log(`[Plaid] Reconciliation checked ${summary.items} Item(s); ${summary.failed} failed.`);
     }).catch((error) => console.error('[Plaid] Reconciliation failed:', error.message));
     reconciliationStartupTimer = setTimeout(run, RECONCILIATION_STARTUP_DELAY_MS);
@@ -1566,18 +1570,40 @@ async function processPendingPlaidWebhooks({ limit = 25, processor = processPlai
 }
 
 function kickPlaidWebhookWorker() {
+    if (workersPaused()) return;
     setImmediate(() => processPendingPlaidWebhooks().catch((error) => {
         console.error('[Plaid] Webhook worker failed:', error.message);
     }));
 }
 
 function startPlaidWebhookWorker() {
+    if (workersPaused()) return null;
     if (webhookWorkerTimer) return webhookWorkerTimer;
     kickPlaidWebhookWorker();
     webhookWorkerTimer = setInterval(kickPlaidWebhookWorker, WEBHOOK_WORKER_INTERVAL_MS);
     webhookWorkerTimer.unref?.();
     return webhookWorkerTimer;
 }
+
+function stopPlaidWorkers() {
+    if (marketPriceTimer) clearTimeout(marketPriceTimer);
+    if (reconciliationStartupTimer) clearTimeout(reconciliationStartupTimer);
+    if (reconciliationTimer) clearInterval(reconciliationTimer);
+    if (webhookWorkerTimer) clearInterval(webhookWorkerTimer);
+    marketPriceTimer = null;
+    reconciliationStartupTimer = null;
+    reconciliationTimer = null;
+    webhookWorkerTimer = null;
+}
+
+registerWorker('plaid', {
+    pause: async () => stopPlaidWorkers(),
+    resume: async () => {
+        startAutomaticReconciliation();
+        startAutomaticMarketPriceRefresh();
+        startPlaidWebhookWorker();
+    },
+});
 
 async function registerWebhookForAllItems(webhookUrl = getConfig().webhookUrl) {
     if (!webhookUrl) throw new Error('PLAID_WEBHOOK_URL is not configured');

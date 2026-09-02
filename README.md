@@ -45,15 +45,19 @@ npm run dev
 ```
 The app will be available at `http://localhost:3000`.
 
-### Backend / Mock Data
+### Backend
 
-This project currently uses:
-- **Mock Data**: stored in `src/services/` or `db.json` for development.
-- **JSON Server**: if using `db.json`, run:
-  ```bash
-  npx json-server --watch server/db.json --port 3001
-  ```
-  *(Check `package.json` for specific server scripts)*
+The application uses the Express API in `server/index.js` and a SQLite database
+(`server/monimonitor.sqlite` by default). It does not use JSON Server or a mock
+backend. Development fixtures such as `src/services/mockTransactions.json` are
+frontend-only and must never be used as a production data source.
+
+Start the API separately with:
+
+```bash
+cd server
+npm start
+```
 
 ### Hosted TimesFM spending forecast
 
@@ -86,7 +90,7 @@ the API can report a measured WAPE and mean absolute error after seven days.
 ```
 MoniMonitor_Website/
 ├── public/              # Static assets
-├── server/              # Backend / Database mock files
+├── server/              # Express API, SQLite database, workers, and migrations
 ├── src/
 │   ├── components/      # Reusable UI components
 │   ├── pages/           # Page views (Dashboard, Transactions, etc.)
@@ -123,8 +127,9 @@ interval can be changed with `MONIMONITOR_BACKUP_INTERVAL_HOURS`.
 - Retention keeps recent daily, weekly, monthly, and manual recovery points.
 - Profile shows the last successful backup date and provides Backup, Download,
   and Restore controls.
-- Every restore verifies the selected file and creates a pre-restore safety
-  backup before replacing application data in one database transaction.
+- Backup files and raw email sources are encrypted at rest. Restores pause
+  workers, verify a decrypted temporary copy, create a pre-restore safety
+  backup, and then request a supervised process restart after completion.
 
 ## Durable email ingestion
 

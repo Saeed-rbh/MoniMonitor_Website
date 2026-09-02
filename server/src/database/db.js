@@ -5,6 +5,7 @@ const { applyFinancialSnapshot } = require('./financialSnapshot');
 const { reconcileHistoricalInternalTransfers } = require('./historicalTransferReconciliation');
 const { reconcileTransactionDuplicates } = require('../services/transactionDeduplication');
 const { refreshDirtyMonthlySummaries } = require('./monthlySummaries');
+const { runMigrations } = require('./migrations');
 
 const DB_PATH = process.env.MONIMONITOR_DB_PATH
     ? path.resolve(process.env.MONIMONITOR_DB_PATH)
@@ -22,6 +23,7 @@ async function getDb() {
         }).then(async (db) => {
             openedDb = db;
             db.configure('busyTimeout', DB_BUSY_TIMEOUT_MS);
+            await db.exec('PRAGMA foreign_keys = ON');
             await db.exec('PRAGMA journal_mode = WAL');
             await db.exec('PRAGMA synchronous = NORMAL');
 
@@ -476,6 +478,7 @@ async function getDb() {
                         changedAt = CURRENT_TIMESTAMP;
                 END;
             `);
+            await runMigrations(db);
             await db.run(`
                 INSERT INTO monthly_summary_dirty (userId, month, revision, changedAt)
                 SELECT DISTINCT transactions.userId, SUBSTR(transactions.Timestamp, 1, 7), 1, CURRENT_TIMESTAMP
@@ -602,7 +605,8 @@ async function getDb() {
             // Cleanup processed_emails older than 90 days to prevent DB bloat
             const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
             await db.run('DELETE FROM processed_emails WHERE processedAt < ?', [cutoff]);
-            await applyFinancialSnapshot(db, process.env.USER_ID);
+            const tenantOwnerId = process.env.BACKUP_OWNER_USER_ID || process.env.USER_ID;
+            await applyFinancialSnapshot(db, tenantOwnerId);
             if (process.env.MONIMONITOR_SKIP_TRANSACTION_RECONCILIATION !== '1') {
                 const duplicateSummary = await reconcileTransactionDuplicates(db);
                 if (duplicateSummary.merged) {
@@ -612,7 +616,7 @@ async function getDb() {
                     );
                 }
             }
-            const historicalTransfers = await reconcileHistoricalInternalTransfers(db, process.env.USER_ID);
+            const historicalTransfers = await reconcileHistoricalInternalTransfers(db, tenantOwnerId);
             if (historicalTransfers.matched) {
                 console.log(`[Historical transfers] Reclassified ${historicalTransfers.matched} matched pair(s).`);
             }

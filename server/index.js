@@ -10,6 +10,12 @@ const { createRateLimit } = require("./src/middleware/rateLimit");
 const { requireConfiguredOwner } = require("./src/middleware/ownerAuthorization");
 const { createRegistrationAuthorization } = require("./src/middleware/registrationAuthorization");
 const { requirePrivateBackupNetwork, isLoopbackAddress } = require("./src/middleware/privateNetwork");
+const { requireSingleTenant, singleTenantEnabled, singleTenantUserId } = require("./src/middleware/singleTenantAuthorization");
+const { registerAuthRoutes } = require('./src/routes/authRoutes');
+const { registerBackupRoutes } = require('./src/routes/backupRoutes');
+const { registerIntegrationRoutes } = require('./src/routes/integrationRoutes');
+const { registerTransactionRoutes } = require('./src/routes/transactionRoutes');
+const { registerPortfolioRoutes } = require('./src/routes/portfolioRoutes');
 const { parseTransaction, transactionUpdateSchema } = require("./src/validation/transaction");
 const { validateTelegramInitData, normalizeTelegramPhotoUrl } = require("./src/services/telegramAuthService");
 const backupService = require("./src/services/backupService");
@@ -41,9 +47,12 @@ if (!process.env.JWT_SECRET) {
 
 const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString("hex");
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "8h";
+if (isProduction && singleTenantEnabled() && !singleTenantUserId()) {
+    throw new Error("BACKUP_OWNER_USER_ID (or USER_ID) must identify the single-tenant owner in production");
+}
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_USER_ID = process.env.TELEGRAM_USER_ID || process.env.TELEGRAM_CHAT_ID;
-const TELEGRAM_APP_USER_ID = process.env.USER_ID;
+const TELEGRAM_APP_USER_ID = singleTenantUserId() || process.env.USER_ID;
 const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:3000,http://localhost:5173")
     .split(",")
     .map((origin) => origin.trim())
@@ -102,7 +111,7 @@ const authenticateToken = (req, res, next) => {
 
     try {
         req.user = jwt.verify(token, JWT_SECRET);
-        return next();
+        return requireSingleTenant(req, res, next);
     } catch {
         return res.status(401).json({ error: "Invalid or expired session" });
     }
@@ -146,254 +155,18 @@ app.get("/health", async (_req, res) => {
     }
 });
 
-app.post("/register", authRateLimit, requireRegistrationOpen, async (req, res) => {
-    const username = typeof req.body?.username === "string" ? req.body.username.trim().toLowerCase() : "";
-    const { password } = req.body || {};
-    if (!credentialsAreValid(username, password)) {
-        return res.status(400).json({ error: "Use a username of 3-64 characters and a password of at least 12 characters" });
-    }
-
-    try {
-        const existingUser = await dbService.getUserByUsername(username);
-        if (existingUser) return res.status(409).json({ error: "Unable to create account with those credentials" });
-
-        const hashedPassword = await bcrypt.hash(password, 12);
-        await dbService.createUser(crypto.randomUUID(), username, hashedPassword);
-        return res.status(201).json({ message: "Account created" });
-    } catch (error) {
-        console.error("Register error:", error);
-        return res.status(500).json({ error: "Unable to create account" });
-    }
+registerAuthRoutes(app, {
+    authRateLimit, requireRegistrationOpen, credentialsAreValid, dbService, crypto, bcrypt, jwt,
+    jwtSecret: JWT_SECRET, jwtExpiresIn: JWT_EXPIRES_IN,
+    telegramBotToken: TELEGRAM_BOT_TOKEN, telegramUserId: TELEGRAM_USER_ID, telegramAppUserId: TELEGRAM_APP_USER_ID,
+    validateTelegramInitData, normalizeTelegramPhotoUrl, singleTenantEnabled, singleTenantUserId,
+});
+registerTransactionRoutes(app, {
+    authenticateToken, dbService, plaidService, sendValidationError,
+    cashFlowWidgetCache, cashFlowWidgetCacheMs: CASH_FLOW_WIDGET_CACHE_MS, buildCashFlowWidgetPayload, parseTransaction,
 });
 
-app.post("/login", authRateLimit, async (req, res) => {
-    const username = typeof req.body?.username === "string" ? req.body.username.trim().toLowerCase() : "";
-    const { password } = req.body || {};
-    if (typeof password !== "string" || !username) return res.status(401).json({ error: "Invalid username or password" });
-
-    try {
-        const user = await dbService.getUserByUsername(username);
-        const valid = user && await bcrypt.compare(password, user.password);
-        if (!valid) return res.status(401).json({ error: "Invalid username or password" });
-
-        const accessToken = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-        return res.json({
-            accessToken,
-            user: {
-                id: user.id,
-                username: user.username,
-                profilePhotoUrl: user.profilePhotoUrl || null,
-                joinedAt: user.createdAt || null,
-            },
-        });
-    } catch (error) {
-        console.error("Login error:", error);
-        return res.status(500).json({ error: "Unable to sign in" });
-    }
-});
-
-app.post("/telegram-auth", authRateLimit, async (req, res) => {
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_USER_ID || !TELEGRAM_APP_USER_ID) {
-        return res.status(503).json({ error: "Telegram authentication is not configured" });
-    }
-
-    try {
-        const telegramUser = validateTelegramInitData(req.body?.initData, TELEGRAM_BOT_TOKEN);
-        if (String(telegramUser.id) !== String(TELEGRAM_USER_ID)) {
-            return res.status(403).json({ error: "This Telegram account is not authorized" });
-        }
-
-        const user = await dbService.getUserById(TELEGRAM_APP_USER_ID);
-        if (!user) return res.status(403).json({ error: "Telegram account is not linked" });
-
-        const profilePhotoUrl = normalizeTelegramPhotoUrl(telegramUser.photo_url);
-        await dbService.updateUserProfilePhoto(user.id, profilePhotoUrl);
-
-        const accessToken = jwt.sign(
-            { userId: user.id, username: user.username, telegramUserId: String(telegramUser.id) },
-            JWT_SECRET,
-            { expiresIn: JWT_EXPIRES_IN }
-        );
-        return res.json({
-            accessToken,
-            user: {
-                id: user.id,
-                username: user.username,
-                profilePhotoUrl,
-                joinedAt: user.createdAt || null,
-            },
-        });
-    } catch {
-        return res.status(401).json({ error: "Unable to verify Telegram identity" });
-    }
-});
-app.get("/transactions", authenticateToken, async (req, res) => {
-    try {
-        const filters = {
-            category: req.query.category,
-            label: req.query.label,
-            account: req.query.account,
-            from: req.query.from,
-            to: req.query.to,
-            search: req.query.search,
-            page: req.query.page,
-            limit: req.query.limit,
-        };
-        const transactions = await dbService.getAllTransactionsForUser(req.user.userId, filters);
-        res.json(transactions);
-
-        // Keep the read path fast. Plaid refreshes the database for the next request
-        // and applies its own cooldown, so users do not need to wait for the bank API.
-        setImmediate(() => {
-            plaidService.syncUserItems(req.user.userId).catch((error) => {
-                console.error("Background Plaid sync error:", error.message);
-            });
-        });
-    } catch (error) {
-        return sendValidationError(res, error);
-    }
-});
-
-// Fast, precomputed payload for the Scriptable cash-flow widget. This route
-// reads the local database only and never makes the widget wait for Plaid.
-app.get("/widget/cash-flow", authenticateToken, async (req, res) => {
-    const userId = req.user.userId;
-    const cached = cashFlowWidgetCache.get(userId);
-
-    if (cached && Date.now() - cached.createdAt < CASH_FLOW_WIDGET_CACHE_MS) {
-        res.set("Cache-Control", "private, max-age=60");
-        res.json(cached.payload);
-    } else {
-        try {
-            const [transactions, portfolio] = await Promise.all([
-                dbService.getAllTransactionsForUser(userId),
-                dbService.getPortfolioSummary(userId),
-            ]);
-            const payload = buildCashFlowWidgetPayload(transactions, portfolio);
-            cashFlowWidgetCache.set(userId, { createdAt: Date.now(), payload });
-            res.set("Cache-Control", "private, max-age=60");
-            res.json(payload);
-        } catch (error) {
-            return sendValidationError(res, error);
-        }
-    }
-
-    // Refresh the database for a future widget request after this response has
-    // already been sent. syncUserItems applies its own ten-minute cooldown.
-    setImmediate(() => {
-        plaidService.syncUserItems(userId).catch((error) => {
-            console.error("Background widget Plaid sync error:", error.message);
-        });
-    });
-});
-
-app.get("/transactions/:id/sources", authenticateToken, async (req, res) => {
-    const transactionId = Number(req.params.id);
-    if (!Number.isSafeInteger(transactionId) || transactionId <= 0) {
-        return res.status(400).json({ error: "Invalid transaction id" });
-    }
-    try {
-        const transaction = await dbService.getTransactionById(transactionId, req.user.userId);
-        if (!transaction) return res.status(404).json({ error: "Transaction not found" });
-        const sources = await dbService.getTransactionSourcesForUser(transactionId, req.user.userId);
-        return res.json({ sources });
-    } catch (error) {
-        return sendValidationError(res, error);
-    }
-});
-
-app.post("/plaid/webhook", async (req, res) => {
-    const signedJwt = req.get("Plaid-Verification");
-    const verified = await plaidService.verifyPlaidWebhook(
-        req.rawBody,
-        signedJwt
-    ).catch((error) => {
-        console.error("Plaid webhook verification error:", error.message);
-        return false;
-    });
-    if (!verified) return res.status(401).json({ error: "Invalid webhook signature" });
-
-    try {
-        const queued = await plaidService.enqueuePlaidWebhook(req.rawBody, signedJwt);
-        res.status(200).json({ received: true, queued: queued.inserted });
-        plaidService.kickPlaidWebhookWorker();
-    } catch (error) {
-        console.error("Plaid webhook enqueue error:", error.message);
-        return res.status(503).json({ error: "Unable to persist webhook" });
-    }
-});
-
-app.get("/plaid/status", authenticateToken, async (req, res) => {
-    try {
-        return res.json(await plaidService.getStatus(req.user.userId));
-    } catch (error) { return sendValidationError(res, error); }
-});
-
-app.post("/plaid/link-token", authenticateToken, authRateLimit, async (req, res) => {
-    try {
-        const itemId = req.body?.itemId;
-        if (itemId !== undefined && (typeof itemId !== 'string' || itemId.length > 200)) {
-            return res.status(400).json({ error: 'Invalid Plaid item' });
-        }
-        return res.json(await plaidService.createLinkToken(req.user.userId, itemId));
-    } catch (error) {
-        if (error.statusCode && error.statusCode < 500) return res.status(error.statusCode).json({ error: error.message });
-        if (error.statusCode === 503) return res.status(503).json({ error: error.message });
-        return sendValidationError(res, error);
-    }
-});
-
-app.post("/plaid/exchange", authenticateToken, authRateLimit, async (req, res) => {
-    try {
-        const connection = await plaidService.exchangePublicToken(
-            req.user.userId, req.body?.publicToken, req.body?.metadata
-        );
-        const sync = await plaidService.syncUserItems(req.user.userId, { force: true });
-        return res.status(201).json({ connection, sync });
-    } catch (error) {
-        if (error.statusCode && error.statusCode < 500) return res.status(error.statusCode).json({ error: error.message });
-        return sendValidationError(res, error);
-    }
-});
-
-app.post("/plaid/sync", authenticateToken, async (req, res) => {
-    try {
-        return res.json(await plaidService.syncUserItems(req.user.userId, { force: true }));
-    } catch (error) { return sendValidationError(res, error); }
-});
-
-app.delete("/plaid/items/:itemId", authenticateToken, async (req, res) => {
-    if (typeof req.params.itemId !== 'string' || req.params.itemId.length > 200) {
-        return res.status(400).json({ error: 'Invalid Plaid item' });
-    }
-    try {
-        if (!await plaidService.disconnectItem(req.user.userId, req.params.itemId)) {
-            return res.status(404).json({ error: 'Bank connection not found' });
-        }
-        return res.json({ message: 'Bank disconnected' });
-    } catch (error) { return sendValidationError(res, error); }
-});
-
-app.post("/transactions", authenticateToken, async (req, res) => {
-    try {
-        const { BalanceAccountId = null, ...transactionInput } = req.body || {};
-        const transaction = parseTransaction(transactionInput);
-        const id = await dbService.addTransaction({ ...transaction, userId: req.user.userId });
-        const accountResolution = await dbService.ensureTransactionAccount(req.user.userId, {
-            ...transaction,
-            BalanceAccountId,
-            BalanceAccountConfidence: BalanceAccountId ? 'HIGH' : null,
-        });
-        const resolvedAccountId = BalanceAccountId || accountResolution.account?.id || null;
-        const accountPosting = await dbService.syncTransactionAccountBalance(req.user.userId, id, {
-            accountId: resolvedAccountId, confidence: resolvedAccountId ? 'HIGH' : null,
-        });
-        await dbService.detectAndMarkRecurring(req.user.userId, id).catch((error) => console.error("Recurrence detection error:", error.message));
-        return res.status(201).json({ message: "Created", data: { ...transaction, id }, accountPosting, accountResolution });
-    } catch (error) {
-        return sendValidationError(res, error);
-    }
-});
+registerIntegrationRoutes(app, { authenticateToken, authRateLimit, plaidService, sendValidationError });
 
 app.put("/transactions/:id", authenticateToken, async (req, res) => {
     try {
@@ -540,10 +313,7 @@ app.delete("/goals/:id", authenticateToken, async (req, res) => {
     } catch (error) { return sendValidationError(res, error); }
 });
 
-app.get('/portfolio', authenticateToken, async (req, res) => {
-    try { return res.json(await dbService.getPortfolioSummary(req.user.userId)); }
-    catch (error) { return sendValidationError(res, error); }
-});
+registerPortfolioRoutes(app, { authenticateToken, dbService, sendValidationError });
 
 app.post('/portfolio/accounts', authenticateToken, async (req, res) => {
     const { name, institution = null, accountType, currency = 'CAD', cashMinor = 0 } = req.body || {};
@@ -686,42 +456,8 @@ app.get("/insights/expense-forecast", authenticateToken, insightRateLimit, async
     }
 });
 
-app.get("/backups", authenticateToken, requireConfiguredOwner, requirePrivateBackupNetwork, async (_req, res) => {
-    try {
-        return res.json(await backupService.getBackupStatus());
-    } catch (error) {
-        return sendValidationError(res, error);
-    }
-});
-
-app.post("/backups", authenticateToken, requireConfiguredOwner, requirePrivateBackupNetwork, async (_req, res) => {
-    try {
-        return res.status(201).json(await backupService.createBackup("manual"));
-    } catch (error) {
-        return sendValidationError(res, error);
-    }
-});
-
-app.get("/backups/:fileName/download", authenticateToken, requireConfiguredOwner, requirePrivateBackupNetwork, async (req, res) => {
-    try {
-        const filePath = await backupService.resolveBackupPath(req.params.fileName);
-        return res.download(filePath, req.params.fileName);
-    } catch (error) {
-        if (error.code === "ENOENT") return res.status(404).json({ error: "Backup not found" });
-        return sendValidationError(res, error);
-    }
-});
-
-app.post("/backups/:fileName/restore", authenticateToken, requireConfiguredOwner, requirePrivateBackupNetwork, async (req, res) => {
-    if (req.body?.confirm !== "RESTORE") {
-        return res.status(400).json({ error: "Restore confirmation is required" });
-    }
-    try {
-        return res.json(await backupService.restoreBackup(req.params.fileName, req.user.userId));
-    } catch (error) {
-        if (error.code === "ENOENT") return res.status(404).json({ error: "Backup not found" });
-        return sendValidationError(res, error);
-    }
+registerBackupRoutes(app, {
+    authenticateToken, requireConfiguredOwner, requirePrivateBackupNetwork, backupService, sendValidationError,
 });
 
 // Compatibility endpoint for the current frontend. New integrations should use /transactions.
@@ -782,6 +518,11 @@ if (require.main === module) {
                 if (migrated) console.log(`[Plaid] Re-encrypted ${migrated} stored access token(s) with the dedicated key.`);
             })
             .catch((error) => console.error("Plaid token encryption migration failed:", error.message));
+        dbService.migrateAndPruneRawEmailSources()
+            .then(({ encrypted, pruned }) => {
+                if (encrypted || pruned) console.log(`[Sources] Encrypted ${encrypted} and pruned ${pruned} raw email source(s).`);
+            })
+            .catch((error) => console.error("Raw email source protection migration failed:", error.message));
         backupService.startAutomaticBackups();
         plaidService.startAutomaticReconciliation();
         plaidService.startAutomaticMarketPriceRefresh();
