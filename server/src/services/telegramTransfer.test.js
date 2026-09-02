@@ -9,10 +9,22 @@ process.env.MONIMONITOR_DB_PATH = path.join(testDirectory, 'test.sqlite');
 process.env.USER_ID = 'test-user-transfer';
 process.env.TELEGRAM_BOT_TOKEN = 'test-token';
 process.env.TELEGRAM_CHAT_ID = '123456';
+process.env.TELEGRAM_DISABLE_NETWORK = 'true';
 
 const dbService = require('../database/dbService');
 const { formatTransactionMessage, transactionActionKeyboard } = require('./telegramService');
-const { onTelegramUpdate } = require('../../email_agent');
+const { onTelegramUpdate, resolveEmailTimestamp, isAuthorizedTelegramUpdate } = require('../../email_agent');
+
+test('uses the email received time when the parser returns a date-only timestamp', () => {
+    assert.equal(
+        resolveEmailTimestamp('2026-09-02T00:00:00.000Z', '2026-09-02T17:36:41.000Z'),
+        '2026-09-02T17:36:41.000Z'
+    );
+    assert.equal(
+        resolveEmailTimestamp('2026-09-02T15:30:00.000Z', '2026-09-02T17:36:41.000Z'),
+        '2026-09-02T15:30:00.000Z'
+    );
+});
 
 test.after(async () => {
     const db = await dbService.getDb();
@@ -47,6 +59,13 @@ test('transactionActionKeyboard preserves the familiar two-action layout', () =>
     assert.doesNotMatch(JSON.stringify(keyboard), /Open dashboard/);
 });
 
+test('authorizes Telegram chat and sender together, with sender-only inline fallback', () => {
+    assert.equal(isAuthorizedTelegramUpdate({ message: { chat: { id: 123456 }, from: { id: 123456 } } }), true);
+    assert.equal(isAuthorizedTelegramUpdate({ message: { chat: { id: 123456 }, from: { id: 7 } } }), false);
+    assert.equal(isAuthorizedTelegramUpdate({ message: { chat: { id: 7 }, from: { id: 123456 } } }), false);
+    assert.equal(isAuthorizedTelegramUpdate({ inline_query: { from: { id: 123456 } } }), true);
+});
+
 test('handles Telegram transfer callback: sets Internal and Temporary route', async () => {
     const txId = await dbService.addTransaction({
         userId: 'test-user-transfer',
@@ -66,6 +85,7 @@ test('handles Telegram transfer callback: sets Internal and Temporary route', as
     const update = {
         callback_query: {
             id: 'cq-1',
+            from: { id: 123456 },
             data: `transfer:${txId}`,
             message: {
                 message_id: 999,

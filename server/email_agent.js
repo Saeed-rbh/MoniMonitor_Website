@@ -4,7 +4,8 @@ const { parseEmailWithGemini, formatETransferReason } = require('./src/services/
 const dbService = require('./src/database/dbService');
 const { SNAPSHOT_CAPTURED_AT } = require('./src/database/financialSnapshot');
 const { normalizeTransactionSemantics } = require('./src/services/transactionSemantics');
-const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e } = require('./src/services/telegramService');
+const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, answerTelegramCallbackQuery, e } = require('./src/services/telegramService');
+const { startTelegramOutboxWorker } = require('./src/services/telegramOutboxWorker');
 
 const IMAP_HOST = 'imap.gmail.com';
 const IMAP_PORT = 993;
@@ -12,6 +13,7 @@ const IMAP_USER = process.env.IMAP_USER;
 const IMAP_PASSWORD = process.env.IMAP_PASSWORD;
 const USER_ID = process.env.USER_ID;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const TELEGRAM_USER_ID = process.env.TELEGRAM_USER_ID || process.env.TELEGRAM_CHAT_ID;
 const AI_INGESTION_ENABLED = process.env.AI_INGESTION_ENABLED === "true";
 const IMAP_INITIAL_SYNC_SINCE = process.env.IMAP_INITIAL_SYNC_SINCE || SNAPSHOT_CAPTURED_AT;
 const WEB_APP_URL = process.env.PUBLIC_APP_URL ||
@@ -38,9 +40,16 @@ async function updateAgentTransaction(id, updates) {
 }
 
 function isAuthorizedTelegramUpdate(update) {
-    if (!TELEGRAM_CHAT_ID) return false;
+    if (!TELEGRAM_CHAT_ID || !TELEGRAM_USER_ID) return false;
     const chatId = update.callback_query?.message?.chat?.id ?? update.message?.chat?.id;
-    return chatId !== undefined && String(chatId) === String(TELEGRAM_CHAT_ID);
+    const senderId = update.callback_query?.from?.id ?? update.message?.from?.id ?? update.inline_query?.from?.id;
+    if (update.inline_query || (update.callback_query?.inline_message_id && chatId === undefined)) {
+        // Telegram does not include a chat id in inline-query updates. Sender
+        // authorization is therefore the strongest available check here.
+        return senderId !== undefined && String(senderId) === String(TELEGRAM_USER_ID);
+    }
+    return chatId !== undefined && senderId !== undefined &&
+        String(chatId) === String(TELEGRAM_CHAT_ID) && String(senderId) === String(TELEGRAM_USER_ID);
 }
 
 // A transaction is "generic" when its Reason or Label is a vague bank placeholder
@@ -88,18 +97,12 @@ function enrichGenericEmailReason(transaction = {}) {
 
 async function notifyAndSave(tx, { forceSilent = false } = {}) {
     const silent = forceSilent || isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0;
-
-    const result = await sendTelegramMessage(
-        formatTransactionMessage(tx),
-        transactionActionKeyboard(tx),
+    return dbService.enqueueTelegramOutbox('sendMessage', {
+        text: formatTransactionMessage(tx),
+        replyMarkup: transactionActionKeyboard(tx),
         silent,
-        true
-    );
-    const msgId = result?.result?.message_id || null;
-    if (msgId) {
-        await updateAgentTransaction(tx.id, { TelegramMessageId: msgId });
-    }
-    return msgId;
+        protectContent: true,
+    }, { transactionId: tx.id });
 }
 
 /**
@@ -168,6 +171,38 @@ async function captureEmailSource(transactionId, sourceEmailKey, emailBody, rawE
             sourceEmailKey,
         },
     });
+}
+
+function buildEmailIngestionSource(sourceEmailKey, emailBody, rawEmailSource, receivedAt, parsedTransaction, idInfo) {
+    if (!sourceEmailKey) return null;
+    return {
+        provider: 'email',
+        externalId: sourceEmailKey,
+        rawPayload: {
+            source: 'email', rawMime: rawEmailSource || null, rawBody: String(emailBody || ''),
+            receivedAt: receivedAt || null, messageId: idInfo || null, parsedTransaction,
+        },
+        contextPayload: {
+            mailboxKey: sourceEmailKey.split(':').slice(0, 2).join(':'),
+            sourceEmailKey,
+        },
+    };
+}
+
+function buildTransactionNotification(transaction, suppressNotifications) {
+    if (suppressNotifications) return null;
+    return {
+        action: 'sendMessage',
+        payload: (transactionId) => {
+            const tx = { ...transaction, id: transactionId };
+            return {
+                text: formatTransactionMessage(tx),
+                replyMarkup: transactionActionKeyboard(tx),
+                silent: isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0,
+                protectContent: true,
+            };
+        },
+    };
 }
 
 async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
@@ -255,10 +290,12 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         expenseData.ReceivedAt = receivedAt || new Date().toISOString();
         expenseData.SourceEmailKey = sourceEmailKey;
 
-        // If email does not have a timestamp, use the email's received time instead
-        if (!expenseData.Timestamp || !Number.isFinite(new Date(expenseData.Timestamp).getTime())) {
-            expenseData.Timestamp = expenseData.ReceivedAt;
-        }
+        // Date-only values have no transaction time. Use the received email time
+        // rather than showing a misleading midnight placeholder in the app.
+        expenseData.Timestamp = resolveEmailTimestamp(expenseData.Timestamp, expenseData.ReceivedAt);
+        const durableSource = buildEmailIngestionSource(
+            sourceEmailKey, emailBody, rawEmailSource, receivedAt, expenseData, idInfo
+        );
 
         // A stable account/card reference in a transaction is enough to add a new
         // account to the Accounts page. Vague emails without an identifier are
@@ -406,17 +443,25 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                     activeId = existingSpecific.id;
                 } else {
                     // No specific yet — save generic and send a message (will be replaced later)
-                    const newId = await dbService.addTransaction(expenseData);
+                    const newId = await dbService.commitEmailTransaction({
+                        transaction: expenseData,
+                        source: durableSource,
+                        balance: { accountId: expenseData.BalanceAccountId },
+                        outbox: buildTransactionNotification(expenseData, suppressNotifications),
+                    });
                     activeId = newId;
                     console.log(`[${idInfo}] Saved generic. Sending placeholder notification.`);
-                    if (!suppressNotifications) await notifyAndSave({ ...expenseData, id: newId });
                 }
             } else {
                 // Brand new specific transaction
-                const newId = await dbService.addTransaction(expenseData);
+                const newId = await dbService.commitEmailTransaction({
+                    transaction: expenseData,
+                    source: durableSource,
+                    balance: { accountId: expenseData.BalanceAccountId },
+                    outbox: buildTransactionNotification(expenseData, suppressNotifications),
+                });
                 activeId = newId;
                 console.log(`[${idInfo}] Saved specific to SQLite successfully!`);
-                if (!suppressNotifications) await notifyAndSave({ ...expenseData, id: newId });
             }
         }
 
@@ -532,8 +577,13 @@ async function sendMonthlyStatement(month) {
 
 async function onTelegramUpdate(update) {
     try {
+        if (update.callback_query?.id) {
+            // Telegram clients otherwise keep displaying a loading spinner even
+            // when a subsequent database operation is slow or fails.
+            await answerTelegramCallbackQuery(update.callback_query.id);
+        }
         if (!isAuthorizedTelegramUpdate(update)) {
-            console.warn('[Telegram] Ignored update from an unlinked chat.');
+            console.warn('[Telegram] Ignored update from an unlinked chat or sender.');
             return;
         }
 
@@ -578,7 +628,7 @@ async function onTelegramUpdate(update) {
         if (update.callback_query) {
             const query = update.callback_query;
             const data = query.data;
-            const messageId = query.message?.message_id;
+            const messageId = query.message?.message_id ?? query.inline_message_id;
             
             if (data.startsWith('transfer:') || data.startsWith('save:')) {
                 const txId = data.split(':')[1];
@@ -649,7 +699,7 @@ async function onTelegramUpdate(update) {
                     ]
                 };
                 
-                const text = query.message.text ? e(query.message.text) + "\n\n*Select a new category:*" : "*Select a new category:*";
+                const text = query.message?.text ? e(query.message.text) + "\n\n*Select a new category:*" : "*Select a new category:*";
                 await editTelegramMessage(messageId, text, replyMarkup);
             }
             else if (data.startsWith('setcat:')) {
@@ -730,6 +780,7 @@ async function startAgent() {
             }
         }
         startTelegramPolling(onTelegramUpdate);
+        startTelegramOutboxWorker();
         const emailListener = new ImapService(
             IMAP_HOST,
             IMAP_PORT,
@@ -751,4 +802,7 @@ if (require.main === module) {
     });
 }
 
-module.exports = { startAgent, onNewEmail, notifyAndSave, onTelegramUpdate, enrichGenericEmailReason };
+module.exports = {
+    startAgent, onNewEmail, notifyAndSave, onTelegramUpdate, enrichGenericEmailReason,
+    isDateOnlyTimestamp, resolveEmailTimestamp, isAuthorizedTelegramUpdate,
+};

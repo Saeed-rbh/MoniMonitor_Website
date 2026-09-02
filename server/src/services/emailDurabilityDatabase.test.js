@@ -97,3 +97,76 @@ test('prevents a crash retry from inserting the same source email twice', async 
     assert.equal(sources[0].contextPayload.mailboxKey, 'owner@example.com:INBOX');
     await assert.rejects(() => dbService.addTransaction(transaction), /UNIQUE constraint failed/);
 });
+
+test('leases email work, uses retry backoff, and eventually dead-letters repeated failures', async () => {
+    const mailboxKey = 'lease@example.com:INBOX';
+    const uidValidity = 'lease-generation';
+    await dbService.prepareEmailSync(mailboxKey, uidValidity);
+    await dbService.enqueueDiscoveredEmails(mailboxKey, uidValidity, [800]);
+
+    let now = new Date(Date.now() + 60 * 1000);
+    let jobs = await dbService.claimPendingEmails(mailboxKey, uidValidity, 'worker-a', 1, now);
+    assert.equal(jobs.length, 1);
+    assert.equal(jobs[0].attempts, 1);
+    let outcome = await dbService.failEmailQueueItem(800, mailboxKey, uidValidity, 'worker-a', 'temporary outage', now);
+    assert.equal(outcome.status, 'retry');
+    assert.ok(outcome.nextAttemptAt > now.toISOString());
+
+    for (let attempt = 2; attempt <= 8; attempt += 1) {
+        now = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+        jobs = await dbService.claimPendingEmails(mailboxKey, uidValidity, 'worker-a', 1, now);
+        assert.equal(jobs.length, 1);
+        outcome = await dbService.failEmailQueueItem(800, mailboxKey, uidValidity, 'worker-a', 'still unavailable', now);
+    }
+    assert.equal(outcome.status, 'dead');
+    const db = await dbService.getDb();
+    const queueItem = await db.get('SELECT status, attempts, leaseOwner FROM email_ingestion_queue WHERE uid = ?', [800]);
+    assert.deepEqual(queueItem, { status: 'dead', attempts: 8, leaseOwner: null });
+});
+
+test('leases Telegram notifications and records delivery atomically with the transaction message id', async () => {
+    const db = await dbService.getDb();
+    const userId = 'telegram-outbox-user';
+    await db.run('INSERT INTO users (id, username, password, createdAt) VALUES (?, ?, ?, ?)', [
+        userId, 'telegram-outbox', 'not-used', new Date().toISOString(),
+    ]);
+    const transactionId = await dbService.addTransaction({
+        userId, Amount: 1, Category: 'Expense', Label: 'Test', Reason: 'Outbox test',
+        Timestamp: new Date().toISOString(),
+    });
+    const outboxId = await dbService.enqueueTelegramOutbox('sendMessage', { text: 'queued' }, { transactionId });
+    const jobs = await dbService.claimTelegramOutbox('telegram-worker');
+    assert.equal(jobs.length, 1);
+    assert.equal(jobs[0].id, outboxId);
+    assert.equal(await dbService.completeTelegramOutbox(outboxId, 'telegram-worker', 555), true);
+    const result = await db.get('SELECT status FROM telegram_outbox WHERE id = ?', [outboxId]);
+    const transaction = await db.get('SELECT TelegramMessageId FROM transactions WHERE id = ?', [transactionId]);
+    assert.equal(result.status, 'processed');
+    assert.equal(transaction.TelegramMessageId, 555);
+});
+
+test('commits new email transaction, source, balance event, and outbox intent together', async () => {
+    const userId = 'atomic-email-user';
+    const db = await dbService.getDb();
+    await db.run('INSERT INTO users (id, username, password, createdAt) VALUES (?, ?, ?, ?)', [
+        userId, 'atomic-email', 'not-used', new Date().toISOString(),
+    ]);
+    const account = await dbService.createInvestmentAccount(userId, {
+        name: 'Atomic Chequing', institution: 'Example', accountType: 'Chequing',
+        accountRef: '1234', currency: 'CAD', cashMinor: 1_000,
+    });
+    const transactionId = await dbService.commitEmailTransaction({
+        transaction: {
+            userId, Amount: 25, AmountMinor: 2_500, Category: 'Income', Label: 'Deposit',
+            Reason: 'Atomic deposit', Timestamp: '2026-09-02T12:00:00.000Z', ReceivedAt: '2026-09-02T12:00:00.000Z',
+            AccountFlow: 'IN', BalanceAccountId: account.id,
+        },
+        balance: { accountId: account.id },
+        source: { externalId: 'atomic@example.com:1:1', rawPayload: { rawBody: 'deposit' } },
+        outbox: { action: 'sendMessage', payload: { text: 'deposit alert' } },
+    });
+    assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id = ?', [account.id])).cashMinor, 3_500);
+    assert.equal((await db.get('SELECT COUNT(*) AS count FROM transaction_sources WHERE transactionId = ?', [transactionId])).count, 1);
+    assert.equal((await db.get('SELECT COUNT(*) AS count FROM account_balance_events WHERE sourceTransactionId = ?', [transactionId])).count, 1);
+    assert.equal((await db.get('SELECT COUNT(*) AS count FROM telegram_outbox WHERE transactionId = ?', [transactionId])).count, 1);
+});

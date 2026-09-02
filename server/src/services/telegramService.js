@@ -2,14 +2,17 @@ const https = require('https');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const TELEGRAM_REQUEST_TIMEOUT_MS = Number(process.env.TELEGRAM_REQUEST_TIMEOUT_MS || 15_000);
 
 function telegramJsonRequest(method, payload) {
     if (!TELEGRAM_BOT_TOKEN) return Promise.resolve(null);
+    if (process.env.TELEGRAM_DISABLE_NETWORK === 'true') return Promise.resolve({ ok: true, result: {} });
     const body = JSON.stringify(payload);
     return new Promise((resolve) => {
         const req = https.request({
             hostname: 'api.telegram.org', path: `/bot${TELEGRAM_BOT_TOKEN}/${method}`,
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+            timeout: TELEGRAM_REQUEST_TIMEOUT_MS,
         }, (res) => {
             let data = '';
             res.on('data', (chunk) => { data += chunk; });
@@ -18,7 +21,11 @@ function telegramJsonRequest(method, payload) {
                 catch { resolve(null); }
             });
         });
-        req.on('error', () => resolve(null));
+        req.on('timeout', () => req.destroy(new Error(`Telegram ${method} request timed out`)));
+        req.on('error', (error) => {
+            console.error(`[Telegram] ${method} failed:`, error.message);
+            resolve(null);
+        });
         req.write(body);
         req.end();
     });
@@ -48,39 +55,7 @@ async function sendTelegramMessage(text, replyMarkup = null, silent = false, pro
         payload.reply_markup = replyMarkup;
     }
 
-    const body = JSON.stringify(payload);
-
-    return new Promise((resolve) => {
-        const options = {
-            hostname: 'api.telegram.org',
-            path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(body)
-            }
-        };
-
-        const req = https.request(options, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => {
-                const parsed = JSON.parse(data);
-                if (!parsed.ok) {
-                    console.error('[Telegram] API error:', parsed.description);
-                }
-                resolve(parsed);
-            });
-        });
-
-        req.on('error', (err) => {
-            console.error('[Telegram] Failed to send message:', err.message);
-            resolve(null);
-        });
-
-        req.write(body);
-        req.end();
-    });
+    return telegramJsonRequest('sendMessage', payload);
 }
 
 /**
@@ -89,32 +64,9 @@ async function sendTelegramMessage(text, replyMarkup = null, silent = false, pro
 async function deleteTelegramMessage(messageId) {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID || !messageId) return;
 
-    const body = JSON.stringify({
+    return telegramJsonRequest('deleteMessage', {
         chat_id: TELEGRAM_CHAT_ID,
         message_id: messageId
-    });
-
-    return new Promise((resolve) => {
-        const options = {
-            hostname: 'api.telegram.org',
-            path: `/bot${TELEGRAM_BOT_TOKEN}/deleteMessage`,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(body)
-            }
-        };
-        const req = https.request(options, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => resolve(JSON.parse(data)));
-        });
-        req.on('error', (err) => {
-            console.error('[Telegram] Failed to delete message:', err.message);
-            resolve(null);
-        });
-        req.write(body);
-        req.end();
     });
 }
 
@@ -243,12 +195,14 @@ async function sendTelegramDocument(filename, content, caption = '', { silent = 
     return new Promise((resolve) => {
         const req = https.request({
             hostname: 'api.telegram.org', path: `/bot${TELEGRAM_BOT_TOKEN}/sendDocument`, method: 'POST',
-            headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': body.length }
+            headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': body.length },
+            timeout: TELEGRAM_REQUEST_TIMEOUT_MS,
         }, (res) => {
             let data = '';
             res.on('data', (chunk) => { data += chunk; });
             res.on('end', () => { try { resolve(JSON.parse(data)); } catch { resolve(null); } });
         });
+        req.on('timeout', () => req.destroy(new Error('Telegram sendDocument request timed out')));
         req.on('error', () => resolve(null));
         req.write(body);
         req.end();
@@ -264,8 +218,7 @@ function startTelegramPolling(onUpdate) {
     
     const poll = () => {
         const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`;
-        
-        https.get(url, (res) => {
+        const request = https.get(url, { timeout: TELEGRAM_REQUEST_TIMEOUT_MS + 35_000 }, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
             res.on('end', async () => {
@@ -282,7 +235,9 @@ function startTelegramPolling(onUpdate) {
                 }
                 poll();
             });
-        }).on('error', (err) => {
+        });
+        request.on('timeout', () => request.destroy(new Error('Telegram polling request timed out')));
+        request.on('error', (err) => {
             console.error('[Telegram] Polling network error:', err.message);
             setTimeout(poll, 5000);
         });
@@ -294,34 +249,17 @@ function startTelegramPolling(onUpdate) {
 async function editTelegramMessage(messageId, text, replyMarkup = null) {
     if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID || !messageId) return;
 
+    const isInlineMessage = typeof messageId === 'string' && !/^\d+$/.test(messageId);
     const payload = {
-        chat_id: TELEGRAM_CHAT_ID,
-        message_id: messageId,
+        ...(isInlineMessage
+            ? { inline_message_id: messageId }
+            : { chat_id: TELEGRAM_CHAT_ID, message_id: messageId }),
         text,
         parse_mode: 'MarkdownV2'
     };
     if (replyMarkup) payload.reply_markup = replyMarkup;
 
-    const body = JSON.stringify(payload);
-    return new Promise((resolve) => {
-        const options = {
-            hostname: 'api.telegram.org',
-            path: `/bot${TELEGRAM_BOT_TOKEN}/editMessageText`,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(body)
-            }
-        };
-        const req = https.request(options, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => resolve(JSON.parse(data)));
-        });
-        req.on('error', () => resolve(null));
-        req.write(body);
-        req.end();
-    });
+    return telegramJsonRequest('editMessageText', payload);
 }
 
 async function setTelegramReaction(messageId, emoji) {
@@ -333,26 +271,7 @@ async function setTelegramReaction(messageId, emoji) {
         reaction: [{ type: "emoji", emoji: emoji }]
     };
 
-    const body = JSON.stringify(payload);
-    return new Promise((resolve) => {
-        const options = {
-            hostname: 'api.telegram.org',
-            path: `/bot${TELEGRAM_BOT_TOKEN}/setMessageReaction`,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(body)
-            }
-        };
-        const req = https.request(options, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => resolve(JSON.parse(data)));
-        });
-        req.on('error', () => resolve(null));
-        req.write(body);
-        req.end();
-    });
+    return telegramJsonRequest('setMessageReaction', payload);
 }
 
 async function answerTelegramInlineQuery(inlineQueryId, results) {
@@ -364,26 +283,15 @@ async function answerTelegramInlineQuery(inlineQueryId, results) {
         cache_time: 0 // Don't cache so it updates live
     };
 
-    const body = JSON.stringify(payload);
-    return new Promise((resolve) => {
-        const options = {
-            hostname: 'api.telegram.org',
-            path: `/bot${TELEGRAM_BOT_TOKEN}/answerInlineQuery`,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(body)
-            }
-        };
-        const req = https.request(options, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => resolve(JSON.parse(data)));
-        });
-        req.on('error', () => resolve(null));
-        req.write(body);
-        req.end();
+    return telegramJsonRequest('answerInlineQuery', payload);
+}
+
+async function answerTelegramCallbackQuery(callbackQueryId, text = null) {
+    if (!TELEGRAM_BOT_TOKEN || !callbackQueryId) return null;
+    return telegramJsonRequest('answerCallbackQuery', {
+        callback_query_id: callbackQueryId,
+        ...(text ? { text: String(text).slice(0, 200) } : {}),
     });
 }
 
-module.exports = { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, e };
+module.exports = { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, answerTelegramCallbackQuery, telegramJsonRequest, e };

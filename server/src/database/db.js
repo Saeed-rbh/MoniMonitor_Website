@@ -96,12 +96,32 @@ async function getDb() {
                     uidValidity TEXT NOT NULL,
                     uid INTEGER NOT NULL,
                     status TEXT NOT NULL DEFAULT 'pending'
-                        CHECK(status IN ('pending', 'processed')),
+                        CHECK(status IN ('pending', 'processing', 'retry', 'dead', 'processed')),
                     attempts INTEGER NOT NULL DEFAULT 0,
                     lastError TEXT,
                     discoveredAt TEXT NOT NULL,
+                    nextAttemptAt TEXT,
+                    leaseOwner TEXT,
+                    leaseExpiresAt TEXT,
                     processedAt TEXT,
                     PRIMARY KEY (mailboxKey, uidValidity, uid)
+                );
+
+                CREATE TABLE IF NOT EXISTS telegram_outbox (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    action TEXT NOT NULL,
+                    payloadJson TEXT NOT NULL,
+                    transactionId INTEGER,
+                    status TEXT NOT NULL DEFAULT 'pending'
+                        CHECK(status IN ('pending', 'processing', 'retry', 'dead', 'processed')),
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    nextAttemptAt TEXT,
+                    leaseOwner TEXT,
+                    leaseExpiresAt TEXT,
+                    lastError TEXT,
+                    createdAt TEXT NOT NULL,
+                    processedAt TEXT,
+                    FOREIGN KEY (transactionId) REFERENCES transactions(id)
                 );
 
                 CREATE TABLE IF NOT EXISTS merchant_rules (
@@ -148,6 +168,48 @@ async function getDb() {
             const configuredOwnerId = String(process.env.BACKUP_OWNER_USER_ID || process.env.USER_ID || '').trim();
             if (configuredOwnerId) {
                 await db.run("UPDATE users SET role = 'owner' WHERE id = ?", [configuredOwnerId]);
+            }
+            const emailQueueColumns = await db.all('PRAGMA table_info(email_ingestion_queue)');
+            const addEmailQueueColumn = async (name, definition) => {
+                if (!emailQueueColumns.some((column) => column.name === name)) {
+                    await db.exec(`ALTER TABLE email_ingestion_queue ADD COLUMN ${name} ${definition}`);
+                }
+            };
+            await addEmailQueueColumn('nextAttemptAt', 'TEXT');
+            await addEmailQueueColumn('leaseOwner', 'TEXT');
+            await addEmailQueueColumn('leaseExpiresAt', 'TEXT');
+            await db.run(
+                "UPDATE email_ingestion_queue SET nextAttemptAt = discoveredAt WHERE nextAttemptAt IS NULL AND status IN ('pending', 'retry')"
+            );
+            const emailQueueDefinition = await db.get(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'email_ingestion_queue'"
+            );
+            if (!String(emailQueueDefinition?.sql || '').includes("'processing'")) {
+                await db.exec(`
+                    ALTER TABLE email_ingestion_queue RENAME TO email_ingestion_queue_legacy;
+                    CREATE TABLE email_ingestion_queue (
+                        mailboxKey TEXT NOT NULL,
+                        uidValidity TEXT NOT NULL,
+                        uid INTEGER NOT NULL,
+                        status TEXT NOT NULL DEFAULT 'pending'
+                            CHECK(status IN ('pending', 'processing', 'retry', 'dead', 'processed')),
+                        attempts INTEGER NOT NULL DEFAULT 0,
+                        lastError TEXT,
+                        discoveredAt TEXT NOT NULL,
+                        nextAttemptAt TEXT,
+                        leaseOwner TEXT,
+                        leaseExpiresAt TEXT,
+                        processedAt TEXT,
+                        PRIMARY KEY (mailboxKey, uidValidity, uid)
+                    );
+                    INSERT INTO email_ingestion_queue
+                        (mailboxKey, uidValidity, uid, status, attempts, lastError, discoveredAt,
+                         nextAttemptAt, leaseOwner, leaseExpiresAt, processedAt)
+                    SELECT mailboxKey, uidValidity, uid, status, attempts, lastError, discoveredAt,
+                           COALESCE(nextAttemptAt, discoveredAt), leaseOwner, leaseExpiresAt, processedAt
+                    FROM email_ingestion_queue_legacy;
+                    DROP TABLE email_ingestion_queue_legacy;
+                `);
             }
             const transactionColumns = await db.all("PRAGMA table_info(transactions)");
             const hasColumn = (name) => transactionColumns.some((column) => column.name === name);
@@ -521,7 +583,9 @@ async function getDb() {
                     ON transactions(SourceEmailKey) WHERE SourceEmailKey IS NOT NULL;
                 CREATE INDEX IF NOT EXISTS idx_accounts_user ON accounts(userId);
                 CREATE INDEX IF NOT EXISTS idx_email_ingestion_pending
-                    ON email_ingestion_queue(mailboxKey, uidValidity, status, uid);
+                    ON email_ingestion_queue(mailboxKey, uidValidity, status, nextAttemptAt, uid);
+                CREATE INDEX IF NOT EXISTS idx_telegram_outbox_pending
+                    ON telegram_outbox(status, nextAttemptAt, id);
                 CREATE INDEX IF NOT EXISTS idx_investment_accounts_user ON investment_accounts(userId);
                 CREATE INDEX IF NOT EXISTS idx_investment_holdings_account ON investment_holdings(accountId);
                 CREATE INDEX IF NOT EXISTS idx_portfolio_transactions_user_date ON portfolio_transactions(userId, occurredAt DESC);

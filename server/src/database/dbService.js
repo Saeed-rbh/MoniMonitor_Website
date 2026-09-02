@@ -184,6 +184,64 @@ async function addTransaction(transaction) {
     return result.lastID;
 }
 
+/**
+ * The durable boundary for a newly-ingested email. A crash cannot leave a
+ * normalized transaction without its source record, balance event, or alert
+ * intent (or the inverse). Ambiguous balance matches remain intentionally
+ * deferred to the idempotent reconciliation path.
+ */
+async function commitEmailTransaction({ transaction, source, balance = null, outbox = null }) {
+    const db = await getDb();
+    await db.run('BEGIN IMMEDIATE');
+    try {
+        const transactionId = await addTransaction(transaction);
+        if (balance?.accountId) {
+            const account = await db.get(
+                'SELECT * FROM investment_accounts WHERE id = ? AND userId = ?',
+                [balance.accountId, transaction.userId]
+            );
+            const amountMinor = Number.isSafeInteger(transaction.AmountMinor)
+                ? transaction.AmountMinor
+                : toMinorUnits(transaction.Amount);
+            const deltaMinor = account ? transactionBalanceDelta(transaction, account, amountMinor) : null;
+            const nextCashMinor = account ? Number(account.cashMinor) + Number(deltaMinor) : null;
+            if (deltaMinor !== null && nextCashMinor >= 0) {
+                const occurredAt = transaction.Timestamp || new Date().toISOString();
+                await db.run(
+                    'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                    [nextCashMinor, occurredAt, account.id, transaction.userId]
+                );
+                await db.run(
+                    `INSERT INTO account_balance_events
+                        (userId, accountId, sourceTransactionId, deltaMinor, occurredAt)
+                     VALUES (?, ?, ?, ?, ?)`,
+                    [transaction.userId, account.id, transactionId, deltaMinor, occurredAt]
+                );
+            }
+        }
+        if (source) {
+            await upsertTransactionSource({
+                ...source,
+                userId: transaction.userId,
+                transactionId,
+                provider: source.provider || 'email',
+                ownsTransaction: source.ownsTransaction !== false,
+            });
+        }
+        if (outbox) {
+            const payload = typeof outbox.payload === 'function'
+                ? outbox.payload(transactionId)
+                : outbox.payload;
+            await enqueueTelegramOutbox(outbox.action || 'sendMessage', payload, { transactionId });
+        }
+        await db.run('COMMIT');
+        return transactionId;
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+}
+
 async function getTransactionById(id, userId) {
     const db = await getDb();
     return withDisplayAmount(await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [id, userId]));
@@ -1333,10 +1391,10 @@ async function enqueueDiscoveredEmails(mailboxKey, uidValidity, uids, options = 
             ));
             await db.run(
                 `INSERT OR IGNORE INTO email_ingestion_queue
-                    (mailboxKey, uidValidity, uid, status, attempts, discoveredAt, processedAt)
-                 VALUES (?, ?, ?, ?, 0, ?, ?)`,
+                    (mailboxKey, uidValidity, uid, status, attempts, discoveredAt, nextAttemptAt, processedAt)
+                 VALUES (?, ?, ?, ?, 0, ?, ?, ?)` ,
                 [mailboxKey, String(uidValidity), uid, legacyProcessed ? 'processed' : 'pending',
-                    now, legacyProcessed ? now : null]
+                    now, legacyProcessed ? null : now, legacyProcessed ? now : null]
             );
         }
         await db.run(
@@ -1353,16 +1411,218 @@ async function enqueueDiscoveredEmails(mailboxKey, uidValidity, uids, options = 
     }
 }
 
+const EMAIL_QUEUE_MAX_ATTEMPTS = Number(process.env.EMAIL_QUEUE_MAX_ATTEMPTS || 8);
+const EMAIL_QUEUE_LEASE_MS = Number(process.env.EMAIL_QUEUE_LEASE_MS || 5 * 60 * 1000);
+const EMAIL_QUEUE_BACKOFF_CAP_MS = Number(process.env.EMAIL_QUEUE_BACKOFF_CAP_MS || 60 * 60 * 1000);
+
+function retryDelayMs(attempts, baseMs = 1000, capMs = EMAIL_QUEUE_BACKOFF_CAP_MS) {
+    const boundedAttempts = Math.max(0, Math.min(30, Number(attempts) || 0));
+    return Math.min(capMs, baseMs * (2 ** boundedAttempts));
+}
+
 async function getPendingEmails(mailboxKey, uidValidity, limit = 250) {
     const safeLimit = Number.isSafeInteger(limit) ? Math.min(1000, Math.max(1, limit)) : 250;
     const db = await getDb();
+    const now = new Date().toISOString();
     return await db.all(
-        `SELECT uid, attempts, lastError, discoveredAt
+        `SELECT uid, attempts, lastError, discoveredAt, nextAttemptAt
          FROM email_ingestion_queue
-         WHERE mailboxKey = ? AND uidValidity = ? AND status = 'pending'
-         ORDER BY uid ASC LIMIT ?`,
-        [mailboxKey, String(uidValidity), safeLimit]
+         WHERE mailboxKey = ? AND uidValidity = ?
+           AND ((status IN ('pending', 'retry') AND COALESCE(nextAttemptAt, discoveredAt) <= ?)
+             OR (status = 'processing' AND leaseExpiresAt <= ?))
+         ORDER BY COALESCE(nextAttemptAt, discoveredAt) ASC, uid ASC LIMIT ?`,
+        [mailboxKey, String(uidValidity), now, now, safeLimit]
     );
+}
+
+async function claimPendingEmails(mailboxKey, uidValidity, workerId, limit = 250, now = new Date()) {
+    const safeLimit = Number.isSafeInteger(limit) ? Math.min(1000, Math.max(1, limit)) : 250;
+    const owner = String(workerId || '').trim();
+    if (!owner) throw new Error('A queue worker id is required to claim email ingestion work');
+    const db = await getDb();
+    const nowIso = now.toISOString();
+    const leaseExpiresAt = new Date(now.getTime() + EMAIL_QUEUE_LEASE_MS).toISOString();
+    await db.run('BEGIN IMMEDIATE');
+    try {
+        const rows = await db.all(
+            `SELECT uid, attempts, lastError, discoveredAt, nextAttemptAt
+             FROM email_ingestion_queue
+             WHERE mailboxKey = ? AND uidValidity = ?
+               AND ((status IN ('pending', 'retry') AND COALESCE(nextAttemptAt, discoveredAt) <= ?)
+                 OR (status = 'processing' AND leaseExpiresAt <= ?))
+             ORDER BY COALESCE(nextAttemptAt, discoveredAt) ASC, uid ASC LIMIT ?`,
+            [mailboxKey, String(uidValidity), nowIso, nowIso, safeLimit]
+        );
+        for (const row of rows) {
+            await db.run(
+                `UPDATE email_ingestion_queue
+                 SET status = 'processing', attempts = attempts + 1, leaseOwner = ?, leaseExpiresAt = ?
+                 WHERE mailboxKey = ? AND uidValidity = ? AND uid = ?`,
+                [owner, leaseExpiresAt, mailboxKey, String(uidValidity), row.uid]
+            );
+            row.attempts += 1;
+        }
+        await db.run('COMMIT');
+        return rows;
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+}
+
+async function completeEmailQueueItem(uid, mailboxKey, uidValidity, workerId = null) {
+    const db = await getDb();
+    const normalizedUid = normalizeEmailUid(uid);
+    const now = new Date().toISOString();
+    const ownershipClause = workerId ? ' AND leaseOwner = ?' : '';
+    const params = [now, mailboxKey, String(uidValidity), normalizedUid];
+    if (workerId) params.push(String(workerId));
+    const result = await db.run(
+        `UPDATE email_ingestion_queue
+         SET status = 'processed', lastError = NULL, processedAt = ?, nextAttemptAt = NULL,
+             leaseOwner = NULL, leaseExpiresAt = NULL
+         WHERE mailboxKey = ? AND uidValidity = ? AND uid = ? AND status = 'processing'${ownershipClause}`,
+        params
+    );
+    if (result.changes) {
+        await db.run('INSERT OR IGNORE INTO processed_emails (uid, processedAt) VALUES (?, ?)', [normalizedUid, now]);
+    }
+    return result.changes > 0;
+}
+
+async function failEmailQueueItem(uid, mailboxKey, uidValidity, workerId, error, now = new Date()) {
+    const db = await getDb();
+    const normalizedUid = normalizeEmailUid(uid);
+    const row = await db.get(
+        `SELECT attempts FROM email_ingestion_queue
+         WHERE mailboxKey = ? AND uidValidity = ? AND uid = ? AND status = 'processing' AND leaseOwner = ?`,
+        [mailboxKey, String(uidValidity), normalizedUid, String(workerId)]
+    );
+    if (!row) return { status: 'lost_lease' };
+    const attempts = Number(row.attempts || 0);
+    const dead = attempts >= EMAIL_QUEUE_MAX_ATTEMPTS;
+    const nextAttemptAt = dead ? null : new Date(now.getTime() + retryDelayMs(attempts)).toISOString();
+    await db.run(
+        `UPDATE email_ingestion_queue
+         SET status = ?, lastError = ?, nextAttemptAt = ?, leaseOwner = NULL, leaseExpiresAt = NULL
+         WHERE mailboxKey = ? AND uidValidity = ? AND uid = ? AND status = 'processing' AND leaseOwner = ?`,
+        [dead ? 'dead' : 'retry', String(error?.message || error || 'Processing failed').slice(0, 1000),
+            nextAttemptAt, mailboxKey, String(uidValidity), normalizedUid, String(workerId)]
+    );
+    return { status: dead ? 'dead' : 'retry', attempts, nextAttemptAt };
+}
+
+const TELEGRAM_OUTBOX_MAX_ATTEMPTS = Number(process.env.TELEGRAM_OUTBOX_MAX_ATTEMPTS || 8);
+const TELEGRAM_OUTBOX_LEASE_MS = Number(process.env.TELEGRAM_OUTBOX_LEASE_MS || 2 * 60 * 1000);
+
+async function enqueueTelegramOutbox(action, payload, { transactionId = null } = {}) {
+    const db = await getDb();
+    const now = new Date().toISOString();
+    const result = await db.run(
+        `INSERT INTO telegram_outbox
+            (action, payloadJson, transactionId, status, attempts, nextAttemptAt, createdAt)
+         VALUES (?, ?, ?, 'pending', 0, ?, ?)`,
+        [String(action), JSON.stringify(payload || {}), transactionId, now, now]
+    );
+    return result.lastID;
+}
+
+async function claimTelegramOutbox(workerId, limit = 50, now = new Date()) {
+    const owner = String(workerId || '').trim();
+    if (!owner) throw new Error('A queue worker id is required to claim Telegram outbox work');
+    const safeLimit = Number.isSafeInteger(limit) ? Math.min(500, Math.max(1, limit)) : 50;
+    const db = await getDb();
+    const nowIso = now.toISOString();
+    const leaseExpiresAt = new Date(now.getTime() + TELEGRAM_OUTBOX_LEASE_MS).toISOString();
+    await db.run('BEGIN IMMEDIATE');
+    try {
+        const rows = await db.all(
+            `SELECT id, action, payloadJson, transactionId, attempts
+             FROM telegram_outbox
+             WHERE (status IN ('pending', 'retry') AND nextAttemptAt <= ?)
+                OR (status = 'processing' AND leaseExpiresAt <= ?)
+             ORDER BY nextAttemptAt ASC, id ASC LIMIT ?`,
+            [nowIso, nowIso, safeLimit]
+        );
+        for (const row of rows) {
+            await db.run(
+                `UPDATE telegram_outbox
+                 SET status = 'processing', attempts = attempts + 1, leaseOwner = ?, leaseExpiresAt = ?
+                 WHERE id = ?`,
+                [owner, leaseExpiresAt, row.id]
+            );
+            row.attempts += 1;
+            try { row.payload = JSON.parse(row.payloadJson); } catch { row.payload = {}; }
+            delete row.payloadJson;
+        }
+        await db.run('COMMIT');
+        return rows;
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+}
+
+async function completeTelegramOutbox(id, workerId, telegramMessageId = null) {
+    const db = await getDb();
+    const now = new Date().toISOString();
+    await db.run('BEGIN IMMEDIATE');
+    try {
+        const row = await db.get(
+            `SELECT transactionId FROM telegram_outbox
+             WHERE id = ? AND status = 'processing' AND leaseOwner = ?`,
+            [id, String(workerId)]
+        );
+        if (!row) {
+            await db.run('ROLLBACK');
+            return false;
+        }
+        await db.run(
+            `UPDATE telegram_outbox
+             SET status = 'processed', processedAt = ?, lastError = NULL, nextAttemptAt = NULL,
+                 leaseOwner = NULL, leaseExpiresAt = NULL
+             WHERE id = ?`,
+            [now, id]
+        );
+        if (row.transactionId && telegramMessageId) {
+            await db.run('UPDATE transactions SET TelegramMessageId = ? WHERE id = ?', [telegramMessageId, row.transactionId]);
+        }
+        await db.run('COMMIT');
+        return true;
+    } catch (error) {
+        await db.run('ROLLBACK');
+        throw error;
+    }
+}
+
+async function failTelegramOutbox(id, workerId, error, now = new Date()) {
+    const db = await getDb();
+    const row = await db.get(
+        `SELECT attempts FROM telegram_outbox WHERE id = ? AND status = 'processing' AND leaseOwner = ?`,
+        [id, String(workerId)]
+    );
+    if (!row) return { status: 'lost_lease' };
+    const attempts = Number(row.attempts || 0);
+    const dead = attempts >= TELEGRAM_OUTBOX_MAX_ATTEMPTS;
+    const nextAttemptAt = dead ? null : new Date(now.getTime() + retryDelayMs(attempts)).toISOString();
+    await db.run(
+        `UPDATE telegram_outbox
+         SET status = ?, lastError = ?, nextAttemptAt = ?, leaseOwner = NULL, leaseExpiresAt = NULL
+         WHERE id = ? AND leaseOwner = ?`,
+        [dead ? 'dead' : 'retry', String(error?.message || error || 'Telegram delivery failed').slice(0, 1000),
+            nextAttemptAt, id, String(workerId)]
+    );
+    return { status: dead ? 'dead' : 'retry', attempts, nextAttemptAt };
+}
+
+async function getQueueHealth() {
+    const db = await getDb();
+    const [email, telegram] = await Promise.all([
+        db.all("SELECT status, COUNT(*) AS count FROM email_ingestion_queue GROUP BY status"),
+        db.all("SELECT status, COUNT(*) AS count FROM telegram_outbox GROUP BY status"),
+    ]);
+    const summarize = (rows) => Object.fromEntries(rows.map((row) => [row.status, Number(row.count)]));
+    return { email: summarize(email), telegram: summarize(telegram) };
 }
 
 async function isEmailProcessed(uid, mailboxKey = null, uidValidity = null) {
@@ -1386,7 +1646,8 @@ async function markEmailProcessed(uid, mailboxKey = null, uidValidity = null) {
     if (mailboxKey && uidValidity !== null && uidValidity !== undefined) {
         await db.run(
             `UPDATE email_ingestion_queue
-             SET status = 'processed', attempts = attempts + 1, lastError = NULL, processedAt = ?
+             SET status = 'processed', attempts = attempts + 1, lastError = NULL, processedAt = ?,
+                 nextAttemptAt = NULL, leaseOwner = NULL, leaseExpiresAt = NULL
              WHERE mailboxKey = ? AND uidValidity = ? AND uid = ?`,
             [now, mailboxKey, String(uidValidity), normalizedUid]
         );
@@ -1401,10 +1662,11 @@ async function markEmailFailed(uid, mailboxKey, uidValidity, error) {
     const db = await getDb();
     await db.run(
         `UPDATE email_ingestion_queue
-         SET attempts = attempts + 1, lastError = ?
-         WHERE mailboxKey = ? AND uidValidity = ? AND uid = ? AND status = 'pending'`,
+         SET attempts = attempts + 1, lastError = ?, status = 'retry',
+             nextAttemptAt = ?, leaseOwner = NULL, leaseExpiresAt = NULL
+        WHERE mailboxKey = ? AND uidValidity = ? AND uid = ? AND status IN ('pending', 'retry', 'processing')`,
         [String(error?.message || error || 'Processing failed').slice(0, 1000),
-            mailboxKey, String(uidValidity), normalizeEmailUid(uid)]
+            new Date().toISOString(), mailboxKey, String(uidValidity), normalizeEmailUid(uid)]
     );
 }
 
@@ -1896,6 +2158,7 @@ module.exports = {
     updateUserProfilePhoto,
     getAllTransactionsForUser,
     addTransaction,
+    commitEmailTransaction,
     getTransactionById,
     getTransactionBySourceEmailKey,
     upsertTransactionSource,
@@ -1934,9 +2197,18 @@ module.exports = {
     prepareEmailSync,
     enqueueDiscoveredEmails,
     getPendingEmails,
+    claimPendingEmails,
+    completeEmailQueueItem,
+    failEmailQueueItem,
     isEmailProcessed,
     markEmailProcessed,
     markEmailFailed,
+    enqueueTelegramOutbox,
+    claimTelegramOutbox,
+    completeTelegramOutbox,
+    failTelegramOutbox,
+    getQueueHealth,
+    retryDelayMs,
     saveMerchantRule,
     getMerchantRuleForReason,
     detectAndMarkRecurring,

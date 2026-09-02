@@ -17,6 +17,8 @@ const { getMonthlyInsightBrief } = require("./src/services/monthlyInsightService
 const { getExpenseForecast } = require("./src/services/timesFmForecastService");
 const { buildCashFlowWidgetPayload } = require("./src/services/cashFlowWidgetService");
 const plaidService = require("./src/services/plaidService");
+const { startTelegramOutboxWorker, getTelegramOutboxWorkerHealth } = require("./src/services/telegramOutboxWorker");
+const { getAllSubsystemHealth } = require("./src/services/subsystemHealth");
 
 const app = express();
 app.set("trust proxy", 1);
@@ -121,12 +123,22 @@ app.get("/health", async (_req, res) => {
     try {
         const db = await dbService.getDb();
         await db.get("SELECT 1 AS ready");
+        const queues = await dbService.getQueueHealth();
+        const subsystems = getAllSubsystemHealth();
+        const hasDeadLetters = (queues.email.dead || 0) > 0 || (queues.telegram.dead || 0) > 0;
+        const agentFailed = agentStatus.enabled && agentStatus.state === "failed";
+        const outbox = getTelegramOutboxWorkerHealth();
+        const status = agentFailed ? "unavailable" : (hasDeadLetters || outbox.lastError ? "degraded" : "ok");
         return res.json({
-            status: "ok",
+            status,
+            database: { state: "ready" },
             agent: {
                 enabled: agentStatus.enabled,
                 state: agentStatus.state,
             },
+            telegramOutbox: outbox,
+            queues,
+            subsystems,
         });
     } catch (error) {
         console.error("Database health check failed:", error);
@@ -774,6 +786,9 @@ if (require.main === module) {
         plaidService.startAutomaticReconciliation();
         plaidService.startAutomaticMarketPriceRefresh();
         plaidService.startPlaidWebhookWorker();
+        if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+            startTelegramOutboxWorker();
+        }
         if (process.env.AI_INGESTION_ENABLED === 'true') {
             const { startAgent } = require('./email_agent');
             startAgent()

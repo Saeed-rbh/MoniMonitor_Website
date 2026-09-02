@@ -1,5 +1,6 @@
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
+const { reportSubsystem } = require('./subsystemHealth');
 
 let dbService = null;
 function getDbService() {
@@ -11,6 +12,7 @@ const CONCURRENCY = 3;
 const RETRY_INTERVAL_MS = 60 * 1000;
 const PENDING_BATCH_SIZE = 250;
 const DEFAULT_INITIAL_CATCHUP_DAYS = 30;
+const WORKER_ID = `imap-${process.pid}-${Math.random().toString(16).slice(2)}`;
 
 function validDate(value) {
     const date = value ? new Date(value) : null;
@@ -66,6 +68,7 @@ class ImapService {
         try {
             console.log('Connecting to IMAP server...');
             await this.client.connect();
+            reportSubsystem('imap', { configured: true, state: 'connected', lastSuccessAt: new Date().toISOString(), lastError: null });
             this.reconnectDelay = 5000;
             console.log('Connected to email!');
 
@@ -82,10 +85,12 @@ class ImapService {
                 });
                 this.client.on('error', (error) => {
                     console.error('IMAP Error:', error);
+                    reportSubsystem('imap', { configured: true, state: 'failed', lastError: error.message });
                     this.handleReconnect();
                 });
                 this.client.on('close', () => {
                     console.log('IMAP Connection Closed');
+                    reportSubsystem('imap', { configured: true, state: 'reconnecting' });
                     this.handleReconnect();
                 });
             } catch (error) {
@@ -96,6 +101,7 @@ class ImapService {
             }
         } catch (error) {
             console.error('Failed to connect to IMAP server:', error);
+            reportSubsystem('imap', { configured: true, state: 'failed', lastError: error.message });
             this.handleReconnect();
         }
     }
@@ -130,7 +136,7 @@ class ImapService {
 
     async processOne(uid, uidValidity, options = {}) {
         const database = this.getDatabase();
-        const { force = false, onNewEmailOptions = {} } = options;
+        const { force = false, onNewEmailOptions = {}, workerId = null } = options;
         try {
             if (!force && await database.isEmailProcessed(uid, this.mailboxKey, uidValidity)) return;
 
@@ -140,7 +146,11 @@ class ImapService {
                 { uid: true }
             );
             if (!message?.source) {
-                await database.markEmailFailed(uid, this.mailboxKey, uidValidity, 'Message is no longer available in the mailbox');
+                if (workerId && typeof database.failEmailQueueItem === 'function') {
+                    await database.failEmailQueueItem(uid, this.mailboxKey, uidValidity, workerId, 'Message is no longer available in the mailbox');
+                } else {
+                    await database.markEmailFailed(uid, this.mailboxKey, uidValidity, 'Message is no longer available in the mailbox');
+                }
                 return;
             }
 
@@ -162,14 +172,25 @@ class ImapService {
             });
 
             if (success) {
-                await database.markEmailProcessed(uid, this.mailboxKey, uidValidity);
+                if (workerId && typeof database.completeEmailQueueItem === 'function') {
+                    await database.completeEmailQueueItem(uid, this.mailboxKey, uidValidity, workerId);
+                } else {
+                    await database.markEmailProcessed(uid, this.mailboxKey, uidValidity);
+                }
                 await this.client.messageFlagsAdd(uid, ['\\Seen'], { uid: true });
             } else {
-                await database.markEmailFailed(uid, this.mailboxKey, uidValidity, 'Transaction analysis did not complete');
+                if (workerId && typeof database.failEmailQueueItem === 'function') {
+                    await database.failEmailQueueItem(uid, this.mailboxKey, uidValidity, workerId, 'Transaction analysis did not complete');
+                } else {
+                    await database.markEmailFailed(uid, this.mailboxKey, uidValidity, 'Transaction analysis did not complete');
+                }
                 console.warn(`Email ${uid} remains in the durable retry queue.`);
             }
         } catch (error) {
-            await database.markEmailFailed(uid, this.mailboxKey, uidValidity, error).catch(() => {});
+            const fail = workerId && typeof database.failEmailQueueItem === 'function'
+                ? database.failEmailQueueItem(uid, this.mailboxKey, uidValidity, workerId, error)
+                : database.markEmailFailed(uid, this.mailboxKey, uidValidity, error);
+            await fail.catch(() => {});
             console.error(`Error processing email ${uid}:`, error);
         }
     }
@@ -216,20 +237,22 @@ class ImapService {
     async processUnseenBatch() {
         try {
             const uidValidity = await this.discoverMessages();
-            const pending = await this.getDatabase().getPendingEmails(
-                this.mailboxKey,
-                uidValidity,
-                PENDING_BATCH_SIZE
-            );
+            const database = this.getDatabase();
+            const pending = typeof database.claimPendingEmails === 'function'
+                ? await database.claimPendingEmails(this.mailboxKey, uidValidity, WORKER_ID, PENDING_BATCH_SIZE)
+                : await database.getPendingEmails(this.mailboxKey, uidValidity, PENDING_BATCH_SIZE);
             if (!pending.length) return;
+
+            reportSubsystem('imap', { configured: true, state: 'processing', lastSuccessAt: new Date().toISOString(), lastError: null });
 
             console.log(`Processing ${pending.length} queued email(s), including messages already marked read.`);
             for (let index = 0; index < pending.length; index += CONCURRENCY) {
                 const batch = pending.slice(index, index + CONCURRENCY);
-                await Promise.all(batch.map(({ uid }) => this.processOne(uid, uidValidity)));
+                await Promise.all(batch.map(({ uid }) => this.processOne(uid, uidValidity, { workerId: WORKER_ID })));
             }
         } catch (error) {
             console.error('Error synchronizing mailbox:', error);
+            reportSubsystem('imap', { configured: true, state: 'failed', lastError: error.message });
         }
     }
 
