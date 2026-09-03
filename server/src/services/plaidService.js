@@ -514,6 +514,20 @@ async function applyAuthoritativeBalances(userId, accountMap) {
     return updated;
 }
 
+function mergeAccountBalances(accounts = [], balanceAccounts = []) {
+    const liveBalances = new Map(
+        balanceAccounts
+            .filter((account) => account?.account_id && account.balances)
+            .map((account) => [account.account_id, account.balances])
+    );
+    return accounts.map((account) => {
+        const balances = liveBalances.get(account.account_id);
+        return balances
+            ? { ...account, balances: { ...(account.balances || {}), ...balances } }
+            : account;
+    });
+}
+
 // A transfer confirmation can arrive before Plaid's balance snapshot and
 // transaction feed reflect the movement. Keep that recent, email-confirmed
 // transfer visible in both account balances until Plaid links its own source
@@ -762,7 +776,9 @@ function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
     const byAccount = new Map();
     for (const holding of snapshot.holdings || []) {
         const security = securities.get(holding.security_id) || {};
-        const entry = byAccount.get(holding.account_id) || { cashMinor: 0, hasExplicitCash: false, holdings: [] };
+        const entry = byAccount.get(holding.account_id) || {
+            cashMinor: 0, hasExplicitCash: false, cashDerivedFromTotal: false, totalMinor: null, holdings: [],
+        };
         const quantity = Number(holding.quantity) || 0;
         const institutionPrice = Number(holding.institution_price);
         const institutionValue = Number(holding.institution_value);
@@ -807,21 +823,38 @@ function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
         byAccount.set(holding.account_id, entry);
     }
     for (const account of snapshot.accounts || []) {
-        const entry = byAccount.get(account.account_id) || { cashMinor: 0, hasExplicitCash: false, holdings: [] };
+        const entry = byAccount.get(account.account_id) || {
+            cashMinor: 0, hasExplicitCash: false, cashDerivedFromTotal: false, totalMinor: null, holdings: [],
+        };
         const availableMinor = plaidAvailableBalanceMinor(account);
         const totalMinor = plaidBalanceMinor(account);
         const investedMinor = entry.holdings.reduce((sum, holding) => sum + holding.valueMinor, 0);
+        entry.totalMinor = totalMinor;
         // For investment accounts Plaid defines `available` as cash available
         // to withdraw, while `current` is the total value of all assets. Use
         // the institution-reported cash value whenever it is present, then
         // fall back to an explicit cash holding or the derived remainder.
-        if (availableMinor !== null) entry.cashMinor = Math.max(0, availableMinor);
+        if (availableMinor !== null) {
+            entry.cashMinor = Math.max(0, availableMinor);
+            entry.cashDerivedFromTotal = false;
+        }
         else if (!entry.hasExplicitCash && totalMinor !== null) {
             entry.cashMinor = Math.max(0, totalMinor - investedMinor);
+            entry.cashDerivedFromTotal = true;
         }
         byAccount.set(account.account_id, entry);
     }
     return byAccount;
+}
+
+function reconcileDerivedCashWithHoldings(entry) {
+    if (!entry?.cashDerivedFromTotal || !Number.isSafeInteger(entry.totalMinor)) return entry?.cashMinor;
+    const holdingsValueMinor = (entry.holdings || []).reduce(
+        (sum, holding) => sum + (Number.isFinite(Number(holding.valueMinor)) ? Number(holding.valueMinor) : 0),
+        0
+    );
+    entry.cashMinor = Math.max(0, entry.totalMinor - holdingsValueMinor);
+    return entry.cashMinor;
 }
 
 async function overlayUnconfirmedEmailTrades(userId, accountMap, normalized, now = new Date()) {
@@ -853,6 +886,7 @@ async function overlayUnconfirmedEmailTrades(userId, accountMap, normalized, now
     }
 
     const overlays = [];
+    const changedEntries = new Set();
     for (const transaction of transactions) {
         const symbol = String(transaction.PortfolioSymbol || '').trim().toUpperCase();
         const quantity = Math.abs(Number(transaction.PortfolioQuantity));
@@ -900,8 +934,10 @@ async function overlayUnconfirmedEmailTrades(userId, accountMap, normalized, now
         holding.quantity = nextQuantity;
         holding.updatedAt = transaction.Timestamp || now.toISOString();
         holding.valueMinor = Math.round(nextQuantity * Number(holding.priceMicros || 0) / 10000);
+        changedEntries.add(entry);
         overlays.push({ transaction, accountId, symbol, quantity });
     }
+    for (const entry of changedEntries) reconcileDerivedCashWithHoldings(entry);
     return overlays;
 }
 
@@ -1425,12 +1461,11 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
             plaidRequest('/accounts/get', { access_token: accessToken }),
             missingBankSources.length ? fetchSyncPages(accessToken, null) : Promise.resolve(null),
         ]);
-        const accounts = accountResponse.accounts?.length
+        let accounts = accountResponse.accounts?.length
             ? accountResponse.accounts
             : [...changes.accounts.values()];
-        const accountMap = await upsertPlaidAccounts(item.userId, item, accounts);
         const hasInvestmentAccounts = accounts.some((account) => account.type === 'investment');
-        const [investmentResult, investmentTransactionsResult] = hasInvestmentAccounts
+        const [investmentResult, investmentTransactionsResult, liveBalanceResult] = hasInvestmentAccounts
             ? await Promise.all([
                 shouldFetchHoldings
                 ? plaidRequest('/investments/holdings/get', { access_token: accessToken })
@@ -1442,9 +1477,30 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
                     .then((history) => ({ history }))
                     .catch((error) => ({ error }))
                 : Promise.resolve({ skipped: true }),
+                shouldFetchHoldings
+                ? plaidRequest('/accounts/balance/get', { access_token: accessToken })
+                    .then((response) => ({ response }))
+                    .catch((error) => ({ error }))
+                : Promise.resolve({ skipped: true }),
             ])
-            : [{ notApplicable: true }, { notApplicable: true }];
+            : [{ notApplicable: true }, { notApplicable: true }, { notApplicable: true }];
+        const liveBalanceAccounts = liveBalanceResult.response?.accounts || [];
+        accounts = mergeAccountBalances(accounts, liveBalanceAccounts);
+        const accountMap = await upsertPlaidAccounts(item.userId, item, accounts);
+        const investmentSnapshot = investmentResult.snapshot
+            ? {
+                ...investmentResult.snapshot,
+                accounts: mergeAccountBalances(investmentResult.snapshot.accounts || [], liveBalanceAccounts),
+            }
+            : null;
         const totals = { imported: 0, matched: 0, updated: 0, removed: changes.removed.length };
+        totals.investmentBalanceStatus = liveBalanceResult.response
+            ? 'active'
+            : liveBalanceResult.error
+                ? 'unavailable'
+                : liveBalanceResult.notApplicable
+                    ? 'not_applicable'
+                    : 'skipped';
         totals.sourceDetailsBackfilled = 0;
         if (bankReplay) {
             const missingIds = new Set(missingBankSources.map(({ externalId }) => externalId));
@@ -1511,8 +1567,8 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
         // cannot reconstruct an account's opening balance. Plaid's current balance
         // is the authoritative anchor after every completed sync.
         totals.balancesUpdated = await applyAuthoritativeBalances(item.userId, accountMap);
-        if (investmentResult.snapshot) {
-            totals.holdingsUpdated = await applyInvestmentSnapshot(item.userId, accountMap, investmentResult.snapshot);
+        if (investmentSnapshot) {
+            totals.holdingsUpdated = await applyInvestmentSnapshot(item.userId, accountMap, investmentSnapshot);
             totals.holdingsStatus = 'active';
         } else if (investmentResult.error?.code === 'ADDITIONAL_CONSENT_REQUIRED') {
             totals.holdingsStatus = 'consent_required';
@@ -1959,6 +2015,7 @@ module.exports = {
     toAppInvestmentTransaction,
     plaidBalanceMinor,
     plaidAvailableBalanceMinor,
+    mergeAccountBalances,
     applyRecentUnconfirmedEmailTransferOverrides,
     fetchCurrentMarketPrices,
     fetchYahooMarketPrice,
@@ -1966,6 +2023,7 @@ module.exports = {
     nextMarketPriceRefreshDelayMs,
     refreshStoredMarketPrices,
     normalizeInvestmentSnapshot,
+    reconcileDerivedCashWithHoldings,
     overlayUnconfirmedEmailTrades,
     applyInvestmentSnapshot,
     canonicalPlaidSecuritySymbol,

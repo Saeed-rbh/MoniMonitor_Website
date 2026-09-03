@@ -11,8 +11,10 @@ const {
     decryptAccessTokenWithMetadata,
     plaidBalanceMinor,
     plaidAvailableBalanceMinor,
+    mergeAccountBalances,
     fetchCurrentMarketPrices,
     normalizeInvestmentSnapshot,
+    reconcileDerivedCashWithHoldings,
     canonicalPlaidSecuritySymbol,
     isMarketPriceRefreshWindow,
     nextMarketPriceRefreshDelayMs,
@@ -182,6 +184,33 @@ test('prefers Plaid available cash over total investment value and cash holdings
         ],
     }).get('tfsa');
     assert.equal(result.cashMinor, 61245);
+});
+
+test('replaces cached account balances with Plaid real-time balances', () => {
+    const [account] = mergeAccountBalances(
+        [{ account_id: 'tfsa', name: 'TFSA', balances: { current: 10610.321515, available: null } }],
+        [{ account_id: 'tfsa', balances: { current: 10603.496906, available: null } }]
+    );
+
+    assert.equal(account.name, 'TFSA');
+    assert.equal(account.balances.current, 10603.496906);
+});
+
+test('recalculates derived cash after pending trades change holding quantities', () => {
+    const entry = {
+        cashMinor: 160411,
+        cashDerivedFromTotal: true,
+        totalMinor: 1060350,
+        holdings: [
+            { valueMinor: 233349 },
+            { valueMinor: 409415 },
+            { valueMinor: 260180 },
+        ],
+    };
+
+    assert.equal(reconcileDerivedCashWithHoldings(entry), 157406);
+    assert.equal(entry.cashMinor, 157406);
+    assert.equal(entry.cashMinor + entry.holdings.reduce((sum, holding) => sum + holding.valueMinor, 0), 1060350);
 });
 
 test('keeps existing Plaid tokens readable while rotating from the JWT secret to a dedicated key', () => {
