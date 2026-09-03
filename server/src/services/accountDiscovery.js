@@ -14,7 +14,12 @@ function normalizeBank(value) {
 
 function getAccountReference(transaction = {}) {
     const reference = String(transaction.PortfolioAccountNumber || transaction.Account || '').trim();
-    return reference && normalizeIdentity(reference) ? reference : null;
+    const normalized = normalizeIdentity(reference);
+    const genericAccountTypes = new Set([
+        'tfsa', 'rrsp', 'ira', '401k', 'brokerage', 'investment', 'crypto',
+        'savings', 'saving', 'chequing', 'checking', 'creditcard',
+    ]);
+    return reference && normalized && !genericAccountTypes.has(normalized) ? reference : null;
 }
 
 function inferAccountType(transaction = {}) {

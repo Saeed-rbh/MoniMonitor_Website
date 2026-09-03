@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 
 const {
     describeDiscoveredAccount,
+    getAccountReference,
     inferAccountType,
     resolveAccountCandidate,
 } = require('./accountDiscovery');
@@ -16,6 +17,12 @@ test('infers common account types from transaction details', () => {
 
 test('requires a stable account reference before proposing a new account', () => {
     assert.equal(describeDiscoveredAccount({ BankName: 'TD', Type: 'Chequing' }), null);
+});
+
+test('does not treat a generic portfolio account type as a stable account reference', () => {
+    assert.equal(getAccountReference({ PortfolioAccountNumber: 'TFSA' }), null);
+    assert.equal(getAccountReference({ PortfolioAccountNumber: 'RRSP' }), null);
+    assert.equal(getAccountReference({ Account: 'Crypto' }), null);
 });
 
 test('builds a useful discovered account from a masked card', () => {

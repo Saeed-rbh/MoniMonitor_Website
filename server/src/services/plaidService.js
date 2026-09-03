@@ -17,6 +17,7 @@ let marketPriceTimer = null;
 let marketPriceRefreshPromise = null;
 const USER_SYNC_COOLDOWN_MS = 10 * 60 * 1000;
 const UNCONFIRMED_EMAIL_TRANSFER_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const UNCONFIRMED_EMAIL_TRADE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const INVESTMENT_HOLDINGS_REFRESH_MS = 10 * 60 * 1000;
 const WEBHOOK_MAX_AGE_SECONDS = 5 * 60;
 const WEBHOOK_KEY_CACHE_MS = 6 * 60 * 60 * 1000;
@@ -823,13 +824,124 @@ function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
     return byAccount;
 }
 
+async function overlayUnconfirmedEmailTrades(userId, accountMap, normalized, now = new Date()) {
+    const db = await dbService.getDb();
+    const cutoff = new Date(now.getTime() - UNCONFIRMED_EMAIL_TRADE_WINDOW_MS).toISOString();
+    const transactions = await db.all(
+        `SELECT t.* FROM transactions t
+         WHERE t.userId = ? AND t.ReceivedAt >= ?
+           AND t.Category = 'Investment' AND t.PortfolioAction IN ('BUY', 'SELL')
+           AND t.PortfolioSymbol IS NOT NULL AND t.PortfolioQuantity > 0
+           AND EXISTS (
+               SELECT 1 FROM transaction_sources emailSource
+               WHERE emailSource.transactionId = t.id AND emailSource.userId = t.userId
+                 AND emailSource.provider = 'email'
+           )
+           AND NOT EXISTS (
+               SELECT 1 FROM transaction_sources plaidSource
+               WHERE plaidSource.transactionId = t.id AND plaidSource.userId = t.userId
+                 AND plaidSource.provider = 'plaid_investments'
+           )
+         ORDER BY t.Timestamp ASC, t.id ASC`,
+        [userId, cutoff]
+    );
+    const plaidAccountByAppId = new Map();
+    for (const [plaidAccountId, account] of accountMap) {
+        if (account?.appAccountId && account.type === 'investment') {
+            plaidAccountByAppId.set(Number(account.appAccountId), plaidAccountId);
+        }
+    }
+
+    const overlays = [];
+    for (const transaction of transactions) {
+        const symbol = String(transaction.PortfolioSymbol || '').trim().toUpperCase();
+        const quantity = Math.abs(Number(transaction.PortfolioQuantity));
+        if (!symbol || !(quantity > 0)) continue;
+        const resolution = await dbService.resolvePortfolioActivityAccount(userId, transaction, {
+            accountId: transaction.PortfolioAccountId,
+            confidence: transaction.PortfolioConfidence,
+            action: transaction.PortfolioAction,
+            symbol,
+        });
+        const accountId = Number(resolution.account?.id);
+        const plaidAccountId = plaidAccountByAppId.get(accountId);
+        const entry = plaidAccountId ? normalized.get(plaidAccountId) : null;
+        if (!entry) continue;
+
+        let holding = entry.holdings.find((item) => item.symbol === symbol);
+        const delta = transaction.PortfolioAction === 'SELL' ? -quantity : quantity;
+        if (!holding && delta > 0) {
+            const priceMicros = toMicros(transaction.PortfolioPrice);
+            holding = {
+                symbol,
+                name: null,
+                quantity: 0,
+                averageCostMicros: priceMicros,
+                priceMicros,
+                currency: String(transaction.Currency || resolution.account.currency || 'CAD').toUpperCase(),
+                updatedAt: transaction.Timestamp || now.toISOString(),
+                valueMinor: 0,
+            };
+            entry.holdings.push(holding);
+        }
+        if (!holding) continue;
+
+        const previousQuantity = Number(holding.quantity) || 0;
+        const nextQuantity = Math.max(0, previousQuantity + delta);
+        if (delta > 0) {
+            const executionPriceMicros = toMicros(transaction.PortfolioPrice);
+            const previousCostMicros = Number(holding.averageCostMicros) || 0;
+            if (executionPriceMicros > 0 && nextQuantity > 0) {
+                holding.averageCostMicros = Math.round(
+                    ((previousQuantity * previousCostMicros) + (quantity * executionPriceMicros)) / nextQuantity
+                );
+            }
+        }
+        holding.quantity = nextQuantity;
+        holding.updatedAt = transaction.Timestamp || now.toISOString();
+        holding.valueMinor = Math.round(nextQuantity * Number(holding.priceMicros || 0) / 10000);
+        overlays.push({ transaction, accountId, symbol, quantity });
+    }
+    return overlays;
+}
+
 async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
     const db = await dbService.getDb();
     const marketPrices = await fetchCurrentMarketPrices(snapshot);
     const normalized = normalizeInvestmentSnapshot(snapshot, marketPrices);
+    const pendingEmailTrades = await overlayUnconfirmedEmailTrades(userId, accountMap, normalized);
     let accountsUpdated = 0;
     await db.run('BEGIN IMMEDIATE');
     try {
+        for (const overlay of pendingEmailTrades) {
+            const { transaction, accountId, symbol, quantity } = overlay;
+            await db.run(
+                'UPDATE transactions SET PortfolioAccountId = ?, PortfolioConfidence = ? WHERE id = ? AND userId = ?',
+                [accountId, 'HIGH', transaction.id, userId]
+            );
+            const existingPosting = await db.get(
+                'SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ? AND userId = ?',
+                [transaction.id, userId]
+            );
+            if (existingPosting) {
+                await db.run(
+                    'UPDATE portfolio_transactions SET accountId = ? WHERE id = ? AND userId = ?',
+                    [accountId, existingPosting.id, userId]
+                );
+            } else {
+                const priceMicros = toMicros(transaction.PortfolioPrice);
+                await db.run(
+                    `INSERT INTO portfolio_transactions
+                        (userId, accountId, sourceTransactionId, kind, amountMinor, symbol, quantity,
+                         priceMinor, priceMicros, occurredAt, note)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [userId, accountId, transaction.id, `EMAIL_${transaction.PortfolioAction}`,
+                        Number(transaction.AmountMinor) || 0, symbol, quantity,
+                        Math.round(priceMicros / 10000), priceMicros,
+                        transaction.Timestamp || new Date().toISOString(), transaction.Reason || null]
+                );
+            }
+        }
         for (const [plaidAccountId, entry] of normalized) {
             const account = accountMap.get(plaidAccountId);
             if (!account?.appAccountId || account.type !== 'investment') continue;
@@ -1854,6 +1966,8 @@ module.exports = {
     nextMarketPriceRefreshDelayMs,
     refreshStoredMarketPrices,
     normalizeInvestmentSnapshot,
+    overlayUnconfirmedEmailTrades,
+    applyInvestmentSnapshot,
     canonicalPlaidSecuritySymbol,
     refreshStoredPlaidSourceDetails,
     preserveLinkedInternalTransfer,

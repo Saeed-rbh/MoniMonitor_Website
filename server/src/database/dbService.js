@@ -3,6 +3,7 @@ const { accountMatchScore, transactionBalanceDelta } = require('../services/acco
 const {
     describeDiscoveredAccount,
     getAccountReference,
+    inferAccountType,
     resolveAccountCandidate,
 } = require('../services/accountDiscovery');
 const { CATEGORY_LABELS } = require('../services/transactionCategories');
@@ -791,6 +792,12 @@ async function reconcileEmailPortfolioActivities(userId) {
         `SELECT * FROM transactions
          WHERE userId = ? AND ReceivedAt IS NOT NULL
            AND Category IN ('Saving', 'SavingWithdrawal', 'Investment') AND PortfolioAction IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM transaction_sources plaidSource
+               WHERE plaidSource.transactionId = transactions.id
+                 AND plaidSource.userId = transactions.userId
+                 AND plaidSource.provider = 'plaid_investments'
+           )
            AND id NOT IN (
                SELECT sourceTransactionId FROM portfolio_transactions
                WHERE userId = ? AND sourceTransactionId IS NOT NULL
@@ -942,6 +949,61 @@ const emailCashActions = Object.freeze({
 const portfolioQuantityActions = new Set(['REWARD', 'DISTRIBUTION', 'FEE', 'SWAP']);
 const portfolioNoBalanceActions = new Set(['TRANSFER', 'LOAN', 'RECALL', 'STAKE', 'UNSTAKE']);
 
+async function resolvePortfolioActivityAccount(userId, source = {}, activity = {}) {
+    const db = await getDb();
+    const isTrade = activity.action === 'BUY' || activity.action === 'SELL';
+    const investmentTypes = new Set(['TFSA', 'RRSP', 'Brokerage', '401(k)', 'IRA', 'Crypto']);
+    const accounts = (await db.all('SELECT * FROM investment_accounts WHERE userId = ?', [userId]))
+        .filter((account) => !isTrade || investmentTypes.has(account.accountType));
+    const proposedReference = source.PortfolioAccountNumber || source.Account;
+    const inferredType = inferAccountType({
+        ...source,
+        PortfolioAction: activity.action || source.PortfolioAction,
+    });
+    const normalizedReference = String(proposedReference || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normalizedType = String(inferredType || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const matchingSource = {
+        ...source,
+        // "TFSA" identifies an account type, not one of several TFSA accounts.
+        Account: normalizedReference === normalizedType ? null : proposedReference,
+        PortfolioAction: activity.action || source.PortfolioAction,
+    };
+    const ranked = accounts
+        .map((account) => ({ account, score: accountMatchScore(matchingSource, account, null, null) }))
+        .sort((left, right) => right.score - left.score);
+
+    // A unique account reference/name is stronger evidence than an AI-selected id.
+    if (ranked[0]?.score >= 80 && ranked[0].score > Number(ranked[1]?.score || 0)) {
+        return { account: ranked[0].account, reason: 'identity_match' };
+    }
+
+    const normalizedSymbol = String(activity.symbol || source.PortfolioSymbol || '').trim().toUpperCase();
+    if (isTrade && normalizedSymbol) {
+        const holders = await db.all(
+            `SELECT a.* FROM investment_accounts a
+             JOIN investment_holdings h ON h.accountId = a.id AND h.userId = a.userId
+             WHERE a.userId = ? AND h.symbol = ? AND h.quantity > 0`,
+            [userId, normalizedSymbol]
+        );
+        if (holders.length === 1) return { account: holders[0], reason: 'unique_symbol_holder' };
+    }
+
+    const compatible = ranked.filter(({ account, score }) =>
+        account.accountType === inferredType && score >= 30
+    );
+    if (compatible.length === 1) return { account: compatible[0].account, reason: 'unique_compatible_account' };
+
+    // Only retain a model-selected account when the non-model evidence also
+    // narrows the activity to that account. This prevents a vague "TFSA"
+    // email from being assigned arbitrarily when several TFSAs exist.
+    if (activity.confidence === 'HIGH' && activity.accountId !== null && activity.accountId !== undefined) {
+        const proposed = accounts.find((account) => Number(account.id) === Number(activity.accountId));
+        if (proposed && accounts.length === 1) return { account: proposed, reason: 'only_portfolio_account' };
+    }
+
+    return { account: null, reason: ranked.length ? 'ambiguous_account' : 'unmatched_account' };
+}
+
 async function applyEmailPortfolioActivity(userId, transactionId, activity = {}) {
     const { accountId, action, confidence, symbol, quantity, price, toSymbol, toQuantity, accountFlow } = activity;
     if (!action) return { status: 'ignored' };
@@ -982,29 +1044,24 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
             return { status: 'duplicate' };
         }
 
-        let resolvedAccountId = confidence === 'HIGH' ? Number(accountId) : null;
-        if (!resolvedAccountId) {
-            const investmentTypes = new Set(['TFSA', 'RRSP', 'Brokerage', '401(k)', 'IRA', 'Crypto']);
-            const candidates = (await db.all('SELECT * FROM investment_accounts WHERE userId = ?', [userId]))
-                .filter((candidate) => !isTrade || investmentTypes.has(candidate.accountType))
-                .map((candidate) => ({
-                    account: candidate,
-                    score: accountMatchScore(source, candidate, null, null),
-                }))
-                .filter(({ score }) => score >= 30)
-                .sort((a, b) => b.score - a.score);
-            if (candidates.length === 1 || (candidates[0] && candidates[1] && candidates[0].score > candidates[1].score)) {
-                resolvedAccountId = candidates[0].account.id;
-            }
-        }
-
-        const account = resolvedAccountId ? await db.get(
-            'SELECT * FROM investment_accounts WHERE id = ? AND userId = ?',
-            [resolvedAccountId, userId]
-        ) : null;
+        const accountResolution = await resolvePortfolioActivityAccount(userId, source, {
+            ...activity,
+            accountId,
+            confidence,
+            symbol: normalizedSymbol,
+        });
+        const account = accountResolution.account;
+        const resolvedAccountId = account?.id || null;
         if (!account) {
             await db.run('COMMIT');
-            return { status: 'unmatched_account' };
+            return { status: 'unmatched_account', reason: accountResolution.reason };
+        }
+
+        if (Number(source.PortfolioAccountId) !== Number(resolvedAccountId) || source.PortfolioConfidence !== 'HIGH') {
+            await db.run(
+                'UPDATE transactions SET PortfolioAccountId = ?, PortfolioConfidence = ? WHERE id = ? AND userId = ?',
+                [resolvedAccountId, 'HIGH', transactionId, userId]
+            );
         }
 
         const amountMinor = Number.isSafeInteger(source.AmountMinor)
@@ -2232,6 +2289,7 @@ module.exports = {
     deleteInvestmentAccount,
     upsertInvestmentHolding,
     deleteInvestmentHolding,
+    resolvePortfolioActivityAccount,
     applyEmailPortfolioActivity,
     syncTransactionAccountBalance,
     removeTransactionAccountBalance,
