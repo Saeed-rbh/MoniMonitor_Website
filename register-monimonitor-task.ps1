@@ -16,8 +16,16 @@ $action = New-ScheduledTaskAction `
     -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$supervisor`"" `
     -WorkingDirectory $repository
 
-$trigger = New-ScheduledTaskTrigger -AtStartup
-$trigger.Delay = 'PT30S'
+$triggerStartup = New-ScheduledTaskTrigger -AtStartup
+$triggerStartup.Delay = 'PT30S'
+
+# Safety-net trigger: if the supervisor dies mid-session, restart it within 10 minutes
+# instead of waiting for the next reboot. MultipleInstances = IgnoreNew (set below)
+# prevents duplicate runs when the supervisor is already healthy.
+$triggerRecurring = New-ScheduledTaskTrigger -Once `
+    -At (Get-Date).Date `
+    -RepetitionInterval (New-TimeSpan -Minutes 10)
+
 
 $principal = New-ScheduledTaskPrincipal `
     -UserId $currentUser `
@@ -35,7 +43,7 @@ $settings = New-ScheduledTaskSettingsSet `
 
 $task = New-ScheduledTask `
     -Action $action `
-    -Trigger $trigger `
+    -Trigger @($triggerStartup, $triggerRecurring) `
     -Principal $principal `
     -Settings $settings `
     -Description 'Starts and supervises the MoniMonitor backend, integrations, and public tunnel.'
