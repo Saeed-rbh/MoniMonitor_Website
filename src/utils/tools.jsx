@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSpring, animated } from "@react-spring/web";
 import { fetchTransactions } from "../services/transactionService";
+import { actionKeyboard } from './actionKeyboard';
+import { useReducedMotion } from 'framer-motion';
 
 export const formatNetTotal = (netTotal) => {
   const floatNetTotal = parseFloat(netTotal);
@@ -33,8 +35,10 @@ export const ScalableElement = ({
   onMouseDown,
   key,
   style,
+  ...props
 }) => {
   const [isScaled, setIsScaled] = useState(false);
+  const reducedMotion = useReducedMotion();
 
   const handleMouseDown = useCallback(
     (e) => {
@@ -47,13 +51,16 @@ export const ScalableElement = ({
   const handleMouseUp = useCallback(() => setIsScaled(false), []);
 
   const style_2 = useSpring({
-    scale: isScaled ? 0.9 : 1,
+    scale: isScaled && !reducedMotion ? 0.9 : 1,
+    immediate: reducedMotion,
   });
 
   const AnimatedComponent = animated(Component);
 
   return (
     <AnimatedComponent
+      {...(onClick && !['button', 'a', 'input'].includes(Component) ? actionKeyboard(onClick) : {})}
+      {...props}
       key={key}
       className={className}
       style={{ ...style, ...style_2 }}

@@ -1,3 +1,5 @@
+import { actionKeyboard } from "../../utils/actionKeyboard";
+import ProfileDialog from "../../components/ProfileDialog";
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -409,7 +411,7 @@ const Account = () => {
                     <div className="settings-section" style={{ width: '100%', marginBottom: '0.4rem', marginTop: '0.5rem' }}>
                         <h4 style={{ color: "var(--Ac-2)", marginBottom: "0.2rem", marginLeft: "5px", fontSize: "0.7rem", fontWeight: "bold", textTransform: 'uppercase' }}>General</h4>
 
-                        <div className="settings-item" style={itemStyle} onClick={openCurrencyModal}>
+                        <div className="settings-item" style={itemStyle} onClick={openCurrencyModal} {...actionKeyboard(openCurrencyModal)}>
                             <span>Currency</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <span style={{ color: 'var(--Bc-2)', fontWeight: 'bold', fontSize: '0.85rem' }}>
@@ -420,7 +422,7 @@ const Account = () => {
 
                         <div className="settings-item" style={itemStyle}>
                             <span>Theme</span>
-                            <div className="labeled-toggle-container" onClick={() => setTheme(theme === 'Dark' ? 'Light' : 'Dark')}>
+                            <div className="labeled-toggle-container" onClick={() => setTheme(theme === 'Dark' ? 'Light' : 'Dark')} {...actionKeyboard(() => setTheme(theme === 'Dark' ? 'Light' : 'Dark'))}>
                                 <span className={`toggle-label ${theme === 'Dark' ? 'active' : ''}`} style={{ fontSize: '0.75rem' }}>Dark</span>
                                 <div className={`toggle-switch ${theme === 'Light' ? 'active' : ''}`} style={{ width: '40px', height: '22px' }}>
                                     <div className="toggle-slider" style={{ width: '18px', height: '18px', top: '2px', left: '2px' }}></div>
@@ -431,7 +433,7 @@ const Account = () => {
 
                         <div className="settings-item" style={itemStyle}>
                             <span>Notifications</span>
-                            <div className="labeled-toggle-container" onClick={() => { const next = !notifications; setNotifications(next); persistSettings(currency, next); }}>
+                            <div className="labeled-toggle-container" onClick={() => { const next = !notifications; setNotifications(next); persistSettings(currency, next); }} {...actionKeyboard(() => { const next = !notifications; setNotifications(next); persistSettings(currency, next); })}>
                                 <span className={`toggle-label ${!notifications ? 'active' : ''}`} style={{ fontSize: '0.75rem' }}>Off</span>
                                 <div className={`toggle-switch ${notifications ? 'active' : ''}`} style={{ width: '40px', height: '22px' }}>
                                     <div className="toggle-slider" style={{ width: '18px', height: '18px', top: '2px', left: '2px' }}></div>
@@ -444,12 +446,12 @@ const Account = () => {
                     {/* Data Management */}
                     <div className="settings-section" style={{ width: '100%', marginBottom: '0.4rem' }}>
                         <h4 style={{ color: "var(--Ac-2)", marginBottom: "0.2rem", marginLeft: "5px", fontSize: "0.7rem", fontWeight: "bold", textTransform: 'uppercase' }}>Data</h4>
-                        <div className="settings-item" style={itemStyle} onClick={() => navigate("/Finance")}>
+                        <div className="settings-item" style={itemStyle} onClick={() => navigate("/Finance")} {...actionKeyboard(() => navigate("/Finance"))}>
                             <span>Budgets & Goals</span>
                             <span style={{ fontSize: "1rem" }}>🎯</span>
                         </div>
 
-                        <div className="settings-item" style={itemStyle} onClick={handleExport}>
+                        <div className="settings-item" style={itemStyle} onClick={handleExport} {...actionKeyboard(handleExport)}>
                             <span>Export CSV</span>
                             <span style={{ fontSize: "1rem", cursor: "pointer" }}>⬇️</span>
                         </div>
@@ -457,15 +459,15 @@ const Account = () => {
                             <span>Last backup</span>
                             <span style={{ color: "var(--Bc-2)", fontSize: "0.72rem", textAlign: "right" }}>{lastBackupLabel}</span>
                         </div>
-                        <div className="settings-item" style={itemStyle} onClick={backupBusy ? undefined : handleBackup}>
+                        <div className="settings-item" style={itemStyle} onClick={backupBusy ? undefined : handleBackup} {...actionKeyboard(backupBusy ? undefined : handleBackup)}>
                             <span>{backupBusy ? "Backup in progress…" : "Backup now"}</span>
                             <span style={{ fontSize: "1rem", cursor: "pointer" }}>☁️</span>
                         </div>
-                        <div className="settings-item" style={itemStyle} onClick={backupBusy ? undefined : handleBackupDownload}>
+                        <div className="settings-item" style={itemStyle} onClick={backupBusy ? undefined : handleBackupDownload} {...actionKeyboard(backupBusy ? undefined : handleBackupDownload)}>
                             <span>Download latest backup</span>
                             <span style={{ fontSize: "1rem", cursor: "pointer" }}>⬇️</span>
                         </div>
-                        <div className="settings-item" style={{ ...itemStyle, color: "var(--Gc-2)" }} onClick={backupBusy ? undefined : handleBackupRestore}>
+                        <div className="settings-item" style={{ ...itemStyle, color: "var(--Gc-2)" }} onClick={backupBusy ? undefined : handleBackupRestore} {...actionKeyboard(backupBusy ? undefined : handleBackupRestore)}>
                             <span>Restore latest backup</span>
                             <span style={{ fontSize: "1rem", cursor: "pointer" }}>↺</span>
                         </div>
@@ -510,17 +512,17 @@ const Account = () => {
                             </React.Fragment>
                         ))}
                         {plaidStatus?.items?.filter((item) => Number(item.investmentAccountCount) > 0 && ['unknown', 'consent_required'].includes(item.holdingsStatus)).map((item) => (
-                            <div className="settings-item" style={itemStyle} onClick={plaidBusy ? undefined : () => handleEnablePlaidHoldings(item)} key={`holdings-${item.itemId}`}>
+                            <div className="settings-item" style={itemStyle} onClick={plaidBusy ? undefined : () => handleEnablePlaidHoldings(item)} key={`holdings-${item.itemId}`} {...actionKeyboard(plaidBusy ? undefined : () => handleEnablePlaidHoldings(item))}>
                                 <span>Enable accurate investment holdings</span>
                                 <span style={{ fontSize: "1rem" }}>📈</span>
                             </div>
                         ))}
-                        <div className="settings-item" style={itemStyle} onClick={plaidBusy || plaidStatus?.configured === false ? undefined : () => handleConnectPlaid()}>
+                        <div className="settings-item" style={itemStyle} onClick={plaidBusy || plaidStatus?.configured === false ? undefined : () => handleConnectPlaid()} {...actionKeyboard(plaidBusy || plaidStatus?.configured === false ? undefined : () => handleConnectPlaid())}>
                             <span>{plaidBusy ? "Plaid is working…" : "Connect a bank with Plaid"}</span>
                             <span style={{ fontSize: "1rem" }}>🏦</span>
                         </div>
                         {plaidStatus?.items?.length > 0 && (
-                            <div className="settings-item" style={itemStyle} onClick={plaidBusy ? undefined : handlePlaidSync}>
+                            <div className="settings-item" style={itemStyle} onClick={plaidBusy ? undefined : handlePlaidSync} {...actionKeyboard(plaidBusy ? undefined : handlePlaidSync)}>
                                 <span>Check for missing transactions</span>
                                 <span style={{ fontSize: "1rem" }}>↻</span>
                             </div>
@@ -532,11 +534,11 @@ const Account = () => {
                     {/* Support */}
                     <div className="settings-section" style={{ width: '100%', marginBottom: '0.2rem' }}>
                         <h4 style={{ color: "var(--Ac-2)", marginBottom: "0.2rem", marginLeft: "5px", fontSize: "0.7rem", fontWeight: "bold", textTransform: 'uppercase' }}>Support</h4>
-                        <div className="settings-item" style={itemStyle} onClick={() => setShowHelp(true)}>
+                        <div className="settings-item" style={itemStyle} onClick={() => setShowHelp(true)} {...actionKeyboard(() => setShowHelp(true))}>
                             <span>Help Center</span>
                             <span style={{ fontSize: "1rem", cursor: "pointer" }}>❓</span>
                         </div>
-                        <div className="settings-item" style={{ ...itemStyle, borderBottom: 'none' }} onClick={() => setShowAbout(true)}>
+                        <div className="settings-item" style={{ ...itemStyle, borderBottom: 'none' }} onClick={() => setShowAbout(true)} {...actionKeyboard(() => setShowAbout(true))}>
                             <span>About</span>
                             <span style={{ color: "var(--Ac-3)", fontSize: "0.75rem" }}>v{APP_VERSION}</span>
                         </div>
@@ -562,9 +564,9 @@ const Account = () => {
 
             {/* Currency Modal (Styles kept same or adjusted slightly) */}
             {showCurrency && (
-                <div className={`modal-overlay ${closingCurrency ? 'closing' : ''}`} onClick={closeCurrency}>
+                <ProfileDialog label="Currency" closing={closingCurrency} onClose={closeCurrency}>
                     <div className={`modal-content-ios ${closingCurrency ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
-                        <button style={closeButtonStyle} onClick={closeCurrency}>×</button>
+                        <button aria-label="Close Currency" style={closeButtonStyle} onClick={closeCurrency}>×</button>
                         <h2 style={{ marginTop: 0, color: 'var(--Bc-1)', textAlign: 'center', marginBottom: '1rem', fontSize: '1.2rem' }}>Reporting Currency</h2>
                         <p>Reports use CAD. Other account currencies are shown separately without conversion.</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -579,7 +581,7 @@ const Account = () => {
                                         padding: '0.8rem 1rem'
                                     }}
                                     onClick={() => selectCurrency(opt.value)}
-                                >
+                                 {...actionKeyboard(() => selectCurrency(opt.value))}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                         <span style={{ fontSize: '1.2rem', width: '30px', textAlign: 'center' }}>{opt.icon}</span>
                                         <span style={{ fontWeight: 'bold', fontSize: '1rem' }}>{opt.label}</span>
@@ -589,14 +591,14 @@ const Account = () => {
                             ))}
                         </div>
                     </div>
-                </div>
+                </ProfileDialog>
             )}
 
             {/* Help Modal */}
             {showHelp && (
-                <div className={`modal-overlay ${closingHelp ? 'closing' : ''}`} onClick={closeHelp}>
+                <ProfileDialog label="Help" closing={closingHelp} onClose={closeHelp}>
                     <div className={`modal-content-ios ${closingHelp ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
-                        <button style={closeButtonStyle} onClick={closeHelp}>×</button>
+                        <button aria-label="Close Help" style={closeButtonStyle} onClick={closeHelp}>×</button>
                         <h2 style={{ marginTop: 0, color: 'var(--Bc-1)', fontSize: '1.2rem' }}>Help Center</h2>
                         <div style={{ marginBottom: '1rem' }}>
                             <h4 style={{ marginBottom: '0.5rem', color: 'var(--Ac-2)', fontSize: '0.9rem' }}>Common Questions</h4>
@@ -607,14 +609,14 @@ const Account = () => {
                             <a href="mailto:support@monimonitor.com" style={{ color: 'var(--Bc-2)', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.8rem' }}>support@monimonitor.com</a>
                         </div>
                     </div>
-                </div>
+                </ProfileDialog>
             )}
 
             {/* About Modal */}
             {showAbout && (
-                <div className={`modal-overlay ${closingAbout ? 'closing' : ''}`} onClick={closeAbout}>
+                <ProfileDialog label="About" closing={closingAbout} onClose={closeAbout}>
                     <div className={`modal-content-ios ${closingAbout ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
-                        <button style={closeButtonStyle} onClick={closeAbout}>×</button>
+                        <button aria-label="Close About" style={closeButtonStyle} onClick={closeAbout}>×</button>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1rem' }}>
                             <img src="/monimonitor-logo.png" alt="MoniMonitor logo" style={{ width: '110px', height: '110px', objectFit: 'contain', marginBottom: '0.5rem' }} />
                             <h2 style={{ margin: 0, color: 'var(--Bc-1)', fontSize: '1.2rem' }}>MoniMonitor</h2>
@@ -624,7 +626,7 @@ const Account = () => {
                             Your privacy-first finance companion.
                         </p>
                     </div>
-                </div>
+                </ProfileDialog>
             )}
         </div>
     );

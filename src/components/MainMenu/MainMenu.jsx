@@ -370,6 +370,7 @@ const MainMenu = () => {
                 ...styles.mainMenuItem,
                 opacity: item.active ? 1 : 0.6,
               }}
+              aria-current={item.active ? "page" : undefined}
               onClick={() => handleClick(item)}
             >
               <div
@@ -391,7 +392,7 @@ const MainMenu = () => {
             </ScalableElement>
           ))}
 
-          <ScalableElement as="p" onClick={() => navigate("/AddTransaction")}>
+          <ScalableElement as="p" aria-label="Add transaction" onClick={() => navigate("/AddTransaction")}>
             <div
               style={{
                 ...styles.mainMenuIcon,
@@ -421,6 +422,7 @@ const MainMenu = () => {
                 ...styles.mainMenuItem,
                 opacity: item.active ? 1 : 0.6,
               }}
+              aria-current={item.active ? "page" : undefined}
               onClick={() => handleClick(item)}
             >
               <div
