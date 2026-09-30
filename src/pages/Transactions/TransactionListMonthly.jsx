@@ -1,6 +1,6 @@
 import React, { useMemo, useCallback, useEffect, useRef } from "react";
 import TransactionListItem from "./TransactionListItem";
-import { parseTransactionDate } from "../../utils/transactionDate";
+import { parseTransactionCalendarDate } from "../../utils/transactionDate";
 
 /**
  * Groups transactions into intuitive, chronological timeline sections:
@@ -38,7 +38,7 @@ export const groupTransactionsByTimeline = (transactions = []) => {
 
   transactions.forEach((tx) => {
     if (!tx || !tx.Timestamp) return;
-    const date = parseTransactionDate(tx.Timestamp);
+    const date = parseTransactionCalendarDate(tx.Timestamp);
     if (Number.isNaN(date.getTime())) return;
 
     const txYear = date.getFullYear();

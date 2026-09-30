@@ -1,3 +1,4 @@
+import { parseTransactionCalendarDate } from '../../utils/transactionDate';
 import React, { useMemo } from 'react';
 import { getSavingEffect } from '../../services/transactionService';
 
@@ -44,7 +45,7 @@ const InsightFacts = ({ transactions, allTransactions, viewMode, currentDate }) 
 
             // 3. Busiest Day (Count frequency & Spend)
             if (t.Timestamp) {
-                const date = new Date(t.Timestamp.replace(" ", "T"));
+                const date = parseTransactionCalendarDate(t.Timestamp);
                 // Aggregate by unique date (YYYY-MM-DD)
                 const dateKey = date.toDateString();
 

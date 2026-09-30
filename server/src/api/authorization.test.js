@@ -55,6 +55,14 @@ test('request logs receive a correlation ID without echoing authorization data',
     assert.match(response.headers.get('x-request-id'), /^[A-Za-z0-9._-]{8,128}$/);
 });
 
+test('report APIs reject impossible months before querying or generating insights', async () => {
+    for (const month of ['2026-00', '2026-13']) {
+        for (const route of ['/dashboard-bootstrap', '/insights/monthly']) {
+            assert.equal((await request(`${route}?month=${month}`, tokenFor('api-owner'))).status, 400);
+        }
+    }
+});
+
 test('creation retries are idempotent through both supported API endpoints', async () => {
     const transaction = { Amount: 12, Category: 'Expense', Label: 'Shopping', Reason: 'API retry test',
         Timestamp: '2026-09-13T12:00:00.000Z' };

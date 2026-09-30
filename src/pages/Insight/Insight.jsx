@@ -1,3 +1,4 @@
+import { parseTransactionCalendarDate } from '../../utils/transactionDate';
 import React, { useMemo } from "react";
 import { useTransactions } from "../../context/TransactionContext";
 import "./Insight.css"; // Import animation styles
@@ -176,7 +177,7 @@ const Insight = () => {
         );
 
         transactions.forEach(t => {
-            const date = new Date(t.Timestamp);
+            const date = parseTransactionCalendarDate(t.Timestamp);
             const tYear = date.getFullYear();
             const tMonth = date.getMonth();
             const day = date.getDate();
@@ -243,7 +244,7 @@ const Insight = () => {
         // Let's use the maximum day found in current monthly view transactions.
         let maxDay = 0;
         if (transactions && transactions.length > 0) {
-            maxDay = Math.max(...transactions.map(t => new Date(t.Timestamp).getDate()));
+            maxDay = Math.max(...transactions.map(t => parseTransactionCalendarDate(t.Timestamp).getDate()));
         } else {
             // Fallback if no transactions shown (empty month): maybe 0?
             maxDay = new Date().getDate(); // Default to today's day
@@ -279,7 +280,7 @@ const Insight = () => {
         let prevExpense = 0;
 
         prevMonthData.transactions.forEach(t => {
-            const d = new Date(t.Timestamp).getDate();
+            const d = parseTransactionCalendarDate(t.Timestamp).getDate();
             if (d <= maxDay) {
                 const amt = Number(t.Amount);
                 if (t.Category === "Income" || t.Type === "Income" || t.Type === "Credit") prevIncome += amt;
@@ -496,7 +497,7 @@ const Insight = () => {
 
         if (txList.length > 0) {
             const timestamps = txList
-                .map((t) => new Date(t.Timestamp).getTime())
+                .map((t) => parseTransactionCalendarDate(t.Timestamp).getTime())
                 .filter((time) => Number.isFinite(time));
             const minTime = timestamps.length ? Math.min(...timestamps) : 0;
             const maxTime = timestamps.length ? Math.max(...timestamps) : 1;
@@ -509,7 +510,7 @@ const Insight = () => {
                 const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
                 if (!isExpense && t.Category !== "Dining" && t.Category !== "Shopping") return;
 
-                const tTime = new Date(t.Timestamp).getTime();
+                const tTime = parseTransactionCalendarDate(t.Timestamp).getTime();
                 const bucketIdx = Math.min(
                     bucketCount - 1,
                     Math.max(0, Math.floor(((tTime - minTime) / timeRange) * bucketCount))
@@ -913,7 +914,7 @@ const Insight = () => {
         const dowCounts = { Sun: 0, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0 };
         txList.forEach(t => {
             if (t.Category !== 'Expense') return;
-            const dow = DOW[new Date(t.Timestamp).getDay()];
+            const dow = DOW[parseTransactionCalendarDate(t.Timestamp).getDay()];
             dowTotals[dow] += Number(t.Amount || 0);
             dowCounts[dow]++;
         });
@@ -1400,7 +1401,7 @@ const Insight = () => {
                                         {t.Account && <span className="Insight_AnomalyTag account">{t.Account}</span>}
                                         {t.Timestamp && (
                                             <span className="Insight_AnomalyDate">
-                                                {new Date(t.Timestamp).toLocaleDateString("en-US", {
+                                                {parseTransactionCalendarDate(t.Timestamp).toLocaleDateString("en-US", {
                                                     month: "short",
                                                     day: "numeric",
                                                 })}

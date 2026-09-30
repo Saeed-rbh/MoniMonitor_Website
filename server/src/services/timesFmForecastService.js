@@ -1,5 +1,6 @@
 const { BigQuery } = require("@google-cloud/bigquery");
 const dbService = require("../database/dbService");
+const { calendarDate, addCalendarDays } = require('../../../shared/calendar.cjs');
 
 const FORECAST_DAYS = 30;
 const CONFIDENCE_LEVEL = 0.8;
@@ -31,12 +32,8 @@ const isExpense = (transaction) => !isExcludedSpend(transaction) && (
     ))
 );
 
-const dayKey = (timestamp) => String(timestamp || "").slice(0, 10);
-const addDays = (date, days) => {
-    const next = new Date(`${date}T12:00:00`);
-    next.setDate(next.getDate() + days);
-    return next.toISOString().slice(0, 10);
-};
+const dayKey = calendarDate;
+const addDays = addCalendarDays;
 
 function forecastError(code, message) {
     const error = new Error(message);

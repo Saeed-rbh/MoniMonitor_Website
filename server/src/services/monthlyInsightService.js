@@ -1,10 +1,10 @@
 const crypto = require('crypto');
+const { parseTimestamp, validMonth } = require('../../../shared/calendar.cjs');
 const { getDb } = require('../database/db');
 const { getSavingEffectMinor } = require('./transactionClassification');
 const { rankMonthlyInsightCandidates, synthesizeMonthlyInsightsWithGemini } = require('./aiService');
 
 const cache = new Map();
-const MONTH_PATTERN = /^\d{4}-\d{2}$/;
 
 const amountMinor = (transaction) => Number.isSafeInteger(transaction.AmountMinor)
     ? transaction.AmountMinor
@@ -24,7 +24,12 @@ function monthRange(month, monthsBack = 0) {
 }
 
 function transactionDay(transaction) {
-    return new Date(transaction.Timestamp).getUTCDate();
+    return parseTimestamp(transaction.Timestamp)?.day || 0;
+}
+
+function statementDayOfWeek(transaction) {
+    const date = parseTimestamp(transaction.Timestamp);
+    return date ? new Date(Date.UTC(date.year, date.month, date.day)).getUTCDay() : 0;
 }
 
 function buildCandidate(id, type, title, fact, actions, evidenceTransactions, priority, confidence = 'high') {
@@ -38,7 +43,7 @@ function buildCandidate(id, type, title, fact, actions, evidenceTransactions, pr
 }
 
 function buildMonthlyAnalysis(transactions, month, dataQuality = {}) {
-    if (!MONTH_PATTERN.test(month)) throw new Error('month must be YYYY-MM');
+    if (!validMonth(month)) throw new Error('month must be YYYY-MM');
     const current = transactions.filter((transaction) => String(transaction.Timestamp || '').slice(0, 7) === month);
     const latestDay = current.length ? Math.max(...current.map(transactionDay)) : 1;
     const historyByMonth = [];
@@ -194,7 +199,7 @@ function hashAnalysis(analysis, transactions) {
 }
 
 async function getMonthlyInsightBrief(userId, month, options = {}) {
-    if (!MONTH_PATTERN.test(month)) throw new Error('month must be YYYY-MM');
+    if (!validMonth(month)) throw new Error('month must be YYYY-MM');
     const db = await getDb();
     const earliest = monthRange(month, 6).start.toISOString();
     const latest = monthRange(month, -1).start.toISOString();
@@ -247,7 +252,7 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
         const weekendIds = [];
 
         sortedExpenses.forEach((t) => {
-            const dow = new Date(t.Timestamp).getUTCDay();
+            const dow = statementDayOfWeek(t);
             const dayName = dayOfWeekMap[dow];
             const amt = amountMinor(t);
             dayTotals[dayName] += amt;
@@ -373,7 +378,7 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
         const transactionSnippet = expenses.map(t => ({
             id: t.id,
             date: String(t.Timestamp || '').slice(0, 10),
-            dayOfWeek: dayOfWeekMap[new Date(t.Timestamp).getUTCDay()],
+            dayOfWeek: dayOfWeekMap[statementDayOfWeek(t)],
             merchant: t.Reason || t.Label,
             category: t.Label || t.Category,
             amount: money(amountMinor(t)),

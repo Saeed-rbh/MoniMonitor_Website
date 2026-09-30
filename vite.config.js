@@ -27,6 +27,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(appVersion),
   },
   build: {
+    commonjsOptions: { include: [/node_modules/, /shared/] },
     outDir: "dist", // Change the output directory to 'build'
   },
   test: {

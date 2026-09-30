@@ -1,10 +1,10 @@
 const { getSavingEffectMinor } = require('../services/transactionClassification');
+const { validMonth } = require('../../../shared/calendar.cjs');
 
-const MONTH_PATTERN = /^\d{4}-\d{2}$/;
 
 function normalizeMonth(value) {
     const month = String(value || '').slice(0, 7);
-    return MONTH_PATTERN.test(month) ? month : null;
+    return validMonth(month) ? month : null;
 }
 
 async function refreshMonthlySummary(db, userId, month, expectedRevision = null) {

@@ -20,3 +20,10 @@ export const parseTransactionDate = (value) => {
   return new Date(value);
 };
 
+import calendar from '../../shared/calendar.cjs';
+
+export const parseTransactionCalendarDate = (value) => {
+  const parts = calendar.parseTimestamp(value);
+  return parts ? new Date(parts.year, parts.month, parts.day) : new Date(NaN);
+};
+

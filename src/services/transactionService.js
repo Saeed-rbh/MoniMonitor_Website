@@ -1,6 +1,6 @@
 import { format, parse, addMonths, isBefore } from "date-fns";
 import { GetDashboardBootstrap, GetDataFromDB } from "./apiService";
-import { parseTransactionDate } from "../utils/transactionDate";
+import { parseTransactionCalendarDate } from "../utils/transactionDate";
 
 const monthsNames = [
   "Jan",
@@ -158,7 +158,8 @@ export const groupTransactionsByMonth = (transactions) => {
   );
 
   sortedTransactions.forEach((transaction) => {
-    const date = parseTransactionDate(transaction.Timestamp);
+    const date = parseTransactionCalendarDate(transaction.Timestamp);
+    if (Number.isNaN(date.getTime())) return;
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const key = `${year}-${month}`;

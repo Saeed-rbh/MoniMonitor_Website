@@ -47,6 +47,13 @@ The app will be available at `http://localhost:3000`.
 
 ### Backend
 
+Financial reports use the calendar date supplied by the bank (`YYYY-MM-DD` at
+the start of `Timestamp`), rather than converting it into the device timezone.
+This keeps statement days and months consistent across the dashboard, timeline,
+monthly insights, and forecasts. Explicit timestamp offsets still describe the
+event instant. Legacy manual wall times (`YYYY-MM-DD HH:mm`) are supported.
+New and edited records reject impossible dates, clock values, and offsets.
+
 The application uses the Express API in `server/index.js` and a SQLite database
 (`server/monimonitor.sqlite` by default). It does not use JSON Server or a mock
 backend. Development fixtures such as `src/services/mockTransactions.json` are

@@ -1,4 +1,5 @@
 const { z } = require("zod");
+const { parseTimestamp } = require('../../../shared/calendar.cjs');
 
 const normalizeCategory = (category) => ({
     "Save&Invest": "Saving",
@@ -14,7 +15,7 @@ const transactionFields = {
     ])),
     Label: optionalText(100),
     Reason: optionalText(500),
-    Timestamp: z.string().trim().min(1).max(64),
+    Timestamp: z.string().trim().max(64).refine((value) => parseTimestamp(value) !== null, 'Use a valid calendar date or transaction timestamp'),
     Type: optionalText(100),
     Account: optionalText(100),
     BankName: optionalText(100),
@@ -30,7 +31,7 @@ const transactionUpdateSchema = z.object({
 
 const parseTransaction = (input) => transactionSchema.parse({
     ...input,
-    Timestamp: input.Timestamp || new Date().toISOString(),
+    Timestamp: input.Timestamp === undefined ? new Date().toISOString() : input.Timestamp,
 });
 
 module.exports = { parseTransaction, transactionUpdateSchema };

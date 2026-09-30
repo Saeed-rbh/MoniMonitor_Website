@@ -1,4 +1,5 @@
 const { getDb } = require('./db');
+const { parseTimestamp, validMonth } = require('../../../shared/calendar.cjs');
 const { accountMatchScore, transactionBalanceDelta } = require('../services/accountMatching');
 const {
     describeDiscoveredAccount,
@@ -139,6 +140,7 @@ async function getAllTransactionsForUser(userId, filters = {}) {
 }
 
 async function addTransaction(transaction) {
+    if (!parseTimestamp(transaction.Timestamp)) throw new Error('Invalid transaction timestamp');
     const db = await getDb();
     const result = await db.run(
         `INSERT INTO transactions
@@ -247,6 +249,7 @@ async function getTransactionById(id, userId) {
 }
 
 function normalizeTransactionUpdate(updates) {
+    if (updates.Timestamp !== undefined && !parseTimestamp(updates.Timestamp)) throw new Error('Invalid transaction timestamp');
     const normalized = { ...updates };
     if (normalized.Amount !== undefined) {
         const amountMinor = toMinorUnits(normalized.Amount);
@@ -1355,7 +1358,7 @@ async function getSummaryForUser(userId) {
 async function getDashboardBootstrapForUser(userId, month) {
     const db = await getDb();
     const normalizedMonth = String(month || '').trim();
-    if (!/^\d{4}-\d{2}$/.test(normalizedMonth)) {
+    if (!validMonth(normalizedMonth)) {
         throw new Error('month must be YYYY-MM');
     }
 

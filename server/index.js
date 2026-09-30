@@ -1,5 +1,6 @@
 require("dotenv").config();
 const crypto = require("crypto");
+const { validMonth } = require("../shared/calendar.cjs");
 const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
@@ -206,7 +207,6 @@ app.delete("/transactions/:id", authenticateToken, async (req, res) => {
 });
 
 const validCurrency = (value) => typeof value === "string" && /^[A-Z]{3}$/.test(value);
-const validMonth = (value) => typeof value === "string" && /^\d{4}-\d{2}$/.test(value);
 const validMinorAmount = (value) => Number.isSafeInteger(value) && value >= 0;
 const validText = (value, max = 120) => typeof value === 'string' && value.trim().length > 0 && value.trim().length <= max;
 const validQuantity = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0;
@@ -398,7 +398,7 @@ app.get("/summary", authenticateToken, async (req, res) => {
 
 app.get("/dashboard-bootstrap", authenticateToken, async (req, res) => {
     const month = String(req.query.month || '');
-    if (!/^\d{4}-\d{2}$/.test(month)) {
+    if (!validMonth(month)) {
         return res.status(400).json({ error: "month must be YYYY-MM" });
     }
     try {

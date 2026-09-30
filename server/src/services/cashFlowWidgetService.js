@@ -1,3 +1,9 @@
+const { parseTimestamp } = require('../../../shared/calendar.cjs');
+
+function transactionCalendarDate(timestamp) {
+    const date = parseTimestamp(timestamp);
+    return date ? { year: date.year, month: date.month, day: date.day } : null;
+}
 function amountOf(transaction) {
     const amount = Number(transaction?.Amount);
     if (Number.isFinite(amount)) return Math.abs(amount);
@@ -16,22 +22,6 @@ const isExpense = (transaction) => (
     transaction?.Type === 'Expense' ||
     transaction?.Type === 'Debit'
 );
-
-function transactionCalendarDate(timestamp) {
-    // Transaction timestamps use their YYYY-MM-DD prefix as the bank's
-    // calendar date. Date-only activity is stored at midnight UTC; converting
-    // that instant to Eastern time would incorrectly move it to the prior day.
-    const match = String(timestamp || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!match) return null;
-    const year = Number(match[1]);
-    const month = Number(match[2]) - 1;
-    const day = Number(match[3]);
-    const checked = new Date(Date.UTC(year, month, day));
-    if (checked.getUTCFullYear() !== year || checked.getUTCMonth() !== month || checked.getUTCDate() !== day) {
-        return null;
-    }
-    return { year, month, day };
-}
 
 function investmentKind(account) {
     const type = String(account?.accountType || '').toLowerCase();

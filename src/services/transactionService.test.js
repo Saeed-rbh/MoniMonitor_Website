@@ -8,6 +8,17 @@ import {
   uniqueInternalTransfers,
 } from "./transactionService";
 
+it('uses statement months for offset-qualified transactions and skips invalid legacy dates', () => {
+  const result = groupTransactionsByMonth([
+    { id: 1, Amount: 10, Category: 'Expense', Timestamp: '2026-09-01T00:30:00+14:00' },
+    { id: 2, Amount: 20, Category: 'Expense', Timestamp: '2026-08-31T23:30:00-12:00' },
+    { id: 3, Amount: 99, Category: 'Expense', Timestamp: '2026-02-30' },
+  ]);
+  expect(result['2026-09'].totalExpense).toBe(10);
+  expect(result['2026-08'].totalExpense).toBe(20);
+  expect(result['2026-02']).toBeUndefined();
+});
+
 describe("buildDashboardBootstrapData", () => {
   it("uses compact server totals while keeping current-month transactions ready", () => {
     const currentDate = new Date();
