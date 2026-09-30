@@ -26,8 +26,8 @@ function registerBackupRoutes(app, {
         if (req.body?.confirm !== 'RESTORE') return res.status(400).json({ error: 'Restore confirmation is required' });
         try {
             const result = await backupService.restoreBackup(req.params.fileName, req.user.userId);
+            res.once('finish', () => app.locals.shutdown?.('backup restore', 0));
             res.json(result);
-            setTimeout(() => process.exit(0), 250).unref?.();
             return undefined;
         } catch (error) {
             if (error.code === 'ENOENT') return res.status(404).json({ error: 'Backup not found' });

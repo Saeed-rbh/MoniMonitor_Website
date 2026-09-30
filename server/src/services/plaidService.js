@@ -1668,7 +1668,11 @@ function stopPlaidWorkers() {
 }
 
 registerWorker('plaid', {
-    pause: async () => stopPlaidWorkers(),
+    pause: async () => {
+        stopPlaidWorkers();
+        await Promise.allSettled([...syncPromises.values(), reconciliationPromise,
+            webhookProcessingPromise, marketPriceRefreshPromise].filter(Boolean));
+    },
     resume: async () => {
         startAutomaticReconciliation();
         startAutomaticMarketPriceRefresh();

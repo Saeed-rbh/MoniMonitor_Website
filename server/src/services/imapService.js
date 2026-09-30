@@ -71,15 +71,7 @@ class ImapService {
         this.processingUnseen = null;
         this.client = this._createClient();
 
-        const cleanup = async () => {
-            console.log('\nShutting down IMAP client gracefully...');
-            if (this.retryUnseenInterval) clearInterval(this.retryUnseenInterval);
-            if (this.lock) { try { this.lock.release(); } catch (error) {} }
-            if (this.client.usable) { try { await this.client.logout(); } catch (error) {} }
-            process.exit(0);
-        };
-        process.on('SIGINT', cleanup);
-        process.on('SIGTERM', cleanup);
+        this.stopping = false;
     }
 
     getDatabase() {
@@ -97,6 +89,8 @@ class ImapService {
     }
 
     async start() {
+        if (workersPaused()) return;
+        this.stopping = false;
         try {
             console.log('Connecting to IMAP server...');
             await this.client.connect();
@@ -284,6 +278,7 @@ class ImapService {
 
             console.log(`Processing ${pending.length} queued email(s), including messages already marked read.`);
             for (let index = 0; index < pending.length; index += CONCURRENCY) {
+                if (workersPaused() || this.stopping) break;
                 const batch = pending.slice(index, index + CONCURRENCY);
                 await Promise.all(batch.map(({ uid }) => this.processOne(uid, uidValidity, { workerId: WORKER_ID })));
             }
@@ -304,6 +299,7 @@ class ImapService {
     }
 
     handleReconnect() {
+        if (workersPaused() || this.stopping) return;
         if (this.reconnectTimeout) return;
         if (this.retryUnseenInterval) {
             clearInterval(this.retryUnseenInterval);
@@ -320,6 +316,7 @@ class ImapService {
     }
 
     async stop() {
+        this.stopping = true;
         if (this.retryUnseenInterval) {
             clearInterval(this.retryUnseenInterval);
             this.retryUnseenInterval = null;
@@ -328,6 +325,7 @@ class ImapService {
             clearTimeout(this.reconnectTimeout);
             this.reconnectTimeout = null;
         }
+        await this.processingUnseen;
         if (this.lock) {
             try { this.lock.release(); } catch {}
             this.lock = null;

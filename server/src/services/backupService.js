@@ -5,7 +5,7 @@ const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const { getDb } = require('../database/db');
 const { encryptFile, decryptFile } = require('./encryptedFileService');
-const { pauseWorkers, resumeWorkers } = require('./workerLifecycle');
+const { pauseWorkers, resumeWorkers, registerWorker } = require('./workerLifecycle');
 
 const BACKUP_DIRECTORY = process.env.MONIMONITOR_BACKUP_DIR
     ? path.resolve(process.env.MONIMONITOR_BACKUP_DIR)
@@ -352,7 +352,13 @@ function startAutomaticBackups() {
             .catch((error) => console.error('Automatic backup or restore drill failed:', error.message));
     }, Math.min(BACKUP_INTERVAL_MS, 6 * 60 * 60 * 1000));
     scheduler.unref?.();
+    registerWorker('backups', { pause: stopAutomaticBackups, resume: startAutomaticBackups });
     return scheduler;
+}
+
+async function stopAutomaticBackups() {
+    clearInterval(scheduler); scheduler = null;
+    await Promise.allSettled([backupPromise, restoreDrillPromise].filter(Boolean));
 }
 
 module.exports = {
@@ -366,4 +372,5 @@ module.exports = {
     restoreBackup,
     selectBackupNamesToKeep,
     startAutomaticBackups,
+    stopAutomaticBackups,
 };

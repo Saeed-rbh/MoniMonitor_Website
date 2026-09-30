@@ -209,6 +209,16 @@ the configured Git remote. Keep unrelated local changes out of that commit.
 
 ## Backup and recovery
 
+Run `npm start` from `server/` to start the supervised backend (`npm run dev`
+also uses the supervisor). Fatal exceptions and unhandled rejections stop the
+listener, pause workers, await active work and exit with failure. Shutdown has a
+30-second deadline; unfinished durable jobs recover through their leases after
+restart. The supervisor uses bounded exponential delays and stops after five
+exits in one minute so configuration failures do not spin indefinitely. SIGINT
+and SIGTERM stop the supervisor deliberately. A completed restore requests a
+controlled restart. Direct `node index.js` has the same shutdown behavior but
+requires an external process supervisor to restart it.
+
 Normal startup applies schema migrations and reconciliation; it never resets
 financial history or inserts personal snapshot balances. Historical snapshots
 must be supplied as private JSON files outside the repository. The import only

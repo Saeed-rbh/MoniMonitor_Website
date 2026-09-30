@@ -12,7 +12,9 @@ function workersPaused() {
 
 async function pauseWorkers() {
     paused = true;
-    await Promise.all([...workers.values()].map((worker) => worker.pause?.()).filter(Boolean));
+    const results = await Promise.allSettled([...workers.values()].map((worker) => Promise.resolve().then(() => worker.pause?.())));
+    const failures = results.filter(result => result.status === 'rejected').map(result => result.reason);
+    if (failures.length) throw new AggregateError(failures, 'One or more workers failed to drain');
 }
 
 async function resumeWorkers() {

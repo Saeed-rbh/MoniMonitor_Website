@@ -1,4 +1,5 @@
 const https = require('https');
+const { workersPaused, registerWorker } = require('./workerLifecycle');
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -210,36 +211,53 @@ async function sendTelegramDocument(filename, content, caption = '', { silent = 
 }
 
 let lastUpdateId = 0;
+let polling = null;
 
 function startTelegramPolling(onUpdate) {
-    if (!TELEGRAM_BOT_TOKEN) return;
+    if (!TELEGRAM_BOT_TOKEN || workersPaused() || polling) return;
+    const state = { request: null, timer: null, processing: null, stopped: false };
+    polling = state;
+    registerWorker('telegramPolling', {
+        pause: async () => {
+            state.stopped = true; clearTimeout(state.timer);
+            state.request?.destroy(); await state.processing;
+            polling = null;
+        },
+        resume: () => startTelegramPolling(onUpdate),
+    });
     
     console.log('[Telegram] Started polling for bot updates...');
     
     const poll = () => {
+        if (state.stopped || workersPaused()) return;
         const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=30`;
         const request = https.get(url, { timeout: TELEGRAM_REQUEST_TIMEOUT_MS + 35_000 }, (res) => {
             let data = '';
             res.on('data', chunk => data += chunk);
-            res.on('end', async () => {
+            res.on('end', () => {
+                state.processing = (async () => {
                 try {
                     const parsed = JSON.parse(data);
                     if (parsed.ok && parsed.result.length > 0) {
                         for (const update of parsed.result) {
-                            lastUpdateId = Math.max(lastUpdateId, update.update_id);
+                            if (state.stopped || workersPaused()) break;
                             await onUpdate(update);
+                            lastUpdateId = Math.max(lastUpdateId, update.update_id);
                         }
                     }
                 } catch (e) {
                     console.error('[Telegram] Polling parse error:', e.message);
                 }
                 poll();
+                })();
             });
         });
+        state.request = request;
         request.on('timeout', () => request.destroy(new Error('Telegram polling request timed out')));
         request.on('error', (err) => {
+            if (state.stopped || workersPaused()) return;
             console.error('[Telegram] Polling network error:', err.message);
-            setTimeout(poll, 5000);
+            state.timer = setTimeout(poll, 5000);
         });
     };
     

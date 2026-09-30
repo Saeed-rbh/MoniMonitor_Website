@@ -488,17 +488,9 @@ app.use((error, _req, res, _next) => {
     return res.status(500).json({ error: "Unexpected server error" });
 });
 
-process.on("unhandledRejection", (reason, promise) => {
-    console.error("Unhandled Rejection at:", promise, "reason:", reason);
-});
-
-process.on("uncaughtException", (error) => {
-    console.error("Uncaught Exception thrown:", error);
-});
-
 if (require.main === module) {
     validateEncryptionConfiguration();
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
         console.log(`API server listening on http://localhost:${PORT}`);
         plaidService.migrateAccessTokenEncryption()
             .then(({ migrated }) => {
@@ -530,6 +522,8 @@ if (require.main === module) {
                 });
         }
     });
+    const lifecycle = require('./src/services/runtimeLifecycle').installRuntimeLifecycle({ server });
+    app.locals.shutdown = lifecycle.shutdown;
 }
 
 module.exports = app;

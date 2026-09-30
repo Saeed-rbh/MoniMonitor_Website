@@ -725,6 +725,7 @@ async function startAgent() {
 }
 
 if (require.main === module) {
+    require('./src/services/runtimeLifecycle').installRuntimeLifecycle();
     startAgent().catch((error) => {
         console.error('[Agent] Startup failed:', error);
         process.exitCode = 1;

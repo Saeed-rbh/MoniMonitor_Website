@@ -13,6 +13,7 @@ const state = {
     lastError: null,
     running: false,
     timer: null,
+    inFlight: null,
 };
 
 async function deliver(job) {
@@ -37,6 +38,7 @@ async function deliver(job) {
 async function processTelegramOutboxOnce(limit = 50) {
     const jobs = await dbService.claimTelegramOutbox(WORKER_ID, limit);
     for (const job of jobs) {
+        if (workersPaused()) break;
         try {
             const result = await deliver(job);
             if (!result?.ok) throw new Error(result?.description || 'Telegram API did not confirm delivery');
@@ -73,11 +75,12 @@ function startTelegramOutboxWorker() {
             state.running = false;
         }
     };
-    state.timer = setInterval(tick, POLL_INTERVAL_MS);
+    const run = () => { if (!state.running) state.inFlight = tick(); return state.inFlight; };
+    state.timer = setInterval(run, POLL_INTERVAL_MS);
     state.timer.unref?.();
-    tick();
+    run();
     registerWorker('telegramOutbox', {
-        pause: async () => { if (state.timer) clearInterval(state.timer); state.timer = null; },
+        pause: async () => { if (state.timer) clearInterval(state.timer); state.timer = null; await state.inFlight; },
         resume: async () => startTelegramOutboxWorker(),
     });
 }
