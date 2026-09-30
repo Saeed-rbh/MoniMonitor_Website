@@ -1,5 +1,17 @@
 const MIGRATIONS = [
     {
+        version: 6,
+        name: 'account_balance_snapshot_provenance',
+        async up(db) {
+            await db.exec(`ALTER TABLE investment_accounts ADD COLUMN balanceRevision INTEGER NOT NULL DEFAULT 0;
+                ALTER TABLE investment_accounts ADD COLUMN balanceSource TEXT NOT NULL DEFAULT 'manual';
+                ALTER TABLE investment_accounts ADD COLUMN balanceAsOf TEXT;
+                ALTER TABLE account_balance_events ADD COLUMN balanceRevision INTEGER NOT NULL DEFAULT 0;
+                UPDATE investment_accounts SET balanceRevision = 1, balanceSource = 'plaid', balanceAsOf = updatedAt
+                WHERE id IN (SELECT appAccountId FROM plaid_accounts WHERE appAccountId IS NOT NULL);`);
+        },
+    },
+    {
         version: 5,
         name: 'shared_reporting_semantics',
         async up(db) {

@@ -8,6 +8,15 @@ const {
     resolveAccountCandidate,
 } = require('./accountDiscovery');
 
+test('same-mask accounts are matched in the transaction native currency', () => {
+    const accounts = [
+        { id: 1, accountRef: '1234', institution: 'Example', currency: 'CAD' },
+        { id: 2, accountRef: '1234', institution: 'Example', currency: 'USD' },
+    ];
+    assert.equal(resolveAccountCandidate({ Account: '1234', Currency: 'USD' }, accounts).account.id, 2);
+    assert.equal(resolveAccountCandidate({ Account: '1234', Currency: 'CAD' }, accounts).account.id, 1);
+});
+
 test('infers common account types from transaction details', () => {
     assert.equal(inferAccountType({ Type: 'Visa credit card' }), 'Credit Card');
     assert.equal(inferAccountType({ Type: 'Checking account' }), 'Chequing');

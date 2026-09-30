@@ -20,6 +20,9 @@ async function validateAccount(db, userId, id) {
 }
 
 async function postBalance(userId, id, transaction, balanceAccountId) {
+    const db = await dbService.getDb();
+    const existing = await db.get('SELECT accountId FROM account_balance_events WHERE sourceTransactionId = ? AND userId = ?', [id, userId]);
+    balanceAccountId = balanceAccountId || transaction.BalanceAccountId || existing?.accountId || null;
     const accountResolution = await dbService.ensureTransactionAccount(userId, {
         ...transaction, BalanceAccountId: balanceAccountId,
         BalanceAccountConfidence: balanceAccountId ? 'HIGH' : null,
@@ -68,6 +71,11 @@ async function updateTransaction(userId, id, input) {
     return db.withTransaction(async () => {
         const previous = await dbService.getTransactionById(id, userId);
         if (!previous) throw new TransactionMutationError('Transaction not found', 404);
+        if ((BalanceAccountId || ['Amount', 'Currency', 'Category', 'Label', 'Timestamp', 'Account', 'BankName', 'Type'].some((field) =>
+            updates[field] !== undefined && updates[field] !== previous[field])) &&
+            await db.get('SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ? AND userId = ?', [id, userId])) {
+            throw new TransactionMutationError('Reverse the linked portfolio activity before changing its financial fields', 409);
+        }
         if (updates.Currency && updates.Currency !== (previous.Currency || 'CAD') &&
             await db.get(`SELECT id FROM account_balance_events WHERE sourceTransactionId = ? AND userId = ?
                 UNION ALL SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ? AND userId = ? LIMIT 1`,
@@ -78,6 +86,10 @@ async function updateTransaction(userId, id, input) {
         if (Object.keys(updates).length) await dbService.updateTransactionForUser(id, userId, updates);
         const transaction = await dbService.getTransactionById(id, userId);
         const posting = await postBalance(userId, id, transaction, BalanceAccountId);
+        if (!['applied', 'not_balance_posting', 'snapshot_preserved'].includes(posting.accountPosting.status) &&
+            await db.get('SELECT id FROM account_balance_events WHERE sourceTransactionId = ? AND userId = ?', [id, userId])) {
+            throw new TransactionMutationError(posting.accountPosting.reason || 'The account posting requires review', 409);
+        }
         if (updates.Category || updates.Label) {
             const generic = new Set(['withdrawal', 'deposit', 'bank withdrawal', 'bank deposit', 'other', 'other expense', 'other income']);
             const label = transaction.Label?.toLowerCase().trim();

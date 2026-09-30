@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { keyRing } = require('./encryptionKeys');
 const { encryptString, decryptStringWithMetadata } = require('./encryptionService');
 const dbService = require('../database/dbService');
+const { setAccountBalanceSnapshot } = require('./accountBalanceService');
 const { reconcileHistoricalInternalTransfers } = require('../database/historicalTransferReconciliation');
 const { findTransactionMatch, reasonOverlap } = require('./transactionDeduplication');
 const { isExplicitSelfTransferDescription } = require('./selfTransfer');
@@ -505,17 +506,11 @@ async function applyAuthoritativeBalances(userId, accountMap) {
         // must never be overlaid here, because the snapshot may already
         // contain the same economic event even when Plaid exposes no matching
         // transaction yet.
-        const balanceMinor = Math.max(0, totalBalanceMinor);
         const currency = String(
             account.balances?.iso_currency_code || account.balances?.unofficial_currency_code || 'CAD'
         ).toUpperCase();
-        const result = await db.run(
-            `UPDATE investment_accounts
-             SET cashMinor = ?, currency = ?, updatedAt = ?
-             WHERE id = ? AND userId = ?`,
-            [balanceMinor, currency, now, account.appAccountId, userId]
-        );
-        updated += result.changes;
+        const result = await setAccountBalanceSnapshot(userId, account.appAccountId, totalBalanceMinor, currency, 'plaid', now);
+        if (result.status === 'applied') updated += 1;
     }
     return updated;
 }
@@ -841,14 +836,14 @@ function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
         // the institution-reported cash value whenever it is present, then
         // fall back to an explicit cash holding or the derived remainder.
         if (availableMinor !== null) {
-            entry.cashMinor = Math.max(0, availableMinor);
+            entry.cashMinor = availableMinor;
             entry.cashDerivedFromTotal = false;
         }
         else if (!entry.hasExplicitCash && entry.holdings.some((holding) => holding.currency !== entry.currency)) {
             entry.cashReviewRequired = true;
         }
         else if (!entry.hasExplicitCash && totalMinor !== null) {
-            entry.cashMinor = Math.max(0, totalMinor - investedMinor);
+            entry.cashMinor = totalMinor - investedMinor;
             entry.cashDerivedFromTotal = true;
         }
         byAccount.set(account.account_id, entry);
@@ -866,7 +861,7 @@ function reconcileDerivedCashWithHoldings(entry) {
         (sum, holding) => sum + (Number.isFinite(Number(holding.valueMinor)) ? Number(holding.valueMinor) : 0),
         0
     );
-    entry.cashMinor = Math.max(0, entry.totalMinor - holdingsValueMinor);
+    entry.cashMinor = entry.totalMinor - holdingsValueMinor;
     return entry.cashMinor;
 }
 
@@ -1012,12 +1007,12 @@ async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
             // `entry.cashMinor` comes from Plaid's authoritative available-cash
             // snapshot. Existing uploaded/email activity remains in history,
             // but its effect is not added to the provider balance a second time.
-            const reconciledCashMinor = entry.cashReviewRequired ? null : Math.max(0, entry.cashMinor);
-            await db.run(
-                'UPDATE investment_accounts SET cashMinor = COALESCE(?, cashMinor), currency = ?, balanceReviewReason = ?, updatedAt = ? WHERE id = ? AND userId = ?',
-                [reconciledCashMinor, currency, entry.cashReviewRequired ? 'A native cash balance or recorded exchange rates are needed for mixed-currency holdings' : null,
-                    new Date().toISOString(), account.appAccountId, userId]
-            );
+            if (entry.cashReviewRequired) {
+                await db.run('UPDATE investment_accounts SET balanceReviewReason = ? WHERE id = ? AND userId = ?',
+                    ['A native cash balance or recorded exchange rates are needed for mixed-currency holdings', account.appAccountId, userId]);
+            } else {
+                await setAccountBalanceSnapshot(userId, account.appAccountId, entry.cashMinor, currency);
+            }
             accountsUpdated += 1;
         }
     });

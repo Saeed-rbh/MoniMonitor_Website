@@ -192,6 +192,17 @@ interval can be changed with `MONIMONITOR_BACKUP_INTERVAL_HOURS`.
 
 ## Durable email ingestion
 
+Account cash records include a balance source, snapshot time, and revision.
+Bank snapshots absorb earlier postings: editing or deleting reporting activity
+does not change that bank balance. Replacing a manual cash balance starts a new
+baseline, and later manual postings affect that baseline. Unsafe reversals roll
+back the entire transaction edit or deletion and return a review conflict.
+Accounts with money or recorded activity cannot be relabelled into another
+currency. Negative provider cash is retained as a review issue while the last
+supported cash balance remains visible; overdraft accounting is still pending.
+Portfolio-linked source records require reversal of their portfolio activity
+before financial edits or deletion.
+
 The email agent stores its IMAP UID cursor and pending-message queue in SQLite.
 On every startup and reconnect it discovers all newly delivered messages,
 including emails that were marked read while the server was offline. A message

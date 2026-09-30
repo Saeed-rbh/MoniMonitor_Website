@@ -72,6 +72,7 @@ function resolveAccountCandidate(transaction, accounts = [], preferredAccountId 
         if (preferred) return { account: preferred, confidence: 'HIGH', reason: 'explicit_id' };
     }
 
+    accounts = accounts.filter((account) => String(account.currency || 'CAD').toUpperCase() === String(transaction.Currency || transaction.currency || 'CAD').toUpperCase());
     const ranked = accounts
         .map((account) => ({ account, score: accountMatchScore(transaction, account, null, null) }))
         .sort((left, right) => right.score - left.score || Number(left.account.id) - Number(right.account.id));

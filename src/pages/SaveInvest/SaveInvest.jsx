@@ -112,6 +112,10 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
             {canHoldInvestments && <div><span style={styles.secondary}>Holdings value</span><strong style={{ display: 'block' }}>{money(account.holdingsValueMinor, account.currency)} <small style={styles.secondary}>({holdingsShare.toFixed(1)}%)</small></strong></div>}
             <NativeCurrencyValues totals={account.byCurrency} baseCurrency={account.currency} />
             {account.balanceReviewReason && <p role="status">Cash needs review: {account.balanceReviewReason}</p>}
+            <p style={styles.secondary}>
+                {account.balanceSource === 'plaid' ? 'Bank snapshot; reporting edits preserve this balance.' : 'Manual balance; new posted activity updates this balance.'}
+                {account.balanceAsOf && ` As of ${new Date(account.balanceAsOf).toLocaleString()}.`}
+            </p>
             {canHoldInvestments && <div><span style={styles.secondary}>Stock gain/loss</span><strong style={{ display: 'block', color: account.gainLossMinor >= 0 ? 'var(--Fc-1)' : 'var(--Gc-2)' }}>{account.gainLossMinor >= 0 ? '+' : ''}{money(account.gainLossMinor, account.currency)}</strong></div>}
         </div>
 

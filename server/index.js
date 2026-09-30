@@ -19,6 +19,7 @@ const { registerBackupRoutes } = require('./src/routes/backupRoutes');
 const { registerIntegrationRoutes } = require('./src/routes/integrationRoutes');
 const { registerTransactionRoutes } = require('./src/routes/transactionRoutes');
 const transactionMutations = require('./src/services/transactionMutations');
+const { FinancialMutationError } = require('./src/services/accountBalanceService');
 const { registerPortfolioRoutes } = require('./src/routes/portfolioRoutes');
 const { parseTransaction, transactionUpdateSchema } = require("./src/validation/transaction");
 const { validateTelegramInitData, normalizeTelegramPhotoUrl } = require("./src/services/telegramAuthService");
@@ -145,7 +146,7 @@ const credentialsAreValid = (username, password) => (
 );
 
 const sendValidationError = (res, error) => {
-    if (error instanceof transactionMutations.TransactionMutationError) return res.status(error.statusCode).json({ error: error.message });
+    if (error instanceof transactionMutations.TransactionMutationError || error instanceof FinancialMutationError) return res.status(error.statusCode).json({ error: error.message });
     if (error instanceof ZodError) return res.status(400).json({ error: "Invalid request data" });
     logger.error('http.request.validation_failed', { correlationId: res.req?.requestId, error: error.message });
     return res.status(500).json({ error: "Unable to process this request" });

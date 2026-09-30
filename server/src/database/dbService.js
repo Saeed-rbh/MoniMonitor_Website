@@ -1,4 +1,5 @@
 const { getDb } = require('./db');
+const { FinancialMutationError, setAccountBalanceSnapshot } = require('../services/accountBalanceService');
 const { REPORTING_CURRENCY, currencyOf, portfolioByCurrency } = require('../../../shared/currency.cjs');
 const { parseTimestamp, validMonth } = require('../../../shared/calendar.cjs');
 const { accountMatchScore, transactionBalanceDelta } = require('../services/accountMatching');
@@ -300,6 +301,9 @@ async function deleteTransaction(id, userId) {
         'SELECT userId, Timestamp FROM transactions WHERE id = ? AND userId = ?',
         [id, userId]
     );
+    if (await db.get('SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ? AND userId = ?', [id, userId])) {
+        throw new FinancialMutationError('Reverse the linked portfolio activity before deleting its source transaction');
+    }
     await removeTransactionAccountBalance(userId, id);
     const result = await db.run(
         'DELETE FROM transactions WHERE id = ? AND userId = ?',
@@ -634,6 +638,7 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             [userId]
         );
         const ranked = accounts
+            .filter((account) => preferred.confidence === 'HIGH' && Number(preferred.accountId) === Number(account.id) || currencyOf(transaction) === currencyOf(account))
             .map((account) => ({
                 account,
                 score: accountMatchScore(transaction, account, preferred.accountId, preferred.confidence),
@@ -663,11 +668,23 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             ? transaction.AmountMinor
             : toMinorUnits(transaction.Amount);
         const deltaMinor = transactionBalanceDelta(transaction, best.account, amountMinor);
+        if (best.account.balanceSource === 'plaid' || (existing &&
+            Number(existing.balanceRevision) !== Number(accounts.find((account) => Number(account.id) === Number(existing.accountId))?.balanceRevision))) {
+            if (existing && Number(existing.accountId) !== Number(best.account.id)) {
+                return { status: 'review_required', reason: 'Reassigning activity already covered by a balance snapshot requires review' };
+            }
+            if (!existing && deltaMinor !== null) {
+                await db.run(`INSERT INTO account_balance_events
+                    (userId, accountId, sourceTransactionId, deltaMinor, occurredAt, balanceRevision) VALUES (?, ?, ?, ?, ?, ?)`,
+                    [userId, best.account.id, transactionId, deltaMinor, transaction.Timestamp, Number(best.account.balanceRevision) - 1]);
+            }
+            return { status: 'snapshot_preserved', accountId: best.account.id, cashMinor: best.account.cashMinor };
+        }
         if (deltaMinor === null) {
             if (existing) {
                 const oldAccount = accounts.find((account) => Number(account.id) === Number(existing.accountId));
                 const restoredCashMinor = Number(oldAccount?.cashMinor) - Number(existing.deltaMinor);
-                if (!oldAccount || restoredCashMinor < 0) {
+                if (!oldAccount || !Number.isSafeInteger(restoredCashMinor) || restoredCashMinor < 0) {
                     return { status: 'review_required', reason: 'Existing balance event cannot be safely reversed' };
                 }
                 await db.run(
@@ -697,7 +714,7 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
         const oldAccountCashMinor = oldAccount
             ? Number(oldAccount.cashMinor) - Number(existing.deltaMinor)
             : null;
-        if (existing && (!oldAccount || oldAccountCashMinor < 0)) {
+        if (existing && (!oldAccount || !Number.isSafeInteger(oldAccountCashMinor) || oldAccountCashMinor < 0)) {
             return { status: 'review_required', reason: 'Existing balance event cannot be safely reversed' };
         }
 
@@ -705,7 +722,7 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             ? oldAccountCashMinor
             : Number(best.account.cashMinor);
         const nextCashMinor = targetCashMinor + deltaMinor;
-        if (nextCashMinor < 0) {
+        if (!Number.isSafeInteger(nextCashMinor) || nextCashMinor < 0) {
             return { status: 'review_required', reason: 'Transaction would make the account balance negative' };
         }
 
@@ -723,16 +740,16 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
         if (existing) {
             await db.run(
                 `UPDATE account_balance_events
-                 SET accountId = ?, deltaMinor = ?, occurredAt = ?
+                 SET accountId = ?, deltaMinor = ?, occurredAt = ?, balanceRevision = ?
                  WHERE id = ? AND userId = ?`,
-                [best.account.id, deltaMinor, occurredAt, existing.id, userId]
+                [best.account.id, deltaMinor, occurredAt, best.account.balanceRevision, existing.id, userId]
             );
         } else {
             await db.run(
                 `INSERT INTO account_balance_events
-                    (userId, accountId, sourceTransactionId, deltaMinor, occurredAt)
-                 VALUES (?, ?, ?, ?, ?)`,
-                [userId, best.account.id, transactionId, deltaMinor, occurredAt]
+                    (userId, accountId, sourceTransactionId, deltaMinor, occurredAt, balanceRevision)
+                 VALUES (?, ?, ?, ?, ?, ?)`,
+                [userId, best.account.id, transactionId, deltaMinor, occurredAt, best.account.balanceRevision]
             );
         }
         return {
@@ -750,12 +767,16 @@ async function removeTransactionAccountBalance(userId, transactionId) {
             [transactionId, userId]
         );
         if (existing) {
-            await db.run(
-                // The authoritative balance can be lower than the old event
-                // after a Plaid refresh; never write a negative cash balance.
-                'UPDATE investment_accounts SET cashMinor = MAX(0, cashMinor - ?), updatedAt = ? WHERE id = ? AND userId = ?',
-                [existing.deltaMinor, new Date().toISOString(), existing.accountId, userId]
-            );
+            const account = await db.get('SELECT * FROM investment_accounts WHERE id = ? AND userId = ?', [existing.accountId, userId]);
+            if (!account) throw new FinancialMutationError('The account for this posting is unavailable');
+            if (account.balanceSource !== 'plaid' && Number(existing.balanceRevision) === Number(account.balanceRevision)) {
+                const nextCashMinor = Number(account.cashMinor) - Number(existing.deltaMinor);
+                if (!Number.isSafeInteger(nextCashMinor) || nextCashMinor < 0) {
+                    throw new FinancialMutationError('Deleting this transaction would invalidate the account balance; review the balance first');
+                }
+                await db.run('UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                    [nextCashMinor, new Date().toISOString(), existing.accountId, userId]);
+            }
             await db.run('DELETE FROM account_balance_events WHERE id = ? AND userId = ?', [existing.id, userId]);
         }
         return Boolean(existing);
@@ -864,9 +885,25 @@ async function createInvestmentAccount(userId, account) {
 
 async function updateInvestmentAccount(userId, id, updates) {
     const db = await getDb();
-    const allowed = ['name', 'institution', 'accountType', 'currency', 'cashMinor'];
+    return db.withTransaction(async () => {
+    const current = await db.get('SELECT * FROM investment_accounts WHERE id = ? AND userId = ?', [id, userId]);
+    if (!current) return null;
+    if (updates.currency && updates.currency !== current.currency && (current.cashMinor !== 0 ||
+        await db.get(`SELECT id FROM investment_holdings WHERE accountId = ? AND userId = ?
+            UNION ALL SELECT id FROM account_balance_events WHERE accountId = ? AND userId = ? LIMIT 1`, [id, userId, id, userId]))) {
+        throw new FinancialMutationError('An account with balances or activity cannot be relabelled with another currency');
+    }
+    const allowed = ['name', 'institution', 'accountType', 'currency'];
     const entries = Object.entries(updates).filter(([key]) => allowed.includes(key));
-    if (!entries.length) return null;
+    if (updates.cashMinor !== undefined && updates.cashMinor !== current.cashMinor) {
+        if (!Number.isSafeInteger(updates.cashMinor) || updates.cashMinor < 0) throw new FinancialMutationError('Invalid cash balance', 400);
+        // A replacement balance starts a new baseline. Earlier events are
+        // already incorporated and must not be reversed from this snapshot.
+        if (updates.currency && updates.currency !== current.currency) {
+            await db.run('UPDATE investment_accounts SET currency = ? WHERE id = ? AND userId = ?', [updates.currency, id, userId]);
+        }
+        await setAccountBalanceSnapshot(userId, id, updates.cashMinor, updates.currency || current.currency, 'manual');
+    }
     entries.push(['updatedAt', new Date().toISOString()]);
     const result = await db.run(
         `UPDATE investment_accounts SET ${entries.map(([key]) => `${key} = ?`).join(', ')} WHERE id = ? AND userId = ?`,
@@ -874,6 +911,7 @@ async function updateInvestmentAccount(userId, id, updates) {
     );
     if (!result.changes) return null;
     return await db.get('SELECT * FROM investment_accounts WHERE id = ? AND userId = ?', [id, userId]);
+    });
 }
 
 async function deleteInvestmentAccount(userId, id) {
