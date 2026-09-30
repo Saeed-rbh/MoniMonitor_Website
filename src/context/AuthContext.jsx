@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { apiUrl } from "../config/api";
 
+/** @typedef {{ username: string, userId: string | null, profilePhotoUrl: string | null, joinedAt: string | null, token: string }} SessionUser */
+/** @typedef {{ id: string, username: string, profilePhotoUrl?: string | null, joinedAt?: string | null }} LoginUser */
+/** @type {import('react').Context<{ user: SessionUser | null, loading: boolean, login: (user: LoginUser, token: string) => void, logout: () => void } | null>} */
 const AuthContext = createContext(null);
 const getStorage = () => typeof window !== "undefined" ? window.localStorage : null;
 
@@ -32,7 +35,7 @@ const persistSession = (userData, token) => {
 };
 
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
+    const [user, setUser] = useState(/** @type {SessionUser | null} */ (null));
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -107,4 +110,8 @@ export const AuthProvider = ({ children }) => {
     return <AuthContext.Provider value={{ user, login, logout, loading }}>{children}</AuthContext.Provider>;
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) throw new Error('useAuth must be used within an AuthProvider');
+    return context;
+};

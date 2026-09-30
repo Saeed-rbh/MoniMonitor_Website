@@ -9,7 +9,6 @@ import { useSprings, useSpring, animated, easings } from "@react-spring/web";
 import { ScalableElement } from "../utils/tools";
 import useClickOutside from "../hooks/useClickOutside";
 import { useLongPress } from "use-long-press";
-import { filter } from "framer-motion/client";
 
 const MoreCategory = ({
   List,
