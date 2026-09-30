@@ -8,6 +8,7 @@ const bcrypt = require("bcryptjs");
 const { ZodError } = require("zod");
 const dbService = require("./src/database/dbService");
 const { createRateLimit } = require("./src/middleware/rateLimit");
+const { proxyTrust } = require("./src/middleware/proxyTrust");
 const { requireConfiguredOwner } = require("./src/middleware/ownerAuthorization");
 const { createRegistrationAuthorization } = require("./src/middleware/registrationAuthorization");
 const { requirePrivateBackupNetwork, isLoopbackAddress } = require("./src/middleware/privateNetwork");
@@ -30,7 +31,7 @@ const { getAllSubsystemHealth } = require("./src/services/subsystemHealth");
 const { logger } = require('./src/services/logger');
 
 const app = express();
-app.set("trust proxy", 1);
+app.set("trust proxy", proxyTrust());
 const PORT = Number(process.env.PORT || 3001);
 const isProduction = process.env.NODE_ENV === "production";
 const agentStatus = {
@@ -63,7 +64,7 @@ const allowedOrigins = (process.env.FRONTEND_URL || "http://localhost:3000,http:
 
 if (isProduction || process.env.ENFORCE_HTTPS === "true") {
     app.use((req, res, next) => {
-        const isHttps = req.secure || req.headers["x-forwarded-proto"] === "https";
+        const isHttps = req.secure;
         if (!isHttps && req.headers.host && !isLoopbackAddress(req.socket?.remoteAddress)) {
             return res.redirect(301, `https://${req.headers.host}${req.url}`);
         }
@@ -119,8 +120,8 @@ app.use((req, res, next) => {
     next();
 });
 
-const authRateLimit = createRateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
-const insightRateLimit = createRateLimit({ windowMs: 60 * 60 * 1000, max: 180 });
+const authRateLimit = createRateLimit({ windowMs: 15 * 60 * 1000, max: 20, namespace: "authentication" });
+const insightRateLimit = createRateLimit({ windowMs: 60 * 60 * 1000, max: 180, namespace: "insights" });
 const requireRegistrationOpen = createRegistrationAuthorization({
     getUserCount: dbService.getUserCount,
 });

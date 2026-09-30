@@ -47,6 +47,12 @@ The app will be available at `http://localhost:3000`.
 
 ### Backend
 
+Set `TRUSTED_PROXIES` to `false` for direct hosting, or to the explicit
+comma-separated IP addresses/CIDRs of your reverse proxies. The default trusts
+only loopback proxies, supporting the local tunnel. Forwarded client IP and
+HTTPS headers must be overwritten by the proxy. Authentication rate limits
+persist in SQLite, increment atomically, and return 503 if their storage fails.
+
 Reports use CAD until recorded exchange-rate conversion is available. Imported
 foreign-currency activity retains its native currency and is visible in account
 history; it is excluded from CAD spending, income, forecasts, and investment
