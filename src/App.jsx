@@ -1,5 +1,6 @@
 import "./App.css";
 import React, { lazy, Suspense } from "react";
+import { MotionConfig } from 'framer-motion';
 import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { TransactionProvider, useTransactions } from "./context/TransactionContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -127,9 +128,9 @@ const AppRoutes = () => {
 const App = () => {
   return (
     <ErrorBoundary>
-      <AuthProvider>
+      <MotionConfig reducedMotion="user"><AuthProvider>
         <AppRoutes />
-      </AuthProvider>
+      </AuthProvider></MotionConfig>
     </ErrorBoundary>
   );
 };

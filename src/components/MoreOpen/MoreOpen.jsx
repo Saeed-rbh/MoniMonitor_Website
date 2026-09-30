@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useRef } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence, useDragControls } from "framer-motion";
+import { motion, AnimatePresence, useDragControls, useReducedMotion } from "framer-motion";
 import { RxCross2 } from "react-icons/rx";
-import { ScalableElement } from "../../utils/tools";
+import { useModalFocus } from "../../utils/modalFocus";
 import { useNavigate } from "react-router-dom";
 import "./MoreOpen.css";
 
@@ -17,14 +17,18 @@ const MoreOpen = ({
   toRedirect,
   overflow,
   showBackdrop = true,
+  dialogLabel = 'Details and actions',
 }) => {
   const redirect = useNavigate();
   const controls = useDragControls();
+  const dialogRef = useRef(null);
+  const reducedMotion = useReducedMotion();
 
   const handleClose = () => {
     setIsClicked(null);
     if (handleCloseAddTransaction) handleCloseAddTransaction();
   };
+  useModalFocus(Boolean(isClicked), dialogRef, handleClose);
 
   const handleExitComplete = () => {
     if (toRedirect) {
@@ -49,17 +53,22 @@ const MoreOpen = ({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
+              transition={{ duration: reducedMotion ? 0 : 0.25 }}
               onClick={handleClose}
             />
           )}
           <motion.div
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={dialogLabel}
+            tabIndex={-1}
             key="more-open-sheet"
             className="MoreOpen_Main"
-            initial={{ y: "100%" }}
+            initial={{ y: reducedMotion ? 0 : "100%" }}
             animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "tween", ease: "easeInOut", duration: 0.32 }}
+            exit={{ y: reducedMotion ? 0 : "100%" }}
+            transition={{ type: "tween", ease: "easeInOut", duration: reducedMotion ? 0 : 0.32 }}
             style={{
               zIndex: zIndex,
               height: calculatedHeight,
@@ -103,13 +112,14 @@ const MoreOpen = ({
                 className="MoreOpen_DragHandle"
                 onPointerDown={(event) => controls.start(event)}
               />
-              <ScalableElement
-                as="div"
+              <button
+                type="button"
+                aria-label="Close dialog"
                 className="MoreOpen_Close"
                 onClick={handleClose}
               >
                 <RxCross2 />
-              </ScalableElement>
+              </button>
               {feed()}
             </div>
           </motion.div>
@@ -118,7 +128,7 @@ const MoreOpen = ({
     </AnimatePresence>
   );
 
-  return typeof document !== "undefined" ? createPortal(content, document.body) : content;
+  return typeof document !== "undefined" ? createPortal(<div data-modal-layer>{content}</div>, document.body) : content;
 };
 
 export default MoreOpen;

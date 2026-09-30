@@ -90,3 +90,8 @@
 .MoreOpen_Close:active {
   transform: scale(0.92);
 }
+
+.MoreOpen_Close:focus-visible {
+  outline: 3px solid var(--Bc-2);
+  outline-offset: 3px;
+}

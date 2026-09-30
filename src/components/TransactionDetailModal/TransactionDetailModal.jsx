@@ -443,6 +443,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
 
   return (
     <MoreOpen
+      dialogLabel="Transaction details and corrections"
       isClicked={Boolean(transaction)}
       setIsClicked={onClose}
       feed={feed}
