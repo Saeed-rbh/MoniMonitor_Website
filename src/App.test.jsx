@@ -3,14 +3,6 @@ import App from './App';
 import React from 'react';
 import { vi } from 'vitest';
 
-// Mock axios to avoid network errors
-vi.mock('axios', () => ({
-  default: {
-    post: vi.fn(() => Promise.resolve({ data: [] })),
-    get: vi.fn(() => Promise.resolve({ data: [] })),
-  },
-}));
-
 // Mock scrollableList since it relies on DOM properties not present in JSDOM
 vi.mock('./components/ScrollableList', () => ({
   default: () => <div>ScrollableList</div>,

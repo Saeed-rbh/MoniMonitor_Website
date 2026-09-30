@@ -21,8 +21,8 @@ A modern financial tracking application built with React, Vite, and Tailwind CSS
 
 ### Prerequisites
 
-- Node.js (v18 or higher recommended)
-- npm or yarn
+- Node.js 22.12 or newer
+- npm (use npm 11 for dependency updates)
 
 ### Installation
 
@@ -34,10 +34,24 @@ A modern financial tracking application built with React, Vite, and Tailwind CSS
 
 2.  Install dependencies:
     ```bash
-    npm install
+    npm ci
     ```
 
 ### Running Locally
+
+The frontend uses Vite 8 and Vitest 4, with React Router 7. The build keeps the
+previous browser compilation targets explicitly configured. See the official
+[Vite migration guide](https://vite.dev/guide/migration) when changing build
+configuration. Obsolete Cognito/Amplify/CDK packages have been removed; the app
+uses its API session authentication.
+
+Before delivering a change, run `npm run typecheck`, `npm test -- --run`, and
+`npm run build` at the root, then `npm test` in `server/`. Run `npm audit` in
+both directories against the live registry, including development dependencies.
+Use `npm ci` with the committed lockfiles for reproducible installs. If an old
+installed peer graph blocks a toolchain update, resolve the new manifest in a
+fresh directory with npm 11 and verify a clean install before delivery; do not
+disable peer checks or force advisory fixes.
 
 To start the development server:
 ```bash

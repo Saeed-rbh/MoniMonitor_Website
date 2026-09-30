@@ -27,7 +27,7 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(appVersion),
   },
   build: {
-    commonjsOptions: { include: [/node_modules/, /shared/] },
+    target: ['es2020', 'chrome87', 'edge88', 'firefox78', 'safari14'],
     outDir: "dist", // Change the output directory to 'build'
   },
   test: {
@@ -42,10 +42,10 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": resolve(__dirname, "./src"),
-      "react": resolve(__dirname, "./node_modules/react"),
-      "react-dom": resolve(__dirname, "./node_modules/react-dom"),
-      "@react-spring/shared": resolve(__dirname, "./node_modules/@react-spring/shared"),
+      "@": resolve(repository, "./src"),
+      "react": resolve(repository, "./node_modules/react"),
+      "react-dom": resolve(repository, "./node_modules/react-dom"),
+      "@react-spring/shared": resolve(repository, "./node_modules/@react-spring/shared"),
     },
   },
 });
