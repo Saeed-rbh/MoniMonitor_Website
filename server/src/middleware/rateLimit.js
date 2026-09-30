@@ -1,5 +1,6 @@
 const crypto = require('node:crypto');
 const { getDb } = require('../database/db');
+const { protectConnection } = require('../database/transactionConnection');
 const { logger } = require('../services/logger');
 const MAX_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -15,6 +16,10 @@ function createRateLimit({ windowMs, max, namespace = 'requests', key = (req) =>
             const digest = crypto.createHash('sha256').update(identity).digest('hex');
             const bucketKey = `${namespace}:${windowMs}:${max}:${digest}`;
             const db = await database();
+            // Also serialize injected or secondary connections. Concurrent
+            // RETURNING statements can otherwise exhaust SQLite's worker pool
+            // while the statement holding the write lock awaits finalization.
+            protectConnection(db);
             // A single statement keeps expiry and increments atomic across connections.
             const record = await db.get(`INSERT INTO rate_limits (bucketKey, count, startedAt)
                 VALUES (?, 1, ?)
