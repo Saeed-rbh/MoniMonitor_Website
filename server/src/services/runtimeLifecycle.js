@@ -37,6 +37,8 @@ function installRuntimeLifecycle({ processRef = process, server = null, drain = 
         return shutdownPromise;
     }
     const handlers = {
+        // IPC comes only from the local Node supervisor, including on Windows where kill(SIGTERM) is abrupt.
+        message: message => { if (processRef.connected && message?.type === 'monimonitor:shutdown') shutdown('supervisor'); },
         SIGINT: () => shutdown('SIGINT'), SIGTERM: () => shutdown('SIGTERM'),
         uncaughtException: error => { log('[Runtime] Fatal exception:', error); fatal('uncaughtException'); },
         unhandledRejection: error => { log('[Runtime] Fatal rejection:', error); fatal('unhandledRejection'); },

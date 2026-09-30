@@ -3,6 +3,20 @@ const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
 const { EventEmitter } = require('node:events');
 const { installRuntimeLifecycle } = require('./runtimeLifecycle');
+
+test('the Windows supervisor IPC path drains once before exiting', async () => {
+    const processRef = new EventEmitter();
+    processRef.connected = true;
+    let drains = 0, exitCode;
+    processRef.exit = code => { exitCode = code; };
+    const lifecycle = installRuntimeLifecycle({ processRef, drain: async () => { drains++; }, log: () => {} });
+    processRef.emit('message', { type: 'unrelated' });
+    assert.equal(drains, 0);
+    processRef.emit('message', { type: 'monimonitor:shutdown' });
+    await lifecycle.shutdown('again');
+    assert.equal(drains, 1); assert.equal(exitCode, 0);
+    lifecycle.dispose();
+});
 const { registerWorker, pauseWorkers, resumeWorkers } = require('./workerLifecycle');
 
 test('fatal exceptions and rejected promises exit after registered workers drain', () => {
