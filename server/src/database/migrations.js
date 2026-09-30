@@ -1,5 +1,11 @@
 const MIGRATIONS = [
     {
+        version: 10,
+        name: 'signed_account_balances',
+        rebuildReferences: true,
+        up: require('./signedBalanceMigration').migrateSignedBalances,
+    },
+    {
         version: 9,
         name: 'review_legacy_pending_trade_overlays',
         async up(db) {
@@ -153,7 +159,8 @@ async function runMigrations(db) {
     const applied = new Set((await db.all('SELECT version FROM schema_migrations')).map((row) => Number(row.version)));
     for (const migration of [...MIGRATIONS].sort((a, b) => a.version - b.version)) {
         if (applied.has(migration.version)) continue;
-        await db.withTransaction(async () => {
+        const transaction = migration.rebuildReferences ? db.withSchemaMigration : db.withTransaction;
+        await transaction(async () => {
             await migration.up(db);
             await db.run(
                 'INSERT INTO schema_migrations (version, name, appliedAt) VALUES (?, ?, ?)',

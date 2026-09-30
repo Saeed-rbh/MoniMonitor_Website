@@ -1,3 +1,4 @@
+const { cashPositionOf } = require('./accountBalances.cjs');
 const REPORTING_CURRENCY = 'CAD';
 const currencyOf = (record) => String(record?.Currency || record?.currency || REPORTING_CURRENCY).toUpperCase();
 const isReportingCurrency = (record) => currencyOf(record) === REPORTING_CURRENCY;
@@ -11,10 +12,10 @@ function portfolioByCurrency(accounts) {
     };
     get(REPORTING_CURRENCY);
     for (const account of accounts) {
-        const cash = Number(account.cashMinor || 0);
+        const { assetCashMinor, liabilityMinor } = cashPositionOf(account);
         const accountTotal = get(currencyOf(account));
-        if (account.accountType === 'Credit Card') accountTotal.totalLiabilitiesMinor += cash;
-        else accountTotal.totalCashMinor += cash;
+        accountTotal.totalCashMinor += assetCashMinor;
+        accountTotal.totalLiabilitiesMinor += liabilityMinor;
         for (const holding of account.holdings || []) {
             const total = get(currencyOf(holding));
             total.holdingsValueMinor += Math.round(Number(holding.quantity || 0) * Number(holding.priceMicros ?? Number(holding.priceMinor || 0) * 10000) / 10000);

@@ -363,8 +363,8 @@ async function main() {
         }
 
         for (const ledger of ledgerState.values()) {
-            if (ledger.cashMinor < 0) {
-                throw new Error(`${ledger.account.name} ledger ends negative (${ledger.cashMinor})`);
+            if (!Number.isSafeInteger(ledger.cashMinor)) {
+                throw new Error(`${ledger.account.name} ledger exceeds supported balance limits (${ledger.cashMinor})`);
             }
             await db.run(
                 'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
@@ -373,7 +373,7 @@ async function main() {
         }
 
         for (const [kind, state] of accountState.entries()) {
-            if (state.cashMinor < 0) throw new Error(`${kind} cash is negative (${state.cashMinor})`);
+            if (!Number.isSafeInteger(state.cashMinor)) throw new Error(`${kind} cash exceeds supported balance limits (${state.cashMinor})`);
             await db.run(
                 'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
                 [state.cashMinor, state.updatedAt || now, state.id, userId]

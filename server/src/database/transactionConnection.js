@@ -59,25 +59,44 @@ function protectConnection(db) {
             parent.nestedQueue = operation.catch(() => {});
             return operation;
         }
-        return enqueue(async () => {
-            const context = { active: true, nestedQueue: Promise.resolve() };
-            await raw.run('BEGIN IMMEDIATE');
-            try {
-                const result = await scope.run(context, () => fn(db));
-                await context.nestedQueue;
-                context.active = false;
-                await raw.run('COMMIT');
-                return result;
-            } catch (error) {
-                context.active = false;
-                await context.nestedQueue;
-                await raw.run('ROLLBACK');
-                throw error;
+        return enqueue(() => runOuterTransaction(fn));
+    }
+
+    async function runOuterTransaction(fn, checkReferences = false) {
+        const context = { active: true, nestedQueue: Promise.resolve() };
+        await raw.run('BEGIN IMMEDIATE');
+        try {
+            const result = await scope.run(context, () => fn(db));
+            await context.nestedQueue;
+            if (checkReferences && (await raw.all('PRAGMA foreign_key_check')).length) {
+                throw new Error('Schema migration would leave invalid foreign-key references');
             }
+            context.active = false;
+            await raw.run('COMMIT');
+            return result;
+        } catch (error) {
+            context.active = false;
+            await context.nestedQueue;
+            await raw.run('ROLLBACK');
+            throw error;
+        }
+    }
+
+    async function withSchemaMigration(fn) {
+        if (typeof fn !== 'function') throw new TypeError('withSchemaMigration requires a callback function');
+        if (scope.getStore()) throw new Error('Schema migrations cannot run inside another transaction');
+        // Hold the same queue for the PRAGMA changes and the entire rebuild.
+        // No request can run while foreign-key enforcement is temporarily off.
+        return enqueue(async () => {
+            const enabled = (await raw.get('PRAGMA foreign_keys')).foreign_keys;
+            await raw.run('PRAGMA foreign_keys = OFF');
+            try { return await runOuterTransaction(fn, true); }
+            finally { await raw.run(`PRAGMA foreign_keys = ${enabled ? 'ON' : 'OFF'}`); }
         });
     }
     db.withTransaction = withTransaction;
-    const controller = { withTransaction };
+    db.withSchemaMigration = withSchemaMigration;
+    const controller = { withTransaction, withSchemaMigration };
     connections.set(db, controller);
     return controller;
 }

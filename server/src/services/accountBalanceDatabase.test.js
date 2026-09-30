@@ -17,16 +17,18 @@ const input = { Amount: 100, Category: 'Income', Label: 'Deposit', Reason: 'Depo
 const account = () => service.createInvestmentAccount('owner', { name: 'Cash', accountType: 'Chequing', currency: 'CAD', cashMinor: 0 });
 const cash = async (id) => (await db.get('SELECT * FROM investment_accounts WHERE id = ?', [id])).cashMinor;
 
-test('unsafe deletion and editing leave the transaction and balance intact', async () => {
+test('editing and deleting a deposit preserve the resulting overdraft', async () => {
     const a = await account();
     const deposit = await mutations.createTransaction('owner', { ...input, BalanceAccountId: a.id });
     await mutations.createTransaction('owner', { ...input, Amount: 80, Category: 'Expense', Label: 'Shopping', BalanceAccountId: a.id });
     assert.equal(await cash(a.id), 2000);
-    await assert.rejects(service.deleteTransaction(deposit.data.id, 'owner'), (e) => e.statusCode === 409);
-    await assert.rejects(mutations.updateTransaction('owner', deposit.data.id, { Amount: 10 }), (e) => e.statusCode === 409);
-    assert.equal((await service.getTransactionById(deposit.data.id, 'owner')).AmountMinor, 10000);
-    assert.equal(await cash(a.id), 2000);
-    assert.equal((await db.get('SELECT deltaMinor FROM account_balance_events WHERE sourceTransactionId = ?', [deposit.data.id])).deltaMinor, 10000);
+    await mutations.updateTransaction('owner', deposit.data.id, { Amount: 10 });
+    assert.equal((await service.getTransactionById(deposit.data.id, 'owner')).AmountMinor, 1000);
+    assert.equal(await cash(a.id), -7000);
+    assert.equal((await db.get('SELECT deltaMinor FROM account_balance_events WHERE sourceTransactionId = ?', [deposit.data.id])).deltaMinor, 1000);
+    await service.deleteTransaction(deposit.data.id, 'owner');
+    assert.equal(await cash(a.id), -8000);
+    assert.equal(await service.getTransactionById(deposit.data.id, 'owner'), undefined);
 });
 
 test('an edit retains the explicit account even when the transaction has no account reference', async () => {
@@ -35,6 +37,27 @@ test('an edit retains the explicit account even when the transaction has no acco
     await mutations.updateTransaction('owner', deposit.data.id, { Amount: 120 });
     assert.equal(await cash(a.id), 12000);
     assert.equal((await db.get('SELECT accountId FROM account_balance_events WHERE sourceTransactionId = ?', [deposit.data.id])).accountId, a.id);
+});
+
+test('card payments may cross zero into credit and deleting them restores the original debt', async () => {
+    const a = await service.createInvestmentAccount('owner', { name: 'Card', accountType: 'Credit Card', currency: 'CAD', cashMinor: 2000 });
+    const payment = await mutations.createTransaction('owner', { ...input, Amount: 25,
+        Category: 'Saving', Label: 'Debt Payment', Type: 'Credit Card', BalanceAccountId: a.id });
+    assert.equal(await cash(a.id), -500);
+    const displayed = (await service.getInvestmentAccounts('owner')).find(item => item.id === a.id);
+    assert.equal(displayed.totalValueMinor, 500);
+    assert.equal(displayed.assetCashMinor, 500);
+    assert.equal(displayed.liabilityMinor, 0);
+    await service.deleteTransaction(payment.data.id, 'owner');
+    assert.equal(await cash(a.id), 2000);
+});
+
+test('integer overflow during a posting is rejected atomically', async () => {
+    const a = await service.createInvestmentAccount('owner', { name: 'Limit', accountType: 'Chequing', currency: 'CAD', cashMinor: Number.MAX_SAFE_INTEGER });
+    const before = (await db.get('SELECT COUNT(*) AS count FROM transactions')).count;
+    await assert.rejects(mutations.createTransaction('owner', { ...input, Amount: 1, BalanceAccountId: a.id }), e => e.statusCode === 409);
+    assert.equal(await cash(a.id), Number.MAX_SAFE_INTEGER);
+    assert.equal((await db.get('SELECT COUNT(*) AS count FROM transactions')).count, before);
 });
 
 test('bank snapshots absorb old postings and reporting edits or deletes preserve cash', async () => {
@@ -64,15 +87,16 @@ test('manual replacement absorbs old events but new events post to the new basel
 test('unsupported provider balances and currency changes preserve native money for review', async () => {
     const a = await account();
     await setAccountBalanceSnapshot('owner', a.id, 2000, 'CAD');
-    assert.equal((await setAccountBalanceSnapshot('owner', a.id, -100, 'CAD')).status, 'review_required');
+    assert.equal((await setAccountBalanceSnapshot('owner', a.id, -100, 'CAD')).status, 'applied');
+    assert.equal((await setAccountBalanceSnapshot('owner', a.id, Number.MAX_SAFE_INTEGER + 1, 'CAD')).status, 'review_required');
     assert.equal((await setAccountBalanceSnapshot('owner', a.id, 2000, 'USD')).status, 'review_required');
-    assert.equal(await cash(a.id), 2000);
+    assert.equal(await cash(a.id), -100);
     await assert.rejects(service.updateInvestmentAccount('owner', a.id, { currency: 'USD' }), (e) => e.statusCode === 409);
     await applyInvestmentSnapshot('owner', new Map([['native', { appAccountId: a.id, type: 'investment' }]]), {
         accounts: [{ account_id: 'native', balances: { current: 20, available: -5, iso_currency_code: 'CAD' } }], holdings: [], securities: [],
     });
-    assert.equal(await cash(a.id), 2000);
-    assert.match((await db.get('SELECT balanceReviewReason FROM investment_accounts WHERE id = ?', [a.id])).balanceReviewReason, /unsupported/);
+    assert.equal(await cash(a.id), -500);
+    assert.equal((await db.get('SELECT balanceReviewReason FROM investment_accounts WHERE id = ?', [a.id])).balanceReviewReason, null);
 });
 
 test('unchanged account metadata edits preserve bank provenance', async () => {

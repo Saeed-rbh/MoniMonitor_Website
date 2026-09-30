@@ -1,6 +1,7 @@
 const { getDb } = require('./db');
 const { FinancialMutationError, setAccountBalanceSnapshot } = require('../services/accountBalanceService');
 const { attachPendingTransfers } = require('../services/pendingTransferService');
+const { cashPositionOf } = require('../../../shared/accountBalances.cjs');
 const { attachPendingTrades } = require('../services/pendingTradeService');
 const { REPORTING_CURRENCY, currencyOf, portfolioByCurrency } = require('../../../shared/currency.cjs');
 const { parseTimestamp, validMonth } = require('../../../shared/calendar.cjs');
@@ -210,7 +211,7 @@ async function commitEmailTransaction({ transaction, source, balance = null, out
                 : toMinorUnits(transaction.Amount);
             const deltaMinor = account ? transactionBalanceDelta(transaction, account, amountMinor) : null;
             const nextCashMinor = account ? Number(account.cashMinor) + Number(deltaMinor) : null;
-            if (deltaMinor !== null && nextCashMinor >= 0) {
+            if (deltaMinor !== null && Number.isSafeInteger(nextCashMinor)) {
                 const occurredAt = transaction.Timestamp || new Date().toISOString();
                 await db.run(
                     'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
@@ -607,9 +608,8 @@ async function getInvestmentAccountState(userId) {
     }, {});
     const enriched = accounts.map((account) => ({
         ...account,
-        totalValueMinor: account.accountType === 'Credit Card'
-            ? -account.cashMinor
-            : account.cashMinor + account.holdingsValueMinor,
+        ...cashPositionOf(account),
+        totalValueMinor: cashPositionOf(account).netCashMinor + account.holdingsValueMinor,
         gainLossMinor: account.holdingsValueMinor - account.holdingsCostMinor,
         holdings: byAccount[account.id] || [],
         byCurrency: portfolioByCurrency([{ ...account, holdings: byAccount[account.id] || [] }]),
@@ -693,7 +693,7 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             if (existing) {
                 const oldAccount = accounts.find((account) => Number(account.id) === Number(existing.accountId));
                 const restoredCashMinor = Number(oldAccount?.cashMinor) - Number(existing.deltaMinor);
-                if (!oldAccount || !Number.isSafeInteger(restoredCashMinor) || restoredCashMinor < 0) {
+                if (!oldAccount || !Number.isSafeInteger(restoredCashMinor)) {
                     return { status: 'review_required', reason: 'Existing balance event cannot be safely reversed' };
                 }
                 await db.run(
@@ -723,7 +723,7 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
         const oldAccountCashMinor = oldAccount
             ? Number(oldAccount.cashMinor) - Number(existing.deltaMinor)
             : null;
-        if (existing && (!oldAccount || !Number.isSafeInteger(oldAccountCashMinor) || oldAccountCashMinor < 0)) {
+        if (existing && (!oldAccount || !Number.isSafeInteger(oldAccountCashMinor))) {
             return { status: 'review_required', reason: 'Existing balance event cannot be safely reversed' };
         }
 
@@ -731,8 +731,8 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             ? oldAccountCashMinor
             : Number(best.account.cashMinor);
         const nextCashMinor = targetCashMinor + deltaMinor;
-        if (!Number.isSafeInteger(nextCashMinor) || nextCashMinor < 0) {
-            return { status: 'review_required', reason: 'Transaction would make the account balance negative' };
+        if (!Number.isSafeInteger(nextCashMinor)) {
+            return { status: 'review_required', code: 'balance_limit_exceeded', reason: 'Transaction would exceed supported balance limits' };
         }
 
         const occurredAt = transaction.Timestamp || new Date().toISOString();
@@ -780,7 +780,7 @@ async function removeTransactionAccountBalance(userId, transactionId) {
             if (!account) throw new FinancialMutationError('The account for this posting is unavailable');
             if (account.balanceSource !== 'plaid' && Number(existing.balanceRevision) === Number(account.balanceRevision)) {
                 const nextCashMinor = Number(account.cashMinor) - Number(existing.deltaMinor);
-                if (!Number.isSafeInteger(nextCashMinor) || nextCashMinor < 0) {
+                if (!Number.isSafeInteger(nextCashMinor)) {
                     throw new FinancialMutationError('Deleting this transaction would invalidate the account balance; review the balance first');
                 }
                 await db.run('UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
@@ -906,7 +906,7 @@ async function updateInvestmentAccount(userId, id, updates) {
     const allowed = ['name', 'institution', 'accountType', 'currency'];
     const entries = Object.entries(updates).filter(([key]) => allowed.includes(key));
     if (updates.cashMinor !== undefined && (updates.cashMinor !== current.cashMinor || current.balanceReviewReason)) {
-        if (!Number.isSafeInteger(updates.cashMinor) || updates.cashMinor < 0) throw new FinancialMutationError('Invalid cash balance', 400);
+        if (!Number.isSafeInteger(updates.cashMinor)) throw new FinancialMutationError('Invalid cash balance', 400);
         // A replacement balance starts a new baseline. Earlier events are
         // already incorporated and must not be reversed from this snapshot.
         if (updates.currency && updates.currency !== current.currency) {
@@ -1146,8 +1146,8 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
                         ? 0
                         : (emailCashActions[action] || 0);
             const nextCashMinor = account.cashMinor + (cashMultiplier * amountMinor);
-            if (nextCashMinor < 0) {
-                return { status: 'review_required', reason: 'Portfolio action exceeds the recorded cash balance' };
+            if (!Number.isSafeInteger(nextCashMinor)) {
+                return { status: 'review_required', reason: 'Portfolio action exceeds supported balance limits' };
             }
 
             const adjustHolding = async (holdingSymbol, delta) => {
@@ -1243,8 +1243,8 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
 
         if (action === 'BUY') {
             nextCashMinor = account.cashMinor - amountMinor;
-            if (nextCashMinor < 0) {
-                return { status: 'review_required', reason: 'Buy exceeds the recorded cash balance' };
+            if (!Number.isSafeInteger(nextCashMinor)) {
+                return { status: 'review_required', reason: 'Buy exceeds supported balance limits' };
             }
 
             totalShares = existingQuantity + tradeQuantity;
@@ -1276,6 +1276,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
             }
 
             nextCashMinor = account.cashMinor + amountMinor;
+            if (!Number.isSafeInteger(nextCashMinor)) return { status: 'review_required', reason: 'Sell exceeds supported balance limits' };
             totalShares = Math.max(0, existingQuantity - tradeQuantity);
             averageCostMinor = Number(holding.averageCostMinor || 0);
             averageCostMicros = Number(holding.averageCostMicros ?? averageCostMinor * 10000);

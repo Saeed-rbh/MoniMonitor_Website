@@ -53,6 +53,9 @@ async function createTransaction(userId, input, idempotencyKey = null) {
         await validateAccount(db, userId, BalanceAccountId);
         const id = await dbService.addTransaction({ ...transaction, userId });
         const posting = await postBalance(userId, id, transaction, BalanceAccountId);
+        if (BalanceAccountId && posting.accountPosting.code === 'balance_limit_exceeded') {
+            throw new TransactionMutationError(posting.accountPosting.reason || 'The requested account posting requires review', 409);
+        }
         await dbService.detectAndMarkRecurring(userId, id);
         const response = { message: 'Created', data: await dbService.getTransactionById(id, userId), ...posting };
         if (idempotencyKey) {

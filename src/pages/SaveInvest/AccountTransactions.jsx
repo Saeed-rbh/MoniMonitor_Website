@@ -98,7 +98,7 @@ const AccountTransactions = () => {
                   style: "currency",
                   currency: account.currency || "CAD",
                 }).format(Math.abs(Number(account.totalValueMinor || 0)) / 100)}</strong>
-                <small>{account.accountType === "Credit Card" ? "owed" : "current value"}</small>
+                <small>{account.totalValueMinor < 0 ? 'net owed' : account.accountType === 'Credit Card' && account.cashMinor < 0 ? 'credit balance' : 'current value'}</small>
               </div>
             )}
           </header>

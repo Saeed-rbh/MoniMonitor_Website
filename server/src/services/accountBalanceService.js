@@ -9,7 +9,7 @@ async function setAccountBalanceSnapshot(userId, accountId, cashMinor, currency,
     return db.withTransaction(async () => {
         const account = await db.get('SELECT * FROM investment_accounts WHERE id = ? AND userId = ?', [accountId, userId]);
         if (!account) throw new FinancialMutationError('Account not found', 404);
-        if (!Number.isSafeInteger(cashMinor) || cashMinor < 0 || currency !== account.currency) {
+        if (!Number.isSafeInteger(cashMinor) || currency !== account.currency) {
             const reason = currency !== account.currency
                 ? 'The bank currency differs from the recorded account currency; review is required'
                 : `The bank reported an unsupported balance (${cashMinor} minor units); review is required`;

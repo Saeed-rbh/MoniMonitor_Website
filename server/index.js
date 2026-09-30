@@ -310,7 +310,7 @@ registerPortfolioRoutes(app, { authenticateToken, dbService, sendValidationError
 app.post('/portfolio/accounts', authenticateToken, async (req, res) => {
     const { name, institution = null, accountType, currency = 'CAD', cashMinor = 0 } = req.body || {};
     if (!validText(name) || !investmentAccountTypes.has(accountType) || !validCurrency(currency) ||
-        !validMinorAmount(cashMinor) || (institution !== null && (typeof institution !== 'string' || institution.length > 120))) {
+        !Number.isSafeInteger(cashMinor) || (institution !== null && (typeof institution !== 'string' || institution.length > 120))) {
         return res.status(400).json({ error: 'Invalid investment account' });
     }
     try {
@@ -341,7 +341,7 @@ app.put('/portfolio/accounts/:id', authenticateToken, async (req, res) => {
         updates.currency = currency;
     }
     if (cashMinor !== undefined) {
-        if (!validMinorAmount(cashMinor)) return res.status(400).json({ error: 'Invalid cash balance' });
+        if (!Number.isSafeInteger(cashMinor)) return res.status(400).json({ error: 'Invalid cash balance' });
         updates.cashMinor = cashMinor;
     }
     if (!Object.keys(updates).length) return res.status(400).json({ error: 'No account changes supplied' });

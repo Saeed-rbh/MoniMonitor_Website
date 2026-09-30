@@ -279,7 +279,7 @@ async function getDb() {
                     accountType TEXT NOT NULL,
                     accountRef TEXT,
                     currency TEXT NOT NULL DEFAULT 'CAD',
-                    cashMinor INTEGER NOT NULL DEFAULT 0 CHECK(cashMinor >= 0),
+                    cashMinor INTEGER NOT NULL DEFAULT 0 CHECK(typeof(cashMinor) = 'integer' AND cashMinor BETWEEN -9007199254740991 AND 9007199254740991),
                     createdAt TEXT NOT NULL,
                     updatedAt TEXT NOT NULL,
                     FOREIGN KEY (userId) REFERENCES users(id)

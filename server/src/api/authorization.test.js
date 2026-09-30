@@ -67,6 +67,23 @@ test('report APIs reject impossible months before querying or generating insight
     }
 });
 
+test('account APIs accept signed balances while retaining safe-integer limits', async () => {
+    const write = (route, method, body) => fetch(`${origin}${route}`, { method,
+        headers: { Authorization: `Bearer ${tokenFor('api-owner')}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body) });
+    const created = await write('/portfolio/accounts', 'POST', {
+        name: 'Overdraft', accountType: 'Chequing', currency: 'CAD', cashMinor: -1200,
+    });
+    assert.equal(created.status, 201);
+    const account = await created.json();
+    assert.equal(account.cashMinor, -1200);
+    const changed = await write(`/portfolio/accounts/${account.id}`, 'PUT', { cashMinor: -2500 });
+    assert.equal(changed.status, 200);
+    assert.equal((await changed.json()).cashMinor, -2500);
+    assert.equal((await write(`/portfolio/accounts/${account.id}`, 'PUT', { cashMinor: -1.5 })).status, 400);
+    assert.equal((await write(`/portfolio/accounts/${account.id}`, 'PUT', { cashMinor: Number.MAX_SAFE_INTEGER + 1 })).status, 400);
+});
+
 test('creation retries are idempotent through both supported API endpoints', async () => {
     const transaction = { Amount: 12, Category: 'Expense', Label: 'Shopping', Reason: 'API retry test',
         Timestamp: '2026-09-13T12:00:00.000Z' };

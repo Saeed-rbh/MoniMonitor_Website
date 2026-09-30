@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { cashPositionOf } from '../../../shared/accountBalances.cjs';
 import NativeCurrencyValues from '../../components/NativeCurrencyValues';
 import PendingTransferBalance from '../../components/PendingTransferBalance';
 import PendingTradeEstimate, { PendingTradeReviewItems } from '../../components/PendingTradeEstimate';
@@ -48,7 +49,7 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
 
     const saveCash = async () => {
         const cashMinor = toMinor(cash);
-        if (!Number.isSafeInteger(cashMinor) || cashMinor < 0) return setStatus('Enter a valid cash balance.');
+        if (!Number.isSafeInteger(cashMinor)) return setStatus('Enter a valid cash balance.');
         if (!await updateInvestmentAccountAPI(account.id, { cashMinor })) return setStatus('Could not update the cash balance.');
         setStatus('Cash balance updated.');
         onRefresh();
@@ -93,10 +94,11 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
     });
 
     const cashVal = Number(account.cashMinor || 0);
+    const position = cashPositionOf(account);
     const holdingsVal = Number(account.holdingsValueMinor || 0);
-    const totalVal = cashVal + holdingsVal;
-    const cashShare = totalVal > 0 ? (cashVal / totalVal) * 100 : (cashVal > 0 ? 100 : 0);
-    const holdingsShare = totalVal > 0 ? (holdingsVal / totalVal) * 100 : (holdingsVal > 0 ? 100 : 0);
+    const totalVal = position.assetCashMinor + holdingsVal;
+    const cashShare = totalVal > 0 ? (position.assetCashMinor / totalVal) * 100 : 0;
+    const holdingsShare = totalVal > 0 ? (holdingsVal / totalVal) * 100 : 0;
 
     return <section style={styles.card}>
         <div style={styles.row}>
@@ -104,13 +106,13 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
                 <h2 style={{ margin: 0, fontSize: '1.08rem' }}>{account.name}</h2>
                 <span style={styles.secondary}>{account.institution || 'Independent'} · {account.accountType}</span>
             </div>
-            <strong style={{ fontSize: '1.15rem', color: isCreditCard ? 'var(--Gc-2)' : undefined }}>
-                {isCreditCard ? money(account.cashMinor, account.currency) : money(account.totalValueMinor, account.currency)}
+            <strong style={{ fontSize: '1.15rem', color: position.liabilityMinor > 0 ? 'var(--Gc-2)' : undefined }}>
+                {money(account.totalValueMinor, account.currency)}
             </strong>
         </div>
 
         <div style={{ ...styles.grid, marginTop: '14px' }}>
-            <div><span style={styles.secondary}>{isCreditCard ? 'Balance owed' : 'Cash balance'}</span><strong style={{ display: 'block' }}>{money(account.cashMinor, account.currency)} {canHoldInvestments && <small style={styles.secondary}>({cashShare.toFixed(1)}%)</small>}</strong></div>
+            <div><span style={styles.secondary}>{isCreditCard ? cashVal < 0 ? 'Credit balance' : 'Balance owed' : cashVal < 0 ? 'Cash overdrawn' : 'Cash balance'}</span><strong style={{ display: 'block' }}>{money(Math.abs(cashVal), account.currency)} {canHoldInvestments && cashVal >= 0 && <small style={styles.secondary}>({cashShare.toFixed(1)}% of assets)</small>}</strong></div>
             {canHoldInvestments && <div><span style={styles.secondary}>Holdings value</span><strong style={{ display: 'block' }}>{money(account.holdingsValueMinor, account.currency)} <small style={styles.secondary}>({holdingsShare.toFixed(1)}%)</small></strong></div>}
             <NativeCurrencyValues totals={account.byCurrency} baseCurrency={account.currency} />
             {account.balanceReviewReason && <p role="status">Cash needs review: {account.balanceReviewReason}</p>}
@@ -133,7 +135,7 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
         )}
 
         <div style={{ ...styles.row, marginTop: '14px', alignItems: 'end' }}>
-            <label style={{ flex: 1 }}><span style={styles.secondary}>Available cash</span><input aria-label={`${account.name} cash balance`} type='number' min='0' step='0.01' value={cash} onChange={(event) => setCash(event.target.value)} style={styles.field} /></label>
+            <label style={{ flex: 1 }}><span style={styles.secondary}>{isCreditCard ? 'Card balance: negative means credit' : 'Cash balance: negative means owed'}</span><input aria-label={`${account.name} cash balance`} type='number' step='0.01' value={cash} onChange={(event) => setCash(event.target.value)} style={styles.field} /></label>
             <button type='button' onClick={saveCash} style={styles.button}>Update cash</button>
         </div>
 
@@ -196,7 +198,7 @@ const SaveInvest = () => {
     const addAccount = async (event) => {
         event.preventDefault();
         const cashMinor = toMinor(account.cash);
-        if (!account.name.trim() || !Number.isSafeInteger(cashMinor) || cashMinor < 0) return setStatus('Enter an account name and valid cash balance.');
+        if (!account.name.trim() || !Number.isSafeInteger(cashMinor)) return setStatus('Enter an account name and valid cash balance.');
         const saved = await createInvestmentAccountAPI({
             name: account.name.trim(), institution: account.institution.trim() || null,
             accountType: account.accountType, currency: account.currency, cashMinor,
@@ -230,9 +232,9 @@ const SaveInvest = () => {
             <h2 style={{ fontSize: '2rem', margin: '3px 0 12px' }}>{money(portfolio.totalValueMinor, portfolio.currency || 'CAD')}</h2>
             <NativeCurrencyValues totals={portfolio.byCurrency} />
             <div style={styles.grid}>
-                <div><span style={styles.secondary}>Cash</span><strong style={{ display: 'block' }}>{money(portfolio.totalCashMinor)}</strong></div>
+                <div><span style={styles.secondary}>Cash and credit assets</span><strong style={{ display: 'block' }}>{money(portfolio.totalCashMinor)}</strong></div>
                 <div><span style={styles.secondary}>Stocks</span><strong style={{ display: 'block' }}>{money(portfolio.holdingsValueMinor)}</strong></div>
-                <div><span style={styles.secondary}>Credit card debt</span><strong style={{ display: 'block', color: 'var(--Gc-2)' }}>{money(portfolio.totalLiabilitiesMinor)}</strong></div>
+                <div><span style={styles.secondary}>Debt and overdrafts</span><strong style={{ display: 'block', color: 'var(--Gc-2)' }}>{money(portfolio.totalLiabilitiesMinor)}</strong></div>
                 <div><span style={styles.secondary}>This month contributed</span><strong style={{ display: 'block' }}>{money(Math.round(Number(mainSelected?.totalSaving || 0) * 100))}</strong></div>
             </div>
         </section>
@@ -268,7 +270,7 @@ const SaveInvest = () => {
                 <input aria-label='Account name' placeholder='Emergency fund' value={account.name} onChange={(event) => setAccount({ ...account, name: event.target.value })} style={styles.field} maxLength='120' required />
                 <input aria-label='Institution' placeholder='Institution (optional)' value={account.institution} onChange={(event) => setAccount({ ...account, institution: event.target.value })} style={styles.field} maxLength='120' />
                 <select aria-label='Account type' value={account.accountType} onChange={(event) => setAccount({ ...account, accountType: event.target.value })} style={styles.field}>{accountTypes.map((type) => <option key={type}>{type}</option>)}</select>
-                <input aria-label='Starting cash balance' type='number' min='0' step='0.01' placeholder='Cash balance' value={account.cash} onChange={(event) => setAccount({ ...account, cash: event.target.value })} style={styles.field} />
+                <input aria-label='Starting cash balance' type='number' step='0.01' placeholder='Cash balance' value={account.cash} onChange={(event) => setAccount({ ...account, cash: event.target.value })} style={styles.field} />
                 <input aria-label='Currency' value={account.currency} onChange={(event) => setAccount({ ...account, currency: event.target.value.toUpperCase() })} style={styles.field} minLength='3' maxLength='3' required />
             </div>
             <button type='submit' style={{ ...styles.button, marginTop: '10px' }}>Create account</button>

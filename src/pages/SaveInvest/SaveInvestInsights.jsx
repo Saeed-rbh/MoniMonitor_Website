@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { cashPositionOf } from '../../../shared/accountBalances.cjs';
 import NativeCurrencyValues from '../../components/NativeCurrencyValues';
 import PendingTradeEstimate, { PendingTradeReviewItems } from '../../components/PendingTradeEstimate';
 import { useNavigate } from "react-router-dom";
@@ -166,7 +167,7 @@ const SaveInvestInsights = () => {
         <article>
           <span>Debt</span>
           <strong className={debtMinor > 0 ? "negative" : ""}>{money(debtMinor, currency)}</strong>
-          <small>Outstanding credit balances</small>
+          <small>Card debt, overdrafts, and margin debt</small>
         </article>
         <article>
           <span>Accounts</span>
@@ -190,12 +191,16 @@ const SaveInvestInsights = () => {
 
         <div className="SaveInvestInsights_Accounts">
           {activeStatistics.map(({ account, ...stats }) => {
-            const isDebt = account.accountType === "Credit Card";
+            const position = cashPositionOf(account);
             const valueMinor = Number(account.totalValueMinor || 0);
+            const isDebt = valueMinor < 0;
             const displayValueMinor = isDebt ? Math.abs(valueMinor) : valueMinor;
-            const comparisonTotal = isDebt ? debtMinor : assetsMinor;
+            const nativeTotal = portfolio.byCurrency?.find((total) => total.currency === account.currency);
+            const comparisonTotal = isDebt ? Number(nativeTotal?.totalLiabilitiesMinor || 0)
+                : Number(nativeTotal?.totalCashMinor || 0) + Number(nativeTotal?.holdingsValueMinor || 0);
+            const shareValue = isDebt ? position.liabilityMinor : position.assetCashMinor + Number(account.holdingsValueMinor || 0);
             const share = comparisonTotal > 0
-              ? Math.min(100, (displayValueMinor / comparisonTotal) * 100)
+              ? Math.min(100, (shareValue / comparisonTotal) * 100)
               : 0;
 
             const canHoldInvestments = !["Chequing", "Credit Card"].includes(account.accountType);
@@ -204,9 +209,10 @@ const SaveInvestInsights = () => {
 
             const cashVal = Number(account.cashMinor || 0);
             const holdingsVal = Number(account.holdingsValueMinor || 0);
-            const totalVal = cashVal + holdingsVal;
-            const cashShare = totalVal > 0 ? (cashVal / totalVal) * 100 : (cashVal > 0 ? 100 : 0);
-            const holdingsShare = totalVal > 0 ? (holdingsVal / totalVal) * 100 : (holdingsVal > 0 ? 100 : 0);
+            const totalVal = valueMinor;
+            const assetValue = position.assetCashMinor + holdingsVal;
+            const cashShare = assetValue > 0 ? (position.assetCashMinor / assetValue) * 100 : 0;
+            const holdingsShare = assetValue > 0 ? (holdingsVal / assetValue) * 100 : 0;
 
             return (
               <article
@@ -240,7 +246,8 @@ const SaveInvestInsights = () => {
                     <strong className={isDebt ? "negative" : ""}>
                       {money(displayValueMinor, account.currency)}
                     </strong>
-                    <small>{isDebt ? "owed" : "current value"}</small>
+                    <small>{isDebt ? "net owed" : account.accountType === 'Credit Card' && cashVal < 0 ? 'credit balance' : "current value"}</small>
+                    {position.liabilityMinor > 0 && <small>Cash debt: {money(position.liabilityMinor, account.currency)}</small>}
                   </div>
                 </header>
 
@@ -248,7 +255,7 @@ const SaveInvestInsights = () => {
                   <span style={{ width: `${share}%` }} />
                 </div>
                 <div className="AccountsOverview_ShareLabel">
-                  {share.toFixed(1)}% of {isDebt ? "total debt" : "total assets"}
+                  {share.toFixed(1)}% of {account.currency} {isDebt ? "total debt" : "total assets"}
                 </div>
 
                 {/* Asset Breakdown for Investment / Holdings Accounts (TFSA, Crypto, RRSP, Brokerage, etc.) */}
@@ -271,8 +278,8 @@ const SaveInvestInsights = () => {
                       <div className="AccountsOverview_LegendItem">
                         <span className="dot cash" />
                         <div>
-                          <span className="label">Cash</span>
-                          <strong>{money(cashVal, account.currency)} <small>({cashShare.toFixed(1)}%)</small></strong>
+                          <span className="label">{cashVal < 0 ? 'Cash owed' : 'Cash'}</span>
+                          <strong>{money(Math.abs(cashVal), account.currency)} {cashVal >= 0 && <small>({cashShare.toFixed(1)}% of assets)</small>}</strong>
                         </div>
                       </div>
                       <div className="AccountsOverview_LegendItem">
@@ -307,7 +314,7 @@ const SaveInvestInsights = () => {
                           const itemGain = itemVal - itemCost;
                           const itemGainPct = itemCost > 0 ? ((itemGain / itemCost) * 100).toFixed(1) : "0.0";
                           const itemCurrency = item.currency || account.currency;
-                          const itemShare = itemCurrency === account.currency && totalVal > 0 ? ((itemVal / totalVal) * 100).toFixed(1) : null;
+                          const itemShare = itemCurrency === account.currency && assetValue > 0 ? ((itemVal / assetValue) * 100).toFixed(1) : null;
 
                           const formattedQuantity = Number(Number(item.quantity || 0).toFixed(4)).toString();
 

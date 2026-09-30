@@ -111,6 +111,11 @@ HTTPS headers must be overwritten by the proxy. Authentication rate limits
 persist in SQLite, increment atomically, and return 503 if their storage fails.
 
 Reports use CAD until recorded exchange-rate conversion is available. Imported
+account balances support signed integer cents: negative bank cash represents
+overdraft or margin debt, while negative credit-card debt represents a credit
+balance. Native portfolio totals separate cash/credit assets from liabilities.
+The signed-balance migration preserves account references and schema objects,
+checks foreign keys before commit, and restores enforcement on failure. Imported
 foreign-currency activity retains its native currency and is visible in account
 history; it is excluded from CAD spending, income, forecasts, and investment
 timelines. Portfolio totals are separated by currency, including holdings whose
