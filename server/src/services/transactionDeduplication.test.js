@@ -6,6 +6,34 @@ const {
     referenceTokens,
 } = require('./transactionDeduplication');
 
+const bankEvent = { AmountMinor: 10000, Currency: 'CAD', Category: 'Expense',
+    Reason: 'Example Coffee Shop', Timestamp: '2026-09-20T15:00:00Z',
+    BankName: 'RBC', Account: '1234', AccountFlow: 'OUT', SourceEmailKey: 'email:1' };
+
+test('rejects conflicting accounts, banks, and flow even with shared reference', () => {
+    for (const conflict of [{ Account: '5678' }, { BankName: 'CIBC' },
+        { AccountFlow: 'IN' }, { BalanceAccountId: 2 }]) {
+        assert.equal(scoreTransactionMatch({ ...bankEvent, ReferenceNumber: '12345678', BalanceAccountId: 1 },
+            { ...bankEvent, SourceEmailKey: null, ReferenceNumber: '12345678', BalanceAccountId: 1, ...conflict },
+            { incomingProvider: 'plaid' }), null);
+    }
+});
+
+test('matches a posting date shift in either source arrival order', () => {
+    const plaid = { ...bankEvent, SourceEmailKey: null, hasPlaidSource: true,
+        Timestamp: '2026-09-22T12:00:00Z' };
+    assert.ok(scoreTransactionMatch(bankEvent, plaid, { incomingProvider: 'plaid' }));
+    assert.ok(scoreTransactionMatch(plaid, bankEvent, { incomingProvider: 'email' }));
+});
+
+test('matches Plaid to a reclassified internal leg without merging the other account', () => {
+    const internal = { ...bankEvent, Category: 'Internal', Reason: 'Internal transfer: RBC -> CIBC',
+        ReferenceNumber: 'XFER-12345678' };
+    const plaid = { ...bankEvent, Reason: 'Funds transfer', SourceEmailKey: null };
+    assert.ok(scoreTransactionMatch(internal, plaid, { incomingProvider: 'plaid' }));
+    assert.equal(scoreTransactionMatch(internal, { ...plaid, Account: '5678' }, { incomingProvider: 'plaid' }), null);
+});
+
 test('matches an email transfer to the differently formatted Plaid copy', () => {
     const email = {
         Amount: 671.85,
@@ -106,3 +134,35 @@ test('does not merge one-word same-amount matches without complementary provider
 
     assert.equal(scoreTransactionMatch(first, second), null);
 });
+
+test('matches CUPE acronym to Canadian Union of Public Emplo on same account and date', () => {
+    const email = {
+        Amount: 1271.18,
+        AmountMinor: 127118,
+        Currency: 'CAD',
+        Category: 'Income',
+        Reason: 'CUPE Local 3903',
+        Timestamp: '2026-09-15T12:00:00.000Z',
+        BankName: 'CIBC',
+        Account: '8237',
+        AccountFlow: 'IN',
+        SourceEmailKey: 'mailbox:675',
+    };
+    const plaid = {
+        Amount: 1271.18,
+        AmountMinor: 127118,
+        Currency: 'CAD',
+        Category: 'Income',
+        Reason: 'DEPOSIT Canadian Union of Public Emplo',
+        Timestamp: '2026-09-15T12:00:00.000Z',
+        BankName: 'CIBC',
+        Account: '8237',
+        AccountFlow: 'IN',
+    };
+
+    const match = scoreTransactionMatch(email, plaid, { incomingProvider: 'plaid' });
+    assert.ok(match);
+    assert.equal(match.referenceMatch, false);
+    assert.ok(match.overlapCount >= 1);
+});
+

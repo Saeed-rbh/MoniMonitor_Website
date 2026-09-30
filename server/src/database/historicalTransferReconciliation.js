@@ -245,8 +245,7 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
 
     const alreadyApplied = Boolean(await db.get('SELECT id FROM app_migrations WHERE id = ?', [migrationId]));
 
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    return await db.withTransaction(async () => {
         const selfTransferSummary = await reconcileExplicitSelfTransfers(db, userId);
 
         // A provider refresh must not undo an already-linked transfer. Older
@@ -379,12 +378,8 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
                 [userId, JSON.stringify({ ...details, changes, restored, selfChanges: selfTransferSummary.changes }), appliedAt]
             );
         }
-        await db.run('COMMIT');
         return { ...details, affectedTransactionIds, alreadyApplied };
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+    });
 }
 
 module.exports = { reconcileExplicitSelfTransfers, reconcileHistoricalInternalTransfers };

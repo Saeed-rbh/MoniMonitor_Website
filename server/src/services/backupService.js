@@ -39,6 +39,7 @@ const INSERT_ORDER = [
     'plaid_items',
     'plaid_accounts',
     'transaction_sources',
+    'refund_pairings',
     'plaid_webhook_events',
     'telegram_outbox',
     'agent_audit_log',
@@ -277,7 +278,7 @@ async function restoreBackup(fileName, restoredByUserId) {
         const sourceHasPlaidState = sourceTables.has('plaid_items') &&
             sourceTables.has('plaid_accounts') && sourceTables.has('transaction_sources');
 
-        await db.exec('BEGIN IMMEDIATE');
+        await db.withTransaction(async () => {
         if (!sourceHasPlaidState) {
             if (currentTables.has('transaction_sources')) await db.exec('DELETE FROM transaction_sources');
             if (currentTables.has('plaid_accounts')) await db.exec('DELETE FROM plaid_accounts');
@@ -311,8 +312,8 @@ async function restoreBackup(fileName, restoredByUserId) {
                 [restoredByUserId, JSON.stringify({ fileName, safetyBackup: safetyBackup.fileName }), new Date().toISOString()]
             );
         }
-        await db.exec('COMMIT');
-        restored = true;
+            restored = true;
+        });
     } catch (error) {
         await db.exec('ROLLBACK').catch(() => {});
         throw error;

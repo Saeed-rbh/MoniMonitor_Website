@@ -55,5 +55,19 @@ function registerTransactionRoutes(app, {
             return res.json({ sources: await dbService.getTransactionSourcesForUser(transactionId, req.user.userId) });
         } catch (error) { return sendValidationError(res, error); }
     });
+    app.get('/transactions/:id/refunds', authenticateToken, async (req, res) => {
+        const id = Number(req.params.id);
+        if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid transaction id' });
+        try {
+            if (!await dbService.getTransactionById(id, req.user.userId)) return res.status(404).json({ error: 'Transaction not found' });
+            const db = await dbService.getDb();
+            const pairings = await db.all(`SELECT rp.*, p.Reason AS purchaseReason, r.Reason AS refundReason
+                FROM refund_pairings rp JOIN transactions p ON p.id = rp.purchaseTransactionId
+                JOIN transactions r ON r.id = rp.refundTransactionId
+                WHERE rp.userId = ? AND (rp.purchaseTransactionId = ? OR rp.refundTransactionId = ?)`,
+                [req.user.userId, id, id]);
+            return res.json({ pairings });
+        } catch (error) { return sendValidationError(res, error); }
+    });
 }
 module.exports = { registerTransactionRoutes };

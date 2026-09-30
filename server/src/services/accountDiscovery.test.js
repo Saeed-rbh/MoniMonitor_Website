@@ -67,3 +67,26 @@ test('attaches a reference to one matching manual account but not an ambiguous p
     assert.equal(resolveAccountCandidate(transaction, [account]).reason, 'unique_unlinked_match');
     assert.equal(resolveAccountCandidate(transaction, [account, { ...account, id: 10 }]), null);
 });
+
+test('resolves a 3-digit masked processor payout to an existing account ending in those digits', () => {
+    const cibc = { id: 7, name: 'CIBC Chequing', institution: 'CIBC', accountType: 'Chequing', accountRef: '6768237', plaidMask: '8237' };
+    const rbcVisa = { id: 9, name: 'RBC Visa', institution: 'RBC', accountType: 'Credit Card', accountRef: '4510 **** **** 2379' };
+    const transaction = { Account: '****237', BankName: 'Plooto', Type: 'Direct Deposit' };
+
+    const result = resolveAccountCandidate(transaction, [rbcVisa, cibc]);
+    assert.ok(result, 'Should resolve to an existing account');
+    assert.equal(result.account.id, 7);
+    assert.equal(result.reason, 'identity_match');
+});
+
+test('picks canonical account when multiple accounts tie with high identity score', () => {
+    const canonical = { id: 10, name: 'TFSA', institution: 'Wealthsimple', accountType: 'TFSA', accountRef: 'S0K7' };
+    const duplicate = { id: 326, name: 'Wealthsimple TFSA', institution: 'Wealthsimple', accountType: 'TFSA', accountRef: 'S0K7' };
+    const transaction = { Account: 'S0K7', BankName: 'Wealthsimple', Type: 'TFSA' };
+
+    const result = resolveAccountCandidate(transaction, [duplicate, canonical]);
+    assert.ok(result, 'Should resolve candidate');
+    assert.equal(result.account.id, 10, 'Should choose lowest id canonical account');
+    assert.equal(result.reason, 'identity_match');
+});
+

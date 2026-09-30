@@ -19,22 +19,59 @@ function normalizeAccountType(value) {
     return normalized;
 }
 
+function stripCurrencySuffix(value) {
+    return String(value || '').replace(/(cad|usd)$/i, '');
+}
+
 function accountMatchScore(transaction, account, preferredAccountId, preferredConfidence) {
     if (preferredConfidence === 'HIGH' && Number(preferredAccountId) === Number(account.id)) return 1000;
 
     let score = 0;
     const transactionRef = normalizeIdentity(transaction.Account);
-    const accountRef = normalizeIdentity(account.accountRef);
-    const accountName = normalizeIdentity(account.name);
     const transactionDigits = String(transaction.Account || '').replace(/\D/g, '');
-    const accountDigits = String(account.accountRef || '').replace(/\D/g, '');
+    const accountName = normalizeIdentity(account.name);
 
-    if (transactionRef && accountRef && transactionRef === accountRef) score += 120;
-    else if (transactionRef.length >= 4 && accountRef && accountRef.includes(transactionRef)) score += 110;
-    else if (transactionDigits.length >= 4 && accountDigits.length >= 4 &&
-        transactionDigits.slice(-4) === accountDigits.slice(-4)) score += 100;
-    else if (transactionRef && accountName &&
-        (transactionRef.includes(accountName) || accountName.includes(transactionRef))) score += 80;
+    const candidateRefs = [
+        account.accountRef,
+        account.plaidMask,
+        account.mask,
+    ].filter(Boolean);
+
+    let bestRefScore = 0;
+
+    for (const rawAccountRef of candidateRefs) {
+        const accountRef = normalizeIdentity(rawAccountRef);
+        const accountDigits = String(rawAccountRef || '').replace(/\D/g, '');
+        const cleanTxRef = stripCurrencySuffix(transactionRef);
+        const cleanAccRef = stripCurrencySuffix(accountRef);
+
+        if (transactionRef && accountRef && transactionRef === accountRef) {
+            bestRefScore = Math.max(bestRefScore, 120);
+        } else if (cleanTxRef && cleanAccRef && cleanTxRef === cleanAccRef) {
+            bestRefScore = Math.max(bestRefScore, 120);
+        } else if (cleanTxRef.length >= 4 && cleanAccRef && (cleanAccRef.includes(cleanTxRef) || cleanTxRef.includes(cleanAccRef))) {
+            bestRefScore = Math.max(bestRefScore, 120);
+        } else if (transactionRef.length >= 4 && accountRef && (accountRef.includes(transactionRef) || transactionRef.includes(accountRef))) {
+            bestRefScore = Math.max(bestRefScore, 120);
+        } else if (transactionDigits.length >= 4 && accountDigits.length >= 4 &&
+            transactionDigits.slice(-4) === accountDigits.slice(-4)) {
+            bestRefScore = Math.max(bestRefScore, 120);
+        } else if (cleanTxRef.length >= 3 && cleanAccRef && cleanAccRef.endsWith(cleanTxRef)) {
+            bestRefScore = Math.max(bestRefScore, 120);
+        } else if (transactionDigits.length >= 3 && accountDigits.length >= 3 &&
+            transactionDigits.slice(-3) === accountDigits.slice(-3)) {
+            bestRefScore = Math.max(bestRefScore, 95);
+        } else if (transactionRef.length >= 3 && accountRef && accountRef.endsWith(transactionRef)) {
+            bestRefScore = Math.max(bestRefScore, 95);
+        }
+    }
+
+    score += bestRefScore;
+
+    if (!bestRefScore && transactionRef && accountName &&
+        (transactionRef.includes(accountName) || accountName.includes(transactionRef))) {
+        score += 80;
+    }
 
     if (transaction.BankName && normalizeBank(transaction.BankName) === normalizeBank(account.institution)) score += 30;
     if (transaction.Type && normalizeAccountType(transaction.Type) === normalizeAccountType(account.accountType)) score += 20;

@@ -14,6 +14,32 @@ const MIGRATIONS = [
             `);
         },
     },
+    {
+        version: 2,
+        name: 'phase3_refund_pairings',
+        async up(db) {
+            await db.exec(`
+                CREATE TABLE IF NOT EXISTS refund_pairings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    userId TEXT NOT NULL,
+                    refundTransactionId INTEGER NOT NULL UNIQUE,
+                    purchaseTransactionId INTEGER NOT NULL,
+                    amountMinor INTEGER NOT NULL,
+                    matchType TEXT NOT NULL,
+                    confidence TEXT NOT NULL,
+                    pairedAt TEXT NOT NULL,
+                    FOREIGN KEY (refundTransactionId) REFERENCES transactions(id) ON DELETE CASCADE,
+                    FOREIGN KEY (purchaseTransactionId) REFERENCES transactions(id) ON DELETE CASCADE
+                );
+                CREATE INDEX IF NOT EXISTS idx_refund_pairings_user
+                    ON refund_pairings(userId);
+                CREATE INDEX IF NOT EXISTS idx_refund_pairings_purchase
+                    ON refund_pairings(purchaseTransactionId);
+                CREATE INDEX IF NOT EXISTS idx_refund_pairings_refund
+                    ON refund_pairings(refundTransactionId);
+            `);
+        },
+    },
 ];
 
 async function runMigrations(db) {
@@ -25,18 +51,13 @@ async function runMigrations(db) {
     const applied = new Set((await db.all('SELECT version FROM schema_migrations')).map((row) => Number(row.version)));
     for (const migration of MIGRATIONS) {
         if (applied.has(migration.version)) continue;
-        await db.run('BEGIN IMMEDIATE');
-        try {
+        await db.withTransaction(async () => {
             await migration.up(db);
             await db.run(
                 'INSERT INTO schema_migrations (version, name, appliedAt) VALUES (?, ?, ?)',
                 [migration.version, migration.name, new Date().toISOString()]
             );
-            await db.run('COMMIT');
-        } catch (error) {
-            await db.run('ROLLBACK').catch(() => {});
-            throw error;
-        }
+        });
     }
 }
 

@@ -136,6 +136,16 @@ export const getTransactionSourcesAPI = async (id) => {
     }
 };
 
+export const getTransactionRefundsAPI = async (id) => {
+    const token = localStorage.getItem('token');
+    if (!token) return [];
+    const response = await fetch(apiUrl(`/transactions/${id}/refunds`), {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) { handleExpiredSession(response); return []; }
+    return (await response.json()).pairings || [];
+};
+
 export const deleteTransactionAPI = async (id) => {
     try {
         const token = localStorage.getItem("token");

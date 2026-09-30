@@ -293,6 +293,21 @@ async function exchangePublicToken(userId, publicToken, metadata = {}) {
         [result.item_id, userId, encryptAccessToken(result.access_token),
             institution.institutionId, institution.institutionName, now, now]
     );
+
+    if (institution.institutionId) {
+        const duplicateItems = await db.all(
+            'SELECT itemId FROM plaid_items WHERE userId = ? AND institutionId = ? AND itemId != ?',
+            [userId, institution.institutionId, result.item_id]
+        );
+        for (const dup of duplicateItems) {
+            await db.run(
+                'UPDATE transaction_sources SET itemId = ? WHERE itemId = ? AND userId = ?',
+                [result.item_id, dup.itemId, userId]
+            );
+            await db.run('DELETE FROM plaid_accounts WHERE itemId = ? AND userId = ?', [dup.itemId, userId]);
+            await db.run('DELETE FROM plaid_items WHERE itemId = ? AND userId = ?', [dup.itemId, userId]);
+        }
+    }
     return { itemId: result.item_id };
 }
 
@@ -350,7 +365,7 @@ function plaidReferenceNumber(transaction = {}) {
     return firstNonEmpty(transaction.payment_meta?.reference_number, transaction.reference_number);
 }
 
-function classifyPlaidTransaction(transaction = {}, { ownerUsername = null } = {}) {
+function classifyPlaidTransaction(transaction = {}, { ownerUsername = null, account = {} } = {}) {
     const primary = transaction.personal_finance_category?.primary || '';
     const detailed = transaction.personal_finance_category?.detailed || '';
     const outflow = Number(transaction.amount) > 0;
@@ -362,9 +377,13 @@ function classifyPlaidTransaction(transaction = {}, { ownerUsername = null } = {
         if (primary === 'INCOME' && /WAGES|PAYCHECK|PAYROLL/.test(detailed)) {
             return { Category: 'Income', Label: 'Employment Income' };
         }
-        if (primary === 'TRANSFER_IN') return { Category: 'Income', Label: 'Personal Transfers Received' };
         if (/REFUND|REVERSAL/.test(detailed)) return { Category: 'Income', Label: 'Refunds & Reversals' };
-        return { Category: 'Income', Label: primary === 'INCOME' ? 'Other Income' : 'Refunds & Reversals' };
+        if (primary === 'TRANSFER_IN') return { Category: 'Income', Label: 'Personal Transfers Received' };
+        const cardCredit = account.type === 'credit' &&
+            !/LOAN_PAYMENTS|TRANSFER|INCOME/.test(primary) &&
+            !/\bpayment\b/i.test(transferReason);
+        return { Category: 'Income', Label: cardCredit || /\brefund|reversal|chargeback\b/i.test(transferReason)
+            ? 'Refunds & Reversals' : 'Other Income' };
     }
 
     const labels = {
@@ -398,7 +417,7 @@ function plaidTimestamp(transaction = {}) {
 function toAppTransaction(transaction, account, institutionName, options = {}) {
     const amountMinor = Math.abs(Math.round(Number(transaction.amount) * 100));
     if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) return null;
-    const classification = classifyPlaidTransaction(transaction, options);
+    const classification = classifyPlaidTransaction(transaction, { ...options, account });
     return {
         AmountMinor: amountMinor,
         Amount: amountMinor / 100,
@@ -411,6 +430,8 @@ function toAppTransaction(transaction, account, institutionName, options = {}) {
         BankName: institutionName || null,
         ReferenceNumber: plaidReferenceNumber(transaction),
         AccountFlow: Number(transaction.amount) > 0 ? 'OUT' : 'IN',
+        BalanceAccountId: account?.appAccountId || null,
+        BalanceAccountConfidence: account?.appAccountId ? 'HIGH' : null,
     };
 }
 
@@ -572,8 +593,7 @@ async function applyRecentUnconfirmedEmailTransferOverrides(userId) {
     );
 
     let applied = 0;
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    await db.withTransaction(async () => {
         for (const transfer of transfers) {
             const amountMinor = Number(transfer.AmountMinor);
             if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) continue;
@@ -594,11 +614,7 @@ async function applyRecentUnconfirmedEmailTransferOverrides(userId) {
             );
             applied += 1;
         }
-        await db.run('COMMIT');
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+        });
     return applied;
 }
 
@@ -960,8 +976,7 @@ async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
     const normalized = normalizeInvestmentSnapshot(snapshot, marketPrices);
     const pendingEmailTrades = await overlayUnconfirmedEmailTrades(userId, accountMap, normalized);
     let accountsUpdated = 0;
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    await db.withTransaction(async () => {
         for (const overlay of pendingEmailTrades) {
             const { transaction, accountId, symbol, quantity } = overlay;
             await db.run(
@@ -1019,11 +1034,7 @@ async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
             );
             accountsUpdated += 1;
         }
-        await db.run('COMMIT');
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+    });
     return accountsUpdated;
 }
 
@@ -1054,8 +1065,10 @@ async function importAddedTransaction(userId, item, transaction, accountMap, own
                 existingSource.transactionId, userId,
                 preserveLinkedInternalTransfer(existingTransaction, appTransaction)
             );
+            await dbService.reconcileIngestedTransaction(userId, existingSource.transactionId);
             return { status: 'updated', transactionId: existingSource.transactionId };
         }
+        await dbService.reconcileIngestedTransaction(userId, existingSource.transactionId);
         return { status: 'known', transactionId: existingSource.transactionId };
     }
     const appTransaction = toAppTransaction(transaction, account, item.institutionName, { ownerUsername });
@@ -1093,10 +1106,12 @@ async function importAddedTransaction(userId, item, transaction, accountMap, own
         );
         if (replacement) {
             await db.run(
-                `DELETE FROM transaction_sources WHERE provider = 'plaid' AND externalId = ? AND userId = ?`,
+                `UPDATE transaction_sources SET ownsTransaction = 0
+                 WHERE provider = 'plaid' AND externalId = ? AND userId = ?`,
                 [transaction.pending_transaction_id, userId]
             );
         }
+        await dbService.reconcileIngestedTransaction(userId, match.id);
         return { status: replacement ? 'replaced_pending' : 'matched_email', transactionId: match.id };
     }
 
@@ -1109,6 +1124,7 @@ async function importAddedTransaction(userId, item, transaction, accountMap, own
         });
     }
     await dbService.detectAndMarkRecurring(userId, transactionId).catch(() => {});
+    await dbService.reconcileIngestedTransaction(userId, transactionId);
     return { status: 'imported', transactionId };
 }
 
@@ -1128,7 +1144,10 @@ async function applyModifiedTransaction(userId, item, transaction, accountMap, o
         userId, item.itemId, transaction.transaction_id, source.transactionId,
         Boolean(source.ownsTransaction), 'plaid', transaction, sourceContext
     );
-    if (!source.ownsTransaction || source.SourceEmailKey) return { status: 'linked_source_preserved' };
+    if (!source.ownsTransaction || source.SourceEmailKey) {
+        await dbService.reconcileIngestedTransaction(userId, source.transactionId);
+        return { status: 'linked_source_preserved' };
+    }
     const appTransaction = toAppTransaction(transaction, account, item.institutionName, { ownerUsername });
     if (!appTransaction) return { status: 'ignored' };
     await dbService.updateTransactionForUser(
@@ -1139,6 +1158,7 @@ async function applyModifiedTransaction(userId, item, transaction, accountMap, o
             accountId: account.appAccountId, confidence: 'HIGH',
         });
     }
+    await dbService.reconcileIngestedTransaction(userId, source.transactionId);
     return { status: 'updated' };
 }
 
@@ -1275,6 +1295,8 @@ function toAppInvestmentTransaction(transaction, account = {}, security = {}, in
         PortfolioAction,
         PortfolioAccountId: account.appAccountId || null,
         PortfolioConfidence: account.appAccountId ? 'HIGH' : null,
+        BalanceAccountId: account.appAccountId || null,
+        BalanceAccountConfidence: account.appAccountId ? 'HIGH' : null,
         PortfolioAccountNumber: account.mask || null,
         PortfolioSymbol: securitySymbol,
         PortfolioQuantity: quantity > 0 ? quantity : null,
@@ -1307,7 +1329,7 @@ async function fetchInvestmentTransactionPages(accessToken) {
     } while (true);
 }
 
-async function findInvestmentFallbackMatch(userId, appTransaction) {
+async function findInvestmentFallbackMatch(userId, appTransaction, currentItemId = null) {
     const db = await dbService.getDb();
     const timestamp = new Date(appTransaction.Timestamp);
     const from = new Date(timestamp.getTime() - 5 * 86400000).toISOString();
@@ -1318,14 +1340,17 @@ async function findInvestmentFallbackMatch(userId, appTransaction) {
            AND NOT EXISTS (
                SELECT 1 FROM transaction_sources s
                WHERE s.transactionId = t.id AND s.provider = 'plaid_investments'
+                 AND (? IS NOT NULL AND s.itemId = ?)
            )`,
-        [userId, appTransaction.AmountMinor, from, to]
+        [userId, appTransaction.AmountMinor, from, to, currentItemId, currentItemId]
     );
+    const normalizeSym = (sym) => String(sym || '').toUpperCase().replace(/XF$/, '');
     const ranked = candidates.map((candidate) => {
         const sameDate = String(candidate.Timestamp).slice(0, 10) === String(appTransaction.Timestamp).slice(0, 10);
         const sameAccount = Number(candidate.PortfolioAccountId) === Number(appTransaction.PortfolioAccountId);
         const sameAction = candidate.PortfolioAction === appTransaction.PortfolioAction;
-        const sameSymbol = appTransaction.PortfolioSymbol && candidate.PortfolioSymbol === appTransaction.PortfolioSymbol;
+        const sameSymbol = appTransaction.PortfolioSymbol && candidate.PortfolioSymbol &&
+            normalizeSym(candidate.PortfolioSymbol) === normalizeSym(appTransaction.PortfolioSymbol);
         const quantities = [Number(candidate.PortfolioQuantity), Number(appTransaction.PortfolioQuantity)];
         const sameQuantity = quantities.every(Number.isFinite) && Math.abs(quantities[0] - quantities[1]) < 1e-8;
         const score = (sameDate ? 4 : 0) + (sameAccount ? 6 : 0) + (sameAction ? 5 : 0) +
@@ -1372,7 +1397,7 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
         }
         return { status: 'known', transactionId: existing.transactionId };
     }
-    const match = await findInvestmentFallbackMatch(userId, appTransaction);
+    const match = await findInvestmentFallbackMatch(userId, appTransaction, item.itemId);
     if (match) {
         await linkSource(
             userId, item.itemId, externalId, match.id, false,
@@ -1569,6 +1594,7 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
             totals.investmentTransactionsStatus = item.investmentTransactionsStatus || 'unknown';
         }
         const transferReconciliation = await reconcileHistoricalInternalTransfers(db, item.userId);
+        await require('./refundPairing').reconcileRefundPairings(db, item.userId);
         await refreshReconciledTelegramMessages(
             item.userId,
             transferReconciliation.affectedTransactionIds
@@ -1962,8 +1988,7 @@ async function removeExactDuplicateItems(db, userId) {
         else kept.set(key, item);
     }
     if (!duplicates.length) return 0;
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    await db.withTransaction(async () => {
         for (const duplicate of duplicates) {
             await db.run(
                 `DELETE FROM transaction_sources WHERE itemId = ? AND userId = ?`,
@@ -1972,11 +1997,7 @@ async function removeExactDuplicateItems(db, userId) {
             await db.run('DELETE FROM plaid_accounts WHERE itemId = ? AND userId = ?', [duplicate.itemId, userId]);
             await db.run('DELETE FROM plaid_items WHERE itemId = ? AND userId = ?', [duplicate.itemId, userId]);
         }
-        await db.run('COMMIT');
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+        });
     return duplicates.length;
 }
 
@@ -1989,19 +2010,14 @@ async function disconnectItem(userId, itemId) {
     } catch (error) {
         console.warn(`[Plaid] Remote item removal failed; removing local credentials: ${error.message}`);
     }
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    await db.withTransaction(async () => {
         await db.run(
             `DELETE FROM transaction_sources WHERE provider IN ('plaid', 'plaid_investments') AND itemId = ? AND userId = ?`,
             [itemId, userId]
         );
         await db.run('DELETE FROM plaid_accounts WHERE itemId = ? AND userId = ?', [itemId, userId]);
         await db.run('DELETE FROM plaid_items WHERE itemId = ? AND userId = ?', [itemId, userId]);
-        await db.run('COMMIT');
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+        });
     return true;
 }
 

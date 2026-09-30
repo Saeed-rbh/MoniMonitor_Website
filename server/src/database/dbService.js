@@ -7,7 +7,8 @@ const {
     resolveAccountCandidate,
 } = require('../services/accountDiscovery');
 const { CATEGORY_LABELS } = require('../services/transactionCategories');
-const { findTransactionMatch } = require('../services/transactionDeduplication');
+const { findTransactionMatch, scoreTransactionMatch } = require('../services/transactionDeduplication');
+const { pairTransactionOnIngestion, isRefundTransaction } = require('../services/refundPairing');
 const {
     isCreditCardPayment,
     isOutgoingEmailTransfer,
@@ -318,6 +319,9 @@ async function deleteTransaction(id, userId) {
 async function findDuplicateTransaction(userId, amount, category, datePrefix, reason, referenceNumber, account, metadata = {}) {
     const db = await getDb();
     const amountMinor = toMinorUnits(amount);
+    const incoming = { ...metadata, AmountMinor: amountMinor, Category: category,
+        Reason: reason, ReferenceNumber: referenceNumber, Account: account,
+        Timestamp: metadata.Timestamp || `${datePrefix}T12:00:00.000Z` };
 
     if (referenceNumber) {
         const byRef = await db.all(
@@ -326,11 +330,8 @@ async function findDuplicateTransaction(userId, amount, category, datePrefix, re
             [userId, referenceNumber, amountMinor, datePrefix + '%']
         );
         if (byRef.length) {
-            const accountMatch = account && byRef.find(
-                (transaction) => String(transaction.Account || '').trim().toLowerCase() ===
-                    String(account).trim().toLowerCase()
-            );
-            return withDisplayAmount(accountMatch || byRef[0]);
+            const eligible = byRef.filter(row => scoreTransactionMatch(row, incoming, { incomingProvider: 'email' }));
+            if (eligible.length === 1) return withDisplayAmount(eligible[0]);
         }
     }
 
@@ -345,21 +346,15 @@ async function findDuplicateTransaction(userId, amount, category, datePrefix, re
          LIMIT 1`,
         [userId, amountMinor, category, datePrefix + '%', reason, account || null]
     );
-    if (exactReasonMatch) return withDisplayAmount(exactReasonMatch);
+    if (exactReasonMatch && scoreTransactionMatch(exactReasonMatch, incoming, { incomingProvider: 'email' })) {
+        return withDisplayAmount(exactReasonMatch);
+    }
 
     // Email and Plaid often describe the same bank event differently. Use the
     // shared cross-provider matcher as a final fallback so a transfer reference
     // embedded in a Plaid description can match an email's ReferenceNumber.
-    const crossProviderMatch = await findTransactionMatch(db, userId, {
-        ...metadata,
-        Amount: amount,
-        AmountMinor: amountMinor,
-        Category: category,
-        Reason: reason,
-        ReferenceNumber: referenceNumber,
-        Account: account,
-        Timestamp: `${datePrefix}T12:00:00.000Z`,
-    }, { mode: 'bank' });
+    const crossProviderMatch = await findTransactionMatch(db, userId, incoming,
+        { mode: 'bank', incomingProvider: 'email' });
     return withDisplayAmount(crossProviderMatch);
 }
 
@@ -367,8 +362,10 @@ async function getTransactionBySourceEmailKey(userId, sourceEmailKey) {
     if (!sourceEmailKey) return null;
     const db = await getDb();
     return withDisplayAmount(await db.get(
-        'SELECT * FROM transactions WHERE userId = ? AND SourceEmailKey = ?',
-        [userId, sourceEmailKey]
+        `SELECT t.* FROM transactions t WHERE t.userId = ? AND
+         (t.SourceEmailKey = ? OR EXISTS (SELECT 1 FROM transaction_sources s
+          WHERE s.transactionId = t.id AND s.userId = t.userId AND s.provider = 'email' AND s.externalId = ?))`,
+        [userId, sourceEmailKey, sourceEmailKey]
     ));
 }
 
@@ -413,14 +410,20 @@ async function upsertTransactionSource({
 async function getTransactionSourcesForUser(transactionId, userId) {
     const db = await getDb();
     const rows = await db.all(
-        `SELECT provider, externalId, itemId, ownsTransaction,
-                rawPayloadJson, contextPayloadJson, capturedAt, createdAt, updatedAt
-         FROM transaction_sources
-         WHERE transactionId = ? AND userId = ?
-         ORDER BY provider, createdAt`,
-        [transactionId, userId]
+        `SELECT s.*, t.Account, t.AccountFlow FROM transaction_sources s
+         JOIN transactions t ON t.id = s.transactionId AND t.userId = s.userId
+         WHERE s.userId = ? AND (s.transactionId = ? OR t.id IN (
+             SELECT related.id FROM transactions origin JOIN transactions related
+             ON related.userId = origin.userId AND related.ReferenceNumber = origin.ReferenceNumber
+             WHERE origin.id = ? AND origin.userId = ? AND origin.Category = 'Internal'
+               AND origin.ReferenceNumber LIKE 'XFER-%'
+         )) ORDER BY s.provider, s.createdAt`,
+        [userId, transactionId, transactionId, userId]
     );
     return rows.map((row) => ({
+        transactionId: row.transactionId,
+        account: row.Account,
+        accountFlow: row.AccountFlow,
         provider: row.provider,
         externalId: row.externalId,
         itemId: row.itemId,
@@ -510,7 +513,14 @@ async function ensureTransactionAccount(userId, transaction = {}) {
     const db = await getDb();
     await db.run('BEGIN IMMEDIATE');
     try {
-        const accounts = await db.all('SELECT * FROM investment_accounts WHERE userId = ?', [userId]);
+        const accounts = await db.all(
+            `SELECT a.*, MAX(p.mask) AS plaidMask
+             FROM investment_accounts a
+             LEFT JOIN plaid_accounts p ON p.appAccountId = a.id AND p.userId = a.userId
+             WHERE a.userId = ?
+             GROUP BY a.id`,
+            [userId]
+        );
         const matchTransaction = { ...transaction, Account: accountRef };
         const preferredAccountId = transaction.PortfolioAccountId || transaction.BalanceAccountId || null;
         const preferredConfidence = transaction.PortfolioConfidence === 'HIGH' || transaction.BalanceAccountConfidence === 'HIGH'
@@ -624,7 +634,13 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
         );
 
         const isInterac = /interac|e-transfer/i.test(transaction.Type || '') || /interac|e-transfer/i.test(transaction.Reason || '');
-        const accounts = await db.all('SELECT * FROM investment_accounts WHERE userId = ?', [userId]);
+        const accounts = await db.all(
+            `SELECT a.*, p.mask AS plaidMask
+             FROM investment_accounts a
+             LEFT JOIN plaid_accounts p ON p.appAccountId = a.id AND p.userId = a.userId
+             WHERE a.userId = ?`,
+            [userId]
+        );
         const ranked = accounts
             .map((account) => ({
                 account,
@@ -953,8 +969,13 @@ async function resolvePortfolioActivityAccount(userId, source = {}, activity = {
     const db = await getDb();
     const isTrade = activity.action === 'BUY' || activity.action === 'SELL';
     const investmentTypes = new Set(['TFSA', 'RRSP', 'Brokerage', '401(k)', 'IRA', 'Crypto']);
-    const accounts = (await db.all('SELECT * FROM investment_accounts WHERE userId = ?', [userId]))
-        .filter((account) => !isTrade || investmentTypes.has(account.accountType));
+    const accounts = (await db.all(
+        `SELECT a.*, p.mask AS plaidMask
+         FROM investment_accounts a
+         LEFT JOIN plaid_accounts p ON p.appAccountId = a.id AND p.userId = a.userId
+         WHERE a.userId = ?`,
+        [userId]
+    )).filter((account) => !isTrade || investmentTypes.has(account.accountType));
     const proposedReference = source.PortfolioAccountNumber || source.Account;
     const inferredType = inferAccountType({
         ...source,
@@ -1871,7 +1892,15 @@ async function detectAndMarkRecurring(userId, transactionId) {
 // ─── Internal Transfer Auto-Detection ─────────────────────────────────────
 // Time window (ms) within which transactions of the same amount can form
 // a valid internal self-transfer group.
-const INTERNAL_PAIRING_WINDOW_MS = 2 * 60 * 60 * 1000; // 2 hours
+const INTERNAL_PAIRING_WINDOW_HOURS = 3 * 24;
+
+async function reconcileIngestedTransaction(userId, transactionId) {
+    const db = await getDb();
+    const changes = await detectAndReclassifyInternalCounterparts(userId, transactionId);
+    const transaction = await getTransactionById(transactionId, userId);
+    if (transaction) await pairTransactionOnIngestion(db, userId, transaction);
+    return changes;
+}
 
 function isTemporaryInternalTransfer(tx) {
     if (!tx) return false;
@@ -2007,7 +2036,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     const isBankAlert = tx.Category === 'Income' || tx.Category === 'Expense';
     if (!isInterac && !isBankAlert && !isTemporary) return [];
 
-    const windowHours = isTemporary ? 30 * 24 : INTERNAL_PAIRING_WINDOW_MS / 3600000;
+    const windowHours = isTemporary ? 30 * 24 : INTERNAL_PAIRING_WINDOW_HOURS;
 
     // ── Step 1: collect all same-amount email-sourced siblings within window ──
     const siblings = await db.all(
@@ -2143,7 +2172,8 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     );
 
     const candidates = all.filter(
-        s => (s.Category === 'Income' || s.Category === 'Expense') && s.ReceivedAt
+        s => (s.Category === 'Income' || s.Category === 'Expense') &&
+             (s.ReceivedAt || s.BalanceAccountId) && !isRefundTransaction(s)
     );
 
     if (candidates.length === 0) return [];
@@ -2170,6 +2200,8 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     let pairOUT = null;
 
     if (accountGroups.length > 1) {
+        if (accountGroups.reduce((count, group) => count + group.ins.length, 0) !== 1 ||
+            accountGroups.reduce((count, group) => count + group.outs.length, 0) !== 1) return [];
         for (const group of accountGroups) {
             if (!pairIN && group.ins.length === 1 && group.outs.length === 0) {
                 pairIN = group.ins[0];
@@ -2191,6 +2223,12 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     if (!pairIN || !pairOUT ||
         normalizeAccountKey(pairIN.BankName, pairIN.Account) ===
         normalizeAccountKey(pairOUT.BankName, pairOUT.Account)) return [];
+    // Amount and opposite flow alone also describe an unrelated deposit and purchase.
+    const transferEvidence = leg => /transfer|interac|payment.*(?:card|visa)|(?:card|visa).*payment/i.test(
+        `${leg.Reason || ''} ${leg.Type || ''} ${leg.Label || ''}`);
+    if (!transferEvidence(pairIN) || !transferEvidence(pairOUT)) return [];
+    if (!pairIN.BalanceAccountId || !pairOUT.BalanceAccountId ||
+        Number(pairIN.BalanceAccountId) === Number(pairOUT.BalanceAccountId)) return [];
 
     // ── Step 5: reclassify and link the selected pair ──────────────────────────────────
     let sourceStr = "External";
@@ -2219,7 +2257,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
 
     const sharedReason = `Internal transfer: ${sourceStr} -> ${destStr}`;
     const groupTime = Math.min(...[pairIN, pairOUT, interac].filter(Boolean).map(t => new Date(t.Timestamp).getTime()));
-    const sharedRef = `XFER-${groupTime}-${tx.AmountMinor}`;
+    const sharedRef = `XFER-${groupTime}-${tx.AmountMinor}-${Math.min(pairIN.id, pairOUT.id)}-${Math.max(pairIN.id, pairOUT.id)}`;
 
     const reclassified = [];
     const legsToUpdate = [pairIN, pairOUT, interac].filter(Boolean);
@@ -2260,6 +2298,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
 }
 
 module.exports = {
+    reconcileIngestedTransaction,
     getDb,
     createUser,
     getUserCount,

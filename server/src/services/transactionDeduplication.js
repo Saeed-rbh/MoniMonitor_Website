@@ -39,7 +39,10 @@ function transactionDirection(transaction = {}) {
 }
 
 function normalizeWords(value) {
-    return new Set(String(value || '').toLowerCase()
+    let text = String(value || '').toLowerCase();
+    text = text.replace(/\bcanadian union of public (employees|emplo|emp)?\b/g, 'cupe');
+    text = text.replace(/\btoyota (financial services|financial|finance)\b/g, 'toyota finance');
+    return new Set(text
         .replace(/[^a-z0-9 ]/g, ' ')
         .split(/\s+/)
         .filter((word) => word.length > 2 && !GENERIC_WORDS.has(word)));
@@ -172,12 +175,24 @@ function scoreTransactionMatch(candidate, incoming, options = {}) {
     const overlap = reasonOverlap(candidate.Reason, incoming.Reason);
     const referenceMatch = hasReferenceMatch(candidate, incoming);
     const complementaryBankSources = areComplementaryBankSources(candidate, incoming, options);
+    const candidateReferences = transactionReferences(candidate);
+    const incomingReferences = transactionReferences(incoming);
+    // Generated group IDs describe relationships, not provider event identities.
+    const externalReferences = references => [...references].filter(ref => !/^(XFER|REFUND)/.test(ref));
+    if (!referenceMatch && externalReferences(candidateReferences).length &&
+        externalReferences(incomingReferences).length) return null;
+    // Explicit account identities and flow override coincidental text/reference matches.
+    if (candidate.BalanceAccountId && incoming.BalanceAccountId &&
+        Number(candidate.BalanceAccountId) !== Number(incoming.BalanceAccountId)) return null;
+    if (candidateAccount && incomingAccount && !sameAccount) return null;
+    if (normalizeBank(candidate.BankName) && normalizeBank(incoming.BankName) && !sameBank) return null;
+    if (transactionDirection(candidate) && transactionDirection(incoming) && !sameDirection) return null;
 
     if (referenceMatch) {
         // A shared transfer reference is authoritative only when the money is
         // moving in the same direction. This protects the two legs of an
         // internal transfer, which can legitimately share a reference.
-        if (!sameDirection || !sameDay) return null;
+        if (!sameDirection) return null;
         return {
             score: 100 + (categoryCompatible(candidate, incoming) ? 10 : 0) +
                 (sameBank ? 5 : 0) + (sameAccount ? 5 : 0),
@@ -186,9 +201,18 @@ function scoreTransactionMatch(candidate, incoming, options = {}) {
         };
     }
 
+    if (candidate.SourceEmailKey && incoming.SourceEmailKey &&
+        candidate.SourceEmailKey !== incoming.SourceEmailKey && !complementaryBankSources) return null;
+
     // Internal transfers have two legitimate legs with the same amount, date,
     // and description. Never collapse them without a shared unique reference.
-    if (candidate.Category === 'Internal' || incoming.Category === 'Internal') return null;
+    if (candidate.Category === 'Internal' || incoming.Category === 'Internal') {
+        // Link a provider copy to the same account leg even after the email leg
+        // was reclassified and its original description/reference was replaced.
+        if (!complementaryBankSources || !sameDirection || !sameBank ||
+            !sameAccount || distanceDays > 3) return null;
+        return { score: 60 + (sameDay ? 10 : 0), referenceMatch: false, overlapCount: overlap.length };
+    }
 
     // Without a reference, require a same-day match plus enough independent
     // identity evidence. A complementary email/Plaid pair may have a shortened
@@ -198,7 +222,8 @@ function scoreTransactionMatch(candidate, incoming, options = {}) {
     const hasStrongDescriptionMatch = overlap.length >= 2 ||
         (sameAccount && overlap.length >= 1) ||
         (complementaryBankSources && sameBank && sameDirection && overlap.length >= 1);
-    if (!sameDay || !hasStrongDescriptionMatch) return null;
+    if ((!sameDay && !(complementaryBankSources && sameAccount && sameBank && sameDirection)) ||
+        !hasStrongDescriptionMatch) return null;
 
     return {
         score: 20 + overlap.length * 5 + (sameDirection ? 5 : 0) +
@@ -301,6 +326,16 @@ async function mergeTransactionRows(db, canonical, duplicate) {
         await db.run(`UPDATE transactions SET ${updates.join(', ')} WHERE id = ?`, values);
     }
 
+    // Pairings must survive removal of a provider duplicate (FK cascades would
+    // otherwise erase the refund's relationship to the original purchase).
+    const hasRefundPairings = await db.get("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'refund_pairings'");
+    if (hasRefundPairings) {
+        await db.run(`DELETE FROM refund_pairings WHERE refundTransactionId = ?
+            AND EXISTS (SELECT 1 FROM refund_pairings WHERE refundTransactionId = ?)`, [duplicate.id, canonical.id]);
+        await db.run('UPDATE refund_pairings SET refundTransactionId = ? WHERE refundTransactionId = ?', [canonical.id, duplicate.id]);
+        await db.run('UPDATE refund_pairings SET purchaseTransactionId = ? WHERE purchaseTransactionId = ?', [canonical.id, duplicate.id]);
+    }
+
     // Keep one balance event and one portfolio event for the real transaction.
     // The current account cash is an authoritative balance after Plaid sync;
     // removing the duplicate event prevents it from being counted again on a
@@ -379,8 +414,7 @@ async function reconcileTransactionDuplicates(db, userId = null, options = {}) {
         const rows = await loadDedupRows(db, user.id);
         const sourceRows = rows.filter((row) => row.SourceEmailKey ||
             row.hasPlaidSource || row.hasPlaidInvestmentSource);
-        if (!dryRun) await db.run('BEGIN IMMEDIATE');
-        try {
+        const runReconciliation = async () => {
             for (const sourceRow of sourceRows) {
                 const current = await db.get(
                     `SELECT t.*,
@@ -413,10 +447,11 @@ async function reconcileTransactionDuplicates(db, userId = null, options = {}) {
                 summary.removedTransactionIds.push(result.removedId);
                 summary.linkedSources += result.linkedSources;
             }
-            if (!dryRun) await db.run('COMMIT');
-        } catch (error) {
-            if (!dryRun) await db.run('ROLLBACK');
-            throw error;
+            };
+        if (!dryRun) {
+            await db.withTransaction(runReconciliation);
+        } else {
+            await runReconciliation();
         }
     }
     return summary;

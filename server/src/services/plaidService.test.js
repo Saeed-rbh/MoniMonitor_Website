@@ -1,5 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+
+test('recognizes merchant card credits without labeling ordinary bank deposits as refunds', () => {
+    const { toAppTransaction } = require('./plaidService');
+    const credit = { amount: -25, date: '2026-09-20', name: 'Walmart', personal_finance_category: { primary: 'GENERAL_MERCHANDISE' } };
+    assert.equal(toAppTransaction(credit, { type: 'credit', mask: '1234' }, 'RBC').Label, 'Refunds & Reversals');
+    assert.equal(toAppTransaction(credit, { type: 'depository', mask: '5678' }, 'RBC').Label, 'Other Income');
+    assert.equal(toAppTransaction({ ...credit, name: 'Card payment', personal_finance_category: { primary: 'TRANSFER_IN' } },
+        { type: 'credit', mask: '1234' }, 'RBC').Label, 'Personal Transfers Received');
+});
 const crypto = require('node:crypto');
 
 const {

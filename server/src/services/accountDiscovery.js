@@ -74,9 +74,15 @@ function resolveAccountCandidate(transaction, accounts = [], preferredAccountId 
 
     const ranked = accounts
         .map((account) => ({ account, score: accountMatchScore(transaction, account, null, null) }))
-        .sort((left, right) => right.score - left.score);
-    if (ranked[0]?.score >= 80 && (!ranked[1] || ranked[0].score > ranked[1].score)) {
-        return { account: ranked[0].account, confidence: 'HIGH', reason: 'identity_match' };
+        .sort((left, right) => right.score - left.score || Number(left.account.id) - Number(right.account.id));
+    if (ranked[0]?.score >= 80) {
+        if (!ranked[1] || ranked[0].score > ranked[1].score) {
+            return { account: ranked[0].account, confidence: 'HIGH', reason: 'identity_match' };
+        }
+        const sameInstitution = normalizeBank(ranked[0].account.institution) === normalizeBank(ranked[1].account.institution);
+        if (sameInstitution) {
+            return { account: ranked[0].account, confidence: 'HIGH', reason: 'identity_match' };
+        }
     }
 
     const inferredType = inferAccountType(transaction);

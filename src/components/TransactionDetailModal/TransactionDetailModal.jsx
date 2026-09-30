@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { FiCalendar, FiCreditCard, FiTag, FiRepeat, FiCheckCircle, FiCheck, FiRefreshCw, FiDatabase } from "react-icons/fi";
 import { getTransactionIcon, CATEGORY_GROUPS, getCategoryForLabel } from "../Categories";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
-import { getTransactionSourcesAPI, updateTransactionAPI } from "../../services/apiService";
+import { getTransactionSourcesAPI, getTransactionRefundsAPI, updateTransactionAPI } from "../../services/apiService";
 import {
   isDateOnlyTransactionTimestamp,
   parseTransactionDate,
@@ -57,6 +57,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
   const [sourceDetails, setSourceDetails] = useState([]);
+  const [refundPairings, setRefundPairings] = useState([]);
   const [sourceDetailsLoading, setSourceDetailsLoading] = useState(false);
 
   useEffect(() => {
@@ -78,6 +79,10 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
     }
 
     setSourceDetailsLoading(true);
+    setRefundPairings([]);
+    getTransactionRefundsAPI(transaction.id).then((pairings) => {
+      if (!cancelled) setRefundPairings(pairings);
+    }).catch(() => {});
     getTransactionSourcesAPI(transaction.id)
       .then((sources) => {
         if (!cancelled) setSourceDetails(Array.isArray(sources) ? sources : []);
@@ -373,6 +378,14 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
       </div>
 
       <section className="TxDetail_SourceCard">
+        {refundPairings.map((pairing) => (
+          <div className="TxDetail_SourceEntry" key={`refund:${pairing.id}`}>
+            <strong>{Number(transaction.id) === pairing.refundTransactionId ? 'Refund for' : 'Refund received'}</strong>
+            <p>{Number(transaction.id) === pairing.refundTransactionId ? pairing.purchaseReason : pairing.refundReason}
+              {' · '}{money({ AmountMinor: pairing.amountMinor, Currency: transaction.Currency })}
+              {' · '}{pairing.matchType === 'PARTIAL_AMOUNT' ? 'Partial refund' : 'Full refund'}</p>
+          </div>
+        ))}
         <div className="TxDetail_SourceHeader">
           <span className="TxDetail_SectionTitle">
             <FiDatabase className="TxDetail_RowIcon" /> Captured source data
@@ -394,6 +407,9 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
                 <span>{source.capturedAt ? formatFullDate(source.capturedAt) : "Captured source"}</span>
               </div>
               <div className="TxDetail_SourceReference">Reference: {source.externalId || "not provided"}</div>
+              {source.account && <div className="TxDetail_SourceReference">
+                Account: {source.account}{source.accountFlow ? ` · ${source.accountFlow === 'IN' ? 'Incoming' : 'Outgoing'}` : ''}
+              </div>}
               {source.rawPayload || source.contextPayload ? (
                 <details className="TxDetail_SourcePayload">
                   <summary>View captured source payload</summary>

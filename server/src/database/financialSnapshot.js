@@ -34,16 +34,13 @@ async function applyFinancialSnapshot(db, userId) {
     `);
 
     const migrationId = `${SNAPSHOT_ID}:${userId}`;
-    await db.exec('BEGIN IMMEDIATE');
-    try {
+    return await db.withTransaction(async () => {
         if (await db.get('SELECT id FROM app_migrations WHERE id = ?', [migrationId])) {
-            await db.exec('COMMIT');
             return false;
         }
 
         const user = await db.get('SELECT id FROM users WHERE id = ?', [userId]);
         if (!user) {
-            await db.exec('ROLLBACK');
             console.warn(`[Snapshot ${SNAPSHOT_ID}] User ${userId} does not exist; reset skipped.`);
             return false;
         }
@@ -97,13 +94,9 @@ async function applyFinancialSnapshot(db, userId) {
              VALUES (?, 'financial_snapshot_reset', 'success', ?, ?)`,
             [userId, JSON.stringify({ snapshotId: SNAPSHOT_ID, capturedAt: SNAPSHOT_CAPTURED_AT }), appliedAt]
         );
-        await db.exec('COMMIT');
         console.log(`[Snapshot ${SNAPSHOT_ID}] Reset complete for user ${userId}.`);
         return true;
-    } catch (error) {
-        await db.exec('ROLLBACK');
-        throw error;
-    }
+    });
 }
 
 module.exports = { SNAPSHOT_CAPTURED_AT, applyFinancialSnapshot };

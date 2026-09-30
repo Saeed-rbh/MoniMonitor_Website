@@ -351,6 +351,9 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                 Type: expenseData.Type,
                 AccountFlow: expenseData.AccountFlow,
                 Currency: expenseData.Currency,
+                BalanceAccountId: expenseData.BalanceAccountId,
+                Timestamp: expenseData.Timestamp,
+                SourceEmailKey: expenseData.SourceEmailKey,
             }
         );
         const duplicate = existingEmailTransaction || detectedDuplicate;
@@ -359,6 +362,10 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             let duplicateUpdates = sourceEmailKey && !duplicate.SourceEmailKey
                 ? { SourceEmailKey: sourceEmailKey }
                 : {};
+            for (const field of ['ReceivedAt', 'Account', 'BankName', 'Type', 'ReferenceNumber',
+                'BalanceAccountId', 'BalanceAccountConfidence', 'AccountFlow']) {
+                if (!duplicate[field] && expenseData[field]) duplicateUpdates[field] = expenseData[field];
+            }
             if (isGeneric(duplicate.Label, duplicate.Reason) && !newIsGeneric) {
                 duplicateUpdates = {
                     ...duplicateUpdates,
@@ -369,7 +376,6 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                     Account: expenseData.Account || duplicate.Account,
                     BankName: expenseData.BankName || duplicate.BankName,
                     ReferenceNumber: expenseData.ReferenceNumber || duplicate.ReferenceNumber,
-                    Timestamp: expenseData.Timestamp || duplicate.Timestamp,
                 };
                 console.log(`[${idInfo}] Upgrading generic duplicate to specific: ${expenseData.Reason}`);
             }
@@ -381,108 +387,16 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                 receivedAt, expenseData, idInfo
             );
             await syncPortfolioFromEmail(duplicate.id, expenseData, idInfo);
+            await dbService.reconcileIngestedTransaction(USER_ID, duplicate.id);
             return true;
         }
 
-        // 2. Fetch all matching transactions within the time window
-        const rawMatches = await dbService.getDb().then(db => db.all(
-            `SELECT * FROM transactions WHERE userId = ? AND AmountMinor = ? AND Category = ?`,
-            [USER_ID, Math.round(Number(expenseData.Amount) * 100), expenseData.Category]
-        ));
-
-        const newTime = new Date(expenseData.Timestamp).getTime();
-
-        const allMatches = rawMatches.filter(m => {
-            const existingTime = new Date(m.Timestamp).getTime();
-            const diffHours = Math.abs(newTime - existingTime) / (1000 * 60 * 60);
-            return diffHours <= 48;
+        const activeId = await dbService.commitEmailTransaction({
+            transaction: expenseData,
+            source: durableSource,
+            balance: { accountId: expenseData.BalanceAccountId },
+            outbox: buildTransactionNotification(expenseData, suppressNotifications),
         });
-
-        // Never merge two non-identical bank legs based only on amount and
-        // similar text. Internal transfers are represented by both records and
-        // are paired only after we have one OUT and one IN on different accounts.
-        const fuzzyDuplicate = null;
-
-        let activeId = null;
-
-        if (fuzzyDuplicate) {
-            console.log(`[${idInfo}] Fuzzy duplicate detected (complementary emails). Merging & replacing notification.`);
-            const mergedUpdates = {
-                Account: expenseData.Account || fuzzyDuplicate.Account,
-                BankName: expenseData.BankName || fuzzyDuplicate.BankName,
-                ReferenceNumber: expenseData.ReferenceNumber || fuzzyDuplicate.ReferenceNumber,
-                SourceEmailKey: sourceEmailKey || fuzzyDuplicate.SourceEmailKey,
-            };
-            await updateAgentTransaction(fuzzyDuplicate.id, mergedUpdates);
-            activeId = fuzzyDuplicate.id;
-            // Delete old Telegram message → send fresh complete one
-            if (!suppressNotifications) {
-                await replaceNotification({ ...fuzzyDuplicate, ...expenseData, ...mergedUpdates, id: fuzzyDuplicate.id });
-            }
-        } else {
-            // Sort matches by timestamp closeness
-            const sortedMatches = [...allMatches].sort((a, b) =>
-                Math.abs(new Date(a.Timestamp).getTime() - newTime) -
-                Math.abs(new Date(b.Timestamp).getTime() - newTime)
-            );
-
-            const genericMatch = sortedMatches.find(m => isGeneric(m.Label, m.Reason));
-
-            if (genericMatch && !newIsGeneric) {
-                // Upgrade generic → specific: delete old message, send fresh
-                console.log(`[${idInfo}] Upgrading generic to specific: ${expenseData.Reason}`);
-                const specificUpdates = {
-                    Category: expenseData.Category || genericMatch.Category,
-                    Label: expenseData.Label,
-                    Reason: expenseData.Reason,
-                    Type: expenseData.Type,
-                    Account: expenseData.Account || genericMatch.Account,
-                    BankName: expenseData.BankName || genericMatch.BankName,
-                    ReferenceNumber: expenseData.ReferenceNumber || genericMatch.ReferenceNumber,
-                    Timestamp: expenseData.Timestamp || genericMatch.Timestamp,
-                    SourceEmailKey: sourceEmailKey || genericMatch.SourceEmailKey,
-                };
-                await updateAgentTransaction(genericMatch.id, specificUpdates);
-                activeId = genericMatch.id;
-                // Delete old generic message → send one clean specific message
-                if (!suppressNotifications) {
-                    await replaceNotification({ ...genericMatch, ...expenseData, ...specificUpdates, id: genericMatch.id });
-                }
-
-            } else if (newIsGeneric) {
-                const existingSpecific = allMatches.find(m => !isGeneric(m.Label, m.Reason));
-                if (existingSpecific) {
-                    // Specific already exists — just silently update account/bank
-                    console.log(`[${idInfo}] Generic alert for already-detailed transaction. Updating account info silently.`);
-                    await updateAgentTransaction(existingSpecific.id, {
-                        Account: expenseData.Account || existingSpecific.Account,
-                        BankName: expenseData.BankName || existingSpecific.BankName,
-                        SourceEmailKey: sourceEmailKey || existingSpecific.SourceEmailKey,
-                    });
-                    activeId = existingSpecific.id;
-                } else {
-                    // No specific yet — save generic and send a message (will be replaced later)
-                    const newId = await dbService.commitEmailTransaction({
-                        transaction: expenseData,
-                        source: durableSource,
-                        balance: { accountId: expenseData.BalanceAccountId },
-                        outbox: buildTransactionNotification(expenseData, suppressNotifications),
-                    });
-                    activeId = newId;
-                    console.log(`[${idInfo}] Saved generic. Sending placeholder notification.`);
-                }
-            } else {
-                // Brand new specific transaction
-                const newId = await dbService.commitEmailTransaction({
-                    transaction: expenseData,
-                    source: durableSource,
-                    balance: { accountId: expenseData.BalanceAccountId },
-                    outbox: buildTransactionNotification(expenseData, suppressNotifications),
-                });
-                activeId = newId;
-                console.log(`[${idInfo}] Saved specific to SQLite successfully!`);
-            }
-        }
 
         await captureEmailSource(
             activeId, sourceEmailKey, emailBody, rawEmailSource,
@@ -531,7 +445,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         // RBC withdrawal alerts that accompany an Interac self e-Transfer).
         if (activeId) {
             try {
-                const reclassified = await dbService.detectAndReclassifyInternalCounterparts(USER_ID, activeId);
+                const reclassified = await dbService.reconcileIngestedTransaction(USER_ID, activeId);
                 for (const change of reclassified) {
                     await writeAudit('internal_reclassification', 'success', {
                         transactionId: change.id,
