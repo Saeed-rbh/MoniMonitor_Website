@@ -180,11 +180,15 @@ function buildMonthlyAnalysis(transactions, month, dataQuality = {}) {
     };
 }
 
-function hashAnalysis(analysis) {
+function hashAnalysis(analysis, transactions) {
     return crypto.createHash('sha256').update(JSON.stringify({
         month: analysis.month,
         summary: analysis.summary,
         dataQuality: analysis.dataQuality,
+        transactions: transactions.map((transaction) => Object.fromEntries([
+            'id', 'AmountMinor', 'Currency', 'Category', 'Label', 'Reason', 'Timestamp',
+            'Frequency', 'Account', 'BankName', 'Type', 'PortfolioAction', 'AccountFlow',
+        ].map((key) => [key, transaction[key] ?? null]))),
         candidates: analysis.candidates.map(({ id, fact, evidence }) => ({ id, fact, evidence })),
     })).digest('hex').slice(0, 16);
 }
@@ -195,31 +199,34 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
     const earliest = monthRange(month, 6).start.toISOString();
     const latest = monthRange(month, -1).start.toISOString();
     const transactions = await db.all(
-        `SELECT * FROM transactions WHERE userId = ? AND Timestamp >= ? AND Timestamp < ? ORDER BY Timestamp ASC`,
+        `SELECT * FROM transactions WHERE userId = ? AND Timestamp >= ? AND Timestamp < ? ORDER BY Timestamp ASC, id ASC`,
         [userId, earliest, latest]
     );
     const pending = await db.get(`SELECT COUNT(*) AS count FROM email_ingestion_queue WHERE status = 'pending'`);
     const analysis = buildMonthlyAnalysis(transactions, month, { pendingEmails: pending?.count || 0 });
+    const dataHash = hashAnalysis(analysis, transactions);
     const cacheKey = `${userId}:${month}`;
     if (!options.refresh) {
-        if (cache.has(cacheKey)) return cache.get(cacheKey);
+        const cached = cache.get(cacheKey);
+        if (cached?.dataHash === dataHash) return cached;
+        cache.delete(cacheKey);
 
         const dbRecord = await db.get(
-            `SELECT briefJson FROM monthly_ai_briefs WHERE userId = ? AND month = ? ORDER BY id DESC LIMIT 1`,
-            [userId, month]
+            `SELECT briefJson FROM monthly_ai_briefs WHERE userId = ? AND month = ? AND dataHash = ? ORDER BY id DESC LIMIT 1`,
+            [userId, month, dataHash]
         );
         if (dbRecord?.briefJson) {
             try {
                 const parsed = JSON.parse(dbRecord.briefJson);
-                cache.set(cacheKey, parsed);
-                return parsed;
+                if (parsed.dataHash === dataHash) {
+                    cache.set(cacheKey, parsed);
+                    return parsed;
+                }
             } catch (_err) {
                 // Fall through to generation if corrupted
             }
         }
     }
-
-    const dataHash = hashAnalysis(analysis);
 
     let selectedInsights = null;
     let source = 'deterministic';
