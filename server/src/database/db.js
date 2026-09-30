@@ -2,7 +2,6 @@ const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
 const { protectConnection } = require('./transactionConnection');
 const path = require('path');
-const { applyFinancialSnapshot } = require('./financialSnapshot');
 const { reconcileHistoricalInternalTransfers } = require('./historicalTransferReconciliation');
 const { reconcileTransactionDuplicates } = require('../services/transactionDeduplication');
 const { refreshDirtyMonthlySummaries } = require('./monthlySummaries');
@@ -613,7 +612,6 @@ async function getDb() {
             const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
             await db.run('DELETE FROM processed_emails WHERE processedAt < ?', [cutoff]);
             const tenantOwnerId = process.env.BACKUP_OWNER_USER_ID || process.env.USER_ID;
-            await applyFinancialSnapshot(db, tenantOwnerId);
             if (process.env.MONIMONITOR_SKIP_TRANSACTION_RECONCILIATION !== '1') {
                 const duplicateSummary = await reconcileTransactionDuplicates(db);
                 if (duplicateSummary.merged) {

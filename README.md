@@ -119,6 +119,19 @@ the configured Git remote. Keep unrelated local changes out of that commit.
 
 ## Backup and recovery
 
+Normal startup applies schema migrations and reconciliation; it never resets
+financial history or inserts personal snapshot balances. Historical snapshots
+must be supplied as private JSON files outside the repository. The import only
+accepts an existing user with no financial records and refuses to replace data.
+
+Preview with `node scripts/import-financial-snapshot.js --file <path> --user <id>`
+from `server/`. Add `--apply` to import after a verified encrypted safety backup.
+Configure a durable `BACKUP_ENCRYPTION_KEY` before applying. The JSON contains
+`id`, an ISO UTC `capturedAt`, `accounts`, and optional `holdings`. Each account
+contains `name`, `institution`, `accountType`, `accountRef`, `currency` (`CAD`),
+and integer `cashMinor`. Holdings contain `accountRef`, `symbol`, `quantity`,
+`averageCostMicros`, and `priceMicros`. Preview displays counts only.
+
 The API creates verified SQLite snapshots in `server/backups` by default. The
 directory can be changed with `MONIMONITOR_BACKUP_DIR`, and the automatic
 interval can be changed with `MONIMONITOR_BACKUP_INTERVAL_HOURS`.
