@@ -244,6 +244,26 @@ interval can be changed with `MONIMONITOR_BACKUP_INTERVAL_HOURS`.
   workers, verify a decrypted temporary copy, create a pre-restore safety
   backup, and then request a supervised process restart after completion.
 
+Restore discovers persistent tables from the installed schema rather than a
+fixed financial table list. It rejects unknown tables from newer applications,
+retains the installed migration ledger, and clears new tables absent from an
+older backup. Reports are rebuilt from restored transactions; sessions, AI
+briefs, forecast caches and rate-limit state are invalidated. Email and Plaid
+leases recover while processed-message and source identities prevent a second
+financial posting. Pending Telegram deliveries require review after recovery:
+the database cannot know whether Telegram accepted a message after the recovery
+point, so they are not automatically sent again.
+
+The automatic restore drill decrypts the latest recovery point and restores it
+into a separate temporary database using the actual restore implementation.
+It checks accounts, signed cash, transaction/source counts, application reports
+and session/cache invalidation. It never connects to IMAP, Plaid or Telegram.
+Run `runRestoreDrill()` from the backup service for an on-demand drill. Keep
+`BACKUP_OFFSITE_DIRECTORY` on a separate synchronized or mounted storage
+location, and store the encryption key ring separately; a local backup cannot
+protect against loss of that machine. Backup status reports whether offsite
+copying is configured.
+
 ## Durable email ingestion
 
 Account cash records include a balance source, snapshot time, and revision.

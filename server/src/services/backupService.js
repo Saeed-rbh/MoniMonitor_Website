@@ -20,40 +20,18 @@ const OFFSITE_BACKUP_DIRECTORY = process.env.BACKUP_OFFSITE_DIRECTORY
     : null;
 const RESTORE_DRILL_INTERVAL_MS = Math.max(1, Number(process.env.BACKUP_RESTORE_DRILL_INTERVAL_DAYS) || 30) * 24 * 60 * 60 * 1000;
 const BACKUP_FILE_PATTERN = /^monimonitor-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z-(automatic|manual|pre-restore)-[a-f0-9]{8}\.sqlite(?:\.enc)?$/;
-const INSERT_ORDER = [
-    'users',
-    'user_settings',
-    'budgets',
-    'goals',
-    'accounts',
-    'investment_accounts',
-    'transactions',
-    'transaction_requests',
-    'expense_forecast_points',
-    'merchant_rules',
-    'processed_emails',
-    'email_sync_state',
-    'email_ingestion_queue',
-    'investment_holdings',
-    'portfolio_transactions',
-    'account_balance_events',
-    'plaid_items',
-    'plaid_accounts',
-    'transaction_sources',
-    'refund_pairings',
-    'plaid_webhook_events',
-    'telegram_outbox',
-    'agent_audit_log',
-    'app_migrations',
-];
+const { restoreDatabase } = require('./databaseRecovery');
+const { execFile } = require('node:child_process');
+const { promisify } = require('node:util');
+const executeFile = promisify(execFile);
 
 let backupPromise = null;
 let scheduler = null;
 let restoreDrillPromise = null;
+let restoreInProgress = false;
 let restoreDrill = { lastRunAt: null, lastSuccessAt: null, lastError: null };
 
 const quoteSqlString = (value) => String(value).replaceAll("'", "''");
-const quoteIdentifier = (value) => `"${String(value).replaceAll('"', '""')}"`;
 const isSafeBackupFileName = (fileName) => BACKUP_FILE_PATTERN.test(String(fileName || ''));
 
 const backupReason = (fileName) => {
@@ -219,6 +197,16 @@ async function runRestoreDrill() {
         try {
             await decryptFile(filePath, drillPath);
             await verifyBackupFile(drillPath);
+            const targetPath = `${drillPath}.application.sqlite`;
+            try {
+                await executeFile(process.execPath, [path.join(__dirname, '..', '..', 'scripts', 'restore-drill.js'), drillPath], {
+                    timeout: 60_000, windowsHide: true, maxBuffer: 1024 * 1024,
+                    env: { ...process.env, MONIMONITOR_DB_PATH: targetPath, MONIMONITOR_RESTORE_DRILL: '1',
+                        AI_INGESTION_ENABLED: 'false', TELEGRAM_DISABLE_NETWORK: 'true' },
+                });
+            } finally {
+                for (const suffix of ['', '-wal', '-shm', '.encryption-keys.local']) await fs.rm(`${targetPath}${suffix}`, { force: true }).catch(() => {});
+            }
             restoreDrill = { ...restoreDrill, lastSuccessAt: new Date().toISOString(), lastError: null };
             return { fileName: lastBackup.fileName, verified: true };
         } catch (error) {
@@ -248,83 +236,34 @@ async function resolveBackupPath(fileName) {
 }
 
 async function restoreBackup(fileName, restoredByUserId) {
+    if (restoreInProgress) throw new Error('A restore is already in progress');
+    restoreInProgress = true;
+    try { return await performRestore(fileName, restoredByUserId); }
+    finally { restoreInProgress = false; }
+}
+
+async function performRestore(fileName, restoredByUserId) {
     const filePath = await resolveBackupPath(fileName);
-    await pauseWorkers();
     const restoredTempPath = `${filePath}.restore-${crypto.randomUUID()}.sqlite`;
     let safetyBackup;
     let db;
-    let attached = false;
     let restored = false;
 
     try {
+        await pauseWorkers();
         await decryptFile(filePath, restoredTempPath);
         await verifyBackupFile(restoredTempPath);
         safetyBackup = await createBackup('pre-restore');
         db = await getDb();
-        const sourcePath = quoteSqlString(restoredTempPath);
-        await db.exec(`ATTACH DATABASE '${sourcePath}' AS restore_source`);
-        attached = true;
-        const integrity = await db.get('PRAGMA restore_source.integrity_check');
-        if (integrity?.integrity_check !== 'ok') throw new Error('Selected backup failed integrity verification');
-
-        const currentTables = new Set((await db.all(
-            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
-        )).map((row) => row.name));
-        const sourceTables = new Set((await db.all(
-            "SELECT name FROM restore_source.sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
-        )).map((row) => row.name));
-        const tables = INSERT_ORDER.filter((table) => currentTables.has(table) && sourceTables.has(table));
-        if (currentTables.has('transaction_requests') && !sourceTables.has('transaction_requests')) {
-            await db.exec('DELETE FROM transaction_requests');
-        }
-        const sourceHasDurableEmailState = sourceTables.has('email_sync_state') &&
-            sourceTables.has('email_ingestion_queue');
-        const sourceHasPlaidState = sourceTables.has('plaid_items') &&
-            sourceTables.has('plaid_accounts') && sourceTables.has('transaction_sources');
-
-        await db.withTransaction(async () => {
-        // Authentication is never restored from a recovery point. Clearing
-        // inside the restore transaction invalidates access only on success.
-        if (currentTables.has('auth_sessions')) await db.exec('DELETE FROM auth_sessions');
-        if (!sourceHasPlaidState) {
-            if (currentTables.has('transaction_sources')) await db.exec('DELETE FROM transaction_sources');
-            if (currentTables.has('plaid_accounts')) await db.exec('DELETE FROM plaid_accounts');
-            if (currentTables.has('plaid_items')) await db.exec('DELETE FROM plaid_items');
-        }
-        for (const table of [...tables].reverse()) {
-            await db.exec(`DELETE FROM ${quoteIdentifier(table)}`);
-        }
-        for (const table of tables) {
-            const currentColumns = await db.all(`PRAGMA table_info(${quoteIdentifier(table)})`);
-            const sourceColumns = new Set((await db.all(
-                `PRAGMA restore_source.table_info(${quoteIdentifier(table)})`
-            )).map((column) => column.name));
-            const columns = currentColumns.map((column) => column.name)
-                .filter((column) => sourceColumns.has(column));
-            if (!columns.length) continue;
-            const columnList = columns.map(quoteIdentifier).join(', ');
-            await db.exec(
-                `INSERT INTO ${quoteIdentifier(table)} (${columnList}) ` +
-                `SELECT ${columnList} FROM restore_source.${quoteIdentifier(table)}`
-            );
-        }
-        if (!sourceHasDurableEmailState) {
-            if (currentTables.has('email_ingestion_queue')) await db.exec('DELETE FROM email_ingestion_queue');
-            if (currentTables.has('email_sync_state')) await db.exec('DELETE FROM email_sync_state');
-        }
-        if (currentTables.has('agent_audit_log')) {
-            await db.run(
-                `INSERT INTO agent_audit_log (userId, action, status, details, createdAt)
-                 VALUES (?, 'backup_restore', 'success', ?, ?)`,
-                [restoredByUserId, JSON.stringify({ fileName, safetyBackup: safetyBackup.fileName }), new Date().toISOString()]
-            );
-        }
-            restored = true;
+        await restoreDatabase(db, restoredTempPath, async () => {
+            await db.run(`INSERT INTO agent_audit_log (userId, action, status, details, createdAt)
+                VALUES (?, 'backup_restore', 'success', ?, ?)`,
+                [restoredByUserId, JSON.stringify({ fileName, safetyBackup: safetyBackup.fileName }), new Date().toISOString()]);
         });
+        restored = true;
     } catch (error) {
         throw error;
     } finally {
-        if (attached) await db?.exec('DETACH DATABASE restore_source').catch(() => {});
         await fs.rm(restoredTempPath, { force: true }).catch(() => {});
         if (!restored) await resumeWorkers().catch(() => {});
     }
