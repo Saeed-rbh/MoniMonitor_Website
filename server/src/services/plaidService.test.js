@@ -161,7 +161,7 @@ test('encrypts stored Plaid access tokens with authenticated encryption', () => 
     const previousKey = process.env.PLAID_TOKEN_ENCRYPTION_KEY;
     process.env.PLAID_CLIENT_ID = 'test-client';
     process.env.PLAID_SECRET = 'test-secret';
-    process.env.PLAID_TOKEN_ENCRYPTION_KEY = 'test-encryption-key';
+    process.env.PLAID_TOKEN_ENCRYPTION_KEY = 'test-dedicated-encryption-key-at-least-32-characters';
     try {
         const encrypted = encryptAccessToken('access-sandbox-sensitive');
         assert.notEqual(encrypted, 'access-sandbox-sensitive');
@@ -242,8 +242,12 @@ test('keeps existing Plaid tokens readable while rotating from the JWT secret to
     process.env.JWT_SECRET = 'legacy-jwt-secret';
     delete process.env.PLAID_TOKEN_ENCRYPTION_KEY;
     try {
-        const encryptedWithLegacyKey = encryptAccessToken('access-sandbox-sensitive');
-        process.env.PLAID_TOKEN_ENCRYPTION_KEY = 'new-dedicated-encryption-key';
+        const iv = crypto.randomBytes(12);
+        const key = crypto.createHash('sha256').update(process.env.JWT_SECRET).digest();
+        const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+        const contents = Buffer.concat([cipher.update('access-sandbox-sensitive'), cipher.final()]);
+        const encryptedWithLegacyKey = [iv, cipher.getAuthTag(), contents].map((part) => part.toString('base64url')).join('.');
+        process.env.PLAID_TOKEN_ENCRYPTION_KEY = 'new-dedicated-encryption-key-at-least-32-characters';
         const decrypted = decryptAccessTokenWithMetadata(encryptedWithLegacyKey);
         assert.equal(decrypted.accessToken, 'access-sandbox-sensitive');
         assert.equal(decrypted.usedLegacyKey, true);

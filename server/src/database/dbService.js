@@ -19,7 +19,7 @@ const {
     getStoredMonthlySummaries,
     refreshTransactionMonths,
 } = require('./monthlySummaries');
-const { encryptString, decryptString, isEncrypted } = require('../services/encryptionService');
+const { encryptString, decryptString, decryptStringWithMetadata } = require('../services/encryptionService');
 
 const portfolioActivityCategories = new Set(['Saving', 'SavingWithdrawal', 'Investment']);
 const portfolioActivityLabels = new Set([
@@ -443,16 +443,18 @@ async function migrateAndPruneRawEmailSources() {
     const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString();
     const rows = await db.all(
         `SELECT provider, externalId, rawPayloadJson FROM transaction_sources
-         WHERE provider = 'email' AND rawPayloadJson IS NOT NULL AND rawPayloadJson <> ''`
+         WHERE provider = 'email' AND rawPayloadJson IS NOT NULL AND rawPayloadJson <> ''
+           AND (capturedAt IS NULL OR capturedAt >= ?)`, [cutoff]
     );
     let encrypted = 0;
     for (const row of rows) {
-        if (isEncrypted(row.rawPayloadJson)) continue;
-        await db.run(
-            'UPDATE transaction_sources SET rawPayloadJson = ?, updatedAt = ? WHERE provider = ? AND externalId = ?',
-            [encryptString(row.rawPayloadJson, 'EMAIL_SOURCE_ENCRYPTION_KEY'), new Date().toISOString(), row.provider, row.externalId]
+        const decoded = decryptStringWithMetadata(row.rawPayloadJson, 'EMAIL_SOURCE_ENCRYPTION_KEY');
+        if (!decoded.needsRotation) continue;
+        const result = await db.run(
+            'UPDATE transaction_sources SET rawPayloadJson = ?, updatedAt = ? WHERE provider = ? AND externalId = ? AND rawPayloadJson = ?',
+            [encryptString(decoded.value, 'EMAIL_SOURCE_ENCRYPTION_KEY'), new Date().toISOString(), row.provider, row.externalId, row.rawPayloadJson]
         );
-        encrypted += 1;
+        encrypted += result.changes;
     }
     const pruned = await db.run(
         `UPDATE transaction_sources SET rawPayloadJson = NULL, updatedAt = ?

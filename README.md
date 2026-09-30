@@ -47,6 +47,23 @@ The app will be available at `http://localhost:3000`.
 
 ### Backend
 
+Encryption uses distinct secrets of at least 32 random characters for
+`EMAIL_SOURCE_ENCRYPTION_KEY`, `PLAID_TOKEN_ENCRYPTION_KEY`, and
+`BACKUP_ENCRYPTION_KEY`. Production validates all three before listening.
+New ciphertext records its key ID and authenticates its purpose. Old formats
+remain readable, including legacy JWT-encrypted data, but new writes never use
+the JWT signing secret. Development without explicit keys creates a durable
+`<database-path>.encryption-keys.local` file; preserve it across restarts and
+protect its access permissions. Previously lost ephemeral keys cannot be recovered.
+
+To rotate a purpose's key, retain its old ID and secret in the JSON object
+`<PURPOSE>_PREVIOUS_KEYS`, set a new `<PURPOSE>` secret and optionally
+`<PURPOSE>_ID`, then restart. Email evidence and Plaid tokens are re-encrypted
+on startup. Retained backups require their old keys throughout their retention
+period; keep recovery keys separately from the backup storage. For unversioned
+legacy data, `<PURPOSE>_LEGACY_KEY` can preserve the original JWT/key secret
+after signing-key rotation. Verify an isolated restore before retiring any key.
+
 Set `TRUSTED_PROXIES` to `false` for direct hosting, or to the explicit
 comma-separated IP addresses/CIDRs of your reverse proxies. The default trusts
 only loopback proxies, supporting the local tunnel. Forwarded client IP and

@@ -1,4 +1,6 @@
 const crypto = require('crypto');
+const { keyRing } = require('./encryptionKeys');
+const { encryptString, decryptStringWithMetadata } = require('./encryptionService');
 const dbService = require('../database/dbService');
 const { reconcileHistoricalInternalTransfers } = require('../database/historicalTransferReconciliation');
 const { findTransactionMatch, reasonOverlap } = require('./transactionDeduplication');
@@ -61,17 +63,12 @@ function getConfig() {
             .split(',').map((value) => value.trim().toUpperCase()).filter(Boolean),
         redirectUri: process.env.PLAID_REDIRECT_URI || null,
         webhookUrl: process.env.PLAID_WEBHOOK_URL || null,
-        encryptionSecret: process.env.PLAID_TOKEN_ENCRYPTION_KEY || process.env.JWT_SECRET,
-        legacyEncryptionSecret: process.env.PLAID_TOKEN_ENCRYPTION_KEY && process.env.JWT_SECRET &&
-            process.env.PLAID_TOKEN_ENCRYPTION_KEY !== process.env.JWT_SECRET
-            ? process.env.JWT_SECRET
-            : null,
     };
 }
 
 function isConfigured() {
     const config = getConfig();
-    return Boolean(config.clientId && config.secret && config.encryptionSecret);
+    return Boolean(config.clientId && config.secret && (process.env.PLAID_TOKEN_ENCRYPTION_KEY || process.env.NODE_ENV !== 'production'));
 }
 
 function requireConfig() {
@@ -81,47 +78,22 @@ function requireConfig() {
         error.statusCode = 503;
         throw error;
     }
-    if (!config.encryptionSecret) {
-        const error = new Error('PLAID_TOKEN_ENCRYPTION_KEY or JWT_SECRET is required');
-        error.statusCode = 503;
-        throw error;
-    }
+    try { keyRing('PLAID_TOKEN_ENCRYPTION_KEY'); }
+    catch (error) { error.statusCode = 503; throw error; }
     return config;
 }
 
-function encryptionKey(secret) {
-    return crypto.createHash('sha256').update(String(secret)).digest();
-}
-
 function encryptAccessToken(accessToken) {
-    const { encryptionSecret } = requireConfig();
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv('aes-256-gcm', encryptionKey(encryptionSecret), iv);
-    const encrypted = Buffer.concat([cipher.update(accessToken, 'utf8'), cipher.final()]);
-    return [iv, cipher.getAuthTag(), encrypted].map((part) => part.toString('base64url')).join('.');
-}
-
-function decryptAccessTokenWithSecret(payload, encryptionSecret) {
-    const [ivValue, tagValue, encryptedValue] = String(payload || '').split('.');
-    if (!ivValue || !tagValue || !encryptedValue) throw new Error('Invalid encrypted Plaid token');
-    const decipher = crypto.createDecipheriv(
-        'aes-256-gcm', encryptionKey(encryptionSecret), Buffer.from(ivValue, 'base64url')
-    );
-    decipher.setAuthTag(Buffer.from(tagValue, 'base64url'));
-    return Buffer.concat([
-        decipher.update(Buffer.from(encryptedValue, 'base64url')),
-        decipher.final(),
-    ]).toString('utf8');
+    requireConfig();
+    return encryptString(accessToken, 'PLAID_TOKEN_ENCRYPTION_KEY');
 }
 
 function decryptAccessTokenWithMetadata(payload) {
-    const { encryptionSecret, legacyEncryptionSecret } = requireConfig();
-    try {
-        return { accessToken: decryptAccessTokenWithSecret(payload, encryptionSecret), usedLegacyKey: false };
-    } catch (primaryError) {
-        if (!legacyEncryptionSecret) throw primaryError;
-        return { accessToken: decryptAccessTokenWithSecret(payload, legacyEncryptionSecret), usedLegacyKey: true };
-    }
+    requireConfig();
+    const serialized = String(payload || '');
+    const decoded = decryptStringWithMetadata(serialized.startsWith('enc:') ? serialized : 'enc:v1:' + serialized,
+        'PLAID_TOKEN_ENCRYPTION_KEY');
+    return { accessToken: decoded.value, usedLegacyKey: decoded.needsRotation };
 }
 
 function decryptAccessToken(payload) {
@@ -129,8 +101,8 @@ function decryptAccessToken(payload) {
 }
 
 async function migrateAccessTokenEncryption() {
-    const { legacyEncryptionSecret } = requireConfig();
-    if (!legacyEncryptionSecret) return { migrated: 0, alreadyCurrent: 0 };
+    if (!isConfigured()) return { migrated: 0, alreadyCurrent: 0 };
+    requireConfig();
 
     const db = await dbService.getDb();
     const items = await db.all('SELECT itemId, accessTokenEncrypted FROM plaid_items');

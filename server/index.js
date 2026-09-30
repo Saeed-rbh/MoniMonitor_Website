@@ -1,5 +1,6 @@
 require("dotenv").config();
 const crypto = require("crypto");
+const { validateEncryptionConfiguration } = require("./src/services/encryptionKeys");
 const { validMonth } = require("../shared/calendar.cjs");
 const express = require("express");
 const cors = require("cors");
@@ -490,6 +491,7 @@ process.on("uncaughtException", (error) => {
 });
 
 if (require.main === module) {
+    validateEncryptionConfiguration();
     app.listen(PORT, () => {
         console.log(`API server listening on http://localhost:${PORT}`);
         plaidService.migrateAccessTokenEncryption()
