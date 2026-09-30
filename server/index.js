@@ -162,34 +162,9 @@ const sendValidationError = (res, error) => {
     return res.status(500).json({ error: "Unable to process this request" });
 };
 
-app.get("/health", async (_req, res) => {
-    res.set('Cache-Control', 'no-store');
-    try {
-        const db = await dbService.getDb();
-        await db.get("SELECT 1 AS ready");
-        const queues = await dbService.getQueueHealth();
-        const [subsystems, backup] = [getAllSubsystemHealth(), await backupService.getBackupHealth()];
-        const hasDeadLetters = (queues.email.dead || 0) > 0 || (queues.telegram.dead || 0) > 0;
-        const agentFailed = agentStatus.enabled && agentStatus.state === "failed";
-        const outbox = getTelegramOutboxWorkerHealth();
-        const status = agentFailed ? "unavailable" : (hasDeadLetters || outbox.lastError || backup.stale ? "degraded" : "ok");
-        return res.json({
-            status,
-            app: runtimeVersion,
-            database: { state: "ready" },
-            agent: {
-                enabled: agentStatus.enabled,
-                state: agentStatus.state,
-            },
-            telegramOutbox: outbox,
-            queues,
-            backup,
-            subsystems,
-        });
-    } catch (error) {
-        logger.error('health.check_failed', { correlationId: _req.requestId, error: error.message });
-        return res.status(503).json({ status: "unavailable", app: runtimeVersion });
-    }
+const readDiagnostics = require('./src/routes/healthRoutes').registerHealthRoutes(app, {
+    dbService, backupService, getAllSubsystemHealth, getTelegramOutboxWorkerHealth,
+    runtimeVersion, agentStatus, authenticateToken, requireConfiguredOwner,
 });
 
 registerAuthRoutes(app, {
@@ -529,8 +504,15 @@ if (require.main === module) {
                 });
         }
     });
-    const lifecycle = require('./src/services/runtimeLifecycle').installRuntimeLifecycle({ server });
+    const lifecycle = require('./src/services/runtimeLifecycle').installRuntimeLifecycle({ server,
+        onFatal: async () => {
+            const alert = { id: 'runtime_fatal', state: 'open', action: 'Inspect the supervisor log and confirm the restart recovered ingestion queues.' };
+            logger.error('operations.incident.open', alert);
+            await require('./src/services/operationalHealth').deliverOperationalAlert(alert);
+        },
+    });
     app.locals.shutdown = lifecycle.shutdown;
+    require('./src/services/operationalHealth').startOperationalMonitor(readDiagnostics);
 }
 
 module.exports = app;

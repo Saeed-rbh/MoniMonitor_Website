@@ -59,10 +59,22 @@ test('request logs receive a correlation ID without echoing authorization data',
     assert.match(response.headers.get('x-request-id'), /^[A-Za-z0-9._-]{8,128}$/);
 });
 
-test('health reports the fixed running identity without caching it', async () => {
+test('public health is minimal while diagnostics contain the fixed running identity', async () => {
     const response = await request('/health');
     assert.equal(response.headers.get('cache-control'), 'no-store');
-    assert.deepEqual((await response.json()).app, require('../services/runtimeVersion').runtimeVersion);
+    assert.deepEqual(await response.json(), { status: 'ok' });
+    const diagnostic = await request('/diagnostics');
+    assert.deepEqual((await diagnostic.json()).app, require('../services/runtimeVersion').runtimeVersion);
+    const remote = (token = null) => fetch(`${origin}/diagnostics`, { headers: {
+        'X-Forwarded-For': '203.0.113.12', ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+    assert.equal((await remote()).status, 401);
+    assert.equal((await remote(tokenFor('secondary-user'))).status, 403);
+    assert.equal((await remote(tokenFor('api-owner'))).status, 200);
+    const dashboard = await request('/diagnostics/dashboard');
+    assert.equal(dashboard.status, 200);
+    assert.match(dashboard.headers.get('content-security-policy'), /script-src 'self' 'nonce-/);
+    const html = await dashboard.text();
+    assert.match(html, /<script nonce="/); assert.ok(!html.includes('onclick='));
 });
 
 test('report APIs reject impossible months before querying or generating insights', async () => {

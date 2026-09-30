@@ -219,7 +219,7 @@
       <svg width="28" height="28"><circle class="bg" /><circle class="prog" /></svg>
       <div class="num" id="countNum">15</div>
     </div>
-    <button class="refresh-btn" onclick="fetchAll()">↻ Refresh Now</button>
+    <button class="refresh-btn" id="refreshNow">↻ Refresh Now</button>
     <div class="meta">
       <div>Updated: <span id="lastUpdate">—</span></div>
       <div>Monitoring: <span id="monitorUptime">—</span></div>
@@ -243,7 +243,7 @@
 <div class="conn-error" id="connError">⚠ Cannot reach backend at localhost:3001 &nbsp;·&nbsp; <a href="http://localhost:3001/status" style="color:#38bdf8;text-decoration:underline;">Open via HTTP</a></div>
 
 <script>
-const API = window.location.protocol.startsWith('http') ? window.location.origin : 'http://localhost:3001';
+const API = window.location.protocol.startsWith('http') ? window.location.origin + (window.location.pathname.startsWith('/api/') ? '/api' : '') : 'http://localhost:3001';
 const REFRESH_INTERVAL = 15; // seconds
 let countdown = REFRESH_INTERVAL;
 let monitorStartedAt = Date.now();
@@ -291,12 +291,12 @@ function dot(c) { return `<span class="dot ${c}"></span>`; }
 
 function statusBadge(state) {
   const c = cls(state);
-  return `<span class="card-status">${dot(c)} <span class="status-${c}">${statusText(state)}</span></span>`;
+  return `<span class="card-status">${dot(c)} <span class="status-${c}">${escapeText(statusText(state))}</span></span>`;
 }
 
 function m(label, value, valueClass) {
   const vc = valueClass ? ` class="metric-value ${valueClass}"` : ' class="metric-value"';
-  return `<div class="metric"><span class="metric-label">${label}</span><span${vc}>${value ?? '—'}</span></div>`;
+  return `<div class="metric"><span class="metric-label">${escapeText(label)}</span><span${vc}>${escapeText(value)}</span></div>`;
 }
 
 function escapeText(value) {
@@ -331,7 +331,7 @@ function card(icon, bg, title, state, metricsHtml, extra = '') {
   return `<div class="card">
     <div class="card-head">
       <div class="card-icon" style="background:${bg}">${icon}</div>
-      <span class="card-title">${title}</span>
+      <span class="card-title">${escapeText(title)}</span>
       ${statusBadge(state)}
     </div>
     <div class="metrics">${metricsHtml}</div>
@@ -350,6 +350,17 @@ async function probe(url, timeout = 4000) {
   } catch { clearTimeout(id); return false; }
 }
 
+async function probeDiagnostics() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch(`${API}/diagnostics`, { mode: 'cors', credentials: 'include', cache: 'no-store', signal: controller.signal });
+    if ([401, 403].includes(response.status)) throw new Error('Diagnostics authorization required');
+    return await response.json();
+  }
+  finally { clearTimeout(timer); }
+}
+
 // ── Main fetch ─────────────────────────────────────────
 async function fetchAll() {
   countdown = REFRESH_INTERVAL;
@@ -358,10 +369,9 @@ async function fetchAll() {
   let health = null;
   let plaid = null;
 
-  // Fetch /health
+  // Fetch protected diagnostics
   try {
-    const r = await fetch(`${API}/health`, { mode: 'cors', cache: 'no-store' });
-    health = await r.json();
+    health = await probeDiagnostics();
     showRunningVersion(health.app);
     connErr.classList.remove('visible');
   } catch {
@@ -377,11 +387,7 @@ async function fetchAll() {
   statusHistory.push(health.status || 'unknown');
   if (statusHistory.length > MAX_HISTORY) statusHistory.shift();
 
-  // Fetch /plaid/status (requires auth — gracefully degrade)
-  try {
-    const r = await fetch(`${API}/plaid/status`, { mode: 'cors' });
-    if (r.ok) plaid = await r.json();
-  } catch { /* ok */ }
+  plaid = health.plaid || null;
 
   // Probe ancillary services in parallel
   const [frontendUp, publicUp] = await Promise.all([
@@ -420,9 +426,9 @@ async function fetchAll() {
   cards.push(card('🖥️', 'rgba(56,189,248,.15)', 'Backend API Server', health.status,
     m('Port', '3001') +
     m('HTTP Status', health.status === 'unavailable' ? '503' : '200') +
-    m('App version', health.app?.version ? escapeText(`v${health.app.version}`) : 'Unavailable') +
-    m('Running commit', escapeText(health.app?.shortCommit || 'Unavailable')) +
-    m('Backend started', health.app?.startedAt ? escapeText(new Date(health.app.startedAt).toLocaleString()) : 'Unavailable') +
+    m('App version', health.app?.version ? `v${health.app.version}` : 'Unavailable') +
+    m('Running commit', health.app?.shortCommit || 'Unavailable') +
+    m('Backend started', health.app?.startedAt ? new Date(health.app.startedAt).toLocaleString() : 'Unavailable') +
     m('Local changes at startup', health.app?.localChanges == null ? 'Unknown' : health.app.localChanges ? 'Yes' : 'No') +
     m('Database', db.state || 'unknown', cls(db.state)) +
     m('Overall', statusText(health.status), cls(health.status)),
@@ -475,7 +481,7 @@ async function fetchAll() {
     plaidMetrics =
       m('Connected', plaid.connected ? 'Yes' : 'No', plaid.connected ? 'ok' : 'err') +
       m('Linked Items', plaid.items?.length ?? 0) +
-      m('Linked Accounts', plaid.accounts?.length ?? 0);
+      m('Linked Accounts', plaid.accountsCount ?? plaid.accounts?.length ?? 0);
     if (plaid.webhookInbox) {
       plaidMetrics +=
         m('Webhook Pending', plaid.webhookInbox.pending ?? 0) +
@@ -495,9 +501,9 @@ async function fetchAll() {
   cards.push(card('🏦', 'rgba(139,92,246,.15)', 'Plaid Banking Integration', plaidState, plaidMetrics));
 
   // 6 — Backup Service
-  const backupState = backup.stale ? 'stale' : (backup.lastBackupAgeSec != null ? 'ok' : 'unknown');
+  const backupState = backup.stale ? 'stale' : (backup.ageSeconds != null ? 'ok' : 'unknown');
   cards.push(card('💾', 'rgba(20,184,166,.15)', 'Backup Service', backupState,
-    m('Last Backup', backup.lastBackupAgeSec != null ? dur(backup.lastBackupAgeSec) + ' ago' : 'Never') +
+    m('Last Backup', backup.ageSeconds != null ? dur(backup.ageSeconds) + ' ago' : 'Never') +
     m('Stale (>48h)', backup.stale ? 'Yes ⚠' : 'No', backup.stale ? 'err' : 'ok') +
     m('Offsite Configured', backup.offsiteConfigured ? 'Yes' : 'No', backup.offsiteConfigured ? 'ok' : 'warn') +
     (backup.restoreDrill
@@ -543,6 +549,8 @@ async function fetchAll() {
     }
   }
 
+  if (health.alerts?.length) cards.unshift(card('⚠️', 'rgba(251,146,60,.15)', 'Actions required', 'degraded',
+    health.alerts.map(alert => m(alert.reason, alert.action)).join('')));
   grid.innerHTML = cards.join('');
 }
 
@@ -569,6 +577,7 @@ function tickCountdown() {
 }
 
 // ── Boot ───────────────────────────────────────────────
+document.getElementById('refreshNow').addEventListener('click', fetchAll);
 fetchAll();
 setInterval(tickCountdown, 1000);
 </script>

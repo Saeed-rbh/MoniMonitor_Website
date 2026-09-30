@@ -266,6 +266,7 @@ class ImapService {
 
     async processUnseenBatch() {
         if (workersPaused()) return;
+        reportSubsystem('imap', { configured: true, lastHeartbeatAt: new Date().toISOString() });
         try {
             const uidValidity = await this.discoverMessages();
             const database = this.getDatabase();

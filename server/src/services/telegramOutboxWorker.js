@@ -64,6 +64,7 @@ function startTelegramOutboxWorker() {
     const tick = async () => {
         if (workersPaused()) return;
         if (state.running) return;
+        reportSubsystem('telegramOutbox', { configured: true, lastHeartbeatAt: new Date().toISOString() });
         state.running = true;
         try {
             await processTelegramOutboxOnce();

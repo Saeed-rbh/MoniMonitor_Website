@@ -227,6 +227,19 @@ testing each Telegram client still require deployment validation. See
 [Plaid Web SDK CSP guidance](https://plaid.com/docs/link/web/) and
 [Telegram Mini Apps](https://core.telegram.org/bots/webapps).
 
+`/health` exposes only availability. `/diagnostics` and
+`/diagnostics/dashboard` are restricted to loopback callers or an authenticated
+configured owner. Use `http://localhost:3001/diagnostics/dashboard` for the
+health dashboard, including the immutable running version and commit. Its
+inline script receives a fresh CSP nonce, and external status text is escaped.
+Worker heartbeats, dead letters, backlog, stale bank syncs and backup risks
+produce protected alerts with suggested actions. Incident changes are logged
+once; unchanged conditions do not generate repeated notifications. Configure
+`OPERATIONAL_ALERT_WEBHOOK_URL` with an HTTPS receiver to receive open/resolved
+incidents and fatal-shutdown alerts. The webhook contains operational IDs and
+actions only, and delivery has a ten-second deadline. No webhook is called
+when that setting is absent.
+
 ## Backup and recovery
 
 Run `npm start` from `server/` to start the supervised backend (`npm run dev`
