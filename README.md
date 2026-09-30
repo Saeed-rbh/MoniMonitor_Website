@@ -53,6 +53,13 @@ installed peer graph blocks a toolchain update, resolve the new manifest in a
 fresh directory with npm 11 and verify a clean install before delivery; do not
 disable peer checks or force advisory fixes.
 
+`npm run check` runs the complete verification sequence and stops on any
+failure. Backend checks use temporary database and backup paths. GitHub Actions
+runs the same command on Linux with Node 22 and 24, and Windows with Node 24,
+using clean installs from both lockfiles. The `App quality gate` check passes
+only when every matrix job succeeds; canceled and skipped verification cannot
+pass the gate. The workflow requires no application secrets and does not deploy.
+
 To start the development server:
 ```bash
 npm run dev
