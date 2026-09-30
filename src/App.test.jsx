@@ -25,6 +25,9 @@ vi.mock('./hooks/useSharedHooks', () => ({
 
 
 test('renders the unauthenticated app without crashing', async () => {
+  const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ status: 401, ok: false });
+  try {
   render(<App />);
   expect(await screen.findByRole("heading", { name: /login to monimonitor/i })).toBeInTheDocument();
+  } finally { fetch.mockRestore(); }
 });

@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../services/requestClient';
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiUrl } from "../config/api";

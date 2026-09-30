@@ -207,6 +207,26 @@ MoniMonitor_Website/
 After making and verifying a code change, commit and push the related files to
 the configured Git remote. Keep unrelated local changes out of that commit.
 
+Browser sessions use an HttpOnly cookie with SameSite=Lax; production uses a
+Secure `__Host-` cookie scoped to `/`. Set `FRONTEND_URL` to every exact approved
+frontend origin. Mutations using cookies require a matching Origin, including
+login and logout. The Vercel `/api` rewrite keeps production requests on the
+frontend origin. Telegram embedded sessions use a short-lived bearer token
+held only in memory because embedded browsers can block cookies. Reloading
+Telegram verifies its signed init data again. Browser storage retains profile
+metadata and logout preferences only; old stored bearer tokens are removed.
+Deploy the backend before the matching frontend when changing authentication.
+
+Frontend deployment headers enforce CSP, HTTPS transport, MIME checks and
+restricted browser permissions. The policy permits the actual Telegram and
+Plaid SDK origins, Plaid frames/connections, and Google Fonts used by the app.
+Script inline execution and eval are blocked; inline styles remain available
+for React and Plaid. The isolated browser smoke check loaded the built app and
+both official SDKs without CSP errors. Completing a real bank consent flow and
+testing each Telegram client still require deployment validation. See
+[Plaid Web SDK CSP guidance](https://plaid.com/docs/link/web/) and
+[Telegram Mini Apps](https://core.telegram.org/bots/webapps).
+
 ## Backup and recovery
 
 Run `npm start` from `server/` to start the supervised backend (`npm run dev`

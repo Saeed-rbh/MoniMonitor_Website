@@ -1,3 +1,5 @@
+import { sessionMetadata } from './sessionMetadata';
+import { apiFetch as fetch } from './requestClient';
 import { apiUrl } from "../config/api";
 
 const API_URL = apiUrl("/MoniMonitor_ToDB");
@@ -5,11 +7,11 @@ const API_URL = apiUrl("/MoniMonitor_ToDB");
 const handleExpiredSession = (response) => {
     if (response.status !== 401 || typeof window === "undefined") return false;
 
-    localStorage.removeItem("token");
-    localStorage.removeItem("username");
-    localStorage.removeItem("userId");
-    localStorage.removeItem("profilePhotoUrl");
-    localStorage.removeItem("joinedAt");
+    sessionMetadata.removeItem("token");
+    sessionMetadata.removeItem("username");
+    sessionMetadata.removeItem("userId");
+    sessionMetadata.removeItem("profilePhotoUrl");
+    sessionMetadata.removeItem("joinedAt");
     window.dispatchEvent(new Event('monimonitor-session-expired'));
 
     if (window.location.pathname !== "/login") window.location.replace("/login");
@@ -18,14 +20,12 @@ const handleExpiredSession = (response) => {
 
 export const GetDataFromDB = async ({ throwOnError = false } = {}) => {
     try {
-        const token = localStorage.getItem("token");
-        if (!token) return [];
 
         const response = await fetch(API_URL, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
+                
             },
             body: JSON.stringify({ status: "read" })
         });
@@ -47,13 +47,11 @@ export const GetDataFromDB = async ({ throwOnError = false } = {}) => {
 
 export const GetSummary = async () => {
     try {
-        const token = localStorage.getItem("token");
-        if (!token) return null;
 
         const response = await fetch(apiUrl("/summary"), {
             method: "GET",
             headers: {
-                "Authorization": `Bearer ${token}`
+                
             }
         });
 
@@ -72,11 +70,9 @@ export const GetSummary = async () => {
 
 export const GetDashboardBootstrap = async (month) => {
     try {
-        const token = localStorage.getItem("token");
-        if (!token) return null;
 
         const response = await fetch(apiUrl(`/dashboard-bootstrap?month=${encodeURIComponent(month)}`), {
-            headers: { "Authorization": `Bearer ${token}` }
+            headers: {  }
         });
 
         if (!response.ok) {
@@ -94,14 +90,12 @@ export const GetDashboardBootstrap = async (month) => {
 
 export const updateTransactionAPI = async (id, updates) => {
     try {
-        const token = localStorage.getItem("token");
-        if (!token) return { status: "error", message: "Not authenticated" };
 
         const response = await fetch(apiUrl(`/transactions/${id}`), {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
+                
             },
             body: JSON.stringify(updates)
         });
@@ -119,11 +113,9 @@ export const updateTransactionAPI = async (id, updates) => {
 
 export const getTransactionSourcesAPI = async (id) => {
     try {
-        const token = localStorage.getItem("token");
-        if (!token) return [];
 
         const response = await fetch(apiUrl(`/transactions/${id}/sources`), {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {  },
         });
         if (!response.ok) {
             handleExpiredSession(response);
@@ -138,10 +130,8 @@ export const getTransactionSourcesAPI = async (id) => {
 };
 
 export const getTransactionRefundsAPI = async (id) => {
-    const token = localStorage.getItem('token');
-    if (!token) return [];
     const response = await fetch(apiUrl(`/transactions/${id}/refunds`), {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {  },
     });
     if (!response.ok) { handleExpiredSession(response); return []; }
     return (await response.json()).pairings || [];
@@ -149,13 +139,11 @@ export const getTransactionRefundsAPI = async (id) => {
 
 export const deleteTransactionAPI = async (id) => {
     try {
-        const token = localStorage.getItem("token");
-        if (!token) return { status: "error", message: "Not authenticated" };
 
         const response = await fetch(apiUrl(`/transactions/${id}`), {
             method: "DELETE",
             headers: {
-                "Authorization": `Bearer ${token}`
+                
             }
         });
 
@@ -172,14 +160,12 @@ export const deleteTransactionAPI = async (id) => {
 
 export const sendDataToDB = async ({ record_entry, record_type }) => {
     try {
-        const token = localStorage.getItem("token");
-        if (!token) return { status: "error", message: "Not authenticated" };
 
         const response = await fetch(API_URL, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
+                
             },
             body: JSON.stringify({
                 status: "record",
@@ -200,62 +186,46 @@ export const sendDataToDB = async ({ record_entry, record_type }) => {
 };
 
 export const getSettingsAPI = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
-    const response = await fetch(apiUrl("/settings"), { headers: { Authorization: `Bearer ${token}` } });
+    const response = await fetch(apiUrl("/settings"), { headers: {  } });
     return response.ok ? response.json() : null;
 };
 
 export const saveSettingsAPI = async (settings) => {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
     const response = await fetch(apiUrl("/settings"), {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Content-Type": "application/json",  },
         body: JSON.stringify(settings),
     });
     return response.ok ? response.json() : null;
 };
 
 export const getBudgetsAPI = async (month) => {
-    const token = localStorage.getItem("token");
-    if (!token) return [];
-    const response = await fetch(apiUrl(`/budgets?month=${encodeURIComponent(month)}`), { headers: { Authorization: `Bearer ${token}` } });
+    const response = await fetch(apiUrl(`/budgets?month=${encodeURIComponent(month)}`), { headers: {  } });
     return response.ok ? response.json() : [];
 };
 
 export const saveBudgetAPI = async (budget) => {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
-    const response = await fetch(apiUrl("/budgets"), { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(budget) });
+    const response = await fetch(apiUrl("/budgets"), { method: "PUT", headers: { "Content-Type": "application/json",  }, body: JSON.stringify(budget) });
     return response.ok ? response.json() : null;
 };
 
 export const getGoalsAPI = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return [];
-    const response = await fetch(apiUrl("/goals"), { headers: { Authorization: `Bearer ${token}` } });
+    const response = await fetch(apiUrl("/goals"), { headers: {  } });
     return response.ok ? response.json() : [];
 };
 
 export const createGoalAPI = async (goal) => {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
-    const response = await fetch(apiUrl("/goals"), { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(goal) });
+    const response = await fetch(apiUrl("/goals"), { method: "POST", headers: { "Content-Type": "application/json",  }, body: JSON.stringify(goal) });
     return response.ok ? response.json() : null;
 };
 
 export const updateGoalAPI = async (id, updates) => {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
-    const response = await fetch(apiUrl(`/goals/${id}`), { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(updates) });
+    const response = await fetch(apiUrl(`/goals/${id}`), { method: "PUT", headers: { "Content-Type": "application/json",  }, body: JSON.stringify(updates) });
     return response.ok ? response.json() : null;
 };
 
 export const deleteGoalAPI = async (id) => {
-    const token = localStorage.getItem("token");
-    if (!token) return false;
-    const response = await fetch(apiUrl(`/goals/${id}`), { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+    const response = await fetch(apiUrl(`/goals/${id}`), { method: "DELETE", headers: {  } });
     return response.ok;
 };
 
@@ -271,12 +241,10 @@ export const GetLabel = async ({ record_entry }) => {
 
 export const getMonthlyAiBriefAPI = async (month, refresh = false) => {
     try {
-        const token = localStorage.getItem("token");
-        if (!token) return null;
         const params = new URLSearchParams({ month });
         if (refresh) params.set("refresh", "true");
         const response = await fetch(apiUrl(`/insights/monthly?${params}`), {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {  },
         });
         if (!response.ok) {
             handleExpiredSession(response);
@@ -291,10 +259,8 @@ export const getMonthlyAiBriefAPI = async (month, refresh = false) => {
 
 export const getExpenseForecastAPI = async () => {
     try {
-        const token = localStorage.getItem("token");
-        if (!token) return { error: "Authentication required" };
         const response = await fetch(apiUrl("/insights/expense-forecast"), {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {  },
         });
         if (!response.ok) {
             handleExpiredSession(response);
@@ -308,13 +274,11 @@ export const getExpenseForecastAPI = async () => {
 };
 
 const backupRequest = async (path = "", options = {}) => {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
     const response = await fetch(apiUrl(`/backups${path}`), {
         ...options,
         headers: {
             ...(options.body ? { "Content-Type": "application/json" } : {}),
-            Authorization: `Bearer ${token}`,
+            
             ...options.headers,
         },
     });
@@ -356,13 +320,11 @@ export const restoreBackupAPI = async (fileName) => {
 };
 
 const plaidRequest = async (path = '', options = {}) => {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('Not authenticated');
     const response = await fetch(apiUrl(`/plaid${path}`), {
         ...options,
         headers: {
             ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-            Authorization: `Bearer ${token}`,
+            
             ...options.headers,
         },
     });
@@ -393,13 +355,11 @@ export const disconnectPlaidItemAPI = (itemId) => plaidRequest(`/items/${encodeU
 });
 
 const portfolioRequest = async (path = '', options = {}) => {
-    const token = localStorage.getItem('token');
-    if (!token) return null;
     const response = await fetch(apiUrl(`/portfolio${path}`), {
         ...options,
         headers: {
             ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-            Authorization: `Bearer ${token}`,
+            
             ...options.headers,
         },
     });
@@ -414,9 +374,8 @@ export const getPortfolioAPI = () => portfolioRequest();
 
 export const getPortfolioCorrectionAPI = (id) => portfolioRequest(`/transactions/${id}/correction`);
 export const submitPortfolioCorrectionAPI = async (id, action, input) => {
-    const token = localStorage.getItem('token');
     const response = await fetch(apiUrl(`/portfolio/transactions/${id}/${action}`), {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        method: 'POST', headers: { 'Content-Type': 'application/json',  },
         body: JSON.stringify(input),
     });
     if (!response.ok) {

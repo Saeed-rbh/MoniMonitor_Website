@@ -49,7 +49,7 @@ test("refreshes and persists the Telegram profile photo for an existing session"
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
         ok: true,
         json: async () => ({
-            accessToken: refreshedToken,
+            accessToken: refreshedToken, expiresAt: Date.now() + 7200000,
             user: {
                 id: "app-user-id",
                 username: "saeed",
@@ -71,7 +71,8 @@ test("refreshes and persists the Telegram profile photo for an existing session"
     });
     expect(window.localStorage.getItem("profilePhotoUrl")).toBe("https://t.me/i/userpic/320/profile.jpg");
     expect(window.localStorage.getItem("joinedAt")).toBe("2026-08-12T12:00:00.000Z");
-    expect(window.localStorage.getItem("token")).toBe(refreshedToken);
+    expect(window.localStorage.getItem("token")).toBeNull();
+    expect(window.sessionStorage.getItem("token")).toBeNull();
 });
 
 const validSession = () => ({ ok: true, status: 200, json: async () => ({
@@ -101,31 +102,33 @@ test('failed server revocation keeps access and reports the failure for retry', 
     fireEvent.click(screen.getByText('Logout'));
     await screen.findByText(/Logout could not be confirmed/);
     expect(screen.getByText('signed-in')).toBeInTheDocument();
-    expect(window.localStorage.getItem('token')).not.toBeNull();
+    expect(window.localStorage.getItem('token')).toBeNull();
 });
 
-test('rejects expired stored access without sending it to the API', async () => {
+test('discards legacy stored tokens and verifies the cookie instead', async () => {
     delete window.Telegram;
     window.localStorage.setItem('token', token(-1));
-    const fetchMock = vi.spyOn(globalThis, 'fetch');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 401 });
     render(<AuthProvider><CurrentProfile /></AuthProvider>);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
     expect(window.localStorage.getItem('token')).toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls[0][1].credentials).toBe('include');
+    expect(fetchMock.mock.calls[0][1].headers.has('Authorization')).toBe(false);
 });
 
-test('an explicit Telegram logout suppresses automatic sign-in on remount', () => {
-    window.localStorage.clear();
-    window.localStorage.setItem('telegramLogout', 'true');
-    const fetchMock = vi.spyOn(globalThis, 'fetch');
+test('an explicit Telegram logout suppresses automatic sign-in on remount', async () => {
+    window.localStorage.clear(); window.localStorage.setItem('telegramLogout', 'true');
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, status: 401 });
     render(<AuthProvider><CurrentProfile /></AuthProvider>);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+    expect(fetchMock.mock.calls[0][0]).toMatch(/\/session$/);
     expect(screen.getByText('signed-out')).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
 });
 
 test('clears access at expiry and handles logout from another tab', async () => {
     delete window.Telegram;
     window.localStorage.setItem('token', token(1));
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(validSession());
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => ({ ok: true, status: 200, json: async () => ({ user: { id: 'app-user-id', username: 'saeed' }, expiresAt: Date.now() + 1000 }) }));
     vi.useFakeTimers();
     await act(async () => { render(<AuthProvider><CurrentProfile /></AuthProvider>); });
     expect(screen.getByText('signed-in')).toBeInTheDocument();
@@ -138,6 +141,6 @@ test('clears access at expiry and handles logout from another tab', async () => 
     window.localStorage.setItem('username', 'saeed');
     render(<AuthProvider><CurrentProfile /></AuthProvider>);
     await screen.findByText('signed-in');
-    act(() => { window.localStorage.clear(); window.dispatchEvent(new Event('storage')); });
+    act(() => { window.localStorage.clear(); window.dispatchEvent(new StorageEvent('storage', { key: 'sessionRevokedAt' })); });
     expect(screen.getByText('signed-out')).toBeInTheDocument();
 });

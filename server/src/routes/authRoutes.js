@@ -1,4 +1,5 @@
 const { issueSession, revokeSession } = require('../services/sessionService');
+const { setBrowserSession, clearBrowserSession } = require('../services/browserSession');
 
 function registerAuthRoutes(app, {
     authenticateToken,
@@ -53,7 +54,7 @@ function registerAuthRoutes(app, {
             }
             const session = await issueSession(user, jwtSecret, jwtExpiresIn);
             return res.json({
-                ...session,
+                ...setBrowserSession(req, res, session),
                 user: { id: user.id, username: user.username, profilePhotoUrl: user.profilePhotoUrl || null, joinedAt: user.createdAt || null },
             });
         } catch (error) {
@@ -77,7 +78,7 @@ function registerAuthRoutes(app, {
             await dbService.updateUserProfilePhoto(user.id, profilePhotoUrl);
             const session = await issueSession(user, jwtSecret, jwtExpiresIn, { telegramUserId: String(telegramUser.id) });
             return res.json({
-                ...session,
+                ...setBrowserSession(req, res, session),
                 user: { id: user.id, username: user.username, profilePhotoUrl, joinedAt: user.createdAt || null },
             });
         } catch {
@@ -96,6 +97,7 @@ function registerAuthRoutes(app, {
     app.post('/logout', authenticateToken, async (req, res) => {
         try {
             await revokeSession(req.user);
+            clearBrowserSession(res);
             return res.status(204).end();
         } catch { return res.status(503).json({ error: 'Unable to revoke this session; try again' }); }
     });

@@ -1,3 +1,4 @@
+import { apiFetch as fetch } from '../services/requestClient';
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth, telegramAutoLoginEnabled } from "../context/AuthContext";
@@ -32,7 +33,7 @@ const LoginPage = () => {
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || "Telegram login failed");
                 if (!cancelled) {
-                    login(data.user, data.accessToken);
+                    login(data.user, data.expiresAt, data.accessToken);
                     navigate("/", { replace: true });
                 }
             } catch (err) {
@@ -62,7 +63,7 @@ const LoginPage = () => {
 
             if (response.ok) {
                 // Pass the whole user object (which includes id) and token
-                login(data.user || { username }, data.accessToken);
+                login(data.user || { username }, data.expiresAt, data.accessToken);
                 navigate("/");
             } else {
                 setError(data.error || "Login failed");

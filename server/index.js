@@ -32,6 +32,7 @@ const { startTelegramOutboxWorker, getTelegramOutboxWorkerHealth } = require("./
 const { getAllSubsystemHealth } = require("./src/services/subsystemHealth");
 const { logger } = require('./src/services/logger');
 const { runtimeVersion } = require('./src/services/runtimeVersion');
+const { requestSession } = require('./src/services/browserSession');
 
 const app = express();
 app.set("trust proxy", proxyTrust());
@@ -99,7 +100,9 @@ app.use(cors({
         return callback(new Error("Origin is not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
+    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key", "X-Session-Mode", "X-Request-Id"],
+    exposedHeaders: ['X-Request-Id', 'Retry-After'],
+    credentials: true,
 }));
 app.use(express.json({
     limit: "100kb",
@@ -107,6 +110,10 @@ app.use(express.json({
         if (req.path === "/plaid/webhook") req.rawBody = Buffer.from(buffer);
     },
 }));
+app.use((req, res, next) => {
+    if (requestSession(req, allowedOrigins).forbidden) return res.status(403).json({ error: 'Session request origin is not allowed' });
+    next();
+});
 app.use((req, res, next) => {
     const suppliedId = String(req.get('X-Request-Id') || '');
     req.requestId = /^[A-Za-z0-9._-]{8,128}$/.test(suppliedId) ? suppliedId : crypto.randomUUID();
@@ -129,8 +136,8 @@ const requireRegistrationOpen = createRegistrationAuthorization({
     getUserCount: dbService.getUserCount,
 });
 const authenticateToken = async (req, res, next) => {
-    const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const { token, forbidden } = requestSession(req, allowedOrigins);
+    if (forbidden) return res.status(403).json({ error: 'Session request origin is not allowed' });
     if (!token) return res.status(401).json({ error: "Authentication required" });
 
     try {

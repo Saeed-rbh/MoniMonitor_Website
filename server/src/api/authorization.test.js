@@ -148,3 +148,28 @@ test('password login registers access and never caches credentials or session re
     assert.equal(session.headers.get('cache-control'), 'no-store');
     assert.equal((await session.json()).user.id, 'api-owner');
 });
+
+test('browser sessions use HttpOnly cookies and require a trusted origin for mutations', async () => {
+    const bcrypt = require('bcryptjs');
+    const db = await dbService.getDb();
+    const password = 'cookie-session-integration-password';
+    await db.run('UPDATE users SET password = ? WHERE id = ?', [await bcrypt.hash(password, 4), 'api-owner']);
+    const login = await fetch(`${origin}/login`, { method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: 'http://localhost:3000', 'X-Session-Mode': 'cookie' },
+        body: JSON.stringify({ username: 'api-owner', password }) });
+    assert.equal(login.status, 200);
+    const data = await login.json();
+    assert.equal(data.accessToken, undefined);
+    const setCookie = login.headers.get('set-cookie');
+    assert.match(setCookie, /HttpOnly/); assert.match(setCookie, /SameSite=Lax/);
+    const cookie = setCookie.split(';')[0];
+    const cookieRequest = (path, method = 'GET', requestOrigin = null) => fetch(`${origin}${path}`, {
+        method, headers: { Cookie: cookie, ...(requestOrigin ? { Origin: requestOrigin } : {}) } });
+    assert.equal((await cookieRequest('/session')).status, 200);
+    assert.equal((await cookieRequest('/logout', 'POST')).status, 403);
+    assert.equal((await cookieRequest('/logout', 'POST', 'null')).status, 403);
+    const logout = await cookieRequest('/logout', 'POST', 'http://localhost:3000');
+    assert.equal(logout.status, 204);
+    assert.match(logout.headers.get('set-cookie'), /Expires=Thu, 01 Jan 1970/);
+    assert.equal((await cookieRequest('/session')).status, 401);
+});
