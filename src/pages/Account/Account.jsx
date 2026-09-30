@@ -103,9 +103,11 @@ const Account = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const handleLogout = () => {
-        logout();
-        navigate("/login");
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate("/login");
+        } catch (error) { alert(error.message || 'Unable to confirm logout. Please try again.'); }
     };
 
     const handleExport = async () => {

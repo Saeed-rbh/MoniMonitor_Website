@@ -4,7 +4,7 @@ const { validateEncryptionConfiguration } = require("./src/services/encryptionKe
 const { validMonth } = require("../shared/calendar.cjs");
 const express = require("express");
 const cors = require("cors");
-const jwt = require("jsonwebtoken");
+const { validateSession, InvalidSessionError } = require("./src/services/sessionService");
 const bcrypt = require("bcryptjs");
 const { ZodError } = require("zod");
 const dbService = require("./src/database/dbService");
@@ -127,15 +127,17 @@ const insightRateLimit = createRateLimit({ windowMs: 60 * 60 * 1000, max: 180, n
 const requireRegistrationOpen = createRegistrationAuthorization({
     getUserCount: dbService.getUserCount,
 });
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) return res.status(401).json({ error: "Authentication required" });
 
     try {
-        req.user = jwt.verify(token, JWT_SECRET);
+        req.user = await validateSession(token, JWT_SECRET);
+        res.set("Cache-Control", "no-store");
         return requireSingleTenant(req, res, next);
-    } catch {
+    } catch (error) {
+        if (!(error instanceof InvalidSessionError)) return res.status(503).json({ error: "Session verification is temporarily unavailable" });
         return res.status(401).json({ error: "Invalid or expired session" });
     }
 };
@@ -181,7 +183,7 @@ app.get("/health", async (_req, res) => {
 });
 
 registerAuthRoutes(app, {
-    authRateLimit, requireRegistrationOpen, credentialsAreValid, dbService, crypto, bcrypt, jwt,
+    authenticateToken, authRateLimit, requireRegistrationOpen, credentialsAreValid, dbService, crypto, bcrypt,
     jwtSecret: JWT_SECRET, jwtExpiresIn: JWT_EXPIRES_IN,
     telegramBotToken: TELEGRAM_BOT_TOKEN, telegramUserId: TELEGRAM_USER_ID, telegramAppUserId: TELEGRAM_APP_USER_ID,
     validateTelegramInitData, normalizeTelegramPhotoUrl, singleTenantEnabled, singleTenantUserId,

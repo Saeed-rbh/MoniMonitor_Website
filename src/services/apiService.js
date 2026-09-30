@@ -10,6 +10,7 @@ const handleExpiredSession = (response) => {
     localStorage.removeItem("userId");
     localStorage.removeItem("profilePhotoUrl");
     localStorage.removeItem("joinedAt");
+    window.dispatchEvent(new Event('monimonitor-session-expired'));
 
     if (window.location.pathname !== "/login") window.location.replace("/login");
     return true;

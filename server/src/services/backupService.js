@@ -283,6 +283,9 @@ async function restoreBackup(fileName, restoredByUserId) {
             sourceTables.has('plaid_accounts') && sourceTables.has('transaction_sources');
 
         await db.withTransaction(async () => {
+        // Authentication is never restored from a recovery point. Clearing
+        // inside the restore transaction invalidates access only on success.
+        if (currentTables.has('auth_sessions')) await db.exec('DELETE FROM auth_sessions');
         if (!sourceHasPlaidState) {
             if (currentTables.has('transaction_sources')) await db.exec('DELETE FROM transaction_sources');
             if (currentTables.has('plaid_accounts')) await db.exec('DELETE FROM plaid_accounts');

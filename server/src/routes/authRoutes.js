@@ -1,11 +1,13 @@
+const { issueSession, revokeSession } = require('../services/sessionService');
+
 function registerAuthRoutes(app, {
+    authenticateToken,
     authRateLimit,
     requireRegistrationOpen,
     credentialsAreValid,
     dbService,
     crypto,
     bcrypt,
-    jwt,
     jwtSecret,
     jwtExpiresIn,
     telegramBotToken,
@@ -16,6 +18,10 @@ function registerAuthRoutes(app, {
     singleTenantEnabled,
     singleTenantUserId,
 }) {
+    app.use(['/login', '/telegram-auth', '/session', '/logout'], (_req, res, next) => {
+        res.set('Cache-Control', 'no-store');
+        next();
+    });
     app.post('/register', authRateLimit, requireRegistrationOpen, async (req, res) => {
         const username = typeof req.body?.username === 'string' ? req.body.username.trim().toLowerCase() : '';
         const { password } = req.body || {};
@@ -45,9 +51,9 @@ function registerAuthRoutes(app, {
             if (singleTenantEnabled() && String(user.id) !== String(singleTenantUserId())) {
                 return res.status(403).json({ error: 'This installation is restricted to its configured owner' });
             }
-            const accessToken = jwt.sign({ userId: user.id, username: user.username }, jwtSecret, { expiresIn: jwtExpiresIn });
+            const session = await issueSession(user, jwtSecret, jwtExpiresIn);
             return res.json({
-                accessToken,
+                ...session,
                 user: { id: user.id, username: user.username, profilePhotoUrl: user.profilePhotoUrl || null, joinedAt: user.createdAt || null },
             });
         } catch (error) {
@@ -69,18 +75,29 @@ function registerAuthRoutes(app, {
             if (!user) return res.status(403).json({ error: 'Telegram account is not linked' });
             const profilePhotoUrl = normalizeTelegramPhotoUrl(telegramUser.photo_url);
             await dbService.updateUserProfilePhoto(user.id, profilePhotoUrl);
-            const accessToken = jwt.sign(
-                { userId: user.id, username: user.username, telegramUserId: String(telegramUser.id) },
-                jwtSecret,
-                { expiresIn: jwtExpiresIn }
-            );
+            const session = await issueSession(user, jwtSecret, jwtExpiresIn, { telegramUserId: String(telegramUser.id) });
             return res.json({
-                accessToken,
+                ...session,
                 user: { id: user.id, username: user.username, profilePhotoUrl, joinedAt: user.createdAt || null },
             });
         } catch {
             return res.status(401).json({ error: 'Unable to verify Telegram identity' });
         }
+    });
+
+    app.get('/session', authenticateToken, async (req, res) => {
+        try {
+            const user = await dbService.getUserById(req.user.userId);
+            if (!user) return res.status(401).json({ error: 'Invalid or expired session' });
+            return res.json({ expiresAt: req.user.exp * 1000,
+                user: { id: user.id, username: user.username, profilePhotoUrl: user.profilePhotoUrl || null, joinedAt: user.createdAt || null } });
+        } catch { return res.status(503).json({ error: 'Session verification is temporarily unavailable' }); }
+    });
+    app.post('/logout', authenticateToken, async (req, res) => {
+        try {
+            await revokeSession(req.user);
+            return res.status(204).end();
+        } catch { return res.status(503).json({ error: 'Unable to revoke this session; try again' }); }
     });
 }
 

@@ -15,10 +15,12 @@ process.env.BACKUP_PRIVATE_NETWORK_ONLY = 'false';
 
 const app = require('../../index');
 const dbService = require('../database/dbService');
+const { issueSession } = require('../services/sessionService');
 let server;
 let origin;
 
-const tokenFor = (userId) => jwt.sign({ userId, username: userId }, process.env.JWT_SECRET, { expiresIn: '5m' });
+const tokens = new Map();
+const tokenFor = (userId) => tokens.get(userId);
 const request = (pathname, token = null) => fetch(`${origin}${pathname}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
 });
@@ -26,6 +28,8 @@ const request = (pathname, token = null) => fetch(`${origin}${pathname}`, {
 test.before(async () => {
     await dbService.createUser('api-owner', 'api-owner', 'test-password-hash');
     await dbService.createUser('secondary-user', 'secondary-user', 'test-password-hash');
+    for (const id of ['api-owner', 'secondary-user']) tokens.set(id,
+        (await issueSession({ id, username: id }, process.env.JWT_SECRET, '5m')).accessToken);
     server = app.listen(0);
     await new Promise((resolve) => server.once('listening', resolve));
     origin = `http://127.0.0.1:${server.address().port}`;
@@ -80,4 +84,44 @@ test('creation retries are idempotent through both supported API endpoints', asy
     }
     const db = await dbService.getDb();
     assert.equal((await db.get("SELECT COUNT(*) AS count FROM transactions WHERE Reason = 'API retry test'")).count, 2);
+});
+
+test('logout revokes only the current session and rejects stateless legacy tokens', async () => {
+    const user = { id: 'api-owner', username: 'api-owner' };
+    const first = await issueSession(user, process.env.JWT_SECRET);
+    const second = await issueSession(user, process.env.JWT_SECRET);
+    assert.equal((await request('/session', first.accessToken)).status, 200);
+    assert.equal((await fetch(`${origin}/logout`, { method: 'POST', headers: { Authorization: `Bearer ${first.accessToken}` } })).status, 204);
+    assert.equal((await request('/transactions', first.accessToken)).status, 401);
+    assert.equal((await request('/session', second.accessToken)).status, 200);
+    const legacy = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '8h' });
+    assert.equal((await request('/transactions', legacy)).status, 401);
+});
+
+test('session storage failures fail closed with a retryable service error', async () => {
+    const db = await dbService.getDb();
+    const original = db.get;
+    db.get = async (sql, ...args) => {
+        if (sql.includes('FROM auth_sessions')) throw new Error('Injected storage failure');
+        return original.call(db, sql, ...args);
+    };
+    try { assert.equal((await request('/session', tokenFor('api-owner'))).status, 503); }
+    finally { db.get = original; }
+});
+
+test('password login registers access and never caches credentials or session responses', async () => {
+    const bcrypt = require('bcryptjs');
+    const db = await dbService.getDb();
+    const password = 'session-api-integration-password';
+    await db.run('UPDATE users SET password = ? WHERE id = ?', [await bcrypt.hash(password, 4), 'api-owner']);
+    const login = await fetch(`${origin}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'api-owner', password }) });
+    assert.equal(login.status, 200);
+    assert.equal(login.headers.get('cache-control'), 'no-store');
+    const body = await login.json();
+    assert.ok(body.expiresAt > Date.now());
+    const session = await request('/session', body.accessToken);
+    assert.equal(session.status, 200);
+    assert.equal(session.headers.get('cache-control'), 'no-store');
+    assert.equal((await session.json()).user.id, 'api-owner');
 });

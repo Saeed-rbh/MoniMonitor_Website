@@ -1,5 +1,19 @@
 const MIGRATIONS = [
     {
+        version: 8,
+        name: 'revocable_auth_sessions',
+        async up(db) {
+            await db.exec(`CREATE TABLE auth_sessions (
+                idHash TEXT PRIMARY KEY,
+                userId TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                createdAt INTEGER NOT NULL,
+                expiresAt INTEGER NOT NULL CHECK(expiresAt > createdAt),
+                revokedAt INTEGER
+            );
+            CREATE INDEX idx_auth_sessions_expiry ON auth_sessions(expiresAt);`);
+        },
+    },
+    {
         version: 7,
         name: 'review_legacy_pending_transfer_balances',
         async up(db) {

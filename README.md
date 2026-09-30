@@ -68,6 +68,17 @@ The app will be available at `http://localhost:3000`.
 
 ### Backend
 
+Authentication uses registered, revocable sessions with signed JWTs. Existing
+stateless tokens require a fresh login after the session migration. Login and
+Telegram authentication register a session; `/session` verifies it and
+`POST /logout` revokes the current session. The browser checks stored access
+before displaying authenticated content, clears expired access, and propagates
+logout across tabs. Failed logout stays visible for retry rather than claiming
+server revocation. Explicit Telegram logout requires a new sign-in action.
+`JWT_EXPIRES_IN` defaults to eight hours. Successful backup restores invalidate
+all sessions and never restore access from the backup; failed restores preserve
+current sessions. Expired session records are pruned at the next sign-in.
+
 Dashboard totals, statement summaries, insights, widgets, and forecasts share
 the same accounting rules in `shared/financialSemantics.cjs`. A recorded
 category takes precedence over a provider's generic Credit/Debit type. Internal
