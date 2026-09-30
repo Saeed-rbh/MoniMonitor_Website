@@ -1,5 +1,6 @@
 const { getDb } = require('./db');
 const { FinancialMutationError, setAccountBalanceSnapshot } = require('../services/accountBalanceService');
+const { attachPendingTransfers } = require('../services/pendingTransferService');
 const { REPORTING_CURRENCY, currencyOf, portfolioByCurrency } = require('../../../shared/currency.cjs');
 const { parseTimestamp, validMonth } = require('../../../shared/calendar.cjs');
 const { accountMatchScore, transactionBalanceDelta } = require('../services/accountMatching');
@@ -595,6 +596,7 @@ const portfolioAccountSelect = `
 
 async function getInvestmentAccounts(userId) {
     const db = await getDb();
+    return db.withTransaction(async () => {
     const accounts = await db.all(`${portfolioAccountSelect}
         WHERE a.userId = ? GROUP BY a.id ORDER BY a.createdAt ASC`, [userId]);
     const holdings = await db.all('SELECT * FROM investment_holdings WHERE userId = ? ORDER BY symbol ASC', [userId]);
@@ -602,7 +604,7 @@ async function getInvestmentAccounts(userId) {
         (result[holding.accountId] ||= []).push(holding);
         return result;
     }, {});
-    return accounts.map((account) => ({
+    const enriched = accounts.map((account) => ({
         ...account,
         totalValueMinor: account.accountType === 'Credit Card'
             ? -account.cashMinor
@@ -611,6 +613,8 @@ async function getInvestmentAccounts(userId) {
         holdings: byAccount[account.id] || [],
         byCurrency: portfolioByCurrency([{ ...account, holdings: byAccount[account.id] || [] }]),
     }));
+    return (await attachPendingTransfers(db, userId, enriched)).accounts;
+    });
 }
 
 async function syncTransactionAccountBalance(userId, transactionId, preferred = {}) {
@@ -895,7 +899,7 @@ async function updateInvestmentAccount(userId, id, updates) {
     }
     const allowed = ['name', 'institution', 'accountType', 'currency'];
     const entries = Object.entries(updates).filter(([key]) => allowed.includes(key));
-    if (updates.cashMinor !== undefined && updates.cashMinor !== current.cashMinor) {
+    if (updates.cashMinor !== undefined && (updates.cashMinor !== current.cashMinor || current.balanceReviewReason)) {
         if (!Number.isSafeInteger(updates.cashMinor) || updates.cashMinor < 0) throw new FinancialMutationError('Invalid cash balance', 400);
         // A replacement balance starts a new baseline. Earlier events are
         // already incorporated and must not be reversed from this snapshot.

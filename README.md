@@ -203,6 +203,17 @@ supported cash balance remains visible; overdraft accounting is still pending.
 Portfolio-linked source records require reversal of their portfolio activity
 before financial edits or deletion.
 
+Recent email-only internal transfers appear as separate pending cash changes
+and estimated cash on both account cards. Estimates are derived from current
+transactions and never alter recorded cash or portfolio totals. Bank source
+confirmation, deletion, and the seven-day expiration remove the estimates;
+edits recalculate them. Cross-currency or uncertain account matches require
+review. A bank snapshot may already include the transfer, so an estimate is
+not an additional confirmed balance. Existing balances possibly changed by
+the former override are marked for review rather than guessed reversals;
+refresh bank balances or save an explicitly reviewed manual balance to clear
+that uncertainty.
+
 The email agent stores its IMAP UID cursor and pending-message queue in SQLite.
 On every startup and reconnect it discovers all newly delivered messages,
 including emails that were marked read while the server was offline. A message

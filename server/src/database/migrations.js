@@ -1,5 +1,22 @@
 const MIGRATIONS = [
     {
+        version: 7,
+        name: 'review_legacy_pending_transfer_balances',
+        async up(db) {
+            // The old override did not record whether it had changed cash.
+            // Do not guess a reversal amount; require a fresh balance baseline.
+            await db.exec(`UPDATE investment_accounts SET balanceReviewReason =
+                'Review or refresh this balance to replace possible legacy pending-transfer adjustments'
+                WHERE id IN (
+                    SELECT a.id FROM investment_accounts a JOIN transactions t
+                        ON t.userId = a.userId AND (t.BalanceAccountId = a.id OR t.PortfolioAccountId = a.id)
+                    WHERE t.Category = 'Internal' AND t.Label = 'Internal Transfer' AND t.PortfolioAction = 'TRANSFER'
+                      AND EXISTS (SELECT 1 FROM transaction_sources s WHERE s.transactionId = t.id AND s.userId = t.userId AND s.provider = 'email')
+                      AND NOT EXISTS (SELECT 1 FROM transaction_sources s WHERE s.transactionId = t.id AND s.userId = t.userId AND s.provider IN ('plaid', 'plaid_investments'))
+                );`);
+        },
+    },
+    {
         version: 6,
         name: 'account_balance_snapshot_provenance',
         async up(db) {
