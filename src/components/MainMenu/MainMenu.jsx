@@ -300,7 +300,7 @@ const MainMenu = () => {
   const mainMenuAnim = useSpring({
     // position: "fixed", // Changed to flow layout
     width: "100%",
-    maxWidth: "420px",
+    maxWidth: "560px",
     // left: "0",
     // right: "0",
     margin: "0 auto",

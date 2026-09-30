@@ -394,7 +394,7 @@ const Account = () => {
             }}>
                 <div className="auth-box" style={{
                     marginTop: "0px",
-                    maxWidth: "420px",
+                    maxWidth: "760px",
                     width: "95%",
                     flex: 1,              // Fill remaining height
                     overflowY: "auto",

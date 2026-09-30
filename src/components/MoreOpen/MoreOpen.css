@@ -14,7 +14,7 @@
   justify-content: flex-end;
   z-index: 101;
   width: 100%;
-  max-width: var(--app-max-width);
+  max-width: var(--dialog-max-width);
   bottom: 0;
   left: 0;
   right: 0;

@@ -39,7 +39,18 @@
   --Gc-4: rgba(255, 102, 102, 0.03);
 
   --app-max-width: 420px;
+  --dialog-max-width: 560px;
 }
+
+@media (min-width: 900px) {
+  :root { --app-max-width: 1024px; }
+  .App.App { padding-inline: 20px; }
+  .App .SaveInvestInsights_Accounts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .App .SaveInvestInsights_Chart { height: 250px; }
+}
+
+.modal-overlay { padding: 16px; box-sizing: border-box; }
+.modal-content-ios { box-sizing: border-box; max-height: calc(100dvh - 32px); overflow-y: auto; }
 
 button:focus-visible, a:focus-visible, [role="button"]:focus-visible,
 input:focus-visible, select:focus-visible, textarea:focus-visible {

@@ -79,7 +79,7 @@ const MoreOpen = ({
               right: 0,
               margin: "0 auto",
               width: "100%",
-              maxWidth: "var(--app-max-width)",
+              maxWidth: "var(--dialog-max-width)",
               display: "flex",
               flexDirection: "column",
               justifyContent: "flex-end",
@@ -101,7 +101,7 @@ const MoreOpen = ({
               style={{
                 overflow: overflow,
                 width: "100%",
-                maxWidth: "var(--app-max-width)",
+                maxWidth: "var(--dialog-max-width)",
                 boxSizing: "border-box",
                 height: isAutoHeight ? "auto" : "100%",
                 maxHeight: "92dvh",

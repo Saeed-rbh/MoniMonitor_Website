@@ -66,7 +66,7 @@ const AuthenticatedLayout = () => {
     <div className="App">
       <Header />
       <CurrencyNotice />
-      <div style={{ flex: 1, width: '100%', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, minHeight: 0, width: '100%', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <Suspense fallback={<BrandedLoader label="Loading page" />}>
           <Routes>
             <Route path="/" element={<Telegram />} />
