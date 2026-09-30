@@ -12,6 +12,7 @@ const {
     enqueuePlaidWebhook,
     processPendingPlaidWebhooks,
     webhookRetryDelayMs,
+    processPlaidWebhook,
 } = require('./plaidService');
 
 test.after(async () => {
@@ -69,4 +70,32 @@ test('retries failed and crash-interrupted webhook processing', async () => {
     event = await db.get('SELECT status, attempts FROM plaid_webhook_events WHERE id = ?', [queued.id]);
     assert.equal(event.status, 'processed');
     assert.equal(event.attempts, 2);
+});
+
+test('Item webhooks distinguish bank verification from temporary sync failures', async () => {
+    const db = await dbService.getDb();
+    const now = new Date().toISOString();
+    await db.run('INSERT INTO users (id, username, password, createdAt) VALUES (?, ?, ?, ?)',
+        ['webhook-user', 'webhook-user', 'unused', now]);
+    await db.run(`INSERT INTO plaid_items (itemId, userId, accessTokenEncrypted, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?)`, ['webhook-item', 'webhook-user', 'unused', now, now]);
+    const sendError = (error_code) => processPlaidWebhook({
+        item_id: 'webhook-item', webhook_type: 'ITEM', webhook_code: 'ERROR',
+        error: { error_code, error_message: 'Test bank error' },
+    });
+    await sendError('INSTITUTION_DOWN');
+    let item = await db.get('SELECT status, lastError FROM plaid_items WHERE itemId = ?', ['webhook-item']);
+    assert.equal(item.status, 'sync_error');
+    assert.equal(item.lastError, '[INSTITUTION_DOWN] Test bank error');
+    await sendError('ITEM_LOGIN_REQUIRED');
+    item = await db.get('SELECT status FROM plaid_items WHERE itemId = ?', ['webhook-item']);
+    assert.equal(item.status, 'login_required');
+    await sendError('INSTITUTION_DOWN');
+    item = await db.get('SELECT status FROM plaid_items WHERE itemId = ?', ['webhook-item']);
+    assert.equal(item.status, 'login_required');
+    for (const webhook_code of ['PENDING_DISCONNECT', 'PENDING_EXPIRATION', 'USER_PERMISSION_REVOKED']) {
+        await processPlaidWebhook({ item_id: 'webhook-item', webhook_type: 'ITEM', webhook_code });
+        item = await db.get('SELECT status FROM plaid_items WHERE itemId = ?', ['webhook-item']);
+        assert.equal(item.status, 'attention_required');
+    }
 });

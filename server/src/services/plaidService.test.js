@@ -22,7 +22,17 @@ const {
     verifyPlaidWebhook,
     webhookSyncOptions,
     reconciliationIntervalMs,
+    plaidFailureStatus,
 } = require('./plaidService');
+
+test('only requests bank verification for authentication or consent failures', () => {
+    assert.equal(plaidFailureStatus({ code: 'ITEM_LOGIN_REQUIRED' }), 'login_required');
+    assert.equal(plaidFailureStatus({ code: 'ITEM_ACCESS_NOT_GRANTED' }), 'attention_required');
+    assert.equal(plaidFailureStatus({ code: 'INSTITUTION_DOWN' }), 'sync_error');
+    assert.equal(plaidFailureStatus(new Error('network timeout')), 'sync_error');
+    assert.equal(plaidFailureStatus({ code: 'INSTITUTION_DOWN' }, 'login_required'), 'login_required');
+    assert.equal(plaidFailureStatus(new Error('timeout'), 'attention_required'), 'attention_required');
+});
 
 test('maps Plaid outflows and inflows to MoniMonitor categories', () => {
     assert.deepEqual(classifyPlaidTransaction({

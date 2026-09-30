@@ -186,8 +186,17 @@ const Account = () => {
                 onSuccess: async (publicToken, metadata) => {
                     try {
                         setPlaidMessage(item ? "Reconnecting and checking for missing transactions…" : "Connecting and checking for missing transactions…");
-                        await exchangePlaidPublicTokenAPI(publicToken, { institution: metadata.institution });
+                        let syncResult;
+                        if (item) {
+                            // Update mode repairs the existing Item and keeps its access token.
+                            syncResult = await syncPlaidAPI();
+                        } else {
+                            const connection = await exchangePlaidPublicTokenAPI(publicToken, { institution: metadata?.institution });
+                            syncResult = connection?.sync;
+                        }
                         await refreshPlaidStatus();
+                        const failure = syncResult?.results?.find((result) => (!item || result.itemId === item.itemId) && result.ok === false);
+                        if (failure) throw new Error(`Bank verification completed, but sync failed: ${failure.error || 'Please retry sync.'}`);
                         setPlaidMessage(item ? "Bank reconnected. Missing transactions are now covered by Plaid." : "Bank connected. Missing transactions are now covered by Plaid.");
                     } catch (error) {
                         setPlaidMessage(error.message);
@@ -254,6 +263,11 @@ const Account = () => {
         try {
             const result = await syncPlaidAPI();
             await refreshPlaidStatus();
+            const failures = result.results?.filter((item) => item.ok === false) || [];
+            if (failures.length) {
+                setPlaidMessage(`Sync incomplete: ${failures.map((item) => item.error || 'Please retry sync.').join('; ')}`);
+                return;
+            }
             const imported = result.results?.reduce((sum, item) => sum + (item.imported || 0), 0) || 0;
             const matched = result.results?.reduce((sum, item) => sum + (item.matched || 0), 0) || 0;
             const investmentImported = result.results?.reduce((sum, item) => sum + (item.investmentTransactionsImported || 0), 0) || 0;
@@ -470,11 +484,14 @@ const Account = () => {
                                             <div>{item.accountCount} account{item.accountCount === 1 ? '' : 's'}</div>
                                             <div style={{ marginTop: "2px" }}>Last sync {item.lastSyncedAt ? new Date(item.lastSyncedAt).toLocaleString() : 'pending'}</div>
                                             {Number(item.investmentAccountCount) > 0 && item.holdingsStatus !== 'active' && <div style={{ marginTop: "2px" }}>Holdings authorization needed</div>}
-                                        </> : item.lastError || 'Connection needs attention'}
+                                        </> : ['login_required', 'attention_required'].includes(item.status)
+                                            ? item.lastError || 'Bank verification required'
+                                            : <><div>Sync unavailable. Automatic sync will retry.</div><div>{item.lastError}</div></>}
                                     </div>
                                 </div>
                                 <div style={{ display: "flex", gap: "8px", alignItems: "center", flexShrink: 0 }}>
-                                    {item.status !== 'active' && <button type="button" disabled={plaidBusy} onClick={() => handleConnectPlaid(item)} style={{ background: "none", border: 0, color: "var(--Bc-2)", cursor: "pointer", fontSize: "0.72rem" }}>Reconnect</button>}
+                                    {['login_required', 'attention_required'].includes(item.status) && <button type="button" disabled={plaidBusy} onClick={() => handleConnectPlaid(item)} style={{ background: "none", border: 0, color: "var(--Bc-2)", cursor: "pointer", fontSize: "0.72rem" }}>Reconnect</button>}
+                                    {['error', 'sync_error'].includes(item.status) && <button type="button" disabled={plaidBusy} onClick={handlePlaidSync} style={{ background: "none", border: 0, color: "var(--Bc-2)", cursor: "pointer", fontSize: "0.72rem" }}>Retry sync</button>}
                                     <button type="button" disabled={plaidBusy} onClick={() => handlePlaidDisconnect(item)} style={{ background: "none", border: 0, color: "var(--Gc-2)", cursor: "pointer", fontSize: "0.72rem" }}>Disconnect</button>
                                 </div>
                             </div>
@@ -497,7 +514,7 @@ const Account = () => {
                                 <span style={{ fontSize: "1rem" }}>📈</span>
                             </div>
                         ))}
-                        <div className="settings-item" style={itemStyle} onClick={plaidBusy || plaidStatus?.configured === false ? undefined : handleConnectPlaid}>
+                        <div className="settings-item" style={itemStyle} onClick={plaidBusy || plaidStatus?.configured === false ? undefined : () => handleConnectPlaid()}>
                             <span>{plaidBusy ? "Plaid is working…" : "Connect a bank with Plaid"}</span>
                             <span style={{ fontSize: "1rem" }}>🏦</span>
                         </div>

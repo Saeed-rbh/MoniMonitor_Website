@@ -152,6 +152,19 @@ async function migrateAccessTokenEncryption() {
     return { migrated, alreadyCurrent };
 }
 
+function plaidFailureStatus(error = {}, previousStatus) {
+    if (error.code === 'ITEM_LOGIN_REQUIRED') return 'login_required';
+    if (error.code === 'ITEM_ACCESS_NOT_GRANTED') return 'attention_required';
+    // A failed retry must not hide an outstanding authentication requirement.
+    if (['login_required', 'attention_required'].includes(previousStatus)) return previousStatus;
+    return 'sync_error';
+}
+
+function plaidFailureMessage(error = {}) {
+    const message = error.message || error.error_message || 'Plaid sync failed';
+    return `${error.code || error.error_code ? `[${error.code || error.error_code}] ` : ''}${message}`.slice(0, 500);
+}
+
 async function plaidRequest(path, body = {}) {
     const config = requireConfig();
     const response = await fetch(`${config.baseUrl}${path}`, {
@@ -1605,10 +1618,10 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
         );
         return totals;
     } catch (error) {
-        const status = error.code === 'ITEM_LOGIN_REQUIRED' ? 'login_required' : 'error';
+        const status = plaidFailureStatus(error, item.status);
         await db.run(
             `UPDATE plaid_items SET status = ?, lastError = ?, updatedAt = ? WHERE itemId = ? AND userId = ?`,
-            [status, String(error.message || 'Plaid sync failed').slice(0, 500), new Date().toISOString(), item.itemId, item.userId]
+            [status, plaidFailureMessage(error), new Date().toISOString(), item.itemId, item.userId]
         );
         throw error;
     }
@@ -1633,7 +1646,7 @@ async function syncUserItems(userId, { force = false, forceHoldings = force, bac
             results.push({ itemId: item.itemId, ok: true, ...(await syncItem(item, { forceHoldings, backfillSources })) });
         } catch (error) {
             console.error(`[Plaid] Sync failed for item ${item.itemId}:`, error.message);
-            results.push({ itemId: item.itemId, ok: false, error: error.message });
+            results.push({ itemId: item.itemId, ok: false, error: error.message, errorCode: error.code || null });
         }
     }
     const storedSourcesRefreshed = force
@@ -1702,12 +1715,14 @@ async function processPlaidWebhook(payload = {}) {
             String(payload.webhook_code || 'UNKNOWN').slice(0, 120), new Date().toISOString(), itemId]
     );
 
-    if (payload.webhook_type === 'ITEM' && ['ERROR', 'PENDING_DISCONNECT'].includes(payload.webhook_code)) {
+    if (payload.webhook_type === 'ITEM' && ['ERROR', 'PENDING_DISCONNECT', 'PENDING_EXPIRATION', 'USER_PERMISSION_REVOKED'].includes(payload.webhook_code)) {
         const message = payload.error?.error_message || payload.reason || payload.webhook_code;
         await db.run(
             `UPDATE plaid_items SET status = ?, lastError = ?, updatedAt = ? WHERE itemId = ?`,
-            [payload.webhook_code === 'ERROR' ? 'error' : 'attention_required',
-                String(message).slice(0, 500), new Date().toISOString(), itemId]
+            [payload.webhook_code === 'ERROR'
+                ? plaidFailureStatus({ code: payload.error?.error_code }, item.status)
+                : 'attention_required',
+                plaidFailureMessage({ code: payload.error?.error_code, message }), new Date().toISOString(), itemId]
         );
         return { handled: true, action: 'status_updated' };
     }
@@ -1991,6 +2006,7 @@ async function disconnectItem(userId, itemId) {
 }
 
 module.exports = {
+    plaidFailureStatus,
     isConfigured,
     createLinkToken,
     exchangePublicToken,
