@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoniMonitor — System Health Dashboard</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --card: #111827;
+    --card-border: #1e293b;
+    --text: #e2e8f0;
+    --text-dim: #64748b;
+    --accent: #38bdf8;
+    --ok: #22c55e;
+    --ok-glow: rgba(34,197,94,.35);
+    --warn: #eab308;
+    --warn-glow: rgba(234,179,8,.35);
+    --err: #ef4444;
+    --err-glow: rgba(239,68,68,.35);
+    --unknown: #64748b;
+    --unknown-glow: rgba(100,116,139,.25);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* ── Header ───────────────────────────────── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #38bdf8, #818cf8);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 18px; color: #fff;
+  }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+  .header h1 span { color: var(--accent); }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .refresh-btn {
+    background: transparent; border: 1px solid var(--card-border);
+    color: var(--text); border-radius: 8px; padding: 7px 16px;
+    cursor: pointer; font-size: 13px; transition: .15s;
+  }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .meta { font-size: 12px; color: var(--text-dim); text-align: right; line-height: 1.6; }
+
+  /* ── Overall Banner ───────────────────────── */
+  .overall-banner {
+    border-radius: 14px; padding: 20px 28px;
+    display: flex; align-items: center; gap: 18px;
+    margin-bottom: 24px;
+    transition: background .4s, border-color .4s;
+    border: 1px solid var(--card-border);
+    background: var(--card);
+  }
+  .overall-banner.ok     { border-color: var(--ok);   background: linear-gradient(90deg, rgba(34,197,94,.08), var(--card) 60%); }
+  .overall-banner.warn   { border-color: var(--warn);  background: linear-gradient(90deg, rgba(234,179,8,.08), var(--card) 60%); }
+  .overall-banner.err    { border-color: var(--err);   background: linear-gradient(90deg, rgba(239,68,68,.08), var(--card) 60%); }
+  .overall-banner.unknown{ border-color: var(--unknown); }
+  .overall-dot {
+    width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .overall-dot.ok   { background: var(--ok);   box-shadow: 0 0 12px var(--ok-glow); }
+  .overall-dot.warn { background: var(--warn); box-shadow: 0 0 12px var(--warn-glow); }
+  .overall-dot.err  { background: var(--err);  box-shadow: 0 0 12px var(--err-glow); }
+  .overall-dot.unknown { background: var(--unknown); box-shadow: 0 0 12px var(--unknown-glow); animation: none; }
+  .overall-label { font-size: 20px; font-weight: 700; }
+  .overall-sub   { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%      { transform: scale(1.25); opacity: .7; }
+  }
+
+  /* ── Grid ──────────────────────────────────── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 16px;
+  }
+
+  /* ── Card ──────────────────────────────────── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: border-color .3s;
+  }
+  .card:hover { border-color: #334155; }
+  .card-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 14px;
+  }
+  .card-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; flex-shrink: 0;
+  }
+  .card-title { font-size: 14px; font-weight: 600; }
+  .card-status {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .dot.ok   { background: var(--ok);   box-shadow: 0 0 6px var(--ok-glow); }
+  .dot.warn { background: var(--warn); box-shadow: 0 0 6px var(--warn-glow); }
+  .dot.err  { background: var(--err);  box-shadow: 0 0 6px var(--err-glow); }
+  .dot.unknown { background: var(--unknown); animation: none; }
+  .status-ok   { color: var(--ok); }
+  .status-warn { color: var(--warn); }
+  .status-err  { color: var(--err); }
+  .status-unknown { color: var(--unknown); }
+
+  /* ── Metric rows ──────────────────────────── */
+  .metrics { display: flex; flex-direction: column; gap: 8px; }
+  .metric {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 13px; padding: 5px 0;
+    border-bottom: 1px solid rgba(255,255,255,.04);
+  }
+  .metric:last-child { border-bottom: none; }
+  .metric-label { color: var(--text-dim); }
+  .metric-value { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .metric-value.ok   { color: var(--ok); }
+  .metric-value.warn { color: var(--warn); }
+  .metric-value.err  { color: var(--err); }
+
+  /* ── Queue bar ────────────────────────────── */
+  .queue-bar-wrap {
+    height: 6px; background: rgba(255,255,255,.06); border-radius: 3px;
+    overflow: hidden; margin-top: 4px;
+  }
+  .queue-bar {
+    height: 100%; border-radius: 3px; transition: width .6s ease;
+  }
+  .queue-bar.ok   { background: var(--ok); }
+  .queue-bar.warn { background: var(--warn); }
+  .queue-bar.err  { background: var(--err); }
+
+  /* ── Connection error overlay ──────────────  */
+  .conn-error {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: rgba(239,68,68,.15); border: 1px solid var(--err);
+    color: var(--err); padding: 12px 24px; border-radius: 10px;
+    font-size: 13px; font-weight: 600;
+    backdrop-filter: blur(12px);
+    opacity: 0; pointer-events: none; transition: opacity .3s;
+    z-index: 100;
+  }
+  .conn-error.visible { opacity: 1; pointer-events: auto; }
+
+  /* ── Countdown ring ───────────────────────── */
+  .countdown { position: relative; width: 28px; height: 28px; }
+  .countdown svg { transform: rotate(-90deg); }
+  .countdown circle {
+    fill: none; stroke-width: 2.5;
+    cx: 14; cy: 14; r: 11;
+  }
+  .countdown .bg   { stroke: var(--card-border); }
+  .countdown .prog { stroke: var(--accent); stroke-dasharray: 69.12; transition: stroke-dashoffset .95s linear; }
+  .countdown .num  {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: var(--accent);
+  }
+
+  /* ── History sparkline ────────────────────── */
+  .history { margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.06); }
+  .history-title { font-size: 11px; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+  .history-bar {
+    display: flex; gap: 2px; align-items: flex-end; height: 20px;
+  }
+  .history-tick {
+    flex: 1; border-radius: 2px 2px 0 0; min-width: 3px;
+    transition: height .3s, background .3s;
+  }
+
+  /* ── Responsive ───────────────────────────── */
+  @media (max-width: 700px) {
+    body { padding: 14px; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="logo">M</div>
+    <div>
+      <h1>Moni<span>Monitor</span></h1>
+      <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">System Health Dashboard</div>
+      <div id="runningVersion" style="font-size:13px;color:var(--accent);margin-top:6px;" aria-live="polite">Running version: checking…</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="countdown" title="Next refresh">
+      <svg width="28" height="28"><circle class="bg" /><circle class="prog" /></svg>
+      <div class="num" id="countNum">15</div>
+    </div>
+    <button class="refresh-btn" onclick="fetchAll()">↻ Refresh Now</button>
+    <div class="meta">
+      <div>Updated: <span id="lastUpdate">—</span></div>
+      <div>Monitoring: <span id="monitorUptime">—</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Overall Banner -->
+<div class="overall-banner unknown" id="overallBanner">
+  <div class="overall-dot unknown" id="overallDot"></div>
+  <div>
+    <div class="overall-label" id="overallLabel">Connecting…</div>
+    <div class="overall-sub" id="overallSub">Fetching system health</div>
+  </div>
+</div>
+
+<!-- Cards Grid -->
+<div class="grid" id="grid"></div>
+
+<!-- Connection Error Toast -->
+<div class="conn-error" id="connError">⚠ Cannot reach backend at localhost:3001 &nbsp;·&nbsp; <a href="http://localhost:3001/status" style="color:#38bdf8;text-decoration:underline;">Open via HTTP</a></div>
+
+<script>
+const API = window.location.protocol.startsWith('http') ? window.location.origin : 'http://localhost:3001';
+const REFRESH_INTERVAL = 15; // seconds
+let countdown = REFRESH_INTERVAL;
+let monitorStartedAt = Date.now();
+
+// ── Status history (last 30 polls) ─────────────────────
+const statusHistory = [];
+const MAX_HISTORY = 60;
+
+// ── Helpers ────────────────────────────────────────────
+function ago(isoOrSeconds) {
+  let s = typeof isoOrSeconds === 'number'
+    ? isoOrSeconds
+    : (Date.now() - new Date(isoOrSeconds).getTime()) / 1000;
+  if (s < 0) s = 0;
+  if (s < 60)    return `${Math.floor(s)}s ago`;
+  if (s < 3600)  return `${Math.floor(s/60)}m ago`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m ago`;
+  return `${Math.floor(s/86400)}d ago`;
+}
+
+function dur(seconds) {
+  if (seconds == null) return '—';
+  const s = Math.floor(seconds);
+  if (s < 60)    return `${s}s`;
+  if (s < 3600)  return `${Math.floor(s/60)}m ${s%60}s`;
+  if (s < 86400) return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+  return `${Math.floor(s/86400)}d ${Math.floor((s%86400)/3600)}h`;
+}
+
+function cls(state) {
+  if (!state) return 'unknown';
+  const s = String(state).toLowerCase();
+  if (['ok','ready','connected','processing','active','healthy'].includes(s)) return 'ok';
+  if (['degraded','warn','warning','reconnecting','starting','paused','stale'].includes(s)) return 'warn';
+  if (['unavailable','error','err','failed','dead','down','disabled'].includes(s)) return 'err';
+  return 'unknown';
+}
+
+function statusText(state) {
+  if (!state) return 'Unknown';
+  return String(state).charAt(0).toUpperCase() + String(state).slice(1);
+}
+
+function dot(c) { return `<span class="dot ${c}"></span>`; }
+
+function statusBadge(state) {
+  const c = cls(state);
+  return `<span class="card-status">${dot(c)} <span class="status-${c}">${statusText(state)}</span></span>`;
+}
+
+function m(label, value, valueClass) {
+  const vc = valueClass ? ` class="metric-value ${valueClass}"` : ' class="metric-value"';
+  return `<div class="metric"><span class="metric-label">${label}</span><span${vc}>${value ?? '—'}</span></div>`;
+}
+
+function escapeText(value) {
+  return String(value ?? '—').replace(/[&<>"']/g, character =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+}
+
+function showRunningVersion(app) {
+  const version = document.getElementById('runningVersion');
+  version.textContent = app?.version && app?.shortCommit
+    ? `Running backend: v${app.version} · ${app.shortCommit}${app.localChanges ? ' · local changes at startup' : ''}`
+    : 'Running version unavailable — restart the backend to load version reporting';
+  version.title = app?.commit || '';
+}
+
+function queueBar(depth, max) {
+  const pct = max > 0 ? Math.min(depth / max * 100, 100) : 0;
+  const c = pct > 60 ? 'err' : pct > 20 ? 'warn' : 'ok';
+  return `<div class="queue-bar-wrap"><div class="queue-bar ${c}" style="width:${pct}%"></div></div>`;
+}
+
+function historyBar(arr) {
+  if (arr.length < 2) return '';
+  const ticks = arr.map(s => {
+    const c = s === 'ok' ? 'var(--ok)' : s === 'degraded' ? 'var(--warn)' : s === 'unreachable' ? 'var(--err)' : 'var(--unknown)';
+    return `<div class="history-tick" style="height:100%;background:${c}"></div>`;
+  }).join('');
+  return `<div class="history"><div class="history-title">Status history (last ${arr.length} checks)</div><div class="history-bar">${ticks}</div></div>`;
+}
+
+function card(icon, bg, title, state, metricsHtml, extra = '') {
+  return `<div class="card">
+    <div class="card-head">
+      <div class="card-icon" style="background:${bg}">${icon}</div>
+      <span class="card-title">${title}</span>
+      ${statusBadge(state)}
+    </div>
+    <div class="metrics">${metricsHtml}</div>
+    ${extra}
+  </div>`;
+}
+
+// ── Probe helper ───────────────────────────────────────
+async function probe(url, timeout = 4000) {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal, mode: 'cors' });
+    clearTimeout(id);
+    return r.ok;
+  } catch { clearTimeout(id); return false; }
+}
+
+// ── Main fetch ─────────────────────────────────────────
+async function fetchAll() {
+  countdown = REFRESH_INTERVAL;
+  const grid = document.getElementById('grid');
+  const connErr = document.getElementById('connError');
+  let health = null;
+  let plaid = null;
+
+  // Fetch /health
+  try {
+    const r = await fetch(`${API}/health`, { mode: 'cors', cache: 'no-store' });
+    health = await r.json();
+    showRunningVersion(health.app);
+    connErr.classList.remove('visible');
+  } catch {
+    document.getElementById('runningVersion').textContent = 'Running version unavailable — backend unreachable';
+    connErr.classList.add('visible');
+    setOverall('unavailable', 'Backend Unreachable', 'Cannot connect to localhost:3001');
+    statusHistory.push('unreachable');
+    if (statusHistory.length > MAX_HISTORY) statusHistory.shift();
+    return;
+  }
+
+  // Record history
+  statusHistory.push(health.status || 'unknown');
+  if (statusHistory.length > MAX_HISTORY) statusHistory.shift();
+
+  // Fetch /plaid/status (requires auth — gracefully degrade)
+  try {
+    const r = await fetch(`${API}/plaid/status`, { mode: 'cors' });
+    if (r.ok) plaid = await r.json();
+  } catch { /* ok */ }
+
+  // Probe ancillary services in parallel
+  const [frontendUp, publicUp] = await Promise.all([
+    probe('http://localhost:3000', 3000),
+    probe('https://monimonitor.saeedarabha.com/api/health', 5000),
+  ]);
+
+  document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+  document.getElementById('monitorUptime').textContent = dur((Date.now() - monitorStartedAt) / 1000);
+
+  // ── Overall ──────────────────────────────────────
+  setOverall(
+    health.status,
+    health.status === 'ok'          ? 'All Systems Operational' :
+    health.status === 'degraded'    ? 'Partial Degradation Detected' :
+                                      'System Unavailable',
+    health.status === 'ok'          ? 'Every subsystem is running normally' :
+    health.status === 'degraded'    ? 'One or more subsystems need attention' :
+                                      'Critical failure detected'
+  );
+
+  // ── Extract nested data ──────────────────────────
+  const emailQ    = health.queues?.email    || {};
+  const telegramQ = health.queues?.telegram || {};
+  const imap      = health.subsystems?.imap || {};
+  const tgSub     = health.subsystems?.telegramOutbox || {};
+  const tgWorker  = health.telegramOutbox || {};
+  const backup    = health.backup || {};
+  const agent     = health.agent || {};
+  const db        = health.database || {};
+
+  // ── Build cards ──────────────────────────────────
+  const cards = [];
+
+  // 1 — Backend API Server
+  cards.push(card('🖥️', 'rgba(56,189,248,.15)', 'Backend API Server', health.status,
+    m('Port', '3001') +
+    m('HTTP Status', health.status === 'unavailable' ? '503' : '200') +
+    m('App version', health.app?.version ? escapeText(`v${health.app.version}`) : 'Unavailable') +
+    m('Running commit', escapeText(health.app?.shortCommit || 'Unavailable')) +
+    m('Backend started', health.app?.startedAt ? escapeText(new Date(health.app.startedAt).toLocaleString()) : 'Unavailable') +
+    m('Local changes at startup', health.app?.localChanges == null ? 'Unknown' : health.app.localChanges ? 'Yes' : 'No') +
+    m('Database', db.state || 'unknown', cls(db.state)) +
+    m('Overall', statusText(health.status), cls(health.status)),
+    historyBar(statusHistory)
+  ));
+
+  // 2 — Frontend Dev Server
+  cards.push(card('🌐', 'rgba(129,140,248,.15)', 'Frontend Dev Server', frontendUp ? 'ok' : 'down',
+    m('Port', '3000') +
+    m('Reachable', frontendUp ? 'Yes' : 'No', frontendUp ? 'ok' : 'err') +
+    m('Stack', 'React + Vite')
+  ));
+
+  // 3 — Email Agent (IMAP)
+  const agentState = agent.state || (agent.enabled === false ? 'disabled' : 'unknown');
+  const imapState  = imap.state || agentState;
+  cards.push(card('📧', 'rgba(34,197,94,.15)', 'Email Agent (IMAP)', imapState,
+    m('IMAP State', statusText(imap.state), cls(imap.state)) +
+    m('Agent Enabled', agent.enabled !== false ? 'Yes' : 'No', agent.enabled !== false ? 'ok' : 'err') +
+    m('Agent State', statusText(agentState), cls(agentState)) +
+    m('Last Success', imap.lastSuccessAt ? ago(imap.lastSuccessAt) : '—') +
+    (imap.lastError ? m('Last Error', String(imap.lastError).slice(0, 80), 'err') : '') +
+    m('Queue Pending', emailQ.pending ?? 0) +
+    m('Queue Processing', emailQ.processing ?? 0) +
+    m('Queue Retry', emailQ.retry ?? 0, (emailQ.retry || 0) > 0 ? 'warn' : '') +
+    m('Dead Letters', emailQ.dead ?? 0, (emailQ.dead || 0) > 0 ? 'err' : '') +
+    m('Processed Total', emailQ.processed ?? 0, 'ok') +
+    (emailQ.depth != null ? (m('Active Depth', emailQ.depth) + queueBar(emailQ.depth, 20)) : '')
+  ));
+
+  // 4 — Telegram Bot & Outbox
+  const tgState = tgSub.state || (tgWorker.startedAt ? 'ready' : 'unknown');
+  cards.push(card('✈️', 'rgba(234,179,8,.15)', 'Telegram Bot & Outbox', tgState,
+    m('Worker State', statusText(tgState), cls(tgState)) +
+    m('Started At', tgWorker.startedAt ? new Date(tgWorker.startedAt).toLocaleTimeString() : '—') +
+    m('Last Delivery', tgWorker.lastSuccessAt ? ago(tgWorker.lastSuccessAt) : '—') +
+    (tgWorker.lastError ? m('Last Error', String(tgWorker.lastError).slice(0, 60), 'err') : '') +
+    m('Queue Pending', telegramQ.pending ?? 0) +
+    m('Queue Processing', telegramQ.processing ?? 0) +
+    m('Queue Retry', telegramQ.retry ?? 0, (telegramQ.retry || 0) > 0 ? 'warn' : '') +
+    m('Dead Letters', telegramQ.dead ?? 0, (telegramQ.dead || 0) > 0 ? 'err' : '') +
+    m('Notification Failures', telegramQ.notificationFailures ?? 0, (telegramQ.notificationFailures || 0) > 0 ? 'warn' : '') +
+    (telegramQ.depth != null ? (m('Active Depth', telegramQ.depth) + queueBar(telegramQ.depth, 10)) : '')
+  ));
+
+  // 5 — Plaid Banking Integration
+  const plaidState = plaid ? (plaid.connected ? 'ok' : 'degraded') : 'unknown';
+  let plaidMetrics = '';
+  if (plaid) {
+    plaidMetrics =
+      m('Connected', plaid.connected ? 'Yes' : 'No', plaid.connected ? 'ok' : 'err') +
+      m('Linked Items', plaid.items?.length ?? 0) +
+      m('Linked Accounts', plaid.accounts?.length ?? 0);
+    if (plaid.webhookInbox) {
+      plaidMetrics +=
+        m('Webhook Pending', plaid.webhookInbox.pending ?? 0) +
+        m('Webhook Processed', plaid.webhookInbox.processed ?? 0, 'ok') +
+        m('Last Webhook', plaid.webhookInbox.lastProcessedAt ? ago(plaid.webhookInbox.lastProcessedAt) : '—');
+    }
+    if (plaid.items) {
+      for (const item of plaid.items) {
+        if (item.error) {
+          plaidMetrics += m(`⚠ ${item.institutionName || item.itemId}`, item.error, 'err');
+        }
+      }
+    }
+  } else {
+    plaidMetrics = m('Status', 'Auth required / unavailable', 'warn');
+  }
+  cards.push(card('🏦', 'rgba(139,92,246,.15)', 'Plaid Banking Integration', plaidState, plaidMetrics));
+
+  // 6 — Backup Service
+  const backupState = backup.stale ? 'stale' : (backup.lastBackupAgeSec != null ? 'ok' : 'unknown');
+  cards.push(card('💾', 'rgba(20,184,166,.15)', 'Backup Service', backupState,
+    m('Last Backup', backup.lastBackupAgeSec != null ? dur(backup.lastBackupAgeSec) + ' ago' : 'Never') +
+    m('Stale (>48h)', backup.stale ? 'Yes ⚠' : 'No', backup.stale ? 'err' : 'ok') +
+    m('Offsite Configured', backup.offsiteConfigured ? 'Yes' : 'No', backup.offsiteConfigured ? 'ok' : 'warn') +
+    (backup.restoreDrill
+      ? m('Restore Drill', backup.restoreDrill.status || '—', cls(backup.restoreDrill.status))
+      : '')
+  ));
+
+  // 7 — Public Access / Tailscale
+  cards.push(card('🔗', 'rgba(244,114,182,.15)', 'Public Access (Tailscale)', publicUp ? 'ok' : 'down',
+    m('Domain', 'monimonitor.saeedarabha.com') +
+    m('Public Reachable', publicUp ? 'Yes' : 'No', publicUp ? 'ok' : 'err') +
+    m('Tunnel', 'Tailscale Funnel → :3001')
+  ));
+
+  // 8 — SQLite Database
+  cards.push(card('🗄️', 'rgba(251,146,60,.15)', 'SQLite Database', db.state || 'unknown',
+    m('Engine', 'SQLite 3 (WAL mode)') +
+    m('State', statusText(db.state), cls(db.state)) +
+    m('File', 'monimonitor.sqlite')
+  ));
+
+  // 9 — AI Service
+  const aiState = agent.enabled !== false ? 'ok' : 'disabled';
+  cards.push(card('🤖', 'rgba(168,85,247,.15)', 'AI Service (Gemini)', aiState,
+    m('Provider', 'Google Gemini') +
+    m('Model', 'gemini-3.5-flash-lite') +
+    m('Enabled', agent.enabled !== false ? 'Yes' : 'No', agent.enabled !== false ? 'ok' : 'err') +
+    m('Forecasting', 'TimesFM 2.5 (BigQuery)')
+  ));
+
+  // Extra subsystems not covered above
+  const knownSubs = new Set(['imap', 'telegramOutbox']);
+  if (health.subsystems) {
+    for (const [name, sub] of Object.entries(health.subsystems)) {
+      if (knownSubs.has(name)) continue;
+      let metrics = '';
+      for (const [k, v] of Object.entries(sub)) {
+        if (k === 'updatedAt') metrics += m('Last Update', ago(v));
+        else if (k === 'state') continue;
+        else metrics += m(k, String(v).slice(0, 80));
+      }
+      cards.push(card('⚙️', 'rgba(148,163,184,.15)', `Subsystem: ${name}`, sub.state || 'unknown', metrics));
+    }
+  }
+
+  grid.innerHTML = cards.join('');
+}
+
+// ── Overall banner ─────────────────────────────────────
+function setOverall(status, label, sub) {
+  const banner = document.getElementById('overallBanner');
+  const dotEl  = document.getElementById('overallDot');
+  const c = cls(status);
+  banner.className = `overall-banner ${c}`;
+  dotEl.className  = `overall-dot ${c}`;
+  document.getElementById('overallLabel').textContent = label;
+  document.getElementById('overallSub').textContent = sub;
+}
+
+// ── Countdown ring ─────────────────────────────────────
+function tickCountdown() {
+  countdown--;
+  if (countdown <= 0) { fetchAll(); return; }
+  const circle = document.querySelector('.countdown .prog');
+  const num = document.getElementById('countNum');
+  const pct = countdown / REFRESH_INTERVAL;
+  circle.style.strokeDashoffset = (1 - pct) * 69.12;
+  num.textContent = countdown;
+}
+
+// ── Boot ───────────────────────────────────────────────
+fetchAll();
+setInterval(tickCountdown, 1000);
+</script>
+</body>
+</html>

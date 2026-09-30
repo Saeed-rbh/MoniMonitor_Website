@@ -31,6 +31,7 @@ const plaidService = require("./src/services/plaidService");
 const { startTelegramOutboxWorker, getTelegramOutboxWorkerHealth } = require("./src/services/telegramOutboxWorker");
 const { getAllSubsystemHealth } = require("./src/services/subsystemHealth");
 const { logger } = require('./src/services/logger');
+const { runtimeVersion } = require('./src/services/runtimeVersion');
 
 const app = express();
 app.set("trust proxy", proxyTrust());
@@ -155,6 +156,7 @@ const sendValidationError = (res, error) => {
 };
 
 app.get("/health", async (_req, res) => {
+    res.set('Cache-Control', 'no-store');
     try {
         const db = await dbService.getDb();
         await db.get("SELECT 1 AS ready");
@@ -166,6 +168,7 @@ app.get("/health", async (_req, res) => {
         const status = agentFailed ? "unavailable" : (hasDeadLetters || outbox.lastError || backup.stale ? "degraded" : "ok");
         return res.json({
             status,
+            app: runtimeVersion,
             database: { state: "ready" },
             agent: {
                 enabled: agentStatus.enabled,
@@ -178,7 +181,7 @@ app.get("/health", async (_req, res) => {
         });
     } catch (error) {
         logger.error('health.check_failed', { correlationId: _req.requestId, error: error.message });
-        return res.status(503).json({ status: "unavailable" });
+        return res.status(503).json({ status: "unavailable", app: runtimeVersion });
     }
 });
 

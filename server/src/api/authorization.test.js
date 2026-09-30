@@ -59,6 +59,12 @@ test('request logs receive a correlation ID without echoing authorization data',
     assert.match(response.headers.get('x-request-id'), /^[A-Za-z0-9._-]{8,128}$/);
 });
 
+test('health reports the fixed running identity without caching it', async () => {
+    const response = await request('/health');
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.deepEqual((await response.json()).app, require('../services/runtimeVersion').runtimeVersion);
+});
+
 test('report APIs reject impossible months before querying or generating insights', async () => {
     for (const month of ['2026-00', '2026-13']) {
         for (const route of ['/dashboard-bootstrap', '/insights/monthly']) {

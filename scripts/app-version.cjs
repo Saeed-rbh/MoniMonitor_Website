@@ -15,19 +15,19 @@ function git(...args) {
     }
 }
 
-function getAutomaticPatch() {
+function getAutomaticPatch(ref = 'HEAD') {
     const baseline = versionBase.baselineCommit;
     if (!baseline) return Number(versionBase.patch) || 0;
 
     // Verify the baseline exists, then count commits made after that release.
     if (!git('cat-file', '-t', baseline)) return Number(versionBase.patch) || 0;
 
-    const count = Number(git('rev-list', '--count', `${baseline}..HEAD`));
+    const count = Number(git('rev-list', '--count', `${baseline}..${ref}`));
     return (Number(versionBase.patch) || 0) + (Number.isFinite(count) ? count : 0);
 }
 
-function getAppVersion() {
-    return `${versionBase.major}.${versionBase.minor}.${getAutomaticPatch()}`;
+function getAppVersion(ref = 'HEAD') {
+    return `${versionBase.major}.${versionBase.minor}.${getAutomaticPatch(ref)}`;
 }
 
 module.exports = { getAppVersion };
