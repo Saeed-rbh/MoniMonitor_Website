@@ -76,12 +76,12 @@ async function updateTransaction(userId, id, input) {
         if (!previous) throw new TransactionMutationError('Transaction not found', 404);
         if ((BalanceAccountId || ['Amount', 'Currency', 'Category', 'Label', 'Timestamp', 'Account', 'BankName', 'Type'].some((field) =>
             updates[field] !== undefined && updates[field] !== previous[field])) &&
-            await db.get('SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ? AND userId = ?', [id, userId])) {
+            await db.get('SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ? AND userId = ? AND reversedAt IS NULL', [id, userId])) {
             throw new TransactionMutationError('Reverse the linked portfolio activity before changing its financial fields', 409);
         }
         if (updates.Currency && updates.Currency !== (previous.Currency || 'CAD') &&
             await db.get(`SELECT id FROM account_balance_events WHERE sourceTransactionId = ? AND userId = ?
-                UNION ALL SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ? AND userId = ? LIMIT 1`,
+                UNION ALL SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ? AND userId = ? AND reversedAt IS NULL LIMIT 1`,
                 [id, userId, id, userId])) {
             throw new TransactionMutationError('Reverse the existing account posting before changing its currency');
         }

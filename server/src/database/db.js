@@ -598,7 +598,7 @@ async function getDb() {
                 CREATE INDEX IF NOT EXISTS idx_investment_accounts_user ON investment_accounts(userId);
                 CREATE INDEX IF NOT EXISTS idx_investment_holdings_account ON investment_holdings(accountId);
                 CREATE INDEX IF NOT EXISTS idx_portfolio_transactions_user_date ON portfolio_transactions(userId, occurredAt DESC);
-                CREATE UNIQUE INDEX IF NOT EXISTS idx_portfolio_transactions_source ON portfolio_transactions(sourceTransactionId) WHERE sourceTransactionId IS NOT NULL;
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_portfolio_transactions_source ON portfolio_transactions(sourceTransactionId) WHERE sourceTransactionId IS NOT NULL AND reversedAt IS NULL;
                 CREATE INDEX IF NOT EXISTS idx_account_balance_events_user ON account_balance_events(userId, occurredAt DESC);
                 CREATE INDEX IF NOT EXISTS idx_plaid_items_user ON plaid_items(userId);
                 CREATE INDEX IF NOT EXISTS idx_plaid_accounts_item ON plaid_accounts(itemId);

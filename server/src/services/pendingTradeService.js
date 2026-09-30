@@ -9,8 +9,10 @@ async function attachPendingTrades(db, userId, accounts, now = Date.now()) {
     }]));
     const rows = await db.all(`SELECT t.*, p.accountId AS postedAccountId,
             EXISTS (SELECT 1 FROM plaid_accounts a WHERE a.appAccountId = t.PortfolioAccountId AND a.userId = t.userId) AS bankLinked
-        FROM transactions t LEFT JOIN portfolio_transactions p ON p.sourceTransactionId = t.id AND p.userId = t.userId
+        FROM transactions t LEFT JOIN portfolio_transactions p ON p.sourceTransactionId = t.id AND p.userId = t.userId AND p.reversedAt IS NULL
         WHERE t.userId = ? AND t.Category = 'Investment' AND t.PortfolioAction IN ('BUY', 'SELL')
+          AND NOT EXISTS (SELECT 1 FROM portfolio_transactions r WHERE r.sourceTransactionId = t.id AND r.userId = t.userId
+              AND r.reversedAt IS NOT NULL AND p.id IS NULL)
           AND t.ReceivedAt >= ? AND t.ReceivedAt <= ?
           AND EXISTS (SELECT 1 FROM transaction_sources s WHERE s.transactionId = t.id AND s.userId = t.userId AND s.provider = 'email')
           AND NOT EXISTS (SELECT 1 FROM transaction_sources s WHERE s.transactionId = t.id AND s.userId = t.userId AND s.provider = 'plaid_investments')

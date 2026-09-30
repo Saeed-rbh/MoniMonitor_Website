@@ -242,10 +242,18 @@ does not change that bank balance. Replacing a manual cash balance starts a new
 baseline, and later manual postings affect that baseline. Unsafe reversals roll
 back the entire transaction edit or deletion and return a review conflict.
 Accounts with money or recorded activity cannot be relabelled into another
-currency. Negative provider cash is retained as a review issue while the last
-supported cash balance remains visible; overdraft accounting is still pending.
+currency. Signed cash preserves overdrafts, margin debt and card overpayments.
 Portfolio-linked source records require reversal of their portfolio activity
-before financial edits or deletion.
+before financial edits or deletion. Open the transaction details to preview a
+reversal or correct and repost a manual trade. Give a reason for every change;
+cash, shares, original cost basis, source updates and audit history commit
+together. A changed preview requires refresh. Reverse dependent trades in
+reverse order. Newer provider snapshots are preserved rather than adjusted
+twice. Older activity without saved cost-basis history requires review of the
+full current baseline and explicit acknowledgement; this reverses the history
+record while retaining that reviewed baseline. Source evidence and reversed
+activity remain in the audit history, and ingestion cannot replay a reversed
+record. Corrections that cannot be posted roll back entirely.
 
 Bank holdings are imported without email-trade overlays. BUY/SELL emails for
 bank-linked accounts remain reporting evidence; they never change recorded

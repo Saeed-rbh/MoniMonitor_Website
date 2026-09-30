@@ -412,6 +412,21 @@ const portfolioRequest = async (path = '', options = {}) => {
 
 export const getPortfolioAPI = () => portfolioRequest();
 
+export const getPortfolioCorrectionAPI = (id) => portfolioRequest(`/transactions/${id}/correction`);
+export const submitPortfolioCorrectionAPI = async (id, action, input) => {
+    const token = localStorage.getItem('token');
+    const response = await fetch(apiUrl(`/portfolio/transactions/${id}/${action}`), {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(input),
+    });
+    if (!response.ok) {
+        handleExpiredSession(response);
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || 'Portfolio correction failed');
+    }
+    return response.json();
+};
+
 export const createInvestmentAccountAPI = (account) => portfolioRequest('/accounts', {
     method: 'POST',
     body: JSON.stringify(account),

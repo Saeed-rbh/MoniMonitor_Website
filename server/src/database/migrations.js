@@ -1,5 +1,17 @@
 const MIGRATIONS = [
     {
+        version: 11,
+        name: 'audited_portfolio_reversals',
+        async up(db) {
+            await db.exec(`ALTER TABLE portfolio_transactions ADD COLUMN reversalState TEXT;
+                ALTER TABLE portfolio_transactions ADD COLUMN reversedAt TEXT;
+                ALTER TABLE portfolio_transactions ADD COLUMN reversalReason TEXT;
+                DROP INDEX IF EXISTS idx_portfolio_transactions_source;
+                CREATE UNIQUE INDEX idx_portfolio_transactions_source ON portfolio_transactions(sourceTransactionId)
+                    WHERE sourceTransactionId IS NOT NULL AND reversedAt IS NULL;`);
+        },
+    },
+    {
         version: 10,
         name: 'signed_account_balances',
         rebuildReferences: true,

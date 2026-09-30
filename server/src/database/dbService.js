@@ -3,6 +3,7 @@ const { FinancialMutationError, setAccountBalanceSnapshot } = require('../servic
 const { attachPendingTransfers } = require('../services/pendingTransferService');
 const { cashPositionOf } = require('../../../shared/accountBalances.cjs');
 const { attachPendingTrades } = require('../services/pendingTradeService');
+const { capturePortfolioState, recordPortfolioState } = require('../services/portfolioCorrections');
 const { REPORTING_CURRENCY, currencyOf, portfolioByCurrency } = require('../../../shared/currency.cjs');
 const { parseTimestamp, validMonth } = require('../../../shared/calendar.cjs');
 const { accountMatchScore, transactionBalanceDelta } = require('../services/accountMatching');
@@ -304,7 +305,7 @@ async function deleteTransaction(id, userId) {
         'SELECT userId, Timestamp FROM transactions WHERE id = ? AND userId = ?',
         [id, userId]
     );
-    if (await db.get('SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ? AND userId = ?', [id, userId])) {
+    if (await db.get('SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ? AND userId = ? AND reversedAt IS NULL', [id, userId])) {
         throw new FinancialMutationError('Reverse the linked portfolio activity before deleting its source transaction');
     }
     await removeTransactionAccountBalance(userId, id);
@@ -860,7 +861,7 @@ async function getPortfolioSummary(userId) {
                 p.kind, p.accountId, p.symbol, p.quantity, p.priceMinor, p.priceMicros, a.name AS accountName
          FROM transactions t
          LEFT JOIN portfolio_transactions p
-                ON p.sourceTransactionId = t.id AND p.userId = t.userId
+                ON p.sourceTransactionId = t.id AND p.userId = t.userId AND p.reversedAt IS NULL
          LEFT JOIN investment_accounts a
                 ON a.id = p.accountId AND a.userId = t.userId
          WHERE t.userId = ? AND t.ReceivedAt IS NOT NULL
@@ -1091,11 +1092,11 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
 
     return await db.withTransaction(async () => {
         const alreadyApplied = await db.get(
-            'SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ?',
+            'SELECT id, reversedAt FROM portfolio_transactions WHERE sourceTransactionId = ? ORDER BY (reversedAt IS NULL) DESC, id DESC LIMIT 1',
             [transactionId]
         );
-        if (alreadyApplied) {
-            return { status: 'duplicate' };
+        if (alreadyApplied && (!alreadyApplied.reversedAt || !activity.allowReapply)) {
+            return { status: alreadyApplied.reversedAt ? 'reversed' : 'duplicate' };
         }
 
         const accountResolution = await resolvePortfolioActivityAccount(userId, source, {
@@ -1113,7 +1114,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
             return { status: 'review_required', reason: 'Cross-currency portfolio activity requires a recorded exchange rate' };
         }
 
-        if (isTrade && (account.holdingsSource !== 'manual' || await db.get(
+        if (isTrade && (account.holdingsSource !== 'manual' || account.balanceSource === 'plaid' || await db.get(
             'SELECT plaidAccountId FROM plaid_accounts WHERE userId = ? AND appAccountId = ? LIMIT 1', [userId, resolvedAccountId]))) {
             // Bank snapshots can already contain this trade. Keep the email
             // as evidence and project it separately until provider confirmation.
@@ -1135,6 +1136,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
             ? source.AmountMinor
             : toMinorUnits(source.Amount);
         const occurredAt = source.Timestamp || new Date().toISOString();
+        const beforePortfolio = await capturePortfolioState(db, userId, resolvedAccountId);
 
         if (!isTrade) {
             const explicitFlow = accountFlow || source.AccountFlow;
@@ -1216,6 +1218,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
                     normalizedToSymbol || null, Number.isFinite(Number(toQuantity)) ? Number(toQuantity) : null,
                     occurredAt, source.Reason || null]
             );
+            await recordPortfolioState(db, userId, transactionId, beforePortfolio);
             return { status: 'applied', accountId: resolvedAccountId, action, amountMinor, cashMinor: nextCashMinor };
         }
 
@@ -1307,6 +1310,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
                 normalizedSymbol, tradeQuantity, priceMinor, priceMicros, occurredAt, source.Reason || null,
             ]
         );
+        await recordPortfolioState(db, userId, transactionId, beforePortfolio);
         return {
             status: 'applied',
             accountId: resolvedAccountId,

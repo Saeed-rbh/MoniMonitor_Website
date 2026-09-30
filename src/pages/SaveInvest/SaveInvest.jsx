@@ -193,7 +193,11 @@ const SaveInvest = () => {
     const [status, setStatus] = useState('');
 
     const load = async () => setPortfolio(await getPortfolioAPI());
-    useEffect(() => { load(); }, []);
+    useEffect(() => {
+        load();
+        window.addEventListener('monimonitor-portfolio-changed', load);
+        return () => window.removeEventListener('monimonitor-portfolio-changed', load);
+    }, []);
 
     const addAccount = async (event) => {
         event.preventDefault();

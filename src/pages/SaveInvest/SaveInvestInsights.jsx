@@ -60,10 +60,12 @@ const SaveInvestInsights = () => {
 
   useEffect(() => {
     let active = true;
-    getPortfolioAPI().then((data) => {
+    const load = () => getPortfolioAPI().then((data) => {
       if (active) setPortfolio(data);
     });
-    return () => { active = false; };
+    load();
+    window.addEventListener('monimonitor-portfolio-changed', load);
+    return () => { active = false; window.removeEventListener('monimonitor-portfolio-changed', load); };
   }, [allTransactions]);
 
   const accounts = portfolio?.accounts || [];

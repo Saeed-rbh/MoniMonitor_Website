@@ -9,6 +9,7 @@ import {
 } from "../../utils/transactionDate";
 import { useTransactions } from "../../context/TransactionContext";
 import MoreOpen from "../MoreOpen/MoreOpen";
+import PortfolioCorrectionPanel from '../PortfolioCorrectionPanel';
 import "./TransactionDetailModal.css";
 
 const money = (transaction) => {
@@ -432,6 +433,11 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
           Edit Full Details
         </button>
       )}
+      <PortfolioCorrectionPanel transaction={currentTx} onCorrected={updated => {
+        setCurrentTx(updated);
+        monthData?.refetch?.();
+        onTransactionUpdated?.(updated);
+      }} />
     </div>
   );
 
