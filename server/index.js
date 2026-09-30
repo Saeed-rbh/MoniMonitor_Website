@@ -15,6 +15,7 @@ const { registerAuthRoutes } = require('./src/routes/authRoutes');
 const { registerBackupRoutes } = require('./src/routes/backupRoutes');
 const { registerIntegrationRoutes } = require('./src/routes/integrationRoutes');
 const { registerTransactionRoutes } = require('./src/routes/transactionRoutes');
+const transactionMutations = require('./src/services/transactionMutations');
 const { registerPortfolioRoutes } = require('./src/routes/portfolioRoutes');
 const { parseTransaction, transactionUpdateSchema } = require("./src/validation/transaction");
 const { validateTelegramInitData, normalizeTelegramPhotoUrl } = require("./src/services/telegramAuthService");
@@ -93,7 +94,7 @@ app.use(cors({
         return callback(new Error("Origin is not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
 }));
 app.use(express.json({
     limit: "100kb",
@@ -141,6 +142,7 @@ const credentialsAreValid = (username, password) => (
 );
 
 const sendValidationError = (res, error) => {
+    if (error instanceof transactionMutations.TransactionMutationError) return res.status(error.statusCode).json({ error: error.message });
     if (error instanceof ZodError) return res.status(400).json({ error: "Invalid request data" });
     logger.error('http.request.validation_failed', { correlationId: res.req?.requestId, error: error.message });
     return res.status(500).json({ error: "Unable to process this request" });
@@ -189,53 +191,18 @@ registerIntegrationRoutes(app, { authenticateToken, authRateLimit, plaidService,
 
 app.put("/transactions/:id", authenticateToken, async (req, res) => {
     try {
-        const existing = await dbService.getTransactionById(req.params.id, req.user.userId);
-        if (!existing) return res.status(404).json({ error: "Transaction not found" });
-
-        const { BalanceAccountId = null, ...updateInput } = req.body || {};
-        if (!BalanceAccountId && Object.keys(updateInput).length === 0) {
-            return res.status(400).json({ error: "No transaction or account changes supplied" });
-        }
-        const updates = Object.keys(updateInput).length ? transactionUpdateSchema.parse(updateInput) : {};
-        if (Object.keys(updates).length) {
-            await dbService.updateTransactionForUser(req.params.id, req.user.userId, updates);
-        }
-        const finalTx = await dbService.getTransactionById(req.params.id, req.user.userId);
-        const accountResolution = await dbService.ensureTransactionAccount(req.user.userId, {
-            ...finalTx,
-            BalanceAccountId,
-            BalanceAccountConfidence: BalanceAccountId ? "HIGH" : null,
-        });
-        const resolvedAccountId = BalanceAccountId || accountResolution.account?.id || null;
-        const accountPosting = await dbService.syncTransactionAccountBalance(req.user.userId, req.params.id, {
-            accountId: resolvedAccountId, confidence: resolvedAccountId ? "HIGH" : null,
-        });
-
-        if (updates.Category || updates.Label) {
-            const genericLabels = ["withdrawal", "deposit", "bank withdrawal", "bank deposit", "other", "other expense", "other income"];
-            const cleanLabel = finalTx.Label?.toLowerCase().trim();
-            if (finalTx.Reason && cleanLabel && !genericLabels.includes(cleanLabel)) {
-                await dbService.saveMerchantRule(req.user.userId, finalTx.Reason, finalTx.Category, finalTx.Label);
-            }
-        }
-
-        await dbService.detectAndMarkRecurring(req.user.userId, req.params.id).catch((error) => console.error("Recurrence detection error:", error.message));
-        await dbService.detectAndReclassifyInternalCounterparts(req.user.userId, req.params.id).catch((error) => console.error("Internal counterpart error:", error.message));
-        const finalUpdatedTx = await dbService.getTransactionById(req.params.id, req.user.userId);
-        return res.json({ message: "Updated", data: finalUpdatedTx || finalTx, accountPosting, accountResolution });
-    } catch (error) {
-        return sendValidationError(res, error);
-    }
+        const result = await transactionMutations.updateTransaction(req.user.userId, req.params.id, req.body);
+        cashFlowWidgetCache.delete(req.user.userId);
+        return res.json(result);
+    } catch (error) { return sendValidationError(res, error); }
 });
 
 app.delete("/transactions/:id", authenticateToken, async (req, res) => {
     try {
-        const deleted = await dbService.deleteTransaction(req.params.id, req.user.userId);
-        if (!deleted) return res.status(404).json({ error: "Transaction not found" });
+        if (!await dbService.deleteTransaction(req.params.id, req.user.userId)) return res.status(404).json({ error: "Transaction not found" });
+        cashFlowWidgetCache.delete(req.user.userId);
         return res.json({ message: "Deleted" });
-    } catch (error) {
-        return sendValidationError(res, error);
-    }
+    } catch (error) { return sendValidationError(res, error); }
 });
 
 const validCurrency = (value) => typeof value === "string" && /^[A-Z]{3}$/.test(value);
@@ -496,20 +463,11 @@ app.post("/MoniMonitor_ToDB", authenticateToken, async (req, res) => {
         }
         if (status !== "record") return res.status(400).json({ error: "Invalid status" });
 
-        const { BalanceAccountId = null, ...recordInput } = record_entry || {};
-        const transaction = parseTransaction({ ...recordInput, Type: record_type || recordInput.Type });
-        const id = await dbService.addTransaction({ ...transaction, userId: req.user.userId });
-        const accountResolution = await dbService.ensureTransactionAccount(req.user.userId, {
-            ...transaction,
-            BalanceAccountId,
-            BalanceAccountConfidence: BalanceAccountId ? 'HIGH' : null,
-        });
-        const resolvedAccountId = BalanceAccountId || accountResolution.account?.id || null;
-        const accountPosting = await dbService.syncTransactionAccountBalance(req.user.userId, id, {
-            accountId: resolvedAccountId, confidence: resolvedAccountId ? 'HIGH' : null,
-        });
-        await dbService.detectAndMarkRecurring(req.user.userId, id).catch((error) => console.error("Recurrence detection error:", error.message));
-        return res.status(201).json({ message: "Created", data: { ...transaction, id }, accountPosting, accountResolution });
+        const recordInput = record_entry || {};
+        const result = await transactionMutations.createTransaction(req.user.userId,
+            { ...recordInput, Type: record_type || recordInput.Type }, req.get('Idempotency-Key') || null);
+        cashFlowWidgetCache.delete(req.user.userId);
+        return res.status(201).json(result);
     } catch (error) {
         return sendValidationError(res, error);
     }

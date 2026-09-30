@@ -28,6 +28,7 @@ const INSERT_ORDER = [
     'accounts',
     'investment_accounts',
     'transactions',
+    'transaction_requests',
     'expense_forecast_points',
     'merchant_rules',
     'processed_emails',
@@ -273,6 +274,9 @@ async function restoreBackup(fileName, restoredByUserId) {
             "SELECT name FROM restore_source.sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
         )).map((row) => row.name));
         const tables = INSERT_ORDER.filter((table) => currentTables.has(table) && sourceTables.has(table));
+        if (currentTables.has('transaction_requests') && !sourceTables.has('transaction_requests')) {
+            await db.exec('DELETE FROM transaction_requests');
+        }
         const sourceHasDurableEmailState = sourceTables.has('email_sync_state') &&
             sourceTables.has('email_ingestion_queue');
         const sourceHasPlaidState = sourceTables.has('plaid_items') &&

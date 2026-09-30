@@ -295,6 +295,7 @@ async function updateTransactionForUser(id, userId, updates) {
 
 async function deleteTransaction(id, userId) {
     const db = await getDb();
+    return db.withTransaction(async () => {
     const previous = await db.get(
         'SELECT userId, Timestamp FROM transactions WHERE id = ? AND userId = ?',
         [id, userId]
@@ -306,6 +307,7 @@ async function deleteTransaction(id, userId) {
     );
     if (result.changes > 0) await refreshTransactionMonths(db, [previous]);
     return result.changes > 0;
+    });
 }
 
 // For deduplication in email agent.

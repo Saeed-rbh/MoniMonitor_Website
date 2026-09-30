@@ -54,3 +54,22 @@ test('request logs receive a correlation ID without echoing authorization data',
     assert.equal(response.status, 200);
     assert.match(response.headers.get('x-request-id'), /^[A-Za-z0-9._-]{8,128}$/);
 });
+
+test('creation retries are idempotent through both supported API endpoints', async () => {
+    const transaction = { Amount: 12, Category: 'Expense', Label: 'Shopping', Reason: 'API retry test',
+        Timestamp: '2026-09-13T12:00:00.000Z' };
+    for (const pathname of ['/transactions', '/MoniMonitor_ToDB']) {
+        const key = `api-retry-${pathname.replace(/\W/g, '')}`;
+        const body = pathname === '/transactions' ? transaction : { status: 'record', record_entry: transaction };
+        const create = () => fetch(`${origin}${pathname}`, { method: 'POST',
+            headers: { Authorization: `Bearer ${tokenFor('api-owner')}`, 'Content-Type': 'application/json', 'Idempotency-Key': key },
+            body: JSON.stringify(body) });
+        const first = await create();
+        const second = await create();
+        assert.equal(first.status, 201);
+        assert.equal(second.status, 201);
+        assert.deepEqual(await first.json(), await second.json());
+    }
+    const db = await dbService.getDb();
+    assert.equal((await db.get("SELECT COUNT(*) AS count FROM transactions WHERE Reason = 'API retry test'")).count, 2);
+});

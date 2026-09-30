@@ -1,5 +1,19 @@
 const MIGRATIONS = [
     {
+        version: 3,
+        name: 'idempotent_manual_transactions',
+        async up(db) {
+            await db.exec(`CREATE TABLE IF NOT EXISTS transaction_requests (
+                userId TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                requestKey TEXT NOT NULL,
+                requestHash TEXT NOT NULL,
+                responseJson TEXT NOT NULL,
+                createdAt TEXT NOT NULL,
+                PRIMARY KEY (userId, requestKey)
+            )`);
+        },
+    },
+    {
         version: 1,
         name: 'phase2_single_tenant_and_retention',
         async up(db) {
@@ -49,7 +63,7 @@ async function runMigrations(db) {
         appliedAt TEXT NOT NULL
     )`);
     const applied = new Set((await db.all('SELECT version FROM schema_migrations')).map((row) => Number(row.version)));
-    for (const migration of MIGRATIONS) {
+    for (const migration of [...MIGRATIONS].sort((a, b) => a.version - b.version)) {
         if (applied.has(migration.version)) continue;
         await db.withTransaction(async () => {
             await migration.up(db);

@@ -1,3 +1,5 @@
+const mutations = require('../services/transactionMutations');
+
 function registerTransactionRoutes(app, {
     authenticateToken, dbService, plaidService, sendValidationError,
     cashFlowWidgetCache, cashFlowWidgetCacheMs, buildCashFlowWidgetPayload, parseTransaction,
@@ -13,18 +15,9 @@ function registerTransactionRoutes(app, {
     });
     app.post('/transactions', authenticateToken, async (req, res) => {
         try {
-            const { BalanceAccountId = null, ...transactionInput } = req.body || {};
-            const transaction = parseTransaction(transactionInput);
-            const id = await dbService.addTransaction({ ...transaction, userId: req.user.userId });
-            const accountResolution = await dbService.ensureTransactionAccount(req.user.userId, {
-                ...transaction, BalanceAccountId, BalanceAccountConfidence: BalanceAccountId ? 'HIGH' : null,
-            });
-            const resolvedAccountId = BalanceAccountId || accountResolution.account?.id || null;
-            const accountPosting = await dbService.syncTransactionAccountBalance(req.user.userId, id, {
-                accountId: resolvedAccountId, confidence: resolvedAccountId ? 'HIGH' : null,
-            });
-            await dbService.detectAndMarkRecurring(req.user.userId, id).catch((error) => console.error('Recurrence detection error:', error.message));
-            return res.status(201).json({ message: 'Created', data: { ...transaction, id }, accountPosting, accountResolution });
+            const result = await mutations.createTransaction(req.user.userId, req.body, req.get('Idempotency-Key') || null);
+            cashFlowWidgetCache.delete(req.user.userId);
+            return res.status(201).json(result);
         } catch (error) { return sendValidationError(res, error); }
     });
     app.get('/widget/cash-flow', authenticateToken, async (req, res) => {
