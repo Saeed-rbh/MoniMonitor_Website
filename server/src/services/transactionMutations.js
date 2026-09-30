@@ -66,7 +66,14 @@ async function updateTransaction(userId, id, input) {
     const updates = Object.keys(fields).length ? transactionUpdateSchema.parse(fields) : {};
     const db = await dbService.getDb();
     return db.withTransaction(async () => {
-        if (!await dbService.getTransactionById(id, userId)) throw new TransactionMutationError('Transaction not found', 404);
+        const previous = await dbService.getTransactionById(id, userId);
+        if (!previous) throw new TransactionMutationError('Transaction not found', 404);
+        if (updates.Currency && updates.Currency !== (previous.Currency || 'CAD') &&
+            await db.get(`SELECT id FROM account_balance_events WHERE sourceTransactionId = ? AND userId = ?
+                UNION ALL SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ? AND userId = ? LIMIT 1`,
+                [id, userId, id, userId])) {
+            throw new TransactionMutationError('Reverse the existing account posting before changing its currency');
+        }
         await validateAccount(db, userId, BalanceAccountId);
         if (Object.keys(updates).length) await dbService.updateTransactionForUser(id, userId, updates);
         const transaction = await dbService.getTransactionById(id, userId);

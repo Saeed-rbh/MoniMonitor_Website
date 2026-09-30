@@ -1,4 +1,5 @@
 const { getDb } = require('./db');
+const { REPORTING_CURRENCY, currencyOf, portfolioByCurrency } = require('../../../shared/currency.cjs');
 const { parseTimestamp, validMonth } = require('../../../shared/calendar.cjs');
 const { accountMatchScore, transactionBalanceDelta } = require('../services/accountMatching');
 const {
@@ -551,7 +552,7 @@ async function ensureTransactionAccount(userId, transaction = {}) {
                 return { status: 'insufficient_identity', account: null, created: false };
             }
             const settings = await db.get('SELECT currency FROM user_settings WHERE userId = ?', [userId]);
-            const currency = settings?.currency || transaction.Currency || 'CAD';
+            const currency = transaction.Currency || settings?.currency || 'CAD';
             const now = new Date().toISOString();
             const result = await db.run(
                 `INSERT INTO investment_accounts
@@ -587,7 +588,7 @@ const portfolioAccountSelect = `
            COALESCE(SUM(ROUND(h.quantity * COALESCE(h.averageCostMicros, h.averageCostMinor * 10000) / 10000.0)), 0) AS holdingsCostMinor,
            COUNT(h.id) AS holdingCount
     FROM investment_accounts a
-    LEFT JOIN investment_holdings h ON h.accountId = a.id AND h.userId = a.userId
+    LEFT JOIN investment_holdings h ON h.accountId = a.id AND h.userId = a.userId AND COALESCE(h.currency, 'CAD') = COALESCE(a.currency, 'CAD')
 `;
 
 async function getInvestmentAccounts(userId) {
@@ -606,6 +607,7 @@ async function getInvestmentAccounts(userId) {
             : account.cashMinor + account.holdingsValueMinor,
         gainLossMinor: account.holdingsValueMinor - account.holdingsCostMinor,
         holdings: byAccount[account.id] || [],
+        byCurrency: portfolioByCurrency([{ ...account, holdings: byAccount[account.id] || [] }]),
     }));
 }
 
@@ -646,6 +648,9 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             });
             
         const best = ranked[0];
+        if (best && currencyOf(transaction) !== currencyOf(best.account)) {
+            return { status: 'review_required', reason: 'Cross-currency balance posting requires a recorded exchange rate' };
+        }
         if (!best || best.score < 30) {
             return { status: ranked.length ? 'ambiguous_account' : 'unmatched_account' };
         }
@@ -837,15 +842,10 @@ async function getPortfolioSummary(userId) {
          LIMIT 20`,
         [userId]
     );
+    const byCurrency = portfolioByCurrency(accounts);
     return {
-        totalValueMinor: accounts.reduce((sum, account) => sum + account.totalValueMinor, 0),
-        totalCashMinor: accounts.reduce((sum, account) =>
-            sum + (account.accountType === 'Credit Card' ? 0 : account.cashMinor), 0),
-        totalLiabilitiesMinor: accounts.reduce((sum, account) =>
-            sum + (account.accountType === 'Credit Card' ? account.cashMinor : 0), 0),
-        holdingsValueMinor: accounts.reduce((sum, account) => sum + account.holdingsValueMinor, 0),
-        holdingsCostMinor: accounts.reduce((sum, account) => sum + account.holdingsCostMinor, 0),
-        gainLossMinor: accounts.reduce((sum, account) => sum + account.gainLossMinor, 0),
+        ...byCurrency.find((total) => total.currency === REPORTING_CURRENCY),
+        byCurrency,
         accountCount: accounts.length,
         accounts,
         emailActivities,
@@ -1044,6 +1044,9 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
         const resolvedAccountId = account?.id || null;
         if (!account) {
             return { status: 'unmatched_account', reason: accountResolution.reason };
+        }
+        if (currencyOf(source) !== currencyOf(account)) {
+            return { status: 'review_required', reason: 'Cross-currency portfolio activity requires a recorded exchange rate' };
         }
 
         if (Number(source.PortfolioAccountId) !== Number(resolvedAccountId) || source.PortfolioConfidence !== 'HIGH') {
@@ -1334,7 +1337,7 @@ async function getSummaryForUser(userId) {
             SELECT Label, Category,
                 SUM(AmountMinor) / 100.0 as total,
                 COUNT(*) as count
-            FROM transactions WHERE userId = ?
+            FROM transactions WHERE userId = ? AND COALESCE(Currency, 'CAD') = 'CAD'
             GROUP BY Label, Category
             ORDER BY total DESC
         `, [userId]),
@@ -1351,7 +1354,8 @@ async function getSummaryForUser(userId) {
         totalSavings: totals.totalSavings,
         balance: totals.totalIncome - totals.totalExpenses - totals.totalSavings,
         byLabel,
-        byMonth
+        byMonth,
+        currency: REPORTING_CURRENCY,
     };
 }
 

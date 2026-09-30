@@ -75,7 +75,7 @@ const Account = () => {
         Promise.all([getSettingsAPI(), getBackupStatusAPI(), getPlaidStatusAPI().catch(() => null)]).then(([settings, backups, plaid]) => {
             if (!active) return;
             if (settings) {
-                setCurrency(settings.currency || "CAD");
+                setCurrency("CAD");
                 setNotifications(Boolean(settings.notificationsEnabled));
             }
             if (backups) setBackupStatus(backups);
@@ -363,9 +363,7 @@ const Account = () => {
     };
 
     const currencyOptions = [
-        { label: "USD", value: "USD", icon: "$" },
-        { label: "CAD", value: "CAD", icon: "C$" },
-        { label: "EUR", value: "EUR", icon: "€" }
+        { label: "CAD", value: "CAD", icon: "C$" }
     ];
 
     return (
@@ -564,7 +562,8 @@ const Account = () => {
                 <div className={`modal-overlay ${closingCurrency ? 'closing' : ''}`} onClick={closeCurrency}>
                     <div className={`modal-content-ios ${closingCurrency ? 'closing' : ''}`} onClick={(e) => e.stopPropagation()}>
                         <button style={closeButtonStyle} onClick={closeCurrency}>×</button>
-                        <h2 style={{ marginTop: 0, color: 'var(--Bc-1)', textAlign: 'center', marginBottom: '1rem', fontSize: '1.2rem' }}>Select Currency</h2>
+                        <h2 style={{ marginTop: 0, color: 'var(--Bc-1)', textAlign: 'center', marginBottom: '1rem', fontSize: '1.2rem' }}>Reporting Currency</h2>
+                        <p>Reports use CAD. Other account currencies are shown separately without conversion.</p>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {currencyOptions.map((opt) => (
                                 <div

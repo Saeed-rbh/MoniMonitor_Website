@@ -9,6 +9,18 @@ import {
 } from "./insightPeriodData";
 
 describe("buildAllTimeInsightData", () => {
+    it('keeps USD accounts and activity out of CAD investment values', () => {
+        const portfolio = { accounts: [
+            { id: 1, accountType: 'TFSA', currency: 'CAD', totalValueMinor: 1000 },
+            { id: 2, accountType: 'TFSA', currency: 'USD', totalValueMinor: 9000 },
+        ] };
+        const rows = { '2026-09': { transactions: [
+            { id: 1, Currency: 'CAD', AmountMinor: 1000, Account: 'TFSA', AccountFlow: 'IN', Timestamp: '2026-09-01' },
+            { id: 2, Currency: 'USD', AmountMinor: 9000, Account: 'TFSA', AccountFlow: 'IN', Timestamp: '2026-09-02' },
+        ] } };
+        expect(getCurrentInvestmentValue(portfolio)).toBe(10);
+        expect(buildInvestmentValueTimeline(rows, portfolio, new Date('2026-09-03')).map((point) => point.value)).toEqual([10, 10]);
+    });
     it("aggregates the full history by year in chronological order", () => {
         const result = buildAllTimeInsightData({
             "2026-02": {

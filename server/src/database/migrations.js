@@ -1,5 +1,19 @@
 const MIGRATIONS = [
     {
+        version: 4,
+        name: 'rebuild_currency_safe_summaries',
+        async up(db) {
+            await db.exec('ALTER TABLE investment_accounts ADD COLUMN balanceReviewReason TEXT');
+            await db.exec(`INSERT INTO monthly_summary_dirty (userId, month, revision, changedAt)
+                SELECT userId, month, 1, CURRENT_TIMESTAMP FROM monthly_transaction_summaries WHERE 1
+                ON CONFLICT(userId, month) DO UPDATE SET revision = monthly_summary_dirty.revision + 1;
+                DELETE FROM monthly_ai_briefs;
+                DELETE FROM expense_forecast_points WHERE userId IN
+                    (SELECT DISTINCT userId FROM transactions WHERE COALESCE(Currency, 'CAD') <> 'CAD');
+                UPDATE user_settings SET currency = 'CAD';`);
+        },
+    },
+    {
         version: 3,
         name: 'idempotent_manual_transactions',
         async up(db) {

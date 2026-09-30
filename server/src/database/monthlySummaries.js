@@ -18,7 +18,7 @@ async function refreshMonthlySummary(db, userId, month, expectedRevision = null)
     const transactions = await db.all(
         `SELECT AmountMinor, Category, Label, Reason, Account, PortfolioAction
          FROM transactions
-         WHERE userId = ? AND Timestamp >= ? AND Timestamp < ?`,
+         WHERE userId = ? AND Timestamp >= ? AND Timestamp < ? AND COALESCE(Currency, 'CAD') = 'CAD'`,
         [userId, start, nextMonth]
     );
 

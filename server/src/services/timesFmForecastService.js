@@ -1,5 +1,6 @@
 const { BigQuery } = require("@google-cloud/bigquery");
 const dbService = require("../database/dbService");
+const { isReportingCurrency } = require('../../../shared/currency.cjs');
 const { calendarDate, addCalendarDays } = require('../../../shared/calendar.cjs');
 
 const FORECAST_DAYS = 30;
@@ -43,7 +44,7 @@ function forecastError(code, message) {
 
 function buildDailyExpenseSeries(transactions, { completeThrough } = {}) {
     const expenseByDay = new Map();
-    transactions.filter(isExpense).forEach((transaction) => {
+    transactions.filter((transaction) => isExpense(transaction) && isReportingCurrency(transaction)).forEach((transaction) => {
         const day = dayKey(transaction.Timestamp);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
         const amountMinor = Number.isFinite(Number(transaction.AmountMinor))
@@ -202,7 +203,7 @@ async function runTimesFm(dates, values) {
 async function getExpenseForecast(userId) {
     const db = await dbService.getDb();
     const transactions = await db.all(
-        `SELECT Amount, AmountMinor, Category, Type, AccountFlow, Timestamp
+        `SELECT Amount, AmountMinor, Currency, Category, Type, AccountFlow, Timestamp
          FROM transactions WHERE userId = ? ORDER BY Timestamp ASC`,
         [userId]
     );

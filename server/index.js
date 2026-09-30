@@ -224,6 +224,7 @@ app.get("/settings", authenticateToken, async (req, res) => {
 
 app.put("/settings", authenticateToken, async (req, res) => {
     const { currency, timezone = null, notificationsEnabled = true } = req.body || {};
+    if (currency !== "CAD") return res.status(400).json({ error: "Reports use CAD; native account currencies are tracked separately" });
     if (!validCurrency(currency) || (timezone !== null && (typeof timezone !== "string" || timezone.length > 64)) || typeof notificationsEnabled !== "boolean") {
         return res.status(400).json({ error: "Invalid settings" });
     }

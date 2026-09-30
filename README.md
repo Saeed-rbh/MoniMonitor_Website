@@ -47,6 +47,14 @@ The app will be available at `http://localhost:3000`.
 
 ### Backend
 
+Reports use CAD until recorded exchange-rate conversion is available. Imported
+foreign-currency activity retains its native currency and is visible in account
+history; it is excluded from CAD spending, income, forecasts, and investment
+timelines. Portfolio totals are separated by currency, including holdings whose
+currency differs from their account. Cross-currency balance postings require
+review. Mixed-currency Plaid holdings require an authoritative cash balance;
+without it, the previous cash balance is retained and marked for review.
+
 Financial reports use the calendar date supplied by the bank (`YYYY-MM-DD` at
 the start of `Timestamp`), rather than converting it into the device timezone.
 This keeps statement days and months consistent across the dashboard, timeline,

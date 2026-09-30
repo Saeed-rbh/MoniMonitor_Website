@@ -1,6 +1,7 @@
 import { format, parse, addMonths, isBefore } from "date-fns";
 import { GetDashboardBootstrap, GetDataFromDB } from "./apiService";
 import { parseTransactionCalendarDate } from "../utils/transactionDate";
+import currency from '../../shared/currency.cjs';
 
 const monthsNames = [
   "Jan",
@@ -166,6 +167,9 @@ export const groupTransactionsByMonth = (transactions) => {
 
     if (!groupedTransactions[key]) {
       groupedTransactions[key] = {
+        currency: currency.REPORTING_CURRENCY,
+        allCurrencyTransactions: [],
+        otherCurrencies: [],
         transactions: [],
         totalExpense: 0,
         totalIncome: 0,
@@ -186,6 +190,12 @@ export const groupTransactionsByMonth = (transactions) => {
       };
     }
 
+    groupedTransactions[key].allCurrencyTransactions.push(transaction);
+    if (!currency.isReportingCurrency(transaction)) {
+      const code = currency.currencyOf(transaction);
+      if (!groupedTransactions[key].otherCurrencies.includes(code)) groupedTransactions[key].otherCurrencies.push(code);
+      return;
+    }
     groupedTransactions[key].transactions.push(transaction);
     const label = transaction.Label;
     const amount = Number(transaction.Amount);
@@ -277,13 +287,13 @@ export const groupTransactionsByMonth = (transactions) => {
 
     groupedTransactions[key].labelDistribution = {
       Expense: Number(
-        ((groupedTransactions[key].totalExpense / netTotal) * 100).toFixed(2)
+        (netTotal === 0 ? 0 : (groupedTransactions[key].totalExpense / netTotal) * 100).toFixed(2)
       ),
       Income: Number(
-        ((groupedTransactions[key].totalIncome / netTotal) * 100).toFixed(2)
+        (netTotal === 0 ? 0 : (groupedTransactions[key].totalIncome / netTotal) * 100).toFixed(2)
       ),
       Saving: Number(
-        ((groupedTransactions[key].totalSaving / netTotal) * 100).toFixed(2)
+        (netTotal === 0 ? 0 : (groupedTransactions[key].totalSaving / netTotal) * 100).toFixed(2)
       ),
     };
   });
@@ -295,7 +305,7 @@ export const groupTransactionsByMonth = (transactions) => {
   let previousNetTotal = null;
   sortedGroupedTransactions?.forEach(([key, value], index) => {
     const currentNetTotal = value.netTotal;
-    if (index > 0 && previousNetTotal !== null) {
+    if (index > 0 && previousNetTotal !== null && previousNetTotal !== 0) {
       const percentageChange =
         ((currentNetTotal - previousNetTotal) / Math.abs(previousNetTotal)) *
         100;

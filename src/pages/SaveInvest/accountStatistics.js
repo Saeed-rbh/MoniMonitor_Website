@@ -34,7 +34,8 @@ const uniquelyMatchesAccount = (transaction, account, accounts) => {
 export const getAccountTransactions = (account, allTransactions = {}, accounts = [account]) =>
   Object.entries(allTransactions)
     .filter(([key]) => MONTH_KEY.test(key))
-    .flatMap(([, value]) => Array.isArray(value?.transactions) ? value.transactions : [])
+    .flatMap(([, value]) => value?.allCurrencyTransactions || (Array.isArray(value?.transactions) ? value.transactions : []))
+    .filter((transaction) => (transaction.Currency || 'CAD') === (account.currency || 'CAD'))
     .filter((transaction) => uniquelyMatchesAccount(transaction, account, accounts))
     .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp));
 

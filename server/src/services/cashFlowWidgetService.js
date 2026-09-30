@@ -1,4 +1,5 @@
 const { parseTimestamp } = require('../../../shared/calendar.cjs');
+const { isReportingCurrency } = require('../../../shared/currency.cjs');
 
 function transactionCalendarDate(timestamp) {
     const date = parseTimestamp(timestamp);
@@ -54,6 +55,8 @@ function investmentContributionDelta(transaction, investmentAccountIds) {
 }
 
 function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
+    const otherCurrencies = [...new Set(transactions.filter((transaction) => !isReportingCurrency(transaction)).map((transaction) => transaction.Currency))];
+    transactions = transactions.filter(isReportingCurrency);
     const year = now.getFullYear();
     const month = now.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -115,6 +118,8 @@ function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
     }
 
     return {
+        currency: 'CAD',
+        otherCurrencies,
         updatedAt: new Date().toISOString(),
         year,
         month,

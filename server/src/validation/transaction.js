@@ -9,6 +9,7 @@ const normalizeCategory = (category) => ({
 const optionalText = (max) => z.string().trim().max(max).nullable().optional();
 
 const transactionFields = {
+    Currency: z.string().trim().regex(/^[A-Z]{3}$/),
     Amount: z.coerce.number().finite().positive().max(1_000_000_000),
     Category: z.preprocess(normalizeCategory, z.enum([
         "Expense", "Income", "Internal", "Investment", "Saving",
@@ -31,6 +32,7 @@ const transactionUpdateSchema = z.object({
 
 const parseTransaction = (input) => transactionSchema.parse({
     ...input,
+    Currency: input.Currency === undefined ? 'CAD' : input.Currency,
     Timestamp: input.Timestamp === undefined ? new Date().toISOString() : input.Timestamp,
 });
 

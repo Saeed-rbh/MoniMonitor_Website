@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { isReportingCurrency, currencyOf } = require('../../../shared/currency.cjs');
 const { parseTimestamp, validMonth } = require('../../../shared/calendar.cjs');
 const { getDb } = require('../database/db');
 const { getSavingEffectMinor } = require('./transactionClassification');
@@ -43,6 +44,8 @@ function buildCandidate(id, type, title, fact, actions, evidenceTransactions, pr
 }
 
 function buildMonthlyAnalysis(transactions, month, dataQuality = {}) {
+    const otherCurrencies = [...new Set(transactions.filter((transaction) => !isReportingCurrency(transaction)).map(currencyOf))];
+    transactions = transactions.filter(isReportingCurrency);
     if (!validMonth(month)) throw new Error('month must be YYYY-MM');
     const current = transactions.filter((transaction) => String(transaction.Timestamp || '').slice(0, 7) === month);
     const latestDay = current.length ? Math.max(...current.map(transactionDay)) : 1;
@@ -168,6 +171,7 @@ function buildMonthlyAnalysis(transactions, month, dataQuality = {}) {
 
     const sortedCandidates = candidates.sort((left, right) => right.priority - left.priority);
     const issues = [];
+    if (otherCurrencies.length) issues.push(`${otherCurrencies.join(', ')} activity is tracked separately from CAD reports`);
     if (Number(dataQuality.pendingEmails || 0) > 0) issues.push(`${dataQuality.pendingEmails} email${dataQuality.pendingEmails === 1 ? '' : 's'} awaiting processing`);
     const uncategorized = current.filter((transaction) => ['Other Expense', 'Other Income'].includes(transaction.Label)).length;
     if (uncategorized) issues.push(`${uncategorized} broadly categorized transaction${uncategorized === 1 ? '' : 's'}`);
@@ -237,7 +241,7 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
     let source = 'deterministic';
 
     if (analysis.dataQuality.pendingEmails === 0 && analysis.candidates.length) {
-        const currentMonthTxs = transactions.filter((t) => String(t.Timestamp || '').slice(0, 7) === month);
+        const currentMonthTxs = transactions.filter((t) => isReportingCurrency(t) && String(t.Timestamp || '').slice(0, 7) === month);
         const expenses = currentMonthTxs.filter(isExpense);
         const income = currentMonthTxs.filter(isIncome);
         const sortedExpenses = [...expenses].sort((a, b) => new Date(a.Timestamp) - new Date(b.Timestamp));
@@ -280,7 +284,7 @@ async function getMonthlyInsightBrief(userId, month, options = {}) {
         const past6Months = [];
         for (let i = 1; i <= 6; i++) {
             const mKey = monthRange(month, i).key;
-            const mTxs = transactions.filter((t) => String(t.Timestamp || '').slice(0, 7) === mKey);
+            const mTxs = transactions.filter((t) => isReportingCurrency(t) && String(t.Timestamp || '').slice(0, 7) === mKey);
             const mExpenseTotal = mTxs.filter(isExpense).reduce((sum, t) => sum + amountMinor(t), 0);
             if (mExpenseTotal > 0 || mTxs.length > 0) {
                 past6Months.push({ month: mKey, totalMinor: mExpenseTotal, txs: mTxs });

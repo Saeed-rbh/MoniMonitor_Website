@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getAccountTransactions } from '../pages/SaveInvest/accountStatistics';
 import {
   buildDashboardBootstrapData,
   getNetAmounts,
@@ -7,6 +8,20 @@ import {
   isSaveInvestTransaction,
   uniqueInternalTransfers,
 } from "./transactionService";
+
+it('keeps foreign activity accessible in native accounts without adding it to CAD reports', () => {
+  const rows = [
+    { id: 1, Amount: 10, Currency: 'CAD', Category: 'Expense', Timestamp: '2026-09-10', BalanceAccountId: 1 },
+    { id: 2, Amount: 90, Currency: 'USD', Category: 'Expense', Timestamp: '2026-09-10', BalanceAccountId: 2 },
+  ];
+  const grouped = groupTransactionsByMonth(rows);
+  expect(grouped['2026-09'].totalExpense).toBe(10);
+  expect(grouped['2026-09'].transactions).toHaveLength(1);
+  expect(grouped['2026-09'].allCurrencyTransactions).toHaveLength(2);
+  expect(grouped['2026-09'].otherCurrencies).toEqual(['USD']);
+  const account = { id: 2, currency: 'USD' };
+  expect(getAccountTransactions(account, grouped)).toEqual([rows[1]]);
+});
 
 it('uses statement months for offset-qualified transactions and skips invalid legacy dates', () => {
   const result = groupTransactionsByMonth([

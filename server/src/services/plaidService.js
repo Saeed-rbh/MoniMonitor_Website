@@ -802,9 +802,13 @@ function startAutomaticMarketPriceRefresh() {
 
 function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
     const securities = new Map((snapshot.securities || []).map((security) => [security.security_id, security]));
+    const accountCurrencies = new Map((snapshot.accounts || []).map((account) => [account.account_id,
+        String(account.balances?.iso_currency_code || account.balances?.unofficial_currency_code || 'CAD').toUpperCase()]));
     const byAccount = new Map();
     for (const holding of snapshot.holdings || []) {
         const security = securities.get(holding.security_id) || {};
+        const holdingCurrency = String(holding.iso_currency_code || holding.unofficial_currency_code ||
+            security.iso_currency_code || security.unofficial_currency_code || accountCurrencies.get(holding.account_id) || 'CAD').toUpperCase();
         const entry = byAccount.get(holding.account_id) || {
             cashMinor: 0, hasExplicitCash: false, cashDerivedFromTotal: false, totalMinor: null, holdings: [],
         };
@@ -830,7 +834,7 @@ function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
             ? institutionValue
             : quantity * effectivePrice;
         const valueMinor = Math.round(effectiveValue * 100);
-        if (security.is_cash_equivalent || security.type === 'cash') {
+        if ((security.is_cash_equivalent || security.type === 'cash') && holdingCurrency === (accountCurrencies.get(holding.account_id) || 'CAD')) {
             entry.cashMinor += valueMinor;
             entry.hasExplicitCash = true;
         } else {
@@ -842,7 +846,7 @@ function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
                 quantity,
                 averageCostMicros: toMicros(averageCost),
                 priceMicros: toMicros(effectivePrice),
-                currency: String(holding.iso_currency_code || holding.unofficial_currency_code || 'CAD').toUpperCase(),
+                currency: holdingCurrency,
                 updatedAt: holding.institution_price_datetime || holding.institution_price_as_of ||
                     marketQuote?.updatedAt ||
                     security.update_datetime || security.close_price_as_of || new Date().toISOString(),
@@ -856,6 +860,7 @@ function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
             cashMinor: 0, hasExplicitCash: false, cashDerivedFromTotal: false, totalMinor: null, holdings: [],
         };
         const availableMinor = plaidAvailableBalanceMinor(account);
+        entry.currency = accountCurrencies.get(account.account_id);
         const totalMinor = plaidBalanceMinor(account);
         const investedMinor = entry.holdings.reduce((sum, holding) => sum + holding.valueMinor, 0);
         entry.totalMinor = totalMinor;
@@ -866,6 +871,9 @@ function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
         if (availableMinor !== null) {
             entry.cashMinor = Math.max(0, availableMinor);
             entry.cashDerivedFromTotal = false;
+        }
+        else if (!entry.hasExplicitCash && entry.holdings.some((holding) => holding.currency !== entry.currency)) {
+            entry.cashReviewRequired = true;
         }
         else if (!entry.hasExplicitCash && totalMinor !== null) {
             entry.cashMinor = Math.max(0, totalMinor - investedMinor);
@@ -878,6 +886,10 @@ function normalizeInvestmentSnapshot(snapshot = {}, marketPrices = new Map()) {
 
 function reconcileDerivedCashWithHoldings(entry) {
     if (!entry?.cashDerivedFromTotal || !Number.isSafeInteger(entry.totalMinor)) return entry?.cashMinor;
+    if (entry.holdings.some((holding) => holding.currency && holding.currency !== (entry.currency || 'CAD'))) {
+        entry.cashReviewRequired = true;
+        return entry.cashMinor;
+    }
     const holdingsValueMinor = (entry.holdings || []).reduce(
         (sum, holding) => sum + (Number.isFinite(Number(holding.valueMinor)) ? Number(holding.valueMinor) : 0),
         0
@@ -927,6 +939,7 @@ async function overlayUnconfirmedEmailTrades(userId, accountMap, normalized, now
             symbol,
         });
         const accountId = Number(resolution.account?.id);
+        if (String(transaction.Currency || 'CAD').toUpperCase() !== String(resolution.account?.currency || 'CAD').toUpperCase()) continue;
         const plaidAccountId = plaidAccountByAppId.get(accountId);
         const entry = plaidAccountId ? normalized.get(plaidAccountId) : null;
         if (!entry) continue;
@@ -1027,10 +1040,11 @@ async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
             // `entry.cashMinor` comes from Plaid's authoritative available-cash
             // snapshot. Existing uploaded/email activity remains in history,
             // but its effect is not added to the provider balance a second time.
-            const reconciledCashMinor = Math.max(0, entry.cashMinor);
+            const reconciledCashMinor = entry.cashReviewRequired ? null : Math.max(0, entry.cashMinor);
             await db.run(
-                'UPDATE investment_accounts SET cashMinor = ?, currency = ?, updatedAt = ? WHERE id = ? AND userId = ?',
-                [reconciledCashMinor, currency, new Date().toISOString(), account.appAccountId, userId]
+                'UPDATE investment_accounts SET cashMinor = COALESCE(?, cashMinor), currency = ?, balanceReviewReason = ?, updatedAt = ? WHERE id = ? AND userId = ?',
+                [reconciledCashMinor, currency, entry.cashReviewRequired ? 'A native cash balance or recorded exchange rates are needed for mixed-currency holdings' : null,
+                    new Date().toISOString(), account.appAccountId, userId]
             );
             accountsUpdated += 1;
         }

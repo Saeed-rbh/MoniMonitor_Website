@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import MainMenu from "./components/MainMenu/MainMenu";
 import Header from "./components/Header/header";
+import CurrencyNotice from './components/CurrencyNotice';
 
 // Lazy-loaded components
 const LoginPage = lazy(() => import("./pages/LoginPage"));
@@ -63,6 +64,7 @@ const AuthenticatedLayout = () => {
   return (
     <div className="App">
       <Header />
+      <CurrencyNotice />
       <div style={{ flex: 1, width: '100%', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <Suspense fallback={<BrandedLoader label="Loading page" />}>
           <Routes>

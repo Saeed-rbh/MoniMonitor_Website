@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import NativeCurrencyValues from '../../components/NativeCurrencyValues';
 import { useTransactions } from '../../context/TransactionContext';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -109,6 +110,8 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
         <div style={{ ...styles.grid, marginTop: '14px' }}>
             <div><span style={styles.secondary}>{isCreditCard ? 'Balance owed' : 'Cash balance'}</span><strong style={{ display: 'block' }}>{money(account.cashMinor, account.currency)} {canHoldInvestments && <small style={styles.secondary}>({cashShare.toFixed(1)}%)</small>}</strong></div>
             {canHoldInvestments && <div><span style={styles.secondary}>Holdings value</span><strong style={{ display: 'block' }}>{money(account.holdingsValueMinor, account.currency)} <small style={styles.secondary}>({holdingsShare.toFixed(1)}%)</small></strong></div>}
+            <NativeCurrencyValues totals={account.byCurrency} baseCurrency={account.currency} />
+            {account.balanceReviewReason && <p role="status">Cash needs review: {account.balanceReviewReason}</p>}
             {canHoldInvestments && <div><span style={styles.secondary}>Stock gain/loss</span><strong style={{ display: 'block', color: account.gainLossMinor >= 0 ? 'var(--Fc-1)' : 'var(--Gc-2)' }}>{account.gainLossMinor >= 0 ? '+' : ''}{money(account.gainLossMinor, account.currency)}</strong></div>}
         </div>
 
@@ -215,7 +218,8 @@ const SaveInvest = () => {
 
         <section style={{ ...styles.card, background: 'linear-gradient(135deg, var(--Bc-4), var(--Ac-4))' }}>
             <span style={styles.secondary}>Net account value</span>
-            <h2 style={{ fontSize: '2rem', margin: '3px 0 12px' }}>{money(portfolio.totalValueMinor, portfolio.accounts[0]?.currency || 'CAD')}</h2>
+            <h2 style={{ fontSize: '2rem', margin: '3px 0 12px' }}>{money(portfolio.totalValueMinor, portfolio.currency || 'CAD')}</h2>
+            <NativeCurrencyValues totals={portfolio.byCurrency} />
             <div style={styles.grid}>
                 <div><span style={styles.secondary}>Cash</span><strong style={{ display: 'block' }}>{money(portfolio.totalCashMinor)}</strong></div>
                 <div><span style={styles.secondary}>Stocks</span><strong style={{ display: 'block' }}>{money(portfolio.holdingsValueMinor)}</strong></div>

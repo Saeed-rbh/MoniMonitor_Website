@@ -1,3 +1,5 @@
+import currency from '../../../shared/currency.cjs';
+const { isReportingCurrency } = currency;
 const MONTH_KEY_PATTERN = /^(\d{4})-(\d{2})$/;
 
 export const getVisibleInsightPeriodCount = ({
@@ -32,7 +34,9 @@ export const getCurrentInvestmentValue = (portfolio = {}) =>
             return type === 'tfsa' || type === 'crypto' ||
                 name.includes('tfsa') || name.includes('crypto');
         })
-        .reduce((sum, account) => sum + Number(account?.totalValueMinor || 0), 0) / 100;
+        .reduce((sum, account) => sum + Number(account.byCurrency
+            ? account.byCurrency.find((total) => total.currency === 'CAD')?.totalValueMinor || 0
+            : isReportingCurrency(account) ? account.totalValueMinor || 0 : 0), 0) / 100;
 
 const getInvestmentAccountKind = (account = {}) => {
     const type = String(account?.accountType || '').toLowerCase();
@@ -73,12 +77,14 @@ export const buildInvestmentValueTimeline = (
 ) => {
     const accountKinds = new Map(
         (portfolio.accounts || [])
+            .filter(isReportingCurrency)
             .map((account) => [Number(account?.id), getInvestmentAccountKind(account)])
             .filter(([, kind]) => kind)
     );
     const transactions = Object.entries(allTransactions)
         .filter(([key]) => MONTH_KEY_PATTERN.test(key))
         .flatMap(([, value]) => Array.isArray(value?.transactions) ? value.transactions : [])
+        .filter(isReportingCurrency)
         .sort((a, b) => {
             const dateDifference = new Date(a?.Timestamp).getTime() - new Date(b?.Timestamp).getTime();
             return dateDifference || (Number(a?.id) || 0) - (Number(b?.id) || 0);

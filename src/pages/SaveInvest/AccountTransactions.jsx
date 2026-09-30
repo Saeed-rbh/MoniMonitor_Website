@@ -17,7 +17,7 @@ const money = (transaction, currency = "CAD") => {
     : Number(transaction?.Amount || 0);
   return new Intl.NumberFormat(undefined, {
     style: "currency",
-    currency,
+    currency: transaction?.Currency || currency,
     maximumFractionDigits: 2,
   }).format(Math.abs(amount));
 };

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import NativeCurrencyValues from '../../components/NativeCurrencyValues';
 import { useNavigate } from "react-router-dom";
 import { useTransactions } from "../../context/TransactionContext";
 import { getPortfolioAPI } from "../../services/apiService";
@@ -76,7 +77,7 @@ const SaveInvestInsights = () => {
     () => statistics.filter(({ account }) => !hasAccountValue(account)),
     [statistics]
   );
-  const currency = accounts[0]?.currency || "CAD";
+  const currency = portfolio?.currency || "CAD";
   const netValueMinor = Number(portfolio?.totalValueMinor || 0);
   const assetsMinor = Number(portfolio?.totalCashMinor || 0) +
     Number(portfolio?.holdingsValueMinor || 0);
@@ -122,6 +123,7 @@ const SaveInvestInsights = () => {
         <div className="SaveInvestInsights_HeroContent">
           <span>Net account value</span>
           <h2>{portfolio ? money(netValueMinor, currency) : "—"}</h2>
+          <NativeCurrencyValues totals={portfolio?.byCurrency} />
           <div className="SaveInvestInsights_HeroMeta">
             <span>{money(assetsMinor, currency)} assets</span>
             <span>{money(debtMinor, currency)} debt</span>
@@ -253,6 +255,8 @@ const SaveInvestInsights = () => {
                     <div className="AccountsOverview_AssetHeader">
                       <span className="AccountsOverview_AssetTitle">Asset Breakdown</span>
                       <span className="AccountsOverview_TotalVal">Total: {money(totalVal, account.currency)}</span>
+                      <NativeCurrencyValues totals={account.byCurrency} baseCurrency={account.currency} />
+                      {account.balanceReviewReason && <p role="status">Cash needs review: {account.balanceReviewReason}</p>}
                     </div>
 
                     <div className="AccountsOverview_AssetBar" aria-hidden="true">
@@ -299,7 +303,8 @@ const SaveInvestInsights = () => {
                           const itemCost = Math.round((item.quantity * itemCostMicros) / 10000);
                           const itemGain = itemVal - itemCost;
                           const itemGainPct = itemCost > 0 ? ((itemGain / itemCost) * 100).toFixed(1) : "0.0";
-                          const itemShare = totalVal > 0 ? ((itemVal / totalVal) * 100).toFixed(1) : "0.0";
+                          const itemCurrency = item.currency || account.currency;
+                          const itemShare = itemCurrency === account.currency && totalVal > 0 ? ((itemVal / totalVal) * 100).toFixed(1) : null;
 
                           const formattedQuantity = Number(Number(item.quantity || 0).toFixed(4)).toString();
 
@@ -311,15 +316,15 @@ const SaveInvestInsights = () => {
                                   {item.name && <span className="name">· {item.name}</span>}
                                 </div>
                                 <div className="AccountsOverview_HoldingSub">
-                                  {formattedQuantity} units @ {new Intl.NumberFormat(undefined, { style: "currency", currency: account.currency, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(itemPriceMicros / 1000000)}
+                                  {formattedQuantity} units @ {new Intl.NumberFormat(undefined, { style: "currency", currency: itemCurrency, minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(itemPriceMicros / 1000000)}
                                 </div>
                               </div>
                               <div className="AccountsOverview_HoldingVal">
-                                <strong>{money(itemVal, account.currency)}</strong>
+                                <strong>{money(itemVal, itemCurrency)}</strong>
                                 <div className="AccountsOverview_HoldingMeta">
-                                  <span className="share">{itemShare}% of account</span>
+                                  <span className="share">{itemShare === null ? `${itemCurrency} · kept separately` : `${itemShare}% of account`}</span>
                                   <span className={`gain ${itemGain >= 0 ? "positive" : "negative"}`}>
-                                    {itemGain >= 0 ? "+" : ""}{money(itemGain, account.currency)} ({itemGainPct}%)
+                                    {itemGain >= 0 ? "+" : ""}{money(itemGain, itemCurrency)} ({itemGainPct}%)
                                   </span>
                                 </div>
                               </div>
