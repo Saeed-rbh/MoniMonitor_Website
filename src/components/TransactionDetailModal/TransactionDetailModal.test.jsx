@@ -13,6 +13,7 @@ vi.mock("../../context/TransactionContext", () => ({
 
 vi.mock("../../services/apiService", () => ({
   getTransactionSourcesAPI: vi.fn().mockResolvedValue([]),
+  getTransactionRefundsAPI: vi.fn().mockResolvedValue([]),
   updateTransactionAPI: vi.fn(),
 }));
 
