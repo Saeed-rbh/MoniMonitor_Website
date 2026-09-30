@@ -20,6 +20,7 @@ const checks = [
         MONIMONITOR_DB_PATH: path.join(testDirectory, 'fallback.sqlite'),
         MONIMONITOR_BACKUP_DIR: path.join(testDirectory, 'backups'),
     } },
+    { name: 'AI validation and matching evaluation', args: ['run', 'evaluate:ai'], cwd: path.join(root, 'server') },
     { name: 'Frontend dependency audit', args: ['audit', '--include=dev'] },
     { name: 'Backend dependency audit', args: ['audit', '--include=dev'], cwd: path.join(root, 'server') },
 ];

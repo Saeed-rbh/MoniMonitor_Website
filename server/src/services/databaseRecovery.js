@@ -1,6 +1,7 @@
 const { refreshDirtyMonthlySummaries } = require('../database/monthlySummaries');
 const quote = value => `"${String(value).replaceAll('"', '""')}"`;
-const PRESERVE = new Set(['app_migrations', 'schema_migrations']);
+// Restoring older data must not reset the current provider usage budget.
+const PRESERVE = new Set(['app_migrations', 'schema_migrations', 'ai_usage_daily']);
 const INVALIDATE = new Set(['auth_sessions', 'rate_limits', 'monthly_ai_briefs',
     'monthly_transaction_summaries', 'monthly_summary_dirty', 'expense_forecast_points']);
 

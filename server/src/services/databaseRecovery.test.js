@@ -31,12 +31,14 @@ test('restore rebuilds reports, invalidates derived caches, and restores cursor 
     await service.addTransaction({ userId: 'recovery-owner', AmountMinor: 9000, Currency: 'CAD', Category: 'Income', Label: 'Salary', Timestamp: '2026-09-01T10:00:00Z' });
     await db.run("INSERT INTO monthly_ai_briefs (userId, month, briefJson, createdAt) VALUES ('recovery-owner', '2026-09', '{}', CURRENT_TIMESTAMP)");
     const version = await db.get('SELECT MAX(version) AS version FROM schema_migrations');
+    await db.run("INSERT INTO ai_usage_daily VALUES ('2026-09-30', 7, 1000)");
     await restoreBackup(backup.fileName, 'recovery-owner');
     const report = await service.getSummaryForUser('recovery-owner');
     assert.equal(report.totalExpenses, 12.34); assert.equal(report.totalIncome, 0);
     assert.deepEqual(report.byMonth.map(row => row.month), ['2026-08']);
     assert.equal((await db.get('SELECT COUNT(*) AS count FROM monthly_ai_briefs')).count, 0);
     assert.deepEqual(await db.get('SELECT MAX(version) AS version FROM schema_migrations'), version);
+    assert.deepEqual(await db.get('SELECT requests, inputBytes FROM ai_usage_daily'), { requests: 7, inputBytes: 1000 });
     assert.equal((await service.getInvestmentAccounts('recovery-owner'))[0].cashMinor, -5000);
     await resumeWorkers();
     await service.enqueueDiscoveredEmails('mail', '1', [11, 12]);

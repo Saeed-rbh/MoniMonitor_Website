@@ -359,6 +359,22 @@ stays in the retry queue until analysis and database ingestion succeed.
 
 ## Plaid transaction fallback
 
+AI generation has a 45-second deadline including queue time, a 15-second timeout
+per provider call, at most eight pending requests, a 128 KB input limit and a
+2,048-token output limit. Rate-limit delays are capped and SDK retries are disabled
+so application retries stay inside that deadline. Timeouts and capacity errors
+leave email ingestion queued for retry; they cannot produce a financial posting.
+Persisted UTC daily budgets default to 500 provider attempts and 8 MB of input.
+Attempts are charged before sending, including failures, because provider-side
+generation may continue after a client abort. Recovery preserves current usage
+counters so restoring older financial data cannot reset this budget.
+
+`AI_DAILY_REQUEST_LIMIT`, `AI_DAILY_INPUT_BYTES`, `AI_REQUEST_DEADLINE_MS`,
+`AI_CALL_TIMEOUT_MS`, and `AI_MAX_QUEUE` configure these limits within bounded
+ranges. Invalid values use the defaults. Run `npm --prefix server run evaluate:ai`
+for synthetic parser validation and account-matching metrics. This offline suite
+runs in CI and reports failures; it does not measure live model extraction accuracy.
+
 Plaid can fill transaction gaps when an email notification is missing. Add the
 Plaid server credentials shown in `server/.env.example`, start the API, then use
 Profile → Bank fallback → Connect a bank with Plaid.

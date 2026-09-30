@@ -1,5 +1,15 @@
 const MIGRATIONS = [
     {
+        version: 12,
+        name: 'persistent_ai_usage_limits',
+        async up(db) {
+            await db.exec(`CREATE TABLE ai_usage_daily (
+                day TEXT PRIMARY KEY, requests INTEGER NOT NULL CHECK(requests >= 0),
+                inputBytes INTEGER NOT NULL CHECK(inputBytes >= 0)
+            )`);
+        },
+    },
+    {
         version: 11,
         name: 'audited_portfolio_reversals',
         async up(db) {

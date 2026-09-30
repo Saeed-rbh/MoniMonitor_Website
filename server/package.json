@@ -6,6 +6,7 @@
     "scripts": {
         "start": "node scripts/supervise.js",
         "agent": "node scripts/supervise.js --agent",
+        "evaluate:ai": "node scripts/evaluate-ai.js",
         "reconcile:transaction-duplicates": "node scripts/reconcile-transaction-duplicates.js",
         "import:portfolio-history": "node scripts/import-portfolio-history.js",
         "dev": "node startup_banner.js && node scripts/supervise.js",

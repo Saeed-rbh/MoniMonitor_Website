@@ -13,62 +13,22 @@ const {
 const AI_API_KEY = process.env.AI_API_KEY;
 const ai = AI_API_KEY ? new GoogleGenAI({ apiKey: AI_API_KEY }) : null;
 const MODEL_NAME = 'gemini-3.5-flash-lite';
-const MIN_REQUEST_INTERVAL_MS = 4200;
-const MAX_RATE_LIMIT_RETRIES = 3;
+const { createAIScheduler, reserveDailyUsage, boundedInteger } = require('./aiScheduler');
+const { getDb } = require('../database/db');
 const MAX_RESPONSE_ATTEMPTS = 2;
-
-let generationQueue = Promise.resolve();
-let nextGenerationAllowedAt = 0;
-
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function isRateLimitError(error) {
-    const message = String(error?.message || '');
-    return error?.status === 429 || message.includes('RESOURCE_EXHAUSTED');
-}
-
-function getRetryDelayMs(error, attempt) {
-    const message = String(error?.message || '');
-    const retryInfo = message.match(/retryDelay["']?\s*:\s*["']?([\d.]+)s/i);
-    const retryMessage = message.match(/retry in ([\d.]+)s/i);
-    const seconds = Number(retryInfo?.[1] || retryMessage?.[1]);
-
-    if (Number.isFinite(seconds) && seconds > 0) {
-        return Math.ceil(seconds * 1000) + 750;
-    }
-
-    return Math.min(60000, 5000 * (2 ** attempt));
-}
-
-function generateContentWithQuotaProtection(request) {
-    const queuedRequest = generationQueue.then(async () => {
-        for (let attempt = 0; attempt <= MAX_RATE_LIMIT_RETRIES; attempt += 1) {
-            const spacingDelay = Math.max(0, nextGenerationAllowedAt - Date.now());
-            if (spacingDelay > 0) await sleep(spacingDelay);
-            nextGenerationAllowedAt = Date.now() + MIN_REQUEST_INTERVAL_MS;
-
-            try {
-                return await ai.models.generateContent(request);
-            } catch (error) {
-                if (!isRateLimitError(error) || attempt === MAX_RATE_LIMIT_RETRIES) throw error;
-
-                const retryDelayMs = getRetryDelayMs(error, attempt);
-                console.warn(
-                    `[Gemini] Rate limit reached. Retrying in ${Math.ceil(retryDelayMs / 1000)}s ` +
-                    `(${attempt + 1}/${MAX_RATE_LIMIT_RETRIES}).`
-                );
-                await sleep(retryDelayMs);
-            }
-        }
-
-        throw new Error('Gemini request retry loop ended unexpectedly.');
-    });
-
-    generationQueue = queuedRequest.catch(() => undefined);
-    return queuedRequest;
-}
+const requestLimit = boundedInteger(process.env.AI_DAILY_REQUEST_LIMIT, 500, 1, 10000);
+const inputLimit = boundedInteger(process.env.AI_DAILY_INPUT_BYTES, 8000000, 1000, 100000000);
+const scheduler = createAIScheduler({
+    generate: request => {
+        if (!ai) throw new Error('AI_NOT_CONFIGURED');
+        return ai.models.generateContent(request);
+    },
+    reserveUsage: async usage => reserveDailyUsage(await getDb(), { ...usage, requestLimit, inputLimit }),
+    deadlineMs: boundedInteger(process.env.AI_REQUEST_DEADLINE_MS, 45000, 1000, 120000),
+    callTimeoutMs: boundedInteger(process.env.AI_CALL_TIMEOUT_MS, 15000, 1000, 30000),
+    maxQueue: boundedInteger(process.env.AI_MAX_QUEUE, 8, 1, 32),
+});
+const generateContentWithQuotaProtection = request => scheduler.run(request);
 
 // ─── Zod Schema ────────────────────────────────────────────────────────────
 function normalizeNullablePositiveNumber(value) {
@@ -321,6 +281,7 @@ ${minimizedEmail}
             return parseAIResponseText(response.text);
         } catch (err) {
             lastError = err;
+            if (err?.code?.startsWith('AI_')) break;
             if (attempt < MAX_RESPONSE_ATTEMPTS) {
                 console.warn(
                     `AI response could not be parsed or validated. Retrying ` +
