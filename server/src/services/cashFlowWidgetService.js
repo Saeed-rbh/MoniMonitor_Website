@@ -5,24 +5,8 @@ function transactionCalendarDate(timestamp) {
     const date = parseTimestamp(timestamp);
     return date ? { year: date.year, month: date.month, day: date.day } : null;
 }
-function amountOf(transaction) {
-    const amount = Number(transaction?.Amount);
-    if (Number.isFinite(amount)) return Math.abs(amount);
-    const minor = Number(transaction?.AmountMinor);
-    return Number.isFinite(minor) ? Math.abs(minor) / 100 : 0;
-}
-
-const isIncome = (transaction) => (
-    transaction?.Category === 'Income' ||
-    transaction?.Type === 'Income' ||
-    transaction?.Type === 'Credit'
-);
-
-const isExpense = (transaction) => (
-    transaction?.Category === 'Expense' ||
-    transaction?.Type === 'Expense' ||
-    transaction?.Type === 'Debit'
-);
+const { amountMinorOf, isIncome, isExpense } = require('../../../shared/financialSemantics.cjs');
+const amountOf = amountMinorOf;
 
 function investmentKind(account) {
     const type = String(account?.accountType || '').toLowerCase();
@@ -110,9 +94,9 @@ function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
     for (let day = startDay; day <= endDay; day++) {
         chartItems.push({
             day: String(day),
-            income: incomeByDay[day - 1] || 0,
-            expense: expenseByDay[day - 1] || 0,
-            investment: Math.max(0, investmentByDay[day - 1] || 0),
+            income: (incomeByDay[day - 1] || 0) / 100,
+            expense: (expenseByDay[day - 1] || 0) / 100,
+            investment: Math.max(0, investmentByDay[day - 1] || 0) / 100,
             active: day === now.getDate(),
         });
     }
@@ -123,11 +107,11 @@ function buildCashFlowWidgetPayload(transactions, portfolio, now = new Date()) {
         updatedAt: new Date().toISOString(),
         year,
         month,
-        totalIncome,
-        totalExpense,
-        balance,
+        totalIncome: totalIncome / 100,
+        totalExpense: totalExpense / 100,
+        balance: balance / 100,
         percentageChange,
-        investmentTotal,
+        investmentTotal: investmentTotal / 100,
         chartItems,
         maxChartTotal: Math.max(1, ...chartItems.map((item) => item.income + item.expense + item.investment)),
     };

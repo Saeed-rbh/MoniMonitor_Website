@@ -2,16 +2,11 @@ const crypto = require('crypto');
 const { isReportingCurrency, currencyOf } = require('../../../shared/currency.cjs');
 const { parseTimestamp, validMonth } = require('../../../shared/calendar.cjs');
 const { getDb } = require('../database/db');
-const { getSavingEffectMinor } = require('./transactionClassification');
+const { getSavingEffectMinor, amountMinorOf: amountMinor, isIncome, isExpense } = require('./transactionClassification');
 const { rankMonthlyInsightCandidates, synthesizeMonthlyInsightsWithGemini } = require('./aiService');
 
 const cache = new Map();
 
-const amountMinor = (transaction) => Number.isSafeInteger(transaction.AmountMinor)
-    ? transaction.AmountMinor
-    : Math.round(Number(transaction.Amount || 0) * 100);
-const isExpense = (transaction) => transaction.Category === 'Expense';
-const isIncome = (transaction) => transaction.Category === 'Income';
 const normalize = (value) => String(value || '').trim().toLowerCase();
 const money = (minor) => new Intl.NumberFormat('en-CA', {
     style: 'currency', currency: 'CAD', maximumFractionDigits: 2,

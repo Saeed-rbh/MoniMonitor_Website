@@ -47,6 +47,14 @@ The app will be available at `http://localhost:3000`.
 
 ### Backend
 
+Dashboard totals, statement summaries, insights, widgets, and forecasts share
+the same accounting rules in `shared/financialSemantics.cjs`. A recorded
+category takes precedence over a provider's generic Credit/Debit type. Internal
+transfers and investment trades do not count as income or spending. Refund
+markers on legacy expense rows are excluded pending correction. Monetary
+aggregation uses stored integer cents, with decimal half-up rounding at input;
+the display amount is derived from `AmountMinor` when both fields exist.
+
 Encryption uses distinct secrets of at least 32 random characters for
 `EMAIL_SOURCE_ENCRYPTION_KEY`, `PLAID_TOKEN_ENCRYPTION_KEY`, and
 `BACKUP_ENCRYPTION_KEY`. Production validates all three before listening.

@@ -23,6 +23,20 @@ it('keeps foreign activity accessible in native accounts without adding it to CA
   expect(getAccountTransactions(account, grouped)).toEqual([rows[1]]);
 });
 
+it('uses integer cents and category priority for dashboard reports', () => {
+  const rows = [
+    { Amount: 0.1, AmountMinor: 10, Category: 'Expense' },
+    { Amount: 999, AmountMinor: 20, Category: 'Expense' },
+    { Amount: 100, Category: 'Internal', Type: 'Credit', Label: 'Internal Transfer' },
+    { Amount: 200, Category: 'Investment', Type: 'Debit' },
+    { Amount: 3, Category: 'Income', Type: 'Debit', Label: 'Refunds & Reversals' },
+  ].map((row) => ({ ...row, Timestamp: '2026-09-10' }));
+  const month = groupTransactionsByMonth(rows)['2026-09'];
+  expect(month.totalExpense).toBe(0.3);
+  expect(month.totalIncome).toBe(3);
+  expect(month.netTotal).toBe(2.7);
+});
+
 it('uses statement months for offset-qualified transactions and skips invalid legacy dates', () => {
   const result = groupTransactionsByMonth([
     { id: 1, Amount: 10, Category: 'Expense', Timestamp: '2026-09-01T00:30:00+14:00' },

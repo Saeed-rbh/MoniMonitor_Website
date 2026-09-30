@@ -1,4 +1,4 @@
-const { getSavingEffectMinor } = require('../services/transactionClassification');
+const { getSavingEffectMinor, amountMinorOf, isIncome, isExpense } = require('../services/transactionClassification');
 const { validMonth } = require('../../../shared/calendar.cjs');
 
 
@@ -16,16 +16,16 @@ async function refreshMonthlySummary(db, userId, month, expectedRevision = null)
     nextMonthDate.setUTCMonth(nextMonthDate.getUTCMonth() + 1);
     const nextMonth = nextMonthDate.toISOString().slice(0, 10);
     const transactions = await db.all(
-        `SELECT AmountMinor, Category, Label, Reason, Account, PortfolioAction
+        `SELECT AmountMinor, Category, Label, Reason, Account, PortfolioAction, Type, AccountFlow
          FROM transactions
          WHERE userId = ? AND Timestamp >= ? AND Timestamp < ? AND COALESCE(Currency, 'CAD') = 'CAD'`,
         [userId, start, nextMonth]
     );
 
     const totals = transactions.reduce((summary, transaction) => {
-        const amountMinor = Number(transaction.AmountMinor || 0);
-        if (transaction.Category === 'Income') summary.incomeMinor += amountMinor;
-        if (transaction.Category === 'Expense') summary.expensesMinor += amountMinor;
+        const amountMinor = amountMinorOf(transaction);
+        if (isIncome(transaction)) summary.incomeMinor += amountMinor;
+        if (isExpense(transaction)) summary.expensesMinor += amountMinor;
         summary.savingsMinor += getSavingEffectMinor(transaction);
         return summary;
     }, { incomeMinor: 0, expensesMinor: 0, savingsMinor: 0 });

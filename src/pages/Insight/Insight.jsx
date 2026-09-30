@@ -1,3 +1,5 @@
+import semantics from '../../../shared/financialSemantics.cjs';
+const amountOf = (transaction) => semantics.amountMinorOf(transaction) / 100;
 import { parseTransactionCalendarDate } from '../../utils/transactionDate';
 import React, { useMemo } from "react";
 import { useTransactions } from "../../context/TransactionContext";
@@ -181,11 +183,11 @@ const Insight = () => {
             const tYear = date.getFullYear();
             const tMonth = date.getMonth();
             const day = date.getDate();
-            const amount = Number(t.Amount);
+            const amount = amountOf(t);
 
             if (tYear === targetYear && tMonth === targetMonth && day >= 1 && day <= daysInMonth) {
-                const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
-                const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
+                const isIncome = semantics.isIncome(t);
+                const isExpense = semantics.isExpense(t);
 
                 if (isIncome) incomeArr[day - 1] += amount;
                 else if (isExpense) expenseArr[day - 1] += amount;
@@ -282,9 +284,9 @@ const Insight = () => {
         prevMonthData.transactions.forEach(t => {
             const d = parseTransactionCalendarDate(t.Timestamp).getDate();
             if (d <= maxDay) {
-                const amt = Number(t.Amount);
-                if (t.Category === "Income" || t.Type === "Income" || t.Type === "Credit") prevIncome += amt;
-                else if (t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit") prevExpense += amt;
+                const amt = amountOf(t);
+                if (semantics.isIncome(t)) prevIncome += amt;
+                else if (semantics.isExpense(t)) prevExpense += amt;
             }
         });
 
@@ -322,8 +324,8 @@ const Insight = () => {
             const pData = allTransactions[pKey];
             if (pData && pData.transactions) {
                 pData.transactions.forEach(t => {
-                    const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
-                    if (isExpense) historicalExpenses.push(Number(t.Amount));
+                    const isExpense = semantics.isExpense(t);
+                    if (isExpense) historicalExpenses.push(amountOf(t));
                 });
             }
         }
@@ -342,14 +344,14 @@ const Insight = () => {
 
         // 4. Find Anomalies in Current Month
         const potentialAnomalies = transactions.filter(t => {
-            const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
-            return isExpense && Number(t.Amount) > threshold;
+            const isExpense = semantics.isExpense(t);
+            return isExpense && amountOf(t) > threshold;
         });
 
         // 5. Exclude Recurring Expenses (User Request: "if repeated every month it is fine")
         // Check if a similar amount (within 5% margin) exists in historical data.
         return potentialAnomalies.filter(t => {
-            const amt = Number(t.Amount);
+            const amt = amountOf(t);
             // Check if this amount appears in history (likely a recurring bill like Rent)
             const isRecurring = historicalExpenses.some(hVal => {
                 const margin = hVal * 0.05; // 5% margin
@@ -504,10 +506,10 @@ const Insight = () => {
             const timeRange = Math.max(1, maxTime - minTime);
 
             txList.forEach((t) => {
-                const amt = Number(t.Amount || 0);
+                const amt = amountOf(t);
                 if (amt <= 0) return;
                 const label = String(t.Label || '').toLowerCase();
-                const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
+                const isExpense = semantics.isExpense(t);
                 if (!isExpense && t.Category !== "Dining" && t.Category !== "Shopping") return;
 
                 const tTime = parseTransactionCalendarDate(t.Timestamp).getTime();
@@ -569,10 +571,10 @@ const Insight = () => {
                 hasPrevPeriod = true;
                 const prevTx = prevVal.transactions || [];
                 prevTx.forEach((t) => {
-                    const amt = Number(t.Amount || 0);
+                    const amt = amountOf(t);
                     if (amt <= 0) return;
                     const label = String(t.Label || '').toLowerCase();
-                    const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
+                    const isExpense = semantics.isExpense(t);
                     if (!isExpense && t.Category !== "Dining" && t.Category !== "Shopping") return;
                     if (label.includes('dining') || label.includes('food') || label.includes('restaurant') || label.includes('cafe')) {
                         prevDiningTotal += amt;
@@ -589,10 +591,10 @@ const Insight = () => {
                 if (tYear === prevYear && val && val.transactions) {
                     foundPrevYear = true;
                     val.transactions.forEach((t) => {
-                        const amt = Number(t.Amount || 0);
+                        const amt = amountOf(t);
                         if (amt <= 0) return;
                         const label = String(t.Label || '').toLowerCase();
-                        const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
+                        const isExpense = semantics.isExpense(t);
                         if (!isExpense && t.Category !== "Dining" && t.Category !== "Shopping") return;
                         if (label.includes('dining') || label.includes('food') || label.includes('restaurant') || label.includes('cafe')) {
                             prevDiningTotal += amt;
@@ -855,8 +857,8 @@ const Insight = () => {
             burnRate = totalExpense / daysElapsed;
             projectedMonthEnd = burnRate * daysInMonth;
             const recurringSum = txList
-                .filter(t => t.Category === 'Expense' && t.Frequency && t.Frequency !== 'OneTime')
-                .reduce((s, t) => s + Number(t.Amount || 0), 0);
+                .filter(t => semantics.isExpense(t) && t.Frequency && t.Frequency !== 'OneTime')
+                .reduce((s, t) => s + amountOf(t), 0);
             safeToSpend = Math.max(0, totalIncome - recurringSum - totalExpense);
         }
 
@@ -864,8 +866,8 @@ const Insight = () => {
         let fixedTotal = 0;
         let variableTotal = 0;
         txList.forEach(t => {
-            if (t.Category !== 'Expense') return;
-            const amt = Number(t.Amount || 0);
+            if (!semantics.isExpense(t)) return;
+            const amt = amountOf(t);
             if (t.Frequency && t.Frequency !== 'OneTime') fixedTotal += amt;
             else variableTotal += amt;
         });
@@ -877,7 +879,7 @@ const Insight = () => {
         txList.forEach(t => {
             if (t.Category !== 'Income') return;
             const name = t.Reason || t.Label || 'Other Income';
-            incomeSourceMap[name] = (incomeSourceMap[name] || 0) + Number(t.Amount || 0);
+            incomeSourceMap[name] = (incomeSourceMap[name] || 0) + amountOf(t);
         });
         const topIncomeSources = Object.entries(incomeSourceMap)
             .sort((a, b) => b[1] - a[1])
@@ -913,9 +915,9 @@ const Insight = () => {
         const dowTotals = { Sun: 0, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0 };
         const dowCounts = { Sun: 0, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0 };
         txList.forEach(t => {
-            if (t.Category !== 'Expense') return;
+            if (!semantics.isExpense(t)) return;
             const dow = DOW[parseTransactionCalendarDate(t.Timestamp).getDay()];
-            dowTotals[dow] += Number(t.Amount || 0);
+            dowTotals[dow] += amountOf(t);
             dowCounts[dow]++;
         });
         const maxDow = Math.max(...Object.values(dowTotals), 1);
@@ -935,8 +937,8 @@ const Insight = () => {
         const weekdayPct = 100 - weekendPct;
 
         // ── 8. Micro-Purchases (<$20) ────────────────────────────────────────
-        const microTxs = txList.filter(t => t.Category === 'Expense' && Number(t.Amount) < 20);
-        const microTotal = microTxs.reduce((s, t) => s + Number(t.Amount || 0), 0);
+        const microTxs = txList.filter(t => semantics.isExpense(t) && amountOf(t) < 20);
+        const microTotal = microTxs.reduce((s, t) => s + amountOf(t), 0);
         const daysElapsedForMicro = viewMode === 'monthly'
             ? Math.max(1, isCurrentViewingMonth ? currentDay : daysInMonth)
             : 30;
@@ -945,11 +947,11 @@ const Insight = () => {
         // ── 9. Top Merchant by Visit Frequency ──────────────────────────────
         const merchantVisits = {};
         txList.forEach(t => {
-            if (t.Category !== 'Expense') return;
+            if (!semantics.isExpense(t)) return;
             const name = t.Reason || t.Label || 'Unknown';
             if (!merchantVisits[name]) merchantVisits[name] = { count: 0, total: 0 };
             merchantVisits[name].count++;
-            merchantVisits[name].total += Number(t.Amount || 0);
+            merchantVisits[name].total += amountOf(t);
         });
         const topByVisit = Object.entries(merchantVisits)
             .sort((a, b) => b[1].count - a[1].count)
@@ -957,8 +959,8 @@ const Insight = () => {
             .map(([name, v]) => ({ name: name.length > 22 ? name.slice(0, 20) + '…' : name, ...v }))[0] || null;
 
         // ── 10. Post-Payday Velocity ─────────────────────────────────────────
-        const incomeTxs = txList.filter(t => t.Category === 'Income');
-        const expenseTxs = txList.filter(t => t.Category === 'Expense');
+        const incomeTxs = txList.filter(t => semantics.isIncome(t));
+        const expenseTxs = txList.filter(t => semantics.isExpense(t));
         let postPaydayTotal = 0;
         let postPaydayCount = 0;
         const seenPostPaydayIds = new Set();

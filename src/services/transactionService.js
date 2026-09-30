@@ -2,6 +2,7 @@ import { format, parse, addMonths, isBefore } from "date-fns";
 import { GetDashboardBootstrap, GetDataFromDB } from "./apiService";
 import { parseTransactionCalendarDate } from "../utils/transactionDate";
 import currency from '../../shared/currency.cjs';
+import semantics from '../../shared/financialSemantics.cjs';
 
 const monthsNames = [
   "Jan",
@@ -18,20 +19,7 @@ const monthsNames = [
   "Dec",
 ];
 
-const normalizeAccountName = (value) =>
-  String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-
-const parseInternalTransfer = (reason) => {
-  const match = String(reason || "").match(
-    /^Internal transfer:\s*(.*?)\s*->\s*(.*?)(?:\s*\[|$)/i
-  );
-  return match ? { source: match[1], destination: match[2] } : null;
-};
-
-export const isInternalTransfer = (transaction) =>
-  ["Internal", "Transfer"].includes(transaction?.Category) ||
-  String(transaction?.Label || "").toLowerCase() === "internal transfer" ||
-  /^Internal transfer:/i.test(String(transaction?.Reason || "").trim());
+export const isInternalTransfer = semantics.isInternalTransfer;
 
 export const getInternalTransferKey = (transaction) => {
   const reference = String(transaction?.ReferenceNumber || "").trim();
@@ -48,42 +36,9 @@ export const getInternalTransferKey = (transaction) => {
   return [transaction?.Timestamp, transaction?.Amount, reason].join("|").toLowerCase();
 };
 
-export const getSavingEffect = (transaction) => {
-  const amount = Number(transaction?.Amount || 0);
-  if (!Number.isFinite(amount)) return 0;
-
-  if (transaction?.Category === "SavingWithdrawal") return -amount;
-  const label = String(transaction?.Label || "").toLowerCase();
-  if (["savings contributions", "crypto funding"].includes(label)) return amount;
-  if (label === "tfsa withdrawal") return -amount;
-  if (label === "tfsa contribution") return amount;
-
-  const account = normalizeAccountName(transaction?.Account);
-  if (transaction?.Category === "Investment" &&
-      transaction?.PortfolioAction === "WITHDRAWAL" && account.includes("tfsa")) {
-    return -amount;
-  }
-
-  if (!["Saving", "Save&Invest"].includes(transaction?.Category)) return 0;
-
-  const transfer = parseInternalTransfer(transaction?.Reason);
-  if (!transfer) return 0;
-  if (!account.includes("tfsa")) return 0;
-
-  const source = normalizeAccountName(transfer.source);
-  const destination = normalizeAccountName(transfer.destination);
-  if (source.includes("tfsa") && destination.includes("tfsa")) return 0;
-  if (destination.includes("tfsa")) return amount;
-  if (source.includes("tfsa")) return -amount;
-  return 0;
-};
-
-export const getSaveInvestActivity = (transaction) => {
-  const amount = Number(transaction?.Amount || 0);
-  if (!Number.isFinite(amount)) return 0;
-  if (transaction?.Category === "Investment") return Math.abs(amount);
-  return Math.abs(getSavingEffect(transaction));
-};
+export const getSavingEffect = (transaction) => semantics.getSavingEffectMinor(transaction) / 100;
+export const getSaveInvestActivity = (transaction) => transaction?.Category === 'Investment'
+  ? semantics.amountMinorOf(transaction) / 100 : Math.abs(getSavingEffect(transaction));
 
 export const isSaveInvestTransaction = (transaction) =>
   getSaveInvestActivity(transaction) > 0;
@@ -198,7 +153,7 @@ export const groupTransactionsByMonth = (transactions) => {
     }
     groupedTransactions[key].transactions.push(transaction);
     const label = transaction.Label;
-    const amount = Number(transaction.Amount);
+    const amount = semantics.amountMinorOf(transaction);
 
     if (isInternalTransfer(transaction)) {
       const transferKey = getInternalTransferKey(transaction);
@@ -212,7 +167,7 @@ export const groupTransactionsByMonth = (transactions) => {
       }
     }
 
-    if (transaction.Category === "Expense") {
+    if (semantics.isExpense(transaction)) {
       groupedTransactions[key].totalExpense += amount;
       groupedTransactions[key].netTotal -= amount;
       if (label) {
@@ -220,7 +175,7 @@ export const groupTransactionsByMonth = (transactions) => {
           (groupedTransactions[key].labelDistributionExpense[label] || 0) +
           amount;
       }
-    } else if (transaction.Category === "Income") {
+    } else if (semantics.isIncome(transaction)) {
       groupedTransactions[key].totalIncome += amount;
       groupedTransactions[key].netTotal += amount;
       if (label) {
@@ -229,8 +184,8 @@ export const groupTransactionsByMonth = (transactions) => {
           amount;
       }
     } else {
-      const savingEffect = getSavingEffect(transaction);
-      const saveInvestActivity = getSaveInvestActivity(transaction);
+      const savingEffect = semantics.getSavingEffectMinor(transaction);
+      const saveInvestActivity = Math.round(getSaveInvestActivity(transaction) * 100);
       groupedTransactions[key].totalSaving += savingEffect;
       groupedTransactions[key].totalSaveInvest += saveInvestActivity;
       groupedTransactions[key].netTotal -= savingEffect;
@@ -246,6 +201,12 @@ export const groupTransactionsByMonth = (transactions) => {
   });
 
   Object.keys(groupedTransactions)?.forEach((key) => {
+    for (const field of ['totalExpense', 'totalIncome', 'totalSaving', 'totalSaveInvest', 'totalInternal', 'netTotal']) {
+      groupedTransactions[key][field] /= 100;
+    }
+    for (const field of ['labelDistributionExpense', 'labelDistributionIncome', 'labelDistributionSaving', 'labelDistributionSaveInvest', 'labelDistributionInternal']) {
+      for (const label of Object.keys(groupedTransactions[key][field])) groupedTransactions[key][field][label] /= 100;
+    }
     const expenseAmount = groupedTransactions[key].totalExpense;
     const labelExpense = groupedTransactions[key].labelDistributionExpense;
 

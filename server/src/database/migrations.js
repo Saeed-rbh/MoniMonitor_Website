@@ -1,5 +1,16 @@
 const MIGRATIONS = [
     {
+        version: 5,
+        name: 'shared_reporting_semantics',
+        async up(db) {
+            await db.exec(`INSERT INTO monthly_summary_dirty (userId, month, revision, changedAt)
+                SELECT userId, month, 1, CURRENT_TIMESTAMP FROM monthly_transaction_summaries WHERE 1
+                ON CONFLICT(userId, month) DO UPDATE SET revision = monthly_summary_dirty.revision + 1;
+                DELETE FROM monthly_ai_briefs;
+                DELETE FROM expense_forecast_points;`);
+        },
+    },
+    {
         version: 4,
         name: 'rebuild_currency_safe_summaries',
         async up(db) {

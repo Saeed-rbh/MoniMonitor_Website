@@ -10,28 +10,7 @@ const MIN_EVALUATED_DAYS = 7;
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const forecastCache = new Map();
 
-const normalize = (value) => String(value || "").trim().toLowerCase();
-const isExcludedSpend = (transaction) => {
-    const category = normalize(transaction.Category);
-    if (["income", "internal", "transfer", "investment", "saving"].includes(category)) return true;
-
-    // These descriptions occur in older/manual imports that may have been
-    // incorrectly classified as expenses. Newer Plaid and AI imports classify
-    // them as Income or Internal before they reach this service.
-    const description = [transaction.Label, transaction.Reason, transaction.Type]
-        .map(normalize)
-        .join(" ");
-    return /\b(refund|reversal|chargeback|internal transfer|credit.?card payment)\b/.test(description);
-};
-
-const isExpense = (transaction) => !isExcludedSpend(transaction) && (
-    normalize(transaction.Category) === "expense" ||
-    (!transaction.Category && (
-        normalize(transaction.Type) === "expense" ||
-        normalize(transaction.Type) === "debit" ||
-        String(transaction.AccountFlow || "").toUpperCase() === "OUT"
-    ))
-);
+const { isExpense, amountMinorOf } = require('../../../shared/financialSemantics.cjs');
 
 const dayKey = calendarDate;
 const addDays = addCalendarDays;
@@ -47,10 +26,8 @@ function buildDailyExpenseSeries(transactions, { completeThrough } = {}) {
     transactions.filter((transaction) => isExpense(transaction) && isReportingCurrency(transaction)).forEach((transaction) => {
         const day = dayKey(transaction.Timestamp);
         if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
-        const amountMinor = Number.isFinite(Number(transaction.AmountMinor))
-            ? Number(transaction.AmountMinor)
-            : Math.round(Number(transaction.Amount || 0) * 100);
-        if (amountMinor > 0) expenseByDay.set(day, (expenseByDay.get(day) || 0) + amountMinor / 100);
+        const amountMinor = amountMinorOf(transaction);
+        if (amountMinor > 0) expenseByDay.set(day, (expenseByDay.get(day) || 0) + amountMinor);
     });
 
     const dates = [...expenseByDay.keys()].sort();
@@ -64,7 +41,7 @@ function buildDailyExpenseSeries(transactions, { completeThrough } = {}) {
         : dates.at(-1);
     const values = [];
     for (let cursor = start; cursor <= end; cursor = addDays(cursor, 1)) {
-        values.push(Number((expenseByDay.get(cursor) || 0).toFixed(2)));
+        values.push(Number(((expenseByDay.get(cursor) || 0) / 100).toFixed(2)));
     }
     return { start, end, values };
 }

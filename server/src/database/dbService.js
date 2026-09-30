@@ -39,11 +39,7 @@ const securityTradeLabels = new Set([
     'Investment Activity',
 ]);
 
-function toMinorUnits(amount) {
-    const numericAmount = Number(amount);
-    if (!Number.isFinite(numericAmount)) throw new Error('Amount must be a finite number');
-    return Math.round(numericAmount * 100);
-}
+const { toMinorUnits, amountMinorOf, isExpense, isIncome } = require('../../../shared/financialSemantics.cjs');
 
 function withDisplayAmount(transaction) {
     if (!transaction) return transaction;
@@ -1335,15 +1331,20 @@ async function getSummaryForUser(userId) {
     const db = await getDb();
     const [byMonth, byLabel] = await Promise.all([
         getStoredMonthlySummaries(db, userId),
-        db.all(`
-            SELECT Label, Category,
-                SUM(AmountMinor) / 100.0 as total,
-                COUNT(*) as count
-            FROM transactions WHERE userId = ? AND COALESCE(Currency, 'CAD') = 'CAD'
-            GROUP BY Label, Category
-            ORDER BY total DESC
-        `, [userId]),
+        db.all("SELECT Label, Category, Type, Reason, AccountFlow, AmountMinor FROM transactions WHERE userId = ? AND COALESCE(Currency, 'CAD') = 'CAD'", [userId]),
     ]);
+    const labels = new Map();
+    for (const transaction of byLabel) {
+        const income = isIncome(transaction);
+        const expense = isExpense(transaction);
+        if (['Income', 'Expense'].includes(transaction.Category) && !income && !expense) continue;
+        const category = income ? 'Income' : expense ? 'Expense' : transaction.Category;
+        const key = JSON.stringify([transaction.Label, category]);
+        const entry = labels.get(key) || { Label: transaction.Label, Category: category, totalMinor: 0, count: 0 };
+        entry.totalMinor += amountMinorOf(transaction); entry.count += 1; labels.set(key, entry);
+    }
+    const labelTotals = [...labels.values()].sort((a, b) => b.totalMinor - a.totalMinor)
+        .map(({ totalMinor, ...entry }) => ({ ...entry, total: totalMinor / 100 }));
     const totals = byMonth.reduce((result, month) => ({
         totalIncome: result.totalIncome + month.income,
         totalExpenses: result.totalExpenses + month.expenses,
@@ -1355,7 +1356,7 @@ async function getSummaryForUser(userId) {
         totalExpenses: totals.totalExpenses,
         totalSavings: totals.totalSavings,
         balance: totals.totalIncome - totals.totalExpenses - totals.totalSavings,
-        byLabel,
+        byLabel: labelTotals,
         byMonth,
         currency: REPORTING_CURRENCY,
     };
