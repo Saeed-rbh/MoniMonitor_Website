@@ -2,6 +2,7 @@ require('dotenv').config();
 const { ImapService } = require('./src/services/imapService');
 const { parseEmailWithGemini, formatETransferReason } = require('./src/services/aiService');
 const dbService = require('./src/database/dbService');
+const { buildTransactionCsv } = require('../shared/transactionCsv.cjs');
 const { SNAPSHOT_CAPTURED_AT } = require('./src/database/financialSnapshot');
 const { normalizeTransactionSemantics } = require('./src/services/transactionSemantics');
 const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, answerTelegramCallbackQuery, e } = require('./src/services/telegramService');
@@ -486,23 +487,18 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
     }
 }
 
-const csvCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
-
 async function sendMonthlyStatement(month) {
     const db = await dbService.getDb();
     const rows = await db.all(
-        `SELECT Timestamp, Amount, Currency, Category, Label, Reason, Account, BankName, ReferenceNumber
+        `SELECT *
          FROM transactions WHERE userId = ? AND substr(Timestamp, 1, 7) = ?
          ORDER BY Timestamp ASC, id ASC`,
         [USER_ID, month]
     );
-    const headers = ['Timestamp', 'Amount', 'Currency', 'Category', 'Label', 'Reason', 'Account', 'BankName', 'ReferenceNumber'];
-    const csv = [headers, ...rows.map((row) => headers.map((key) => row[key]))]
-        .map((row) => row.map(csvCell).join(','))
-        .join('\r\n');
+    const csv = buildTransactionCsv(rows);
     return sendTelegramDocument(
         `MoniMonitor-statement-${month}.csv`,
-        `\uFEFF${csv}`,
+        csv,
         `MoniMonitor statement for ${month} (${rows.length} transactions).`,
         { silent: true, protectContent: true }
     );

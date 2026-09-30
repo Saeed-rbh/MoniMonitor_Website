@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import "../../pages/Auth.css"; // Reuse Auth styles
 import BlurFade from "../../components/ui/blur-fade"; // Use relative path
 import { APP_VERSION } from "../../config/appVersion";
+import transactionCsv from '../../../shared/transactionCsv.cjs';
 import {
     createBackupAPI,
     createPlaidLinkTokenAPI,
@@ -111,17 +112,17 @@ const Account = () => {
     };
 
     const handleExport = async () => {
-        const transactions = await GetDataFromDB();
-        if (!transactions.length) return alert("There are no transactions to export yet.");
-        const columns = ["id", "Amount", "Category", "Label", "Reason", "Timestamp", "Type", "Account", "BankName", "ReferenceNumber", "Frequency"];
-        const quote = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
-        const csv = [columns.join(","), ...transactions.map((transaction) => columns.map((column) => quote(transaction[column])).join(","))].join("\r\n");
-        const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `monimonitor-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
-        link.click();
-        URL.revokeObjectURL(url);
+        try {
+            const transactions = await GetDataFromDB({ throwOnError: true });
+            if (!transactions.length) return alert("There are no transactions to export yet.");
+            const csv = transactionCsv.buildTransactionCsv(transactions);
+            const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `monimonitor-transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch { alert("Could not export transactions. Please try again."); }
     };
 
     const refreshBackupStatus = async () => {

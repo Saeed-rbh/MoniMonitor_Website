@@ -4,6 +4,13 @@ A modern financial tracking application built with React, Vite, and Tailwind CSS
 
 ## Features
 
+Browser CSV downloads and Telegram monthly statements share the same export
+format, including native currency, exact integer cents, and account/portfolio
+metadata. Amounts are derived from stored cents rather than the legacy display
+amount. Text that could be interpreted as a spreadsheet formula receives a
+leading apostrophe; quoted commas, quotes, and multiline descriptions are kept.
+CSV is a transaction report; use encrypted backups for complete recovery.
+
 - **Financial Dashboard**: visualize net amounts, income, and expenses.
 - **Transaction Management**: Add, edit, and view monthly transactions.
 - **Telegram Integration**: Designed to work seamlessly as a Telegram WebApp.

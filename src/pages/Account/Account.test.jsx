@@ -74,3 +74,15 @@ test('connecting a new bank still exchanges its public token', async () => {
     expect(api.syncPlaidAPI).not.toHaveBeenCalled();
     expect(await screen.findByText('Bank connected. Missing transactions are now covered by Plaid.')).toBeInTheDocument();
 });
+
+test('export reports fetch failures instead of claiming the account has no transactions', async () => {
+    api.GetDataFromDB.mockRejectedValueOnce(new Error('Network unavailable'));
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    try {
+        render(<Account />);
+        fireEvent.click(await screen.findByText('Export CSV'));
+        await waitFor(() => expect(alert).toHaveBeenCalledWith('Could not export transactions. Please try again.'));
+        expect(api.GetDataFromDB).toHaveBeenCalledWith({ throwOnError: true });
+        expect(alert).not.toHaveBeenCalledWith('There are no transactions to export yet.');
+    } finally { alert.mockRestore(); }
+});
