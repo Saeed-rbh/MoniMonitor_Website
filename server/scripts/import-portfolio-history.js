@@ -135,8 +135,8 @@ function accountKind(transaction, tfsaAccountId, cryptoAccountId, tfsaSymbols, c
 async function main() {
     const db = await getDb();
     const userId = String(process.env.USER_ID);
-    await db.run('BEGIN IMMEDIATE');
     try {
+        const report = await db.withTransaction(async () => {
         const now = new Date().toISOString();
         let tfsa = await db.get(
             `SELECT * FROM investment_accounts
@@ -400,7 +400,6 @@ async function main() {
             }
         }
 
-        await db.run('COMMIT');
         const counts = await db.get(
             `SELECT COUNT(*) AS total,
                     SUM(CASE WHEN ReceivedAt IS NULL THEN 1 ELSE 0 END) AS history,
@@ -418,9 +417,10 @@ async function main() {
              FROM investment_holdings WHERE accountId IN (?, ?) ORDER BY accountId, symbol`,
             portfolioAccountIds
         );
-        console.log(JSON.stringify({ counts, accounts: resultAccounts, holdings }, null, 2));
+        return { counts, accounts: resultAccounts, holdings };
+        });
+        console.log(JSON.stringify(report, null, 2));
     } catch (error) {
-        await db.run('ROLLBACK').catch(() => {});
         throw error;
     } finally {
         await db.close();

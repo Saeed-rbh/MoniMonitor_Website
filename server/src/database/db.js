@@ -1,6 +1,6 @@
 const sqlite3 = require('sqlite3').verbose();
 const { open } = require('sqlite');
-const { AsyncLocalStorage } = require('async_hooks');
+const { protectConnection } = require('./transactionConnection');
 const path = require('path');
 const { applyFinancialSnapshot } = require('./financialSnapshot');
 const { reconcileHistoricalInternalTransfers } = require('./historicalTransferReconciliation');
@@ -13,76 +13,12 @@ const DB_PATH = process.env.MONIMONITOR_DB_PATH
     : path.join(__dirname, '..', '..', 'monimonitor.sqlite');
 const DB_BUSY_TIMEOUT_MS = 10000;
 
-class AsyncMutex {
-    constructor() {
-        this.queue = Promise.resolve();
-    }
-
-    async acquire() {
-        let release;
-        const nextPromise = new Promise((resolve) => {
-            release = resolve;
-        });
-        const currentQueue = this.queue;
-        this.queue = this.queue.then(() => nextPromise);
-        await currentQueue;
-        return release;
-    }
-}
-
-const transactionMutex = new AsyncMutex();
-const transactionStorage = new AsyncLocalStorage();
-
 let dbPromise = null;
 
 async function withTransaction(dbOrFn, maybeFn) {
-    let db;
-    let fn;
-    if (typeof dbOrFn === 'function') {
-        db = await getDb();
-        fn = dbOrFn;
-    } else {
-        db = dbOrFn;
-        fn = maybeFn;
-    }
-    if (typeof fn !== 'function') {
-        throw new TypeError('withTransaction requires a callback function');
-    }
-
-    const currentContext = transactionStorage.getStore();
-    if (currentContext) {
-        const savepointName = `mm_sp_${++currentContext.savepointCounter}`;
-        await db.run(`SAVEPOINT ${savepointName}`);
-        try {
-            const result = await fn(db);
-            await db.run(`RELEASE ${savepointName}`);
-            return result;
-        } catch (error) {
-            await db.run(`ROLLBACK TO ${savepointName}`).catch(() => {});
-            await db.run(`RELEASE ${savepointName}`).catch(() => {});
-            throw error;
-        }
-    }
-
-    const release = await transactionMutex.acquire();
-    let began = false;
-    try {
-        await db.run('BEGIN IMMEDIATE');
-        began = true;
-        const result = await transactionStorage.run({ savepointCounter: 0 }, async () => {
-            return await fn(db);
-        });
-        await db.run('COMMIT');
-        began = false;
-        return result;
-    } catch (error) {
-        if (began) {
-            await db.run('ROLLBACK').catch(() => {});
-        }
-        throw error;
-    } finally {
-        release();
-    }
+    const db = typeof dbOrFn === 'function' ? await getDb() : dbOrFn;
+    const fn = typeof dbOrFn === 'function' ? dbOrFn : maybeFn;
+    return protectConnection(db).withTransaction(fn);
 }
 async function getDb() {
     if (!dbPromise) {
@@ -91,121 +27,9 @@ async function getDb() {
             filename: DB_PATH,
             driver: sqlite3.Database
         }).then(async (db) => {
-                        openedDb = db;
-            db.withTransaction = (fn) => withTransaction(db, fn);
-            const origRun = db.run.bind(db);
-            const origExec = db.exec.bind(db);
-            db.run = async function(sql, ...params) {
-                if (typeof sql === 'string') {
-                    const trimmed = sql.trim().toUpperCase();
-                    if (trimmed === 'BEGIN' || trimmed === 'BEGIN IMMEDIATE' || trimmed === 'BEGIN TRANSACTION' || trimmed === 'BEGIN IMMEDIATE TRANSACTION') {
-                        const currentContext = transactionStorage.getStore();
-                        if (currentContext) {
-                            const spName = `mm_sp_${++currentContext.savepointCounter}`;
-                            return await origRun(`SAVEPOINT ${spName}`);
-                        }
-                        try {
-                            return await origRun(sql, ...params);
-                        } catch (err) {
-                            if (String(err?.message).includes('cannot start a transaction within a transaction')) {
-                                return;
-                            }
-                            throw err;
-                        }
-                    } else if (trimmed === 'COMMIT') {
-                        const currentContext = transactionStorage.getStore();
-                        if (currentContext) {
-                            if (currentContext.savepointCounter > 0) {
-                                const spName = `mm_sp_${currentContext.savepointCounter--}`;
-                                return await origRun(`RELEASE ${spName}`);
-                            }
-                            return;
-                        }
-                        try {
-                            return await origRun(sql, ...params);
-                        } catch (err) {
-                            if (String(err?.message).includes('cannot commit - no transaction is active')) {
-                                return;
-                            }
-                            throw err;
-                        }
-                    } else if (trimmed === 'ROLLBACK') {
-                        const currentContext = transactionStorage.getStore();
-                        if (currentContext) {
-                            if (currentContext.savepointCounter > 0) {
-                                const spName = `mm_sp_${currentContext.savepointCounter--}`;
-                                await origRun(`ROLLBACK TO ${spName}`).catch(() => {});
-                                return await origRun(`RELEASE ${spName}`).catch(() => {});
-                            }
-                        }
-                        try {
-                            return await origRun(sql, ...params);
-                        } catch (err) {
-                            if (String(err?.message).includes('no transaction is active')) {
-                                return;
-                            }
-                            throw err;
-                        }
-                    }
-                }
-                return await origRun(sql, ...params);
-            };
-            db.exec = async function(sql) {
-                if (typeof sql === 'string') {
-                    const trimmed = sql.trim().toUpperCase();
-                    if (trimmed === 'BEGIN' || trimmed === 'BEGIN IMMEDIATE' || trimmed === 'BEGIN TRANSACTION' || trimmed === 'BEGIN IMMEDIATE TRANSACTION') {
-                        const currentContext = transactionStorage.getStore();
-                        if (currentContext) {
-                            const spName = `mm_sp_${++currentContext.savepointCounter}`;
-                            return await origExec(`SAVEPOINT ${spName}`);
-                        }
-                        try {
-                            return await origExec(sql);
-                        } catch (err) {
-                            if (String(err?.message).includes('cannot start a transaction within a transaction')) {
-                                return;
-                            }
-                            throw err;
-                        }
-                    } else if (trimmed === 'COMMIT') {
-                        const currentContext = transactionStorage.getStore();
-                        if (currentContext) {
-                            if (currentContext.savepointCounter > 0) {
-                                const spName = `mm_sp_${currentContext.savepointCounter--}`;
-                                return await origExec(`RELEASE ${spName}`);
-                            }
-                            return;
-                        }
-                        try {
-                            return await origExec(sql);
-                        } catch (err) {
-                            if (String(err?.message).includes('cannot commit - no transaction is active')) {
-                                return;
-                            }
-                            throw err;
-                        }
-                    } else if (trimmed === 'ROLLBACK') {
-                        const currentContext = transactionStorage.getStore();
-                        if (currentContext) {
-                            if (currentContext.savepointCounter > 0) {
-                                const spName = `mm_sp_${currentContext.savepointCounter--}`;
-                                await origExec(`ROLLBACK TO ${spName}`).catch(() => {});
-                                return await origExec(`RELEASE ${spName}`).catch(() => {});
-                            }
-                        }
-                        try {
-                            return await origExec(sql);
-                        } catch (err) {
-                            if (String(err?.message).includes('no transaction is active')) {
-                                return;
-                            }
-                            throw err;
-                        }
-                    }
-                }
-                return await origExec(sql);
-            };
-db.configure('busyTimeout', DB_BUSY_TIMEOUT_MS);
+            openedDb = db;
+            protectConnection(db);
+            db.configure('busyTimeout', DB_BUSY_TIMEOUT_MS);
             await db.exec('PRAGMA foreign_keys = ON');
             await db.exec('PRAGMA journal_mode = WAL');
             await db.exec('PRAGMA synchronous = NORMAL');

@@ -196,8 +196,7 @@ async function addTransaction(transaction) {
  */
 async function commitEmailTransaction({ transaction, source, balance = null, outbox = null }) {
     const db = await getDb();
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    return await db.withTransaction(async () => {
         const transactionId = await addTransaction(transaction);
         if (balance?.accountId) {
             const account = await db.get(
@@ -238,12 +237,8 @@ async function commitEmailTransaction({ transaction, source, balance = null, out
                 : outbox.payload;
             await enqueueTelegramOutbox(outbox.action || 'sendMessage', payload, { transactionId });
         }
-        await db.run('COMMIT');
         return transactionId;
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+    });
 }
 
 async function getTransactionById(id, userId) {
@@ -511,8 +506,7 @@ async function ensureTransactionAccount(userId, transaction = {}) {
     if (!accountRef) return { status: 'insufficient_identity', account: null, created: false };
 
     const db = await getDb();
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    return await db.withTransaction(async () => {
         const accounts = await db.all(
             `SELECT a.*, MAX(p.mask) AS plaidMask
              FROM investment_accounts a
@@ -549,7 +543,6 @@ async function ensureTransactionAccount(userId, transaction = {}) {
         } else {
             const discovered = describeDiscoveredAccount(matchTransaction);
             if (!discovered) {
-                await db.run('COMMIT');
                 return { status: 'insufficient_identity', account: null, created: false };
             }
             const settings = await db.get('SELECT currency FROM user_settings WHERE userId = ?', [userId]);
@@ -579,12 +572,8 @@ async function ensureTransactionAccount(userId, transaction = {}) {
             [userId, accountRef, transaction.BankName || account.institution,
                 transaction.Type || account.accountType, transaction.Timestamp || new Date().toISOString()]
         );
-        await db.run('COMMIT');
         return { status, account, created };
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+    });
 }
 
 const portfolioAccountSelect = `
@@ -617,14 +606,12 @@ async function getInvestmentAccounts(userId) {
 
 async function syncTransactionAccountBalance(userId, transactionId, preferred = {}) {
     const db = await getDb();
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    return await db.withTransaction(async () => {
         const transaction = await db.get(
             'SELECT * FROM transactions WHERE id = ? AND userId = ?',
             [transactionId, userId]
         );
         if (!transaction) {
-            await db.run('COMMIT');
             return { status: 'missing_transaction' };
         }
 
@@ -655,13 +642,11 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             
         const best = ranked[0];
         if (!best || best.score < 30) {
-            await db.run('COMMIT');
             return { status: ranked.length ? 'ambiguous_account' : 'unmatched_account' };
         }
         
         if (ranked[1] && ranked[1].score === best.score) {
             if (!isInterac || Number(ranked[0].account.cashMinor) === Number(ranked[1].account.cashMinor)) {
-                await db.run('COMMIT');
                 return { status: 'ambiguous_account' };
             }
         }
@@ -675,7 +660,6 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
                 const oldAccount = accounts.find((account) => Number(account.id) === Number(existing.accountId));
                 const restoredCashMinor = Number(oldAccount?.cashMinor) - Number(existing.deltaMinor);
                 if (!oldAccount || restoredCashMinor < 0) {
-                    await db.run('COMMIT');
                     return { status: 'review_required', reason: 'Existing balance event cannot be safely reversed' };
                 }
                 await db.run(
@@ -684,7 +668,6 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
                 );
                 await db.run('DELETE FROM account_balance_events WHERE id = ? AND userId = ?', [existing.id, userId]);
             }
-            await db.run('COMMIT');
             return { status: 'not_balance_posting' };
         }
 
@@ -694,7 +677,6 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
         // current balance. Reapplying the event then inflated the displayed cash.
         if (existing && Number(existing.accountId) === Number(best.account.id) &&
             Number(existing.deltaMinor) === Number(deltaMinor)) {
-            await db.run('COMMIT');
             return {
                 status: 'applied', accountId: best.account.id, accountName: best.account.name,
                 deltaMinor, cashMinor: Number(best.account.cashMinor), unchanged: true,
@@ -708,7 +690,6 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             ? Number(oldAccount.cashMinor) - Number(existing.deltaMinor)
             : null;
         if (existing && (!oldAccount || oldAccountCashMinor < 0)) {
-            await db.run('COMMIT');
             return { status: 'review_required', reason: 'Existing balance event cannot be safely reversed' };
         }
 
@@ -717,7 +698,6 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             : Number(best.account.cashMinor);
         const nextCashMinor = targetCashMinor + deltaMinor;
         if (nextCashMinor < 0) {
-            await db.run('COMMIT');
             return { status: 'review_required', reason: 'Transaction would make the account balance negative' };
         }
 
@@ -747,21 +727,16 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
                 [userId, best.account.id, transactionId, deltaMinor, occurredAt]
             );
         }
-        await db.run('COMMIT');
         return {
             status: 'applied', accountId: best.account.id, accountName: best.account.name,
             deltaMinor, cashMinor: nextCashMinor,
         };
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+    });
 }
 
 async function removeTransactionAccountBalance(userId, transactionId) {
     const db = await getDb();
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    return await db.withTransaction(async () => {
         const existing = await db.get(
             'SELECT * FROM account_balance_events WHERE sourceTransactionId = ? AND userId = ?',
             [transactionId, userId]
@@ -775,12 +750,8 @@ async function removeTransactionAccountBalance(userId, transactionId) {
             );
             await db.run('DELETE FROM account_balance_events WHERE id = ? AND userId = ?', [existing.id, userId]);
         }
-        await db.run('COMMIT');
         return Boolean(existing);
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+    });
 }
 
 async function reconcileTransactionAccountBalances(userId) {
@@ -906,18 +877,13 @@ async function deleteInvestmentAccount(userId, id) {
     const db = await getDb();
     const owned = await db.get('SELECT id FROM investment_accounts WHERE id = ? AND userId = ?', [id, userId]);
     if (!owned) return false;
-    await db.run('BEGIN');
-    try {
+    return await db.withTransaction(async () => {
         await db.run('DELETE FROM account_balance_events WHERE accountId = ? AND userId = ?', [id, userId]);
         await db.run('DELETE FROM investment_holdings WHERE accountId = ? AND userId = ?', [id, userId]);
         await db.run('DELETE FROM portfolio_transactions WHERE accountId = ? AND userId = ?', [id, userId]);
         await db.run('DELETE FROM investment_accounts WHERE id = ? AND userId = ?', [id, userId]);
-        await db.run('COMMIT');
         return true;
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+    });
 }
 
 async function upsertInvestmentHolding(userId, accountId, holding) {
@@ -1054,14 +1020,12 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
     if (!source || !portfolioActivityCategories.has(source.Category)) return { status: 'ignored' };
     if (!portfolioActivityLabels.has(source.Label)) return { status: 'ignored' };
 
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    return await db.withTransaction(async () => {
         const alreadyApplied = await db.get(
             'SELECT id FROM portfolio_transactions WHERE sourceTransactionId = ?',
             [transactionId]
         );
         if (alreadyApplied) {
-            await db.run('COMMIT');
             return { status: 'duplicate' };
         }
 
@@ -1074,7 +1038,6 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
         const account = accountResolution.account;
         const resolvedAccountId = account?.id || null;
         if (!account) {
-            await db.run('COMMIT');
             return { status: 'unmatched_account', reason: accountResolution.reason };
         }
 
@@ -1101,7 +1064,6 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
                         : (emailCashActions[action] || 0);
             const nextCashMinor = account.cashMinor + (cashMultiplier * amountMinor);
             if (nextCashMinor < 0) {
-                await db.run('COMMIT');
                 return { status: 'review_required', reason: 'Portfolio action exceeds the recorded cash balance' };
             }
 
@@ -1138,7 +1100,6 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
 
             if (portfolioQuantityActions.has(action)) {
                 if (!normalizedSymbol || !Number.isFinite(tradeQuantity)) {
-                    await db.run('COMMIT');
                     return { status: 'review_required', reason: 'Portfolio action is missing an asset quantity' };
                 }
                 const primaryDelta = action === 'REWARD'
@@ -1172,12 +1133,10 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
                     normalizedToSymbol || null, Number.isFinite(Number(toQuantity)) ? Number(toQuantity) : null,
                     occurredAt, source.Reason || null]
             );
-            await db.run('COMMIT');
             return { status: 'applied', accountId: resolvedAccountId, action, amountMinor, cashMinor: nextCashMinor };
         }
 
         if (!securityTradeLabels.has(source.Label)) {
-            await db.run('COMMIT');
             return { status: 'review_required', reason: 'Security trades must be classified as Investment' };
         }
 
@@ -1186,7 +1145,6 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
         const expectedAmountMinor = Math.round(tradeQuantity * tradePrice * 100);
         const allowedDifference = Math.max(2, Math.round(amountMinor * 0.02));
         if (Math.abs(expectedAmountMinor - amountMinor) > allowedDifference) {
-            await db.run('COMMIT');
             return { status: 'review_required', reason: 'Trade total does not match shares multiplied by execution price' };
         }
 
@@ -1203,7 +1161,6 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
         if (action === 'BUY') {
             nextCashMinor = account.cashMinor - amountMinor;
             if (nextCashMinor < 0) {
-                await db.run('COMMIT');
                 return { status: 'review_required', reason: 'Buy exceeds the recorded cash balance' };
             }
 
@@ -1232,7 +1189,6 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
             );
         } else {
             if (!holding || tradeQuantity > existingQuantity + 1e-9) {
-                await db.run('COMMIT');
                 return { status: 'review_required', reason: 'Sell exceeds the recorded number of shares' };
             }
 
@@ -1267,7 +1223,6 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
                 normalizedSymbol, tradeQuantity, priceMinor, priceMicros, occurredAt, source.Reason || null,
             ]
         );
-        await db.run('COMMIT');
         return {
             status: 'applied',
             accountId: resolvedAccountId,
@@ -1282,10 +1237,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
             priceMicros,
             averageCostMicros,
         };
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+    });
 }
 async function getUserSettings(userId) {
     const db = await getDb();
@@ -1487,8 +1439,7 @@ async function enqueueDiscoveredEmails(mailboxKey, uidValidity, uids, options = 
     const db = await getDb();
     const now = new Date().toISOString();
     const adoptLegacyProcessed = options.adoptLegacyProcessed === true;
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    return await db.withTransaction(async () => {
         for (const uid of normalizedUids) {
             const legacyProcessed = adoptLegacyProcessed && Boolean(await db.get(
                 'SELECT uid FROM processed_emails WHERE uid = ?',
@@ -1508,12 +1459,8 @@ async function enqueueDiscoveredEmails(mailboxKey, uidValidity, uids, options = 
              WHERE mailboxKey = ? AND uidValidity = ?`,
             [normalizedUids.at(-1), now, mailboxKey, String(uidValidity)]
         );
-        await db.run('COMMIT');
         return normalizedUids.length;
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+    });
 }
 
 const EMAIL_QUEUE_MAX_ATTEMPTS = Number(process.env.EMAIL_QUEUE_MAX_ATTEMPTS || 8);
@@ -1547,8 +1494,7 @@ async function claimPendingEmails(mailboxKey, uidValidity, workerId, limit = 250
     const db = await getDb();
     const nowIso = now.toISOString();
     const leaseExpiresAt = new Date(now.getTime() + EMAIL_QUEUE_LEASE_MS).toISOString();
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    return await db.withTransaction(async () => {
         const rows = await db.all(
             `SELECT uid, attempts, lastError, discoveredAt, nextAttemptAt
              FROM email_ingestion_queue
@@ -1567,12 +1513,8 @@ async function claimPendingEmails(mailboxKey, uidValidity, workerId, limit = 250
             );
             row.attempts += 1;
         }
-        await db.run('COMMIT');
         return rows;
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+    });
 }
 
 async function completeEmailQueueItem(uid, mailboxKey, uidValidity, workerId = null) {
@@ -1639,8 +1581,7 @@ async function claimTelegramOutbox(workerId, limit = 50, now = new Date()) {
     const db = await getDb();
     const nowIso = now.toISOString();
     const leaseExpiresAt = new Date(now.getTime() + TELEGRAM_OUTBOX_LEASE_MS).toISOString();
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    return await db.withTransaction(async () => {
         const rows = await db.all(
             `SELECT id, action, payloadJson, transactionId, attempts
              FROM telegram_outbox
@@ -1660,26 +1601,20 @@ async function claimTelegramOutbox(workerId, limit = 50, now = new Date()) {
             try { row.payload = JSON.parse(row.payloadJson); } catch { row.payload = {}; }
             delete row.payloadJson;
         }
-        await db.run('COMMIT');
         return rows;
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+    });
 }
 
 async function completeTelegramOutbox(id, workerId, telegramMessageId = null) {
     const db = await getDb();
     const now = new Date().toISOString();
-    await db.run('BEGIN IMMEDIATE');
-    try {
+    return await db.withTransaction(async () => {
         const row = await db.get(
             `SELECT transactionId FROM telegram_outbox
              WHERE id = ? AND status = 'processing' AND leaseOwner = ?`,
             [id, String(workerId)]
         );
         if (!row) {
-            await db.run('ROLLBACK');
             return false;
         }
         await db.run(
@@ -1692,12 +1627,8 @@ async function completeTelegramOutbox(id, workerId, telegramMessageId = null) {
         if (row.transactionId && telegramMessageId) {
             await db.run('UPDATE transactions SET TelegramMessageId = ? WHERE id = ?', [telegramMessageId, row.transactionId]);
         }
-        await db.run('COMMIT');
         return true;
-    } catch (error) {
-        await db.run('ROLLBACK');
-        throw error;
-    }
+    });
 }
 
 async function failTelegramOutbox(id, workerId, error, now = new Date()) {

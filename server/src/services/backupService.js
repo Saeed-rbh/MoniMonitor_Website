@@ -315,7 +315,6 @@ async function restoreBackup(fileName, restoredByUserId) {
             restored = true;
         });
     } catch (error) {
-        await db.exec('ROLLBACK').catch(() => {});
         throw error;
     } finally {
         if (attached) await db?.exec('DETACH DATABASE restore_source').catch(() => {});
