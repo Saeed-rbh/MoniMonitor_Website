@@ -17,7 +17,7 @@ test.after(async () => {
     fs.rmSync(testDirectory, { recursive: true, force: true });
 });
 
-test('keeps email-confirmed trades over a stale Plaid snapshot and repairs an ambiguous TFSA route', async () => {
+test('keeps provider holdings separate from email trade estimates and retains manual routing history', async () => {
     const db = await dbService.getDb();
     const userId = 'holdings-reconciliation-user';
     const now = new Date().toISOString();
@@ -119,15 +119,20 @@ test('keeps email-confirmed trades over a stale Plaid snapshot and repairs an am
         [userId]
     );
     assert.deepEqual(holdings, [
-        { accountId: active.id, symbol: 'QQC', quantity: 48.095 },
+        { accountId: active.id, symbol: 'QQC', quantity: 47.8867 },
         { accountId: active.id, symbol: 'VFV', quantity: 21.4902 },
-        { accountId: active.id, symbol: 'XEQT', quantity: 56.5891 },
+        { accountId: active.id, symbol: 'XEQT', quantity: 56.3688 },
     ]);
 
     const repairedTransaction = await db.get(
         'SELECT PortfolioAccountId FROM transactions WHERE id = ?', [xeqtTransactionId]
     );
     assert.equal(repairedTransaction.PortfolioAccountId, active.id);
+    const accounts = await dbService.getInvestmentAccounts(userId);
+    const projected = accounts.find((account) => account.id === active.id);
+    assert.equal(projected.pendingTrades.length, 2);
+    assert.equal(projected.pendingTradeHoldings.find((holding) => holding.symbol === 'QQC').estimatedQuantity, 48.095);
+    assert.equal(projected.pendingTradeHoldings.find((holding) => holding.symbol === 'XEQT').estimatedQuantity, 56.5891);
     assert.deepEqual(
         await db.all(
             'SELECT sourceTransactionId, accountId FROM portfolio_transactions WHERE sourceTransactionId IN (?, ?) ORDER BY sourceTransactionId',

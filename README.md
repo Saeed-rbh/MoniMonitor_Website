@@ -235,6 +235,22 @@ supported cash balance remains visible; overdraft accounting is still pending.
 Portfolio-linked source records require reversal of their portfolio activity
 before financial edits or deletion.
 
+Bank holdings are imported without email-trade overlays. BUY/SELL emails for
+bank-linked accounts remain reporting evidence; they never change recorded
+shares or cash. Recent email-only trades appear separately as estimated share
+and cash changes for seven days after receipt. Provider confirmation, edits,
+deletion, and expiry update or remove those estimates. A bank snapshot may
+already include a trade, so estimates are excluded from recorded portfolio
+totals. Uncertain accounts, invalid details, currency mismatches, impossible
+sells, and overdrawn estimates require review. Manually maintained accounts
+retain their actual postings without an additional estimated posting.
+
+Holdings record their source and import time. Manual changes to bank holdings
+mark the baseline as mixed and require refresh or review; they do not claim to
+be a bank snapshot. The migration flags possible legacy email-trade overlays
+without guessing a reversal. Refresh bank holdings and cash to establish a new
+provider baseline. Legacy posting history is retained as evidence.
+
 Recent email-only internal transfers appear as separate pending cash changes
 and estimated cash on both account cards. Estimates are derived from current
 transactions and never alter recorded cash or portfolio totals. Bank source

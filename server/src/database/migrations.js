@@ -1,5 +1,25 @@
 const MIGRATIONS = [
     {
+        version: 9,
+        name: 'review_legacy_pending_trade_overlays',
+        async up(db) {
+            await db.exec(`ALTER TABLE investment_accounts ADD COLUMN holdingsSource TEXT NOT NULL DEFAULT 'manual';
+                ALTER TABLE investment_accounts ADD COLUMN holdingsAsOf TEXT;
+                ALTER TABLE investment_accounts ADD COLUMN holdingsReviewReason TEXT;
+                UPDATE investment_accounts SET holdingsSource = 'plaid'
+                    WHERE id IN (SELECT appAccountId FROM plaid_accounts WHERE type = 'investment' AND userId = investment_accounts.userId);
+                UPDATE investment_accounts SET holdingsReviewReason =
+                    'Refresh bank holdings to replace possible legacy pending-trade overlays',
+                    balanceReviewReason = COALESCE(balanceReviewReason, 'Refresh bank cash to replace possible legacy pending-trade adjustments')
+                WHERE holdingsSource = 'plaid' AND id IN (
+                    SELECT t.PortfolioAccountId FROM transactions t
+                    WHERE t.userId = investment_accounts.userId AND t.Category = 'Investment' AND t.PortfolioAction IN ('BUY', 'SELL')
+                      AND EXISTS (SELECT 1 FROM transaction_sources s WHERE s.transactionId = t.id AND s.userId = t.userId AND s.provider = 'email')
+                      AND NOT EXISTS (SELECT 1 FROM transaction_sources s WHERE s.transactionId = t.id AND s.userId = t.userId AND s.provider = 'plaid_investments')
+                );`);
+        },
+    },
+    {
         version: 8,
         name: 'revocable_auth_sessions',
         async up(db) {

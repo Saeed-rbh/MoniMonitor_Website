@@ -1,6 +1,7 @@
 const { getDb } = require('./db');
 const { FinancialMutationError, setAccountBalanceSnapshot } = require('../services/accountBalanceService');
 const { attachPendingTransfers } = require('../services/pendingTransferService');
+const { attachPendingTrades } = require('../services/pendingTradeService');
 const { REPORTING_CURRENCY, currencyOf, portfolioByCurrency } = require('../../../shared/currency.cjs');
 const { parseTimestamp, validMonth } = require('../../../shared/calendar.cjs');
 const { accountMatchScore, transactionBalanceDelta } = require('../services/accountMatching');
@@ -594,7 +595,7 @@ const portfolioAccountSelect = `
     LEFT JOIN investment_holdings h ON h.accountId = a.id AND h.userId = a.userId AND COALESCE(h.currency, 'CAD') = COALESCE(a.currency, 'CAD')
 `;
 
-async function getInvestmentAccounts(userId) {
+async function getInvestmentAccountState(userId) {
     const db = await getDb();
     return db.withTransaction(async () => {
     const accounts = await db.all(`${portfolioAccountSelect}
@@ -613,8 +614,12 @@ async function getInvestmentAccounts(userId) {
         holdings: byAccount[account.id] || [],
         byCurrency: portfolioByCurrency([{ ...account, holdings: byAccount[account.id] || [] }]),
     }));
-    return (await attachPendingTransfers(db, userId, enriched)).accounts;
+    return attachPendingTrades(db, userId, (await attachPendingTransfers(db, userId, enriched)).accounts);
     });
+}
+
+async function getInvestmentAccounts(userId) {
+    return (await getInvestmentAccountState(userId)).accounts;
 }
 
 async function syncTransactionAccountBalance(userId, transactionId, preferred = {}) {
@@ -847,7 +852,7 @@ async function reconcileEmailPortfolioActivities(userId) {
 
 async function getPortfolioSummary(userId) {
     const db = await getDb();
-    const accounts = await getInvestmentAccounts(userId);
+    const { accounts, unassignedTrades } = await getInvestmentAccountState(userId);
     const emailActivities = await db.all(
         `SELECT t.id AS sourceTransactionId, t.AmountMinor AS amountMinor, t.Currency AS currency,
                 t.Timestamp AS occurredAt, t.Label AS label, t.Reason AS reason,
@@ -872,6 +877,7 @@ async function getPortfolioSummary(userId) {
         accountCount: accounts.length,
         accounts,
         emailActivities,
+        pendingTradeReviewItems: unassignedTrades,
     };
 }
 
@@ -933,6 +939,7 @@ async function deleteInvestmentAccount(userId, id) {
 
 async function upsertInvestmentHolding(userId, accountId, holding) {
     const db = await getDb();
+    return db.withTransaction(async () => {
     const account = await db.get('SELECT id FROM investment_accounts WHERE id = ? AND userId = ?', [accountId, userId]);
     if (!account) return null;
     const now = new Date().toISOString();
@@ -952,13 +959,30 @@ async function upsertInvestmentHolding(userId, accountId, holding) {
         [userId, accountId, holding.symbol, holding.name || null, holding.quantity, holding.averageCostMinor,
             averageCostMicros, holding.priceMinor, priceMicros, holding.currency, now]
     );
+    await markManualHoldingChange(db, userId, accountId, now);
     return await db.get('SELECT * FROM investment_holdings WHERE accountId = ? AND symbol = ? AND userId = ?', [accountId, holding.symbol, userId]);
+    });
 }
 
 async function deleteInvestmentHolding(userId, accountId, holdingId) {
     const db = await getDb();
+    return db.withTransaction(async () => {
     const result = await db.run('DELETE FROM investment_holdings WHERE id = ? AND accountId = ? AND userId = ?', [holdingId, accountId, userId]);
+    if (result.changes) await markManualHoldingChange(db, userId, accountId, new Date().toISOString());
     return result.changes > 0;
+    });
+}
+
+async function markManualHoldingChange(db, userId, accountId, now) {
+    await db.run(`UPDATE investment_accounts SET
+        holdingsSource = CASE WHEN holdingsSource != 'manual' OR EXISTS
+            (SELECT 1 FROM plaid_accounts p WHERE p.appAccountId = investment_accounts.id AND p.userId = investment_accounts.userId)
+            THEN 'mixed' ELSE 'manual' END,
+        holdingsAsOf = ?, holdingsReviewReason = CASE WHEN holdingsSource != 'manual' OR EXISTS
+            (SELECT 1 FROM plaid_accounts p WHERE p.appAccountId = investment_accounts.id AND p.userId = investment_accounts.userId)
+            THEN 'Holdings were manually changed after bank import; refresh or review the full holdings baseline'
+            ELSE holdingsReviewReason END
+        WHERE id = ? AND userId = ?`, [now, accountId, userId]);
 }
 
 
@@ -1087,6 +1111,17 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
         }
         if (currencyOf(source) !== currencyOf(account)) {
             return { status: 'review_required', reason: 'Cross-currency portfolio activity requires a recorded exchange rate' };
+        }
+
+        if (isTrade && (account.holdingsSource !== 'manual' || await db.get(
+            'SELECT plaidAccountId FROM plaid_accounts WHERE userId = ? AND appAccountId = ? LIMIT 1', [userId, resolvedAccountId]))) {
+            // Bank snapshots can already contain this trade. Keep the email
+            // as evidence and project it separately until provider confirmation.
+            if (Number(source.PortfolioAccountId) !== Number(resolvedAccountId)) {
+                await db.run('UPDATE transactions SET PortfolioAccountId = ? WHERE id = ? AND userId = ?',
+                    [resolvedAccountId, transactionId, userId]);
+            }
+            return { status: 'pending_bank_confirmation', accountId: resolvedAccountId, action };
         }
 
         if (Number(source.PortfolioAccountId) !== Number(resolvedAccountId) || source.PortfolioConfidence !== 'HIGH') {

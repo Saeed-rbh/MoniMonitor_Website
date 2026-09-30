@@ -23,7 +23,6 @@ const {
     mergeAccountBalances,
     fetchCurrentMarketPrices,
     normalizeInvestmentSnapshot,
-    reconcileDerivedCashWithHoldings,
     canonicalPlaidSecuritySymbol,
     isMarketPriceRefreshWindow,
     nextMarketPriceRefreshDelayMs,
@@ -213,23 +212,6 @@ test('replaces cached account balances with Plaid real-time balances', () => {
 
     assert.equal(account.name, 'TFSA');
     assert.equal(account.balances.current, 10603.496906);
-});
-
-test('recalculates derived cash after pending trades change holding quantities', () => {
-    const entry = {
-        cashMinor: 160411,
-        cashDerivedFromTotal: true,
-        totalMinor: 1060350,
-        holdings: [
-            { valueMinor: 233349 },
-            { valueMinor: 409415 },
-            { valueMinor: 260180 },
-        ],
-    };
-
-    assert.equal(reconcileDerivedCashWithHoldings(entry), 157406);
-    assert.equal(entry.cashMinor, 157406);
-    assert.equal(entry.cashMinor + entry.holdings.reduce((sum, holding) => sum + holding.valueMinor, 0), 1060350);
 });
 
 test('keeps existing Plaid tokens readable while rotating from the JWT secret to a dedicated key', () => {

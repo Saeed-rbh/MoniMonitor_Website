@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import NativeCurrencyValues from '../../components/NativeCurrencyValues';
 import PendingTransferBalance from '../../components/PendingTransferBalance';
+import PendingTradeEstimate, { PendingTradeReviewItems } from '../../components/PendingTradeEstimate';
 import { useTransactions } from '../../context/TransactionContext';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -114,6 +115,7 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
             <NativeCurrencyValues totals={account.byCurrency} baseCurrency={account.currency} />
             {account.balanceReviewReason && <p role="status">Cash needs review: {account.balanceReviewReason}</p>}
             <PendingTransferBalance account={account} />
+            <PendingTradeEstimate account={account} />
             <p style={styles.secondary}>
                 {account.balanceSource === 'plaid' ? 'Bank snapshot; reporting edits preserve this balance.' : 'Manual balance; new posted activity updates this balance.'}
                 {account.balanceAsOf && ` As of ${new Date(account.balanceAsOf).toLocaleString()}.`}
@@ -221,6 +223,7 @@ const SaveInvest = () => {
             </div>
         </div>
         {status && <p role='status' style={{ color: 'var(--Fc-1)' }}>{status}</p>}
+        <PendingTradeReviewItems trades={portfolio.pendingTradeReviewItems} />
 
         <section style={{ ...styles.card, background: 'linear-gradient(135deg, var(--Bc-4), var(--Ac-4))' }}>
             <span style={styles.secondary}>Net account value</span>
