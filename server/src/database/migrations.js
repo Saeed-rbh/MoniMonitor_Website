@@ -1,5 +1,16 @@
 const MIGRATIONS = [
     {
+        version: 13,
+        name: 'email_ingestion_review_holds',
+        async up(db) {
+            await db.exec(`CREATE TABLE transaction_ingestion_reviews (
+                transactionId INTEGER PRIMARY KEY REFERENCES transactions(id) ON DELETE CASCADE,
+                reason TEXT NOT NULL, candidateIdsJson TEXT NOT NULL DEFAULT '[]',
+                createdAt TEXT NOT NULL, resolvedAt TEXT
+            )`);
+        },
+    },
+    {
         version: 12,
         name: 'persistent_ai_usage_limits',
         async up(db) {

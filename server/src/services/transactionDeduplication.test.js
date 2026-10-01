@@ -10,6 +10,27 @@ const bankEvent = { AmountMinor: 10000, Currency: 'CAD', Category: 'Expense',
     Reason: 'Example Coffee Shop', Timestamp: '2026-09-20T15:00:00Z',
     BankName: 'RBC', Account: '1234', AccountFlow: 'OUT', SourceEmailKey: 'email:1' };
 
+test('recognizes complementary RBC deposit notices in either arrival order', () => {
+    const notice = { ...bankEvent, Category: 'Income', AccountFlow: null,
+        Reason: 'Deposit to RBC Royal Bank Checking Account ••••1234', ReceivedAt: bankEvent.Timestamp };
+    const interac = { ...notice, SourceEmailKey: 'email:2', AccountFlow: 'IN',
+        Reason: 'E-Transfer - Jane Doe', ReferenceNumber: 'C1AaMcwFCnMw',
+        Timestamp: '2026-09-20T15:12:00Z', ReceivedAt: '2026-09-20T15:12:00Z' };
+    assert.ok(scoreTransactionMatch(notice, interac).depositNoticeMatch);
+    assert.ok(scoreTransactionMatch(interac, notice).depositNoticeMatch);
+    assert.equal(scoreTransactionMatch(notice, { ...interac, Account: '5678' }), null);
+    assert.equal(scoreTransactionMatch(notice, { ...interac, Timestamp: '2026-09-21T15:00:00Z' }), null);
+    assert.equal(scoreTransactionMatch(interac, { ...interac, SourceEmailKey: 'email:3',
+        ReferenceNumber: 'C1Different123' }), null);
+});
+
+test('never matches a dividend to its equal-amount reinvestment purchase', () => {
+    const dividend = { ...bankEvent, Category: 'Investment', Reason: 'XEQT Dividend',
+        PortfolioAction: 'DIVIDEND', PortfolioSymbol: 'XEQT', PortfolioAccountId: 10, AccountFlow: 'IN' };
+    assert.equal(scoreTransactionMatch(dividend, { ...dividend, PortfolioAction: 'BUY',
+        SourceEmailKey: null, hasPlaidInvestmentSource: true }), null);
+});
+
 test('rejects conflicting accounts, banks, and flow even with shared reference', () => {
     for (const conflict of [{ Account: '5678' }, { BankName: 'CIBC' },
         { AccountFlow: 'IN' }, { BalanceAccountId: 2 }]) {
@@ -165,4 +186,3 @@ test('matches CUPE acronym to Canadian Union of Public Emplo on same account and
     assert.equal(match.referenceMatch, false);
     assert.ok(match.overlapCount >= 1);
 });
-

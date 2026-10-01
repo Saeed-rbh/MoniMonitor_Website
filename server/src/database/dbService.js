@@ -14,7 +14,8 @@ const {
     resolveAccountCandidate,
 } = require('../services/accountDiscovery');
 const { CATEGORY_LABELS } = require('../services/transactionCategories');
-const { findTransactionMatch, scoreTransactionMatch } = require('../services/transactionDeduplication');
+const { findTransactionMatch, findTransactionMatchResult, scoreTransactionMatch,
+    isDepositNotice, isInteracDeposit } = require('../services/transactionDeduplication');
 const { pairTransactionOnIngestion, isRefundTransaction } = require('../services/refundPairing');
 const {
     isCreditCardPayment,
@@ -201,30 +202,42 @@ async function addTransaction(transaction) {
 async function commitEmailTransaction({ transaction, source, balance = null, outbox = null }) {
     const db = await getDb();
     return await db.withTransaction(async () => {
-        const transactionId = await addTransaction(transaction);
-        if (balance?.accountId) {
-            const account = await db.get(
-                'SELECT * FROM investment_accounts WHERE id = ? AND userId = ?',
-                [balance.accountId, transaction.userId]
-            );
-            const amountMinor = Number.isSafeInteger(transaction.AmountMinor)
-                ? transaction.AmountMinor
-                : toMinorUnits(transaction.Amount);
-            const deltaMinor = account ? transactionBalanceDelta(transaction, account, amountMinor) : null;
-            const nextCashMinor = account ? Number(account.cashMinor) + Number(deltaMinor) : null;
-            if (deltaMinor !== null && Number.isSafeInteger(nextCashMinor)) {
-                const occurredAt = transaction.Timestamp || new Date().toISOString();
-                await db.run(
-                    'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
-                    [nextCashMinor, occurredAt, account.id, transaction.userId]
-                );
-                await db.run(
-                    `INSERT INTO account_balance_events
-                        (userId, accountId, sourceTransactionId, deltaMinor, occurredAt)
-                     VALUES (?, ?, ?, ?, ?)`,
-                    [transaction.userId, account.id, transactionId, deltaMinor, occurredAt]
-                );
+        const known = transaction.SourceEmailKey
+            ? await getTransactionBySourceEmailKey(transaction.userId, transaction.SourceEmailKey) : null;
+        if (known) return known.id;
+        const decision = await findTransactionMatchResult(db, transaction.userId, transaction,
+            { incomingProvider: 'email', mode: transaction.PortfolioAction ? 'investment' : 'bank' });
+        const notificationKind = isDepositNotice(transaction) ? 'deposit_notice' :
+            isInteracDeposit(transaction) ? 'interac_deposit' : null;
+        if (source) source = { ...source, contextPayload: { ...source.contextPayload, notificationKind } };
+        if (decision.match) {
+            const match = decision.match;
+            if (isInteracDeposit(transaction) && isDepositNotice(match)) {
+                await updateTransactionForUser(match.id, transaction.userId, {
+                    Label: transaction.Label, Reason: transaction.Reason, Type: transaction.Type,
+                    ReferenceNumber: transaction.ReferenceNumber, AccountFlow: 'IN',
+                });
             }
+            if (source) await upsertTransactionSource({ ...source, userId: transaction.userId,
+                transactionId: match.id, provider: 'email', ownsTransaction: false });
+            return match.id;
+        }
+        const transactionId = await addTransaction(transaction);
+        const reviewReason = transaction.IngestionReviewReason || (decision.reviewIds.length ? 'possible_duplicate' : null);
+        if (reviewReason) {
+            await db.run(`INSERT INTO transaction_ingestion_reviews
+                (transactionId, reason, candidateIdsJson, createdAt) VALUES (?, ?, ?, ?)`,
+                [transactionId, reviewReason, JSON.stringify(decision.reviewIds), new Date().toISOString()]);
+            await writeAgentAudit(transaction.userId, 'email_ingestion_review', 'review_required',
+                { transactionId, reason: reviewReason, candidateIds: decision.reviewIds });
+            await db.run(`UPDATE investment_accounts SET balanceReviewReason = ?
+                WHERE userId = ? AND id IN (SELECT BalanceAccountId FROM transactions WHERE id IN (
+                    SELECT value FROM json_each(?)))`,
+                ['Possible duplicate deposit awaiting review', transaction.userId, JSON.stringify(decision.reviewIds)]);
+        } else if (balance?.accountId) {
+            await syncTransactionAccountBalance(transaction.userId, transactionId, {
+                accountId: balance.accountId, confidence: transaction.BalanceAccountConfidence || 'HIGH',
+            });
         }
         if (source) {
             await upsertTransactionSource({
@@ -632,6 +645,9 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
         );
         if (!transaction) {
             return { status: 'missing_transaction' };
+        }
+        if (await db.get('SELECT 1 FROM transaction_ingestion_reviews WHERE transactionId = ? AND resolvedAt IS NULL', [transactionId])) {
+            return { status: 'review_required', reason: 'Email ingestion is held for review' };
         }
 
         const existing = await db.get(
@@ -1087,6 +1103,9 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
         'SELECT * FROM transactions WHERE id = ? AND userId = ?',
         [transactionId, userId]
     );
+    if (await db.get('SELECT 1 FROM transaction_ingestion_reviews WHERE transactionId = ? AND resolvedAt IS NULL', [transactionId])) {
+        return { status: 'review_required', reason: 'Email ingestion is held for review' };
+    }
     if (!source || !portfolioActivityCategories.has(source.Category)) return { status: 'ignored' };
     if (!portfolioActivityLabels.has(source.Label)) return { status: 'ignored' };
 

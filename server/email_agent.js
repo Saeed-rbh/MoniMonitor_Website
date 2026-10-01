@@ -2,6 +2,8 @@ require('dotenv').config();
 const { ImapService } = require('./src/services/imapService');
 const { parseEmailWithGemini, formatETransferReason } = require('./src/services/aiService');
 const dbService = require('./src/database/dbService');
+const { normalizeEmailEvidence, emailNotificationKind } = require('./src/services/emailEvidence');
+const { isDepositNotice, isInteracDeposit } = require('./src/services/transactionDeduplication');
 const { buildTransactionCsv } = require('../shared/transactionCsv.cjs');
 const { SNAPSHOT_CAPTURED_AT } = require('./src/database/financialSnapshot');
 const { normalizeTransactionSemantics } = require('./src/services/transactionSemantics');
@@ -167,6 +169,7 @@ async function syncPortfolioFromEmail(transactionId, data, idInfo) {
 
 async function captureEmailSource(transactionId, sourceEmailKey, emailBody, rawEmailSource, receivedAt, parsedTransaction = null, idInfo = null) {
     if (!transactionId || !sourceEmailKey) return;
+    const evidence = parsedTransaction || await dbService.getTransactionById(transactionId, USER_ID);
     await dbService.upsertTransactionSource({
         userId: USER_ID,
         provider: 'email',
@@ -184,6 +187,8 @@ async function captureEmailSource(transactionId, sourceEmailKey, emailBody, rawE
         contextPayload: {
             mailboxKey: sourceEmailKey.split(':').slice(0, 2).join(':'),
             sourceEmailKey,
+            notificationKind: emailNotificationKind(emailBody, evidence) || (isDepositNotice(evidence || {}) ? 'deposit_notice' :
+                isInteracDeposit(evidence || {}) ? 'interac_deposit' : null),
         },
     });
 }
@@ -308,6 +313,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         // Date-only values have no transaction time. Use the received email time
         // rather than showing a misleading midnight placeholder in the app.
         expenseData.Timestamp = resolveEmailTimestamp(expenseData.Timestamp, expenseData.ReceivedAt);
+        expenseData = normalizeEmailEvidence(expenseData, emailBody, investmentAccounts);
         const durableSource = buildEmailIngestionSource(
             sourceEmailKey, emailBody, rawEmailSource, receivedAt, expenseData, idInfo
         );
@@ -355,6 +361,11 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                 BalanceAccountId: expenseData.BalanceAccountId,
                 Timestamp: expenseData.Timestamp,
                 SourceEmailKey: expenseData.SourceEmailKey,
+                ReceivedAt: expenseData.ReceivedAt,
+                PortfolioAction: expenseData.PortfolioAction,
+                PortfolioSymbol: expenseData.PortfolioSymbol,
+                PortfolioQuantity: expenseData.PortfolioQuantity,
+                PortfolioAccountId: expenseData.PortfolioAccountId,
             }
         );
         const duplicate = existingEmailTransaction || detectedDuplicate;

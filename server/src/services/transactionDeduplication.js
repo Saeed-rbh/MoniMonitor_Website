@@ -123,10 +123,35 @@ function sourcePriority(transaction = {}) {
     if (transaction.SourceEmailKey) score += 100;
     if (!transaction.hasPlaidSource && !transaction.hasPlaidInvestmentSource) score += 40;
     if (transaction.ReferenceNumber) score += 20;
+    if (isInteracDeposit(transaction)) score += 50;
     if (transaction.ReceivedAt) score += 10;
     if (String(transaction.Reason || '').length > 0) score += Math.min(10, String(transaction.Reason).length / 20);
     return score;
 }
+
+function isDepositNotice(row) {
+    return row.Category === 'Income' && !row.PortfolioAction &&
+        /^(deposit(?: notice| to| -)?|bank deposit|rbc(?: royal bank)? deposit)/i.test(String(row.Reason || '')) &&
+        !transactionReferences(row).size;
+}
+
+function isInteracDeposit(row) {
+    return row.Category === 'Income' && !row.PortfolioAction && transactionDirection(row) === 'IN' &&
+        /e[\s-]?transfer|interac/i.test(`${row.Type || ''} ${row.Reason || ''}`) &&
+        transactionReferences(row).size > 0;
+}
+
+function isComplementaryDepositPair(left, right) {
+    return (isDepositNotice(left) && isInteracDeposit(right)) ||
+        (isDepositNotice(right) && isInteracDeposit(left));
+}
+
+const localDay = value => {
+    const time = new Date(value).getTime();
+    return Number.isFinite(time) ? new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Toronto', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date(time)) : null;
+};
 
 function compareCanonicalRows(left, right) {
     const priorityDifference = sourcePriority(left) - sourcePriority(right);
@@ -145,6 +170,8 @@ function areComplementaryBankSources(candidate, incoming, options = {}) {
 }
 
 function scoreTransactionMatch(candidate, incoming, options = {}) {
+    if ((candidate.PortfolioAction || incoming.PortfolioAction) &&
+        !matchesInvestmentIdentity(candidate, incoming)) return null;
     const incomingAmount = Number.isSafeInteger(incoming.AmountMinor)
         ? incoming.AmountMinor
         : toMinorUnits(incoming.Amount);
@@ -187,6 +214,29 @@ function scoreTransactionMatch(candidate, incoming, options = {}) {
     if (candidateAccount && incomingAccount && !sameAccount) return null;
     if (normalizeBank(candidate.BankName) && normalizeBank(incoming.BankName) && !sameBank) return null;
     if (transactionDirection(candidate) && transactionDirection(incoming) && !sameDirection) return null;
+    const investmentSources = (candidate.SourceEmailKey &&
+        (incoming.hasPlaidInvestmentSource || options.incomingProvider === 'plaid_investments')) ||
+        (incoming.SourceEmailKey && candidate.hasPlaidInvestmentSource);
+    if (investmentSources && candidate.PortfolioAction && incoming.PortfolioAction && sameBank &&
+        candidate.PortfolioSymbol && incoming.PortfolioSymbol &&
+        !(candidate.SourceEmailKey && incoming.SourceEmailKey && candidate.SourceEmailKey !== incoming.SourceEmailKey)) {
+        return { score: 75 + (sameDay ? 10 : 0) + (sameAccount ? 5 : 0),
+            referenceMatch: false, overlapCount: overlap.length };
+    }
+
+    // These are two distinct notifications for one deposit, not two copies of
+    // the same email. Limit automatic linking to RBC and a short notification
+    // window. Ambiguous candidates are held by findTransactionMatchResult.
+    if (isComplementaryDepositPair(candidate, incoming) && sameBank &&
+        normalizeBank(candidate.BankName) === 'rbc' && sameAccount && sameDirection &&
+        localDay(candidate.Timestamp) === localDay(incoming.Timestamp)) {
+        const receiptDistance = Math.abs(new Date(candidate.ReceivedAt).getTime() -
+            new Date(incoming.ReceivedAt).getTime());
+        if (distanceDays * 86400000 <= 30 * 60000 ||
+            (candidate.ReceivedAt && incoming.ReceivedAt && receiptDistance <= 30 * 60000)) {
+            return { score: 80, referenceMatch: false, overlapCount: overlap.length, depositNoticeMatch: true };
+        }
+    }
 
     if (referenceMatch) {
         // A shared transfer reference is authoritative only when the money is
@@ -235,23 +285,33 @@ function scoreTransactionMatch(candidate, incoming, options = {}) {
 }
 
 function matchesInvestmentIdentity(candidate, incoming) {
-    if (incoming.PortfolioAction && candidate.PortfolioAction !== incoming.PortfolioAction) return false;
-    if (incoming.PortfolioSymbol && candidate.PortfolioSymbol !== incoming.PortfolioSymbol) return false;
-    if (incoming.PortfolioQuantity !== null && incoming.PortfolioQuantity !== undefined &&
+    if (candidate.PortfolioAction !== incoming.PortfolioAction) return false;
+    if (String(candidate.Currency || 'CAD').toUpperCase() !== String(incoming.Currency || 'CAD').toUpperCase()) return false;
+    if (normalizeBank(candidate.BankName) && normalizeBank(incoming.BankName) &&
+        normalizeBank(candidate.BankName) !== normalizeBank(incoming.BankName)) return false;
+    if (transactionDirection(candidate) && transactionDirection(incoming) &&
+        transactionDirection(candidate) !== transactionDirection(incoming)) return false;
+    const symbol = value => String(value || '').toUpperCase().replace(/XF$/, '');
+    if (incoming.PortfolioSymbol &&
+        symbol(candidate.PortfolioSymbol) !== symbol(incoming.PortfolioSymbol)) return false;
+    if (candidate.PortfolioAccountId && incoming.PortfolioAccountId &&
+        Number(candidate.PortfolioAccountId) !== Number(incoming.PortfolioAccountId)) return false;
+    if (['BUY', 'SELL'].includes(incoming.PortfolioAction) &&
+        incoming.PortfolioQuantity !== null && incoming.PortfolioQuantity !== undefined &&
         candidate.PortfolioQuantity !== null && candidate.PortfolioQuantity !== undefined &&
-        Math.abs(Number(candidate.PortfolioQuantity) - Number(incoming.PortfolioQuantity)) > 1e-8) return false;
+        Math.abs(Number(candidate.PortfolioQuantity) - Number(incoming.PortfolioQuantity)) > 0.0005) return false;
     return true;
 }
 
-async function findTransactionMatch(db, userId, incoming, options = {}) {
+async function findTransactionMatchResult(db, userId, incoming, options = {}) {
     const timestamp = new Date(incoming.Timestamp).getTime();
-    if (!Number.isFinite(timestamp)) return null;
+    if (!Number.isFinite(timestamp)) return { match: null, reviewIds: [] };
     const from = new Date(timestamp - 3 * 86400000).toISOString();
     const to = new Date(timestamp + 3 * 86400000).toISOString();
     const amountMinor = Number.isSafeInteger(incoming.AmountMinor)
         ? incoming.AmountMinor
         : toMinorUnits(incoming.Amount);
-    if (amountMinor === null) return null;
+    if (amountMinor === null) return { match: null, reviewIds: [] };
 
     const candidates = await db.all(
         `SELECT t.*,
@@ -279,10 +339,39 @@ async function findTransactionMatch(db, userId, incoming, options = {}) {
             return compareCanonicalRows(right.candidate, left.candidate);
         });
 
-    if (!ranked.length) return null;
+    const depositCandidates = candidates.filter(candidate =>
+        candidate.SourceEmailKey && incoming.SourceEmailKey && candidate.SourceEmailKey !== incoming.SourceEmailKey &&
+        isComplementaryDepositPair(candidate, incoming) &&
+        normalizeBank(candidate.BankName) === 'rbc' && normalizeBank(incoming.BankName) === 'rbc' &&
+        lastFour(candidate.Account) && lastFour(candidate.Account) === lastFour(incoming.Account) &&
+        localDay(candidate.Timestamp) === localDay(incoming.Timestamp) &&
+        (!candidate.BalanceAccountId || !incoming.BalanceAccountId ||
+            Number(candidate.BalanceAccountId) === Number(incoming.BalanceAccountId)));
+    // Never pick the closest of several equal deposits: receipt order is not
+    // proof of event identity. A source already paired is also not reusable.
+    if (depositCandidates.length) {
+        let consumed = false;
+        for (const candidate of depositCandidates) {
+            const sources = await db.all(`SELECT contextPayloadJson FROM transaction_sources
+                WHERE transactionId = ? AND provider = 'email'`, [candidate.id]);
+            const kinds = new Set(sources.map(s => {
+                try { return JSON.parse(s.contextPayloadJson || '{}').notificationKind; } catch { return null; }
+            }));
+            if (kinds.has('deposit_notice') && kinds.has('interac_deposit')) consumed = true;
+        }
+        if (depositCandidates.length > 1 || consumed || !ranked.some(r => r.match.depositNoticeMatch)) {
+            return { match: null, reviewIds: depositCandidates.map(row => row.id) };
+        }
+    }
+    if (!ranked.length) return { match: null, reviewIds: [] };
     if (!ranked[0].match.referenceMatch && ranked[1] &&
-        ranked[0].match.score === ranked[1].match.score) return null;
-    return ranked[0].candidate;
+        ranked[0].match.score === ranked[1].match.score) return { match: null,
+            reviewIds: ranked.filter(r => r.match.score === ranked[0].match.score).map(r => r.candidate.id) };
+    return { match: ranked[0].candidate, reviewIds: [] };
+}
+
+async function findTransactionMatch(db, userId, incoming, options = {}) {
+    return (await findTransactionMatchResult(db, userId, incoming, options)).match;
 }
 
 async function mergeTransactionRows(db, canonical, duplicate) {
@@ -351,6 +440,22 @@ async function mergeTransactionRows(db, canonical, duplicate) {
                 [canonical.id]
             );
             if (canonicalRow) {
+                if (table === 'account_balance_events') {
+                    const account = await db.get('SELECT * FROM investment_accounts WHERE id = ? AND userId = ?',
+                        [row.accountId, duplicate.userId]);
+                    if (account?.balanceSource !== 'plaid' &&
+                        Number(row.balanceRevision) === Number(account?.balanceRevision)) {
+                        const restored = Number(account.cashMinor) - Number(row.deltaMinor);
+                        if (!Number.isSafeInteger(restored)) throw new Error('Duplicate balance cannot be safely reversed');
+                        await db.run('UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ?',
+                            [restored, new Date().toISOString(), account.id]);
+                    }
+                } else if (!row.reversedAt) {
+                    const account = await db.get('SELECT * FROM investment_accounts WHERE id = ?', [row.accountId]);
+                    if (account && (account.balanceSource !== 'plaid' || account.holdingsSource !== 'plaid')) {
+                        throw new Error('Duplicate applied portfolio activity requires an audited reversal before merging');
+                    }
+                }
                 await db.run(`DELETE FROM ${table} WHERE id = ?`, [row.id]);
             } else {
                 await db.run(
@@ -383,6 +488,11 @@ async function mergeTransactionRows(db, canonical, duplicate) {
         }
     }
 
+    // Sent notification receipts still reference the ledger through a
+    // restrictive FK. Preserve them on the surviving transaction as well.
+    const hasOutbox = await db.get("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'telegram_outbox'");
+    if (hasOutbox) await db.run('UPDATE telegram_outbox SET transactionId = ? WHERE transactionId = ?',
+        [canonical.id, duplicate.id]);
     await db.run('DELETE FROM transactions WHERE id = ?', [duplicate.id]);
     const updatedCanonical = await db.get('SELECT * FROM transactions WHERE id = ?', [canonical.id]);
     await refreshTransactionMonths(db, [canonical, duplicate, updatedCanonical]);
@@ -465,6 +575,10 @@ module.exports = {
     hasReferenceMatch,
     scoreTransactionMatch,
     findTransactionMatch,
+    findTransactionMatchResult,
+    matchesInvestmentIdentity,
+    isDepositNotice,
+    isInteracDeposit,
     mergeTransactionRows,
     reconcileTransactionDuplicates,
 };

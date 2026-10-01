@@ -4,7 +4,7 @@ const { encryptString, decryptStringWithMetadata } = require('./encryptionServic
 const dbService = require('../database/dbService');
 const { setAccountBalanceSnapshot } = require('./accountBalanceService');
 const { reconcileHistoricalInternalTransfers } = require('../database/historicalTransferReconciliation');
-const { findTransactionMatch, reasonOverlap } = require('./transactionDeduplication');
+const { findTransactionMatch, reasonOverlap, matchesInvestmentIdentity } = require('./transactionDeduplication');
 const { isExplicitSelfTransferDescription } = require('./selfTransfer');
 const { workersPaused, registerWorker } = require('./workerLifecycle');
 
@@ -1144,7 +1144,8 @@ async function findInvestmentFallbackMatch(userId, appTransaction, currentItemId
         [userId, appTransaction.AmountMinor, from, to, currentItemId, currentItemId]
     );
     const normalizeSym = (sym) => String(sym || '').toUpperCase().replace(/XF$/, '');
-    const ranked = candidates.map((candidate) => {
+    const ranked = candidates.filter(candidate => matchesInvestmentIdentity(candidate, appTransaction))
+        .map((candidate) => {
         const sameDate = String(candidate.Timestamp).slice(0, 10) === String(appTransaction.Timestamp).slice(0, 10);
         const sameAccount = Number(candidate.PortfolioAccountId) === Number(appTransaction.PortfolioAccountId);
         const sameAction = candidate.PortfolioAction === appTransaction.PortfolioAction;
@@ -1202,7 +1203,26 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
             userId, item.itemId, externalId, match.id, false,
             'plaid_investments', transaction, sourceContext
         );
+        await confirmInvestmentAccount(userId, match.id, appTransaction);
         return { status: 'matched_email', transactionId: match.id };
+    }
+    const currencyConflict = await findInvestmentCurrencyConflict(userId, appTransaction);
+    if (currencyConflict) {
+        // Keep the conflicting source as evidence on the candidate event, with
+        // a durable review hold. Do not create a second ledger/cash activity or
+        // silently reinterpret the provider's currency.
+        await db.withTransaction(async () => {
+            await linkSource(userId, item.itemId, externalId, currencyConflict.id, false,
+                'plaid_investments', transaction, { ...sourceContext, matchStatus: 'currency_review' });
+            await db.run(`INSERT INTO transaction_ingestion_reviews (transactionId, reason, createdAt)
+                VALUES (?, 'provider_currency_conflict', ?) ON CONFLICT(transactionId) DO UPDATE
+                SET reason = excluded.reason, resolvedAt = NULL`, [currencyConflict.id, new Date().toISOString()]);
+            await dbService.writeAgentAudit(userId, 'investment_source_review', 'review_required', {
+                transactionId: currencyConflict.id, reason: 'provider_currency_conflict',
+                emailCurrency: currencyConflict.Currency, providerCurrency: appTransaction.Currency,
+            });
+        });
+        return { status: 'review_required', transactionId: currencyConflict.id };
     }
     const transactionId = await dbService.addTransaction({ ...appTransaction, userId });
     await linkSource(
@@ -1210,6 +1230,37 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
         'plaid_investments', transaction, sourceContext
     );
     return { status: 'imported', transactionId };
+}
+
+async function findInvestmentCurrencyConflict(userId, incoming) {
+    if (!['BUY', 'SELL'].includes(incoming.PortfolioAction) ||
+        !incoming.PortfolioSymbol || !Number.isFinite(incoming.PortfolioQuantity) || incoming.PortfolioQuantity <= 0) return null;
+    const db = await dbService.getDb();
+    const candidates = await db.all(`SELECT * FROM transactions WHERE userId = ? AND AmountMinor = ?
+        AND SourceEmailKey IS NOT NULL AND substr(Timestamp, 1, 10) = ?`,
+        [userId, incoming.AmountMinor, String(incoming.Timestamp).slice(0, 10)]);
+    const conflicts = candidates.filter(row => row.Currency !== incoming.Currency &&
+        Number.isFinite(row.PortfolioQuantity) && row.PortfolioQuantity > 0 &&
+        matchesInvestmentIdentity({ ...row, Currency: incoming.Currency }, incoming));
+    return conflicts.length === 1 ? conflicts[0] : null;
+}
+
+async function confirmInvestmentAccount(userId, transactionId, providerTransaction) {
+    if (!providerTransaction.PortfolioAccountId) return;
+    const db = await dbService.getDb();
+    await db.withTransaction(async () => {
+        const row = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [transactionId, userId]);
+        if (!row || !matchesInvestmentIdentity(row, providerTransaction)) return;
+        await dbService.updateTransactionForUser(transactionId, userId, {
+            PortfolioAccountId: providerTransaction.PortfolioAccountId,
+            BalanceAccountId: providerTransaction.BalanceAccountId,
+            PortfolioConfidence: 'HIGH', BalanceAccountConfidence: 'HIGH',
+            Account: providerTransaction.Account, PortfolioAccountNumber: providerTransaction.PortfolioAccountNumber,
+        });
+        await db.run(`UPDATE transaction_ingestion_reviews SET resolvedAt = ?
+            WHERE transactionId = ? AND reason = 'ambiguous_account' AND resolvedAt IS NULL`,
+            [new Date().toISOString(), transactionId]);
+    });
 }
 
 async function removeMissingInvestmentTransactions(userId, itemId, startDate, currentIds) {
@@ -1825,6 +1876,9 @@ async function disconnectItem(userId, itemId) {
 }
 
 module.exports = {
+    findInvestmentFallbackMatch,
+    confirmInvestmentAccount,
+    findInvestmentCurrencyConflict,
     plaidFailureStatus,
     isConfigured,
     createLinkToken,
