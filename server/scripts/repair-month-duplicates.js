@@ -20,11 +20,23 @@ function decode(source) {
 }
 
 async function planRepair(db, userId, month) {
-    const originals = await db.all(`SELECT * FROM transactions WHERE userId = ? AND substr(Timestamp, 1, 7) = ? ORDER BY id`, [userId, month]);
+    // Include the final local evening, which falls in the next UTC month.
+    // Keep imported date-only records on the requested bank statement month.
+    const [year, number] = month.split('-').map(Number);
+    const nextUtc = new Date(Date.UTC(year, number, 1));
+    const zoneName = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Toronto',
+        timeZoneName: 'longOffset' }).formatToParts(nextUtc).find(p => p.type === 'timeZoneName').value;
+    const zone = zoneName.match(/GMT([+-])(\d{2}):(\d{2})/);
+    if (!zone) throw new Error('Cannot resolve local month boundary');
+    const offset = (Number(zone[2]) * 60 + Number(zone[3])) * (zone[1] === '+' ? 1 : -1);
+    const end = new Date(nextUtc.getTime() - offset * 60000).toISOString();
+    const originals = await db.all(`SELECT * FROM transactions WHERE userId = ? AND Timestamp >= ? AND Timestamp < ? ORDER BY id`,
+        [userId, `${month}-01T00:00:00.000Z`, end]);
     const rows = originals.map(row => ({ ...row }));
     const byId = new Map(rows.map(row => [row.id, row]));
     const sources = await db.all(`SELECT s.* FROM transaction_sources s JOIN transactions t ON t.id = s.transactionId
-        WHERE t.userId = ? AND s.userId = t.userId AND substr(t.Timestamp, 1, 7) = ?`, [userId, month]);
+        WHERE t.userId = ? AND s.userId = t.userId AND t.Timestamp >= ? AND t.Timestamp < ?`,
+        [userId, `${month}-01T00:00:00.000Z`, end]);
     const accounts = await db.all('SELECT * FROM investment_accounts WHERE userId = ?', [userId]);
     const plan = { scanned: rows.length, timestampCorrections: [], sourceRelinks: [], merges: [],
         accountCorrections: [], reviews: [], contexts: [], updates: [] };

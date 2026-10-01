@@ -135,3 +135,19 @@ test('currency discrepancies require exact investment evidence and never match a
     assert.equal(await findInvestmentCurrencyConflict(userId, { ...row, Currency: 'USD', PortfolioAction: 'DIVIDEND' }), null);
     assert.equal(await findInvestmentCurrencyConflict(userId, { ...row, Currency: 'USD', PortfolioQuantity: 1 }), null);
 });
+
+test('September repair includes deposits on its last local evening after UTC midnight', async () => {
+    const { planRepair, applyPlan } = require('../../scripts/repair-month-duplicates');
+    const db = await service.getDb(), userId = 'local-month-boundary', account = await fixture(userId);
+    for (const interac of [false, true]) {
+        const row = { ...notice(userId, account, String(interac), interac),
+            Timestamp: '2026-10-01T01:00:00.000Z', ReceivedAt: '2026-10-01T01:00:00.000Z' };
+        const id = await service.addTransaction(row);
+        await service.syncTransactionAccountBalance(userId, id, { accountId: account.id, confidence: 'HIGH' });
+    }
+    const plan = await planRepair(db, userId, '2026-09');
+    assert.equal(plan.scanned, 2);
+    assert.equal(plan.merges.length, 1);
+    await db.withTransaction(() => applyPlan(db, userId, '2026-09', plan));
+    assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id = ?', [account.id])).cashMinor, 13400);
+});
