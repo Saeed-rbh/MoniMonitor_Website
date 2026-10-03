@@ -12,6 +12,7 @@ if (!npmCli || !fs.existsSync(npmCli)) {
 
 const testDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'monimonitor-check-'));
 const checks = [
+    { name: 'Dependency audit policy tests', nodeArgs: ['--test', path.join(root, 'scripts/dependency-audit.test.cjs')] },
     { name: 'Frontend types', args: ['run', 'typecheck'] },
     { name: 'Frontend tests', args: ['test', '--', '--run'], env: { NODE_ENV: 'test' } },
     { name: 'Production build', args: ['run', 'build'], env: { NODE_ENV: 'production' } },
@@ -21,15 +22,15 @@ const checks = [
         MONIMONITOR_BACKUP_DIR: path.join(testDirectory, 'backups'),
     } },
     { name: 'AI validation and matching evaluation', args: ['run', 'evaluate:ai'], cwd: path.join(root, 'server') },
-    { name: 'Frontend dependency audit', args: ['audit', '--include=dev'] },
-    { name: 'Backend dependency audit', args: ['audit', '--include=dev'], cwd: path.join(root, 'server') },
+    { name: 'Frontend dependency audit', nodeArgs: [path.join(root, 'scripts/dependency-audit.cjs'), root] },
+    { name: 'Backend dependency audit', nodeArgs: [path.join(root, 'scripts/dependency-audit.cjs'), path.join(root, 'server')] },
 ];
 
 let exitCode = 0;
 try {
     for (const check of checks) {
         console.log(`\nChecking: ${check.name}`);
-        const result = spawnSync(process.execPath, [npmCli, ...check.args], {
+        const result = spawnSync(process.execPath, check.nodeArgs || [npmCli, ...check.args], {
             cwd: check.cwd || root, stdio: 'inherit',
             env: { ...process.env, ...check.env },
         });
