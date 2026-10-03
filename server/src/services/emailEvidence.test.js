@@ -2,6 +2,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { sourceEventTimestamp, normalizeEmailEvidence } = require('./emailEvidence');
 
+test('RBC statement date wins over a delayed notification without inventing a refund', () => {
+    const row = { Timestamp: '2026-10-02T18:16:21.000Z', Category: 'Expense', AmountMinor: 1996 };
+    const normalized = normalizeEmailEvidence(row,
+        'From: RBC <rbcroyalbankalerts@alerts.rbc.com>\nSubject: You made a purchase.\nTransaction Date:\nSeptember 29, 2026', []);
+    assert.equal(normalized.Timestamp, '2026-09-29T12:00:00.000Z');
+    assert.equal(normalized.Category, 'Expense');
+    assert.equal(normalizeEmailEvidence(row, 'Transaction Date: September 29, 2026', []).Timestamp, row.Timestamp);
+});
+
 test('converts explicit Eastern event times independently of receipt and model time', () => {
     assert.equal(sourceEventTimestamp('Time: September 30, 2026 12:48 EDT'), '2026-09-30T16:48:00.000Z');
     assert.equal(sourceEventTimestamp('Time: January 30, 2026 12:48 EST'), '2026-01-30T17:48:00.000Z');

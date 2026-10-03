@@ -25,6 +25,15 @@ function normalizeEmailEvidence(transaction, body, accounts) {
     }
     const eventTime = sourceEventTimestamp(body);
     if (eventTime) result.Timestamp = eventTime;
+    else if (/From:[^\n]*rbcroyalbankalerts@alerts\.rbc\.com/i.test(String(body))) {
+        // RBC alerts can arrive days after the event. Preserve the statement
+        // date rather than using the email delivery time as the purchase date.
+        const dateText = String(body).match(/Transaction Date:\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})/i)?.[1];
+        if (dateText) {
+            const date = new Date(`${dateText} 12:00:00 GMT`);
+            if (Number.isFinite(date.getTime())) result.Timestamp = date.toISOString();
+        }
+    }
     const accountType = String(body).match(/\bAccount:\s*(TFSA|RRSP|Brokerage)\b/i)?.[1];
     if (accountType && result.PortfolioAction) {
         result.Type = accountType.toUpperCase();
