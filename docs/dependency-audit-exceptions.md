@@ -13,6 +13,9 @@ only if all their advisory chains lead to this exception. Other advisories,
 runtime paths, malformed reports, audit failures, and an available braces patch
 still fail verification. Every accepted finding is printed in the check logs.
 The expiration requires a fresh review rather than permanent suppression.
+Some npm versions report migration to Tailwind 4 as an available major fix.
+That specific migration recommendation is accepted during the exception period;
+an actual braces patch or a compatible upgrade remains blocking.
 
 Follow up by upgrading once a patch is published, or migrating the Tailwind
 build pipeline to a dependency tree without braces. Do not remove or weaken

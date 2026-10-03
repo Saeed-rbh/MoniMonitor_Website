@@ -18,6 +18,13 @@ test('blocks a new advisory even on an excepted package', () => {
     report.vulnerabilities.braces.via.push({ name: 'braces', url: 'https://github.com/advisories/NEW' });
     assert.equal(evaluateAudit(report, lock, now).blocked.length, 2);
 });
+test('accepts the npm Node 24 report suggesting a major Tailwind migration', () => {
+    const { report, lock } = fixture();
+    report.vulnerabilities.braces.fixAvailable = { name: 'tailwindcss', version: '4.3.3', isSemVerMajor: true };
+    assert.equal(evaluateAudit(report, lock, now).blocked.length, 0);
+    report.vulnerabilities.braces.fixAvailable = { name: 'braces', version: '3.0.4', isSemVerMajor: false };
+    assert.equal(evaluateAudit(report, lock, now).blocked.length, 2);
+});
 test('blocks runtime dependency paths', () => {
     const { report, lock } = fixture();
     lock.packages['node_modules/braces'].dev = false;

@@ -18,9 +18,14 @@ function evaluateAudit(report, lock, now = new Date()) {
         if (!item.nodes?.length || !item.nodes.every(node => lock.packages?.[node]?.dev === true)) return false;
         if (!item.via?.length) return false;
         const next = new Set([...visited, name]);
+        // npm versions disagree about whether a Tailwind 4 migration counts
+        // as a fix. It removes the dependency but is not a braces patch.
+        const noPatch = item.fixAvailable === false ||
+            (item.fixAvailable?.name === 'tailwindcss' && item.fixAvailable.isSemVerMajor === true &&
+                /^4\.\d+\.\d+$/.test(item.fixAvailable.version));
         return item.via.every(via => typeof via === 'string' ? excepted(via, next) :
             via.name === 'braces' && via.url === exception.advisory && via.range === '<=3.0.3' &&
-            item.fixAvailable === false);
+            noPatch);
     }
     const accepted = [], blocked = [];
     for (const name of Object.keys(vulnerabilities)) (excepted(name) ? accepted : blocked).push(name);
