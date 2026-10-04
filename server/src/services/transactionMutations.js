@@ -86,7 +86,8 @@ async function updateTransaction(userId, id, input) {
             throw new TransactionMutationError('Reverse the existing account posting before changing its currency');
         }
         await validateAccount(db, userId, BalanceAccountId);
-        if (Object.keys(updates).length) await dbService.updateTransactionForUser(id, userId, updates);
+        const reviewed = { ...updates, ...(BalanceAccountId ? { BalanceAccountId } : {}) };
+        if (Object.keys(reviewed).length) await dbService.updateTransactionForUser(id, userId, reviewed, { reviewed: true });
         const transaction = await dbService.getTransactionById(id, userId);
         const posting = await postBalance(userId, id, transaction, BalanceAccountId);
         if (!['applied', 'not_balance_posting', 'snapshot_preserved'].includes(posting.accountPosting.status) &&

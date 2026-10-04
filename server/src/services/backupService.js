@@ -30,6 +30,28 @@ let scheduler = null;
 let restoreDrillPromise = null;
 let restoreInProgress = false;
 let restoreDrill = { lastRunAt: null, lastSuccessAt: null, lastError: null };
+const verificationStatePath = path.join(BACKUP_DIRECTORY, 'verification-state.json');
+let offsiteVerification = null;
+let verificationStateLoaded = false;
+async function loadVerificationState() {
+    if (verificationStateLoaded) return;
+    try {
+        const state = JSON.parse(await fs.readFile(verificationStatePath, 'utf8'));
+        restoreDrill = state.restoreDrill || restoreDrill;
+        offsiteVerification = state.offsiteVerification || null;
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    verificationStateLoaded = true;
+}
+async function saveVerificationState() {
+    await fs.mkdir(BACKUP_DIRECTORY, { recursive: true });
+    const temporary = `${verificationStatePath}.${crypto.randomUUID()}.tmp`;
+    await fs.writeFile(temporary, JSON.stringify({ restoreDrill, offsiteVerification }));
+    await fs.rename(temporary, verificationStatePath);
+}
+async function verifyCopiedFile(original, copy) {
+    const digest = async file => crypto.createHash('sha256').update(await fs.readFile(file)).digest('hex');
+    if (await digest(original) !== await digest(copy)) throw new Error('Offsite backup readback did not match');
+}
 
 const quoteSqlString = (value) => String(value).replaceAll("'", "''");
 const isSafeBackupFileName = (fileName) => BACKUP_FILE_PATTERN.test(String(fileName || ''));
@@ -127,6 +149,7 @@ async function pruneBackups() {
 }
 
 async function performBackup(reason) {
+    await loadVerificationState();
     await fs.mkdir(BACKUP_DIRECTORY, { recursive: true });
     const safeReason = ['automatic', 'manual', 'pre-restore'].includes(reason) ? reason : 'manual';
     const timestamp = new Date().toISOString().replaceAll(':', '-').replace('.', '-');
@@ -149,8 +172,18 @@ async function performBackup(reason) {
 
     await pruneBackups();
     if (OFFSITE_BACKUP_DIRECTORY) {
-        await fs.mkdir(OFFSITE_BACKUP_DIRECTORY, { recursive: true });
-        await fs.copyFile(filePath, path.join(OFFSITE_BACKUP_DIRECTORY, fileName));
+        try {
+            await fs.mkdir(OFFSITE_BACKUP_DIRECTORY, { recursive: true });
+            const copyPath = path.join(OFFSITE_BACKUP_DIRECTORY, fileName);
+            await fs.copyFile(filePath, copyPath);
+            await verifyCopiedFile(filePath, copyPath);
+            offsiteVerification = { fileName, verifiedAt: new Date().toISOString(), verified: true };
+        } catch (error) {
+            offsiteVerification = { fileName, verified: false };
+            await saveVerificationState();
+            throw error;
+        }
+        await saveVerificationState();
     }
     const stats = await fs.stat(filePath);
     return {
@@ -175,6 +208,7 @@ async function getBackupStatus() {
 }
 
 async function getBackupHealth() {
+    await loadVerificationState();
     const { lastBackup } = await getBackupStatus();
     const ageSeconds = lastBackup ? Math.max(0, Math.floor((Date.now() - new Date(lastBackup.createdAt).getTime()) / 1000)) : null;
     return {
@@ -182,6 +216,7 @@ async function getBackupHealth() {
         ageSeconds,
         stale: !lastBackup || ageSeconds > BACKUP_INTERVAL_MS / 1000 * 2,
         offsiteConfigured: Boolean(OFFSITE_BACKUP_DIRECTORY),
+        offsiteVerified: Boolean(offsiteVerification?.verified && offsiteVerification.fileName === lastBackup?.fileName),
         restoreDrill,
     };
 }
@@ -189,13 +224,20 @@ async function getBackupHealth() {
 async function runRestoreDrill() {
     if (restoreDrillPromise) return restoreDrillPromise;
     restoreDrillPromise = (async () => {
+        await loadVerificationState();
         restoreDrill = { ...restoreDrill, lastRunAt: new Date().toISOString(), lastError: null };
         const { lastBackup } = await getBackupStatus();
-        if (!lastBackup) throw new Error('No backup is available for a restore drill');
+        if (!lastBackup) {
+            restoreDrill.lastError = 'No backup is available for a restore drill';
+            await saveVerificationState();
+            throw new Error(restoreDrill.lastError);
+        }
         const filePath = await resolveBackupPath(lastBackup.fileName);
         const drillPath = `${filePath}.drill-${crypto.randomUUID()}.sqlite`;
         try {
-            await decryptFile(filePath, drillPath);
+            const restoreSource = OFFSITE_BACKUP_DIRECTORY ? path.join(OFFSITE_BACKUP_DIRECTORY, lastBackup.fileName) : filePath;
+            if (OFFSITE_BACKUP_DIRECTORY) await verifyCopiedFile(filePath, restoreSource);
+            await decryptFile(restoreSource, drillPath);
             await verifyBackupFile(drillPath);
             const targetPath = `${drillPath}.application.sqlite`;
             try {
@@ -214,12 +256,14 @@ async function runRestoreDrill() {
             throw error;
         } finally {
             await fs.rm(drillPath, { force: true }).catch(() => {});
+            await saveVerificationState();
         }
     })().finally(() => { restoreDrillPromise = null; });
     return restoreDrillPromise;
 }
 
 async function ensureRestoreDrill() {
+    await loadVerificationState();
     const lastSuccessfulRun = new Date(restoreDrill.lastSuccessAt || 0).getTime();
     if (!Number.isFinite(lastSuccessfulRun) || Date.now() - lastSuccessfulRun >= RESTORE_DRILL_INTERVAL_MS) {
         return runRestoreDrill();
@@ -312,4 +356,5 @@ module.exports = {
     selectBackupNamesToKeep,
     startAutomaticBackups,
     stopAutomaticBackups,
+    verifyCopiedFile,
 };

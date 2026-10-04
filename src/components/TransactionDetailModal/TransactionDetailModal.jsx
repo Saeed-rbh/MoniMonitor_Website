@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { FiCalendar, FiCreditCard, FiTag, FiRepeat, FiCheckCircle, FiCheck, FiRefreshCw, FiDatabase } from "react-icons/fi";
 import { getTransactionIcon, CATEGORY_GROUPS, getCategoryForLabel } from "../Categories";
 import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
-import { getTransactionSourcesAPI, getTransactionRefundsAPI, updateTransactionAPI } from "../../services/apiService";
+import { getTransactionSourcesAPI, getTransactionRefundsAPI, updateTransactionAPI, getReliabilityAPI } from "../../services/apiService";
 import {
   isDateOnlyTransactionTimestamp,
   parseTransactionDate,
@@ -58,6 +58,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
   const [sourceDetails, setSourceDetails] = useState([]);
+  const [verification, setVerification] = useState('Checking evidence…');
   const [refundPairings, setRefundPairings] = useState([]);
   const [sourceDetailsLoading, setSourceDetailsLoading] = useState(false);
 
@@ -80,6 +81,9 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
     }
 
     setSourceDetailsLoading(true);
+    setVerification('Checking evidence…');
+    getReliabilityAPI(transaction.id).then(result => { if (!cancelled) setVerification(result.status); })
+      .catch(() => { if (!cancelled) setVerification('Verification unavailable'); });
     setRefundPairings([]);
     getTransactionRefundsAPI(transaction.id).then((pairings) => {
       if (!cancelled) setRefundPairings(pairings);
@@ -374,7 +378,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
             <FiCheckCircle className="TxDetail_RowIcon" />
             <span>Status</span>
           </div>
-          <strong className="TxDetail_RowRight status-verified">Verified & Recorded</strong>
+          <strong className="TxDetail_RowRight">{verification}</strong>
         </div>
       </div>
 

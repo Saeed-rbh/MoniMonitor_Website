@@ -1,6 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { isSafeBackupFileName, selectBackupNamesToKeep } = require('./backupService');
+const { isSafeBackupFileName, selectBackupNamesToKeep, verifyCopiedFile } = require('./backupService');
+test('offsite readback rejects corrupted copies', async () => {
+    const fs = require('node:fs/promises'), os = require('node:os'), path = require('node:path');
+    const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'monimonitor-copy-'));
+    try {
+        const original = path.join(directory, 'original'), copy = path.join(directory, 'copy');
+        await fs.writeFile(original, 'encrypted database'); await fs.writeFile(copy, 'encrypted database');
+        await verifyCopiedFile(original, copy);
+        await fs.writeFile(copy, 'corrupted'); await assert.rejects(verifyCopiedFile(original, copy), /readback/);
+    } finally { await fs.rm(directory, { recursive: true, force: true }); }
+});
 
 test('accepts generated backup names and rejects path traversal', () => {
     assert.equal(isSafeBackupFileName('monimonitor-2026-08-13T19-15-20-123Z-manual-deadbeef.sqlite'), true);

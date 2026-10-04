@@ -4,6 +4,12 @@ import { apiUrl } from "../config/api";
 
 const API_URL = apiUrl("/MoniMonitor_ToDB");
 
+export const getReliabilityAPI = async (id = null) => {
+    const response = await fetch(apiUrl(id == null ? '/reliability' : `/transactions/${id}/reliability`));
+    if (!response.ok) { handleExpiredSession(response); throw new Error('Reliability checks unavailable'); }
+    return response.json();
+};
+
 const handleExpiredSession = (response) => {
     if (response.status !== 401 || typeof window === "undefined") return false;
 

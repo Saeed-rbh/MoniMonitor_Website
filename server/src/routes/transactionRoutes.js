@@ -4,6 +4,23 @@ function registerTransactionRoutes(app, {
     authenticateToken, dbService, plaidService, sendValidationError,
     cashFlowWidgetCache, cashFlowWidgetCacheMs, buildCashFlowWidgetPayload, parseTransaction,
 }) {
+    app.get('/reliability', authenticateToken, async (req, res) => {
+        res.set('Cache-Control', 'no-store');
+        try { return res.json(await require('../services/financialReliability').checkFinancialReliability(req.user.userId)); }
+        catch (error) { return sendValidationError(res, error); }
+    });
+    app.get('/transactions/:id/reliability', authenticateToken, async (req, res) => {
+        const id = Number(req.params.id);
+        if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid transaction id' });
+        try {
+            const transaction = await dbService.getTransactionById(id, req.user.userId);
+            if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
+            const db = await dbService.getDb();
+            const sources = await db.all('SELECT * FROM transaction_sources WHERE userId=? AND transactionId=?', [req.user.userId, id]);
+            const override = await db.get('SELECT * FROM transaction_overrides WHERE userId=? AND transactionId=?', [req.user.userId, id]);
+            return res.json(require('../services/financialReliability').assessTransaction(transaction, sources, override));
+        } catch (error) { return sendValidationError(res, error); }
+    });
     app.get('/transactions', authenticateToken, async (req, res) => {
         try {
             const filters = Object.fromEntries(['category', 'label', 'account', 'from', 'to', 'search', 'page', 'limit']

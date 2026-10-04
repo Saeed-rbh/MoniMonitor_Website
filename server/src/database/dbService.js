@@ -276,25 +276,30 @@ function normalizeTransactionUpdate(updates) {
 
 async function updateTransaction(id, updates) {
     const db = await getDb();
-    const previous = await db.get('SELECT userId, Timestamp FROM transactions WHERE id = ?', [id]);
-    const normalized = normalizeTransactionUpdate(updates);
-    const keys = Object.keys(normalized);
-    const values = Object.values(normalized);
-    if (keys.length === 0) return;
-    const setClause = keys.map(k => `${k} = ?`).join(', ');
-    values.push(id);
-    await db.run(`UPDATE transactions SET ${setClause} WHERE id = ?`, values);
-    const current = await db.get('SELECT userId, Timestamp FROM transactions WHERE id = ?', [id]);
-    await refreshTransactionMonths(db, [previous, current]);
+    const previous = await db.get('SELECT userId FROM transactions WHERE id = ?', [id]);
+    if (previous) return updateTransactionForUser(id, previous.userId, updates);
 }
 
-async function updateTransactionForUser(id, userId, updates) {
+async function updateTransactionForUser(id, userId, updates, { reviewed = false } = {}) {
     const db = await getDb();
     const previous = await db.get(
         'SELECT userId, Timestamp FROM transactions WHERE id = ? AND userId = ?',
         [id, userId]
     );
-    const normalized = normalizeTransactionUpdate(updates);
+    let normalized = normalizeTransactionUpdate(updates);
+    if (!previous) return false;
+    const override = await db.get('SELECT fieldsJson FROM transaction_overrides WHERE transactionId = ? AND userId = ?', [id, userId]);
+    if (!reviewed && override) {
+        const locked = JSON.parse(override.fieldsJson);
+        // Keep raw provider facts in transaction_sources; do not erase review.
+        normalized = Object.fromEntries(Object.entries(normalized).filter(([key]) => !(key in locked)));
+    }
+    if (reviewed) {
+        const fields = { ...JSON.parse(override?.fieldsJson || '{}'), ...normalized };
+        await db.run(`INSERT INTO transaction_overrides VALUES (?, ?, ?, 'User reviewed correction', ?)
+            ON CONFLICT(transactionId) DO UPDATE SET fieldsJson=excluded.fieldsJson, evidence=excluded.evidence, updatedAt=excluded.updatedAt`,
+            [id, userId, JSON.stringify(fields), new Date().toISOString()]);
+    }
     const keys = Object.keys(normalized);
     if (keys.length === 0) return false;
     const values = Object.values(normalized);
@@ -1925,7 +1930,8 @@ async function detectAndMarkRecurring(userId, transactionId) {
             const matchIds = sortedMatches.map(t => t.id);
             const placeholders = matchIds.map(() => '?').join(',');
             await db.run(
-                `UPDATE transactions SET Frequency = ? WHERE id IN (${placeholders})`,
+                `UPDATE transactions SET Frequency = ? WHERE id IN (${placeholders}) AND NOT EXISTS
+                 (SELECT 1 FROM transaction_overrides o WHERE o.transactionId=transactions.id AND json_type(o.fieldsJson, '$.Frequency') IS NOT NULL)`,
                 [frequency, ...matchIds]
             );
             console.log(`[Recurring] Detected recurrence: marked ${matchIds.length} transactions as "${frequency}" (pattern: "${cleanReason}").`);
@@ -2178,11 +2184,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
             const reclassified = [];
             for (const leg of [outCandidate, inCandidate]) {
                 const isAlreadyInternal = leg.Category === 'Internal' && leg.Label === 'Internal Transfer';
-                await db.run(
-                    `UPDATE transactions SET Category = 'Internal', Label = 'Internal Transfer', Reason = ?, ReferenceNumber = ?
-                     WHERE id = ? AND userId = ?`,
-                    [sharedReason, sharedRef, leg.id, userId]
-                );
+                await updateTransactionForUser(leg.id, userId, { Category: 'Internal', Label: 'Internal Transfer', Reason: sharedReason, ReferenceNumber: sharedRef });
 
                 console.log(
                     `[InternalPairing] Paired temporary transfer tx ${leg.id} ` +
@@ -2309,11 +2311,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     for (const leg of legsToUpdate) {
         const isAlreadyInternal = leg.Category === 'Internal';
 
-        await db.run(
-            `UPDATE transactions SET Category = 'Internal', Label = 'Internal Transfer', Reason = ?, ReferenceNumber = ?
-             WHERE id = ? AND userId = ?`,
-            [sharedReason, sharedRef, leg.id, userId]
-        );
+        await updateTransactionForUser(leg.id, userId, { Category: 'Internal', Label: 'Internal Transfer', Reason: sharedReason, ReferenceNumber: sharedRef });
 
         if (!isAlreadyInternal) {
             console.log(

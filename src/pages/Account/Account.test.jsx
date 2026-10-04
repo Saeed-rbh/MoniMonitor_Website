@@ -8,6 +8,7 @@ vi.mock('../../context/AuthContext', () => ({ useAuth: () => ({ user: { username
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }));
 vi.mock('../../components/ui/blur-fade', () => ({ default: ({ children }) => <div>{children}</div> }));
 vi.mock('../../services/apiService', () => ({
+    getReliabilityAPI: vi.fn().mockResolvedValue({ status: 'No detected conflicts', checkedAt: '2026-10-04T00:00:00Z', coverageDays: 90, issues: [], accounts: [] }),
     createBackupAPI: vi.fn(), createPlaidLinkTokenAPI: vi.fn(), disconnectPlaidItemAPI: vi.fn(),
     downloadBackupAPI: vi.fn(), exchangePlaidPublicTokenAPI: vi.fn(), GetDataFromDB: vi.fn(),
     getBackupStatusAPI: vi.fn(), getPlaidStatusAPI: vi.fn(), getSettingsAPI: vi.fn(),

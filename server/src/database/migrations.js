@@ -1,5 +1,53 @@
 const MIGRATIONS = [
     {
+        version: 14,
+        name: 'financial_reliability',
+        async up(db) {
+            await db.exec(`CREATE TABLE balance_snapshots (
+                id INTEGER PRIMARY KEY, userId TEXT NOT NULL REFERENCES users(id), accountId INTEGER NOT NULL,
+                cashMinor INTEGER NOT NULL, currency TEXT NOT NULL, source TEXT NOT NULL, asOf TEXT NOT NULL,
+                createdAt TEXT NOT NULL, UNIQUE(userId, accountId, source, asOf));
+                CREATE INDEX idx_balance_snapshots_account ON balance_snapshots(userId, accountId, asOf);
+                CREATE TABLE transaction_overrides (
+                transactionId INTEGER PRIMARY KEY REFERENCES transactions(id) ON DELETE CASCADE,
+                userId TEXT NOT NULL REFERENCES users(id), fieldsJson TEXT NOT NULL, evidence TEXT NOT NULL, updatedAt TEXT NOT NULL);
+                CREATE TABLE reliability_incidents (
+                userId TEXT NOT NULL REFERENCES users(id), incidentKey TEXT NOT NULL, kind TEXT NOT NULL,
+                detailsJson TEXT NOT NULL, openedAt TEXT NOT NULL, updatedAt TEXT NOT NULL, resolvedAt TEXT,
+                PRIMARY KEY(userId, incidentKey));
+                CREATE TABLE reliability_runs (
+                userId TEXT PRIMARY KEY REFERENCES users(id), checkedAt TEXT NOT NULL, reportJson TEXT NOT NULL);
+                CREATE TABLE transaction_source_history (
+                id INTEGER PRIMARY KEY, userId TEXT NOT NULL REFERENCES users(id), transactionId INTEGER NOT NULL,
+                provider TEXT NOT NULL, externalId TEXT NOT NULL, rawPayloadJson TEXT, contextPayloadJson TEXT, archivedAt TEXT NOT NULL);
+                CREATE TRIGGER preserve_source_update BEFORE UPDATE OF rawPayloadJson,contextPayloadJson ON transaction_sources
+                WHEN OLD.provider != 'email' AND (OLD.rawPayloadJson IS NOT NEW.rawPayloadJson OR OLD.contextPayloadJson IS NOT NEW.contextPayloadJson)
+                BEGIN INSERT INTO transaction_source_history(userId,transactionId,provider,externalId,rawPayloadJson,contextPayloadJson,archivedAt)
+                VALUES(OLD.userId,OLD.transactionId,OLD.provider,OLD.externalId,OLD.rawPayloadJson,OLD.contextPayloadJson,CURRENT_TIMESTAMP); END;
+                CREATE TRIGGER preserve_source_delete BEFORE DELETE ON transaction_sources WHEN OLD.provider != 'email'
+                BEGIN INSERT INTO transaction_source_history(userId,transactionId,provider,externalId,rawPayloadJson,contextPayloadJson,archivedAt)
+                VALUES(OLD.userId,OLD.transactionId,OLD.provider,OLD.externalId,OLD.rawPayloadJson,OLD.contextPayloadJson,CURRENT_TIMESTAMP); END;
+                INSERT INTO balance_snapshots(userId, accountId, cashMinor, currency, source, asOf, createdAt)
+                SELECT userId, id, cashMinor, currency, balanceSource, balanceAsOf, CURRENT_TIMESTAMP
+                FROM investment_accounts WHERE balanceAsOf IS NOT NULL;`);
+            // Preserve previous evidence-based repairs as explicit overrides.
+            const audits = await db.all("SELECT userId, details, createdAt FROM agent_audit_log WHERE action = 'october_evidence_repair' ORDER BY id");
+            for (const audit of audits) {
+                let changes; try { changes = JSON.parse(audit.details); } catch { continue; }
+                if (!Array.isArray(changes)) continue;
+                for (const change of changes) {
+                    if (!change.id || !change.fields) continue;
+                    if (!await db.get('SELECT id FROM transactions WHERE id = ? AND userId = ?', [change.id, audit.userId])) continue;
+                    const prior = await db.get('SELECT fieldsJson FROM transaction_overrides WHERE transactionId = ?', [change.id]);
+                    const fields = { ...JSON.parse(prior?.fieldsJson || '{}'), ...change.fields };
+                    await db.run(`INSERT INTO transaction_overrides VALUES (?, ?, ?, ?, ?)
+                        ON CONFLICT(transactionId) DO UPDATE SET fieldsJson=excluded.fieldsJson, evidence=excluded.evidence, updatedAt=excluded.updatedAt`,
+                        [change.id, audit.userId, JSON.stringify(fields), change.evidence || 'Audited correction', audit.createdAt]);
+                }
+            }
+        },
+    },
+    {
         version: 13,
         name: 'email_ingestion_review_holds',
         async up(db) {

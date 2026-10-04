@@ -19,6 +19,8 @@ async function setAccountBalanceSnapshot(userId, accountId, cashMinor, currency,
         await db.run(`UPDATE investment_accounts SET cashMinor = ?, balanceRevision = balanceRevision + 1,
             balanceSource = ?, balanceAsOf = ?, balanceReviewReason = NULL, updatedAt = ? WHERE id = ? AND userId = ?`,
             [cashMinor, source, asOf, asOf, accountId, userId]);
+        await db.run(`INSERT OR IGNORE INTO balance_snapshots(userId, accountId, cashMinor, currency, source, asOf, createdAt)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`, [userId, accountId, cashMinor, currency, source, asOf, new Date().toISOString()]);
         return { status: 'applied' };
     });
 }

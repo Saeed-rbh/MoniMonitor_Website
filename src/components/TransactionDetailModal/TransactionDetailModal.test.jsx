@@ -12,6 +12,7 @@ vi.mock("../../context/TransactionContext", () => ({
 }));
 
 vi.mock("../../services/apiService", () => ({
+  getReliabilityAPI: vi.fn().mockResolvedValue({ status: 'Provisional' }),
   getTransactionSourcesAPI: vi.fn().mockResolvedValue([]),
   getTransactionRefundsAPI: vi.fn().mockResolvedValue([]),
   updateTransactionAPI: vi.fn(),
@@ -82,6 +83,12 @@ describe("TransactionDetailModal", () => {
       });
       expect(onUpdated).toHaveBeenCalled();
     });
+  });
+
+  it('does not label provisional evidence as verified', async () => {
+    render(<MemoryRouter><TransactionDetailModal transaction={sampleTx} onClose={vi.fn()} /></MemoryRouter>);
+    expect(await screen.findByText('Provisional')).toBeDefined();
+    expect(screen.queryByText('Verified & Recorded')).toBeNull();
   });
 
   it("reverses an outgoing Internal Transfer back to Personal Transfers", async () => {

@@ -1,5 +1,6 @@
 import { actionKeyboard } from "../../utils/actionKeyboard";
 import ProfileDialog from "../../components/ProfileDialog";
+import ReliabilityStatus from '../../components/ReliabilityStatus';
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -406,6 +407,7 @@ const Account = () => {
                     alignItems: "flex-start",
                     textAlign: "left"
                 }}>
+                    <ReliabilityStatus />
 
                     {/* General Settings */}
                     <div className="settings-section" style={{ width: '100%', marginBottom: '0.4rem', marginTop: '0.5rem' }}>

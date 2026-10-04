@@ -158,7 +158,13 @@ if errorlevel 1 (
 )
 
 for /f "delims=" %%C in ('git rev-parse HEAD 2^>nul') do set "PRE_UPDATE_COMMIT=%%C"
-git merge --ff-only origin/main
+  for /f "delims=" %%C in ('git rev-parse origin/main 2^>nul') do set "MONIMONITOR_PROPOSED_COMMIT=%%C"
+  powershell -NoProfile -File "%~dp0scripts\Test-VerifiedRelease.ps1" -Commit "%MONIMONITOR_PROPOSED_COMMIT%"
+  if errorlevel 1 (
+    echo GitHub verification has not passed. Continuing with the existing local version.
+    exit /b 0
+  )
+  git merge --ff-only origin/main
 if errorlevel 1 (
   echo The local and GitHub histories have diverged. Automatic update was skipped.
   exit /b 0

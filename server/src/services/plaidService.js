@@ -960,6 +960,14 @@ async function applyModifiedTransaction(userId, item, transaction, accountMap, o
     return { status: 'updated' };
 }
 
+async function retainReviewedRemoval(db, source, userId) {
+    if (!await db.get('SELECT transactionId FROM transaction_overrides WHERE transactionId=? AND userId=?', [source.transactionId, userId])) return false;
+    const context = parseStoredSourcePayload(source.contextPayloadJson) || {};
+    await db.run('UPDATE transaction_sources SET contextPayloadJson=?, ownsTransaction=0 WHERE provider=? AND externalId=? AND userId=?',
+        [JSON.stringify({ ...context, providerRemoved: true }), source.provider, source.externalId, userId]);
+    return true;
+}
+
 async function applyRemovedTransaction(userId, removed) {
     const db = await dbService.getDb();
     const source = await db.get(
@@ -970,6 +978,7 @@ async function applyRemovedTransaction(userId, removed) {
         [removed.transaction_id, userId]
     );
     if (!source) return;
+    if (await retainReviewedRemoval(db, source, userId)) return;
     await db.run(
         `DELETE FROM transaction_sources WHERE provider = 'plaid' AND externalId = ? AND userId = ?`,
         [removed.transaction_id, userId]
@@ -1273,6 +1282,7 @@ async function removeMissingInvestmentTransactions(userId, itemId, startDate, cu
     let removed = 0;
     for (const source of sources) {
         if (currentIds.has(source.externalId)) continue;
+        if (await retainReviewedRemoval(db, source, userId)) continue;
         await db.run(
             `DELETE FROM transaction_sources WHERE provider = 'plaid_investments' AND externalId = ? AND userId = ?`,
             [source.externalId, userId]
@@ -1527,7 +1537,7 @@ async function syncUserItems(userId, { force = false, forceHoldings = force, bac
     const storedSourcesRefreshed = force
         ? await refreshStoredPlaidSourceDetails(userId)
         : { bank: 0, investments: 0 };
-    return { configured: true, results, storedSourcesRefreshed };
+      return { configured: true, results, storedSourcesRefreshed };
 }
 
 function reconciliationIntervalMs(value = process.env.PLAID_RECONCILIATION_INTERVAL_HOURS) {

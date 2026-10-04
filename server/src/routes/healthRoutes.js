@@ -18,6 +18,9 @@ function registerHealthRoutes(app, { dbService, backupService, getAllSubsystemHe
         const health = { app: runtimeVersion, database: { state: 'ready' }, agent: agentStatus,
             telegramOutbox: getTelegramOutboxWorkerHealth(), queues: await dbService.getQueueHealth(),
             backup: await backupService.getBackupHealth(), subsystems: getAllSubsystemHealth(), integrations };
+        health.financialChecks = await db.get(`SELECT MIN(r.checkedAt) AS oldestCheckAt,
+            SUM(CASE WHEN r.checkedAt IS NULL THEN 1 ELSE 0 END) AS missing
+            FROM users u LEFT JOIN reliability_runs r ON r.userId=u.id`);
         health.plaid = { connected: integrations.length > 0, items: integrations,
             accountsCount: (await db.get('SELECT COUNT(*) AS count FROM plaid_accounts')).count };
         health.alerts = operationalAlerts(health);
@@ -30,6 +33,14 @@ function registerHealthRoutes(app, { dbService, backupService, getAllSubsystemHe
             await (await dbService.getDb()).get('SELECT 1 AS ready');
             if (agentStatus.enabled && agentStatus.state === 'failed') return res.status(503).json({ status: 'unavailable' });
             return res.json({ status: 'ok' });
+        } catch { return res.status(503).json({ status: 'unavailable' }); }
+    });
+    app.get('/ready', async (_req, res) => {
+        res.set('Cache-Control', 'no-store');
+        try {
+            const health = await diagnostics();
+            const blocked = health.alerts.some(a => /email_agent_failed|_failed$|_stale$|_backlog$/.test(a.id) && !a.id.startsWith('backup_'));
+            return res.status(blocked ? 503 : 200).json({ status: blocked ? 'unavailable' : 'ok' });
         } catch { return res.status(503).json({ status: 'unavailable' }); }
     });
     app.get('/diagnostics', authorize, async (_req, res) => {

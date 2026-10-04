@@ -168,6 +168,11 @@ try {
             }
 
             if ($localCommit -ne $remoteCommit) {
+                & powershell -NoProfile -File (Join-Path $repository 'scripts\Test-VerifiedRelease.ps1') -Commit $remoteCommit
+                if ($LASTEXITCODE -ne 0) {
+                    Write-UpdateLog 'GitHub verification has not passed for the proposed release. Update deferred.'
+                    continue
+                }
                 & git -C $repository merge-base --is-ancestor $localCommit $remoteCommit
                 if ($LASTEXITCODE -ne 0) {
                     Write-UpdateLog 'GitHub changed, but the update was not a safe fast-forward. Update skipped.'
@@ -193,6 +198,8 @@ try {
             if ($runningCommit -eq $localCommit) {
                 continue
             }
+            & powershell -NoProfile -File (Join-Path $repository 'scripts\Test-VerifiedRelease.ps1') -Commit $localCommit
+            if ($LASTEXITCODE -ne 0) { continue }
 
             if ($runningCommit) {
                 Write-UpdateLog "Running commit $runningCommit differs from repository commit $localCommit; restarting MoniMonitor."

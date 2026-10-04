@@ -1,0 +1,23 @@
+name: Independent uptime
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: independent-uptime
+  cancel-in-progress: false
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check public availability and worker readiness
+        env:
+          MONITOR_BOT_TOKEN: ${{ secrets.MONIMONITOR_MONITOR_BOT_TOKEN }}
+          MONITOR_CHAT_ID: ${{ secrets.MONIMONITOR_MONITOR_CHAT_ID }}
+        run: python3 scripts/monitor-uptime.py
