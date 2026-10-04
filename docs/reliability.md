@@ -73,3 +73,19 @@ processes can require forced cleanup, followed by durable queue and WAL recovery
 
 These checks reduce routine inspection. Missing bank evidence, provider errors,
 ambiguous account identity, and statement mismatches still require human review.
+# Guided transaction reviews
+
+Profile shows a paginated **Transactions to review** inbox with merchant, amount,
+currency, date and account. Opening a card asks one question at a time. Telegram
+uses a quiet, bounded transaction picker with the same questions and answers.
+Routine operations and resolved-count digests are retained in diagnostics but
+are no longer sent to Telegram. Existing Telegram messages are not automatically
+deleted.
+
+Answers can confirm statement evidence, link an eligible opposite transfer leg,
+assign a brokerage account, or correct a refund direction or bank amount/currency.
+Existing financial posting guards still apply. **Check later** leaves the question
+open. Confirmation means **User reviewed**, not bank verified. Each answer is
+audited and tied to a fingerprint of the transaction and its source evidence;
+changed financial fields or source evidence reopen the question. Reviews are
+scoped to the authenticated user; Telegram callbacks require the linked sender.

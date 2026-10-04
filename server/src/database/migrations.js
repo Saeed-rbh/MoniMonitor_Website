@@ -1,5 +1,15 @@
 const MIGRATIONS = [
     {
+        version: 15,
+        name: 'guided_reliability_reviews',
+        async up(db) {
+            await db.exec(`CREATE TABLE reliability_reviews (
+                userId TEXT NOT NULL REFERENCES users(id), issueKey TEXT NOT NULL,
+                fingerprint TEXT NOT NULL, answer TEXT NOT NULL, reviewedAt TEXT NOT NULL,
+                PRIMARY KEY(userId, issueKey))`);
+        },
+    },
+    {
         version: 14,
         name: 'financial_reliability',
         async up(db) {

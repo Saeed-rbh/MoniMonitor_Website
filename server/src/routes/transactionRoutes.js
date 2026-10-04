@@ -9,16 +9,25 @@ function registerTransactionRoutes(app, {
         try { return res.json(await require('../services/financialReliability').checkFinancialReliability(req.user.userId)); }
         catch (error) { return sendValidationError(res, error); }
     });
+    app.get('/transactions/:id/review', authenticateToken, async (req, res) => {
+        try { return res.json(await require('../services/reliabilityReview').getReview(req.user.userId, Number(req.params.id))); }
+        catch (error) { return sendValidationError(res, error); }
+    });
+    app.post('/transactions/:id/review', authenticateToken, async (req, res) => {
+        try {
+            const result = await require('../services/reliabilityReview').answerReview(req.user.userId, Number(req.params.id), req.body || {});
+            cashFlowWidgetCache.delete(req.user.userId);
+            return res.json(result);
+        } catch (error) { return sendValidationError(res, error); }
+    });
     app.get('/transactions/:id/reliability', authenticateToken, async (req, res) => {
         const id = Number(req.params.id);
         if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).json({ error: 'Invalid transaction id' });
         try {
             const transaction = await dbService.getTransactionById(id, req.user.userId);
             if (!transaction) return res.status(404).json({ error: 'Transaction not found' });
-            const db = await dbService.getDb();
-            const sources = await db.all('SELECT * FROM transaction_sources WHERE userId=? AND transactionId=?', [req.user.userId, id]);
-            const override = await db.get('SELECT * FROM transaction_overrides WHERE userId=? AND transactionId=?', [req.user.userId, id]);
-            return res.json(require('../services/financialReliability').assessTransaction(transaction, sources, override));
+            const report = await require('../services/financialReliability').checkFinancialReliability(req.user.userId);
+            return res.json({ status: report.statuses[id] || 'Provisional', issues: report.issues.filter(i => i.transactionId === id) });
         } catch (error) { return sendValidationError(res, error); }
     });
     app.get('/transactions', authenticateToken, async (req, res) => {

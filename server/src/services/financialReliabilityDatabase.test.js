@@ -28,18 +28,22 @@ test('incident transitions and queued notices are atomic and restart-safe withou
     const previousToken = process.env.TELEGRAM_BOT_TOKEN, previousChat = process.env.TELEGRAM_CHAT_ID;
     process.env.TELEGRAM_BOT_TOKEN = 'test'; process.env.TELEGRAM_CHAT_ID = 'test';
     try {
-        const issues = [{ key: 'refund:1', action: 'Review refund' }, { key: 'refund:2', action: 'Review refund' }];
+        const issues = [{ key: `refund:${id}`, transactionId: id, action: 'Review refund' }, { key: `direction:${id}`, transactionId: id, action: 'Review refund' }];
         await persistIncidents(db, 'owner', 'financial', issues);
         await persistIncidents(db, 'owner', 'financial', issues);
         assert.equal((await db.get('SELECT COUNT(*) AS n FROM telegram_outbox')).n, 1);
         const payload = JSON.parse((await db.get('SELECT payloadJson FROM telegram_outbox')).payloadJson);
-        assert.ok(payload.text.includes('exception\\(s\\)'));
-        assert.ok(payload.text.endsWith('details\\.'));
-        assert.equal(payload.reliabilityFormatVersion, 1);
+        assert.ok(payload.text.includes('Transactions to review'));
+        assert.equal(payload.replyMarkup.inline_keyboard.length, 1);
+        assert.equal(payload.replyMarkup.inline_keyboard[0][0].callback_data, `review:${id}`);
+        assert.equal(payload.silent, true);
+        assert.equal(payload.reliabilityFormatVersion, 2);
         await persistIncidents(db, 'owner', 'financial', []);
         await persistIncidents(db, 'owner', 'financial', []);
-        assert.equal((await db.get('SELECT COUNT(*) AS n FROM telegram_outbox')).n, 2);
-        assert.equal((await db.get('SELECT COUNT(*) AS n FROM reliability_incidents WHERE resolvedAt IS NULL')).n, 0);
+        assert.equal((await db.get('SELECT COUNT(*) AS n FROM telegram_outbox')).n, 1);
+        await persistIncidents(db, 'owner', 'operations', [{ id: 'worker', action: 'Restart worker' }]);
+        assert.equal((await db.get('SELECT COUNT(*) AS n FROM telegram_outbox')).n, 1);
+        assert.equal((await db.get("SELECT COUNT(*) AS n FROM reliability_incidents WHERE kind='financial' AND resolvedAt IS NULL")).n, 0);
     } finally {
         if (previousToken === undefined) delete process.env.TELEGRAM_BOT_TOKEN; else process.env.TELEGRAM_BOT_TOKEN = previousToken;
         if (previousChat === undefined) delete process.env.TELEGRAM_CHAT_ID; else process.env.TELEGRAM_CHAT_ID = previousChat;

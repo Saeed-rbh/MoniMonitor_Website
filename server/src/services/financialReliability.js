@@ -84,12 +84,20 @@ async function persistIncidents(db, userId, scope, issues, now = new Date().toIS
             await db.run('UPDATE reliability_incidents SET resolvedAt=?, updatedAt=? WHERE userId=? AND incidentKey=?', [now, now, userId, incident.incidentKey]);
             await notify(incident.incidentKey, parse(incident.detailsJson), 'resolved');
         }
-        if (transitions.length && process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+        if (scope === 'financial' && process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
             const opened = transitions.filter(t => t.state === 'needs attention');
-            const text = `MoniMonitor ${scope} check: ${opened.length} new exception(s), ${transitions.length - opened.length} resolved.\n` +
-                opened.slice(0, 5).map(t => `${t.key}: ${t.issue.action}`).join('\n') + '\nOpen Profile → Reliability or protected diagnostics for details.';
-            const payload = { text: require('./telegramService').e(text), reliabilityFormatVersion: 1 };
-            await db.run(`INSERT INTO telegram_outbox(action,payloadJson,status,attempts,nextAttemptAt,createdAt) VALUES ('sendMessage',?,'pending',0,?,?)`, [JSON.stringify(payload), now, now]);
+            const transactionIds = [...new Set(opened.map(t => t.issue.transactionId).filter(Boolean))].slice(0, 5);
+            const buttons = [];
+            for (const id of transactionIds) {
+                const tx = await db.get('SELECT * FROM transactions WHERE userId=? AND id=?', [userId, id]);
+                if (tx) buttons.push([{ text: require('./reliabilityReview').title(tx).slice(0, 100), callback_data: `review:${id}` }]);
+            }
+            // One quiet transaction inbox update; no resolved-count or operations chatter.
+            if (buttons.length) {
+                const payload = { text: require('./telegramService').e('Transactions to review\nChoose a transaction below. I’ll ask one question at a time. More are available in Profile → Transactions to review.'),
+                    replyMarkup: { inline_keyboard: buttons }, silent: true, reliabilityFormatVersion: 2 };
+                await db.run(`INSERT INTO telegram_outbox(action,payloadJson,status,attempts,nextAttemptAt,createdAt) VALUES ('sendMessage',?,'pending',0,?,?)`, [JSON.stringify(payload), now, now]);
+            }
         }
     });
 }
@@ -98,7 +106,7 @@ async function checkFinancialReliability(userId, { force = false } = {}) {
     const { getDb } = require('../database/db');
     const db = await getDb();
     const cached = await db.get('SELECT * FROM reliability_runs WHERE userId=?', [userId]);
-    if (!force && cached && Date.now() - Date.parse(cached.checkedAt) < 15 * 60000) return parse(cached.reportJson);
+    if (!force && cached && parse(cached.reportJson).cards && Date.now() - Date.parse(cached.checkedAt) < 15 * 60000) return parse(cached.reportJson);
     const transactions = await db.all("SELECT * FROM transactions WHERE userId=? AND Timestamp >= ?", [userId, new Date(Date.now() - 90 * DAY).toISOString()]);
     const sources = await db.all('SELECT s.* FROM transaction_sources s JOIN transactions t ON t.id=s.transactionId AND t.userId=s.userId WHERE s.userId=? AND t.Timestamp>=?', [userId, new Date(Date.now() - 90 * DAY).toISOString()]);
     const overrides = await db.all('SELECT * FROM transaction_overrides WHERE userId=?', [userId]);
@@ -131,8 +139,21 @@ async function checkFinancialReliability(userId, { force = false } = {}) {
         if (ids.has(key) && ids.get(key) !== source.transactionId) issues.push({ key: `duplicate:${source.transactionId}`, kind: 'duplicate', transactionId: source.transactionId, action: 'Merge the duplicate bank entry while preserving both source records.' });
         ids.set(key, source.transactionId);
     }
-    const unique = [...new Map(issues.map(i => [i.key, i])).values()];
-    const report = { checkedAt: new Date().toISOString(), status: unique.length ? 'Needs review' : 'No detected conflicts', issues: unique, statuses, accounts: accountChecks, coverageDays: 90 };
+    const reviews = new Map((await db.all('SELECT * FROM reliability_reviews WHERE userId=?', [userId])).map(r => [r.issueKey, r]));
+    const { fingerprint } = require('./reliabilityReview');
+    const unique = [...new Map(issues.map(i => [i.key, i])).values()].filter(issue => {
+        const review = reviews.get(issue.key), tx = transactions.find(t => t.id === issue.transactionId);
+        return !review || !tx || review.fingerprint !== fingerprint(tx, sourceMap.get(tx.id) || []);
+    });
+    for (const tx of transactions) {
+        if (unique.some(i => i.transactionId === tx.id)) statuses[tx.id] = 'Needs review';
+        else if ([...reviews.values()].some(r => r.issueKey.endsWith(`:${tx.id}`) && r.fingerprint === fingerprint(tx, sourceMap.get(tx.id) || []))) statuses[tx.id] = 'User reviewed';
+    }
+    const cards = [...new Set(unique.map(i => i.transactionId).filter(Boolean))].map(id => {
+        const t = transactions.find(t => t.id === id);
+        return { id, title: t.Reason || t.Label || 'Transaction', amount: Number(t.Amount), currency: t.Currency, date: t.Timestamp, account: t.Account || t.BankName, questions: unique.filter(i => i.transactionId === id).length };
+    });
+    const report = { checkedAt: new Date().toISOString(), status: unique.length ? 'Needs review' : 'No detected conflicts', issues: unique, cards, statuses, accounts: accountChecks, coverageDays: 90 };
     await persistIncidents(db, userId, 'financial', unique);
     await db.run(`INSERT INTO reliability_runs VALUES (?,?,?) ON CONFLICT(userId) DO UPDATE SET checkedAt=excluded.checkedAt,reportJson=excluded.reportJson`, [userId, report.checkedAt, JSON.stringify(report)]);
     return report;

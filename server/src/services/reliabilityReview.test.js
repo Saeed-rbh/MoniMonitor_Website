@@ -1,0 +1,56 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'monimonitor-review-'));
+process.env.MONIMONITOR_DB_PATH = path.join(directory, 'test.sqlite');
+const service = require('../database/dbService');
+const { getReview, answerReview, telegramCard } = require('./reliabilityReview');
+const { checkFinancialReliability } = require('./financialReliability');
+let db, id;
+test.before(async () => {
+    db = await service.getDb();
+    await service.createUser('owner', 'review-owner', 'unused');
+    await service.createUser('other', 'review-other', 'unused');
+    id = await service.addTransaction({ userId: 'owner', Amount: 19.96, Currency: 'CAD', Category: 'Expense', Label: 'Other Expense', Reason: 'Google', AccountFlow: 'OUT', Timestamp: new Date(Date.now() - 10 * 86400000).toISOString() });
+    await service.upsertTransactionSource({ userId: 'owner', provider: 'email', externalId: 'receipt', transactionId: id, rawPayload: { receipt: true } });
+});
+test.after(async () => { await db.close(); fs.rmSync(directory, { recursive: true, force: true }); });
+test('statement confirmation resolves only the reviewed evidence and changes reopen the question', async () => {
+    const question = await getReview('owner', id);
+    assert.equal(question.issueKey, `unconfirmed_email:${id}`);
+    assert.ok(telegramCard(question).replyMarkup.inline_keyboard.every(row => Buffer.byteLength(row[0].callback_data) <= 64));
+    await assert.rejects(getReview('other', id), /not found/);
+    await assert.rejects(answerReview('owner', id, { issueKey: question.issueKey, fingerprint: question.fingerprint, answer: 'pair-9999' }), /available answer/);
+    const later = await answerReview('owner', id, { issueKey: question.issueKey, fingerprint: question.fingerprint, answer: 'later' });
+    assert.equal(later.resolved, undefined);
+    const complete = await answerReview('owner', id, { issueKey: question.issueKey, fingerprint: question.fingerprint, answer: 'confirm' });
+    assert.equal(complete.resolved, true);
+    assert.equal((await checkFinancialReliability('owner')).statuses[id], 'User reviewed');
+    await service.updateTransactionForUser(id, 'owner', { Amount: 20 });
+    await checkFinancialReliability('owner', { force: true });
+    const reopened = await getReview('owner', id);
+    assert.equal(reopened.issueKey, question.issueKey);
+    await assert.rejects(answerReview('owner', id, { issueKey: question.issueKey, fingerprint: question.fingerprint, answer: 'confirm' }), /changed/);
+});
+test('transfer answer links opposite entries without changing amounts or cash', async () => {
+    const a = await service.createInvestmentAccount('owner', { name: 'RBC', accountType: 'Savings', currency: 'CAD', cashMinor: 0 });
+    const b = await service.createInvestmentAccount('owner', { name: 'Wealthsimple', accountType: 'Savings', currency: 'CAD', cashMinor: 0 });
+    const timestamp = new Date(Date.now() - 4 * 86400000).toISOString();
+    const incoming = await service.addTransaction({ userId: 'owner', Amount: 4000, Currency: 'CAD', Category: 'Internal', AccountFlow: 'IN', Timestamp: timestamp, ReferenceNumber: 'XFER-SELF', BalanceAccountId: b.id });
+    const outgoing = await service.addTransaction({ userId: 'owner', Amount: 4000, Currency: 'CAD', Category: 'Internal', AccountFlow: 'OUT', Timestamp: timestamp, ReferenceNumber: 'BANK-REF', BalanceAccountId: a.id });
+    // Explicit assignment is needed because ordinary ingestion resolves account metadata independently.
+    await db.run('UPDATE transactions SET BalanceAccountId=? WHERE id=?', [b.id, incoming]);
+    await db.run('UPDATE transactions SET BalanceAccountId=? WHERE id=?', [a.id, outgoing]);
+    await checkFinancialReliability('owner', { force: true });
+    const question = await getReview('owner', incoming);
+    assert.ok(question.options.some(o => o.value === `pair-${outgoing}`));
+    const before = await db.all('SELECT id,cashMinor FROM investment_accounts ORDER BY id');
+    const result = await answerReview('owner', incoming, { issueKey: question.issueKey, fingerprint: question.fingerprint, answer: `pair-${outgoing}` });
+    assert.equal(result.resolved, true);
+    const one = await service.getTransactionById(incoming, 'owner'), two = await service.getTransactionById(outgoing, 'owner');
+    assert.equal(one.ReferenceNumber, two.ReferenceNumber);
+    assert.equal(one.AmountMinor, 400000); assert.equal(two.AmountMinor, 400000);
+    assert.deepEqual(await db.all('SELECT id,cashMinor FROM investment_accounts ORDER BY id'), before);
+});

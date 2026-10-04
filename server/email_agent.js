@@ -569,6 +569,24 @@ async function onTelegramUpdate(update) {
             const query = update.callback_query;
             const data = query.data;
             const messageId = query.message?.message_id ?? query.inline_message_id;
+            if (data.startsWith('review:')) {
+                const [, rawId, kind, answer, fingerprint] = data.split(':');
+                const id = Number(rawId);
+                const reviewService = require('./src/services/reliabilityReview');
+                try {
+                    if (rawId === 'inbox') {
+                        const inbox = await reviewService.telegramInbox(USER_ID);
+                        await editTelegramMessage(messageId, inbox.text, inbox.replyMarkup);
+                        return;
+                    }
+                    const review = answer ? await reviewService.answerReview(USER_ID, id, { issueKey: `${kind}:${id}`, answer, fingerprint }) : await reviewService.getReview(USER_ID, id);
+                    const card = reviewService.telegramCard(review);
+                    await editTelegramMessage(messageId, card.text, card.replyMarkup);
+                } catch (error) {
+                    await editTelegramMessage(messageId, e(error.message), { inline_keyboard: [[{ text: 'Reopen transaction', callback_data: `review:${id}` }]] });
+                }
+                return;
+            }
             
             if (data.startsWith('transfer:') || data.startsWith('save:')) {
                 const txId = data.split(':')[1];

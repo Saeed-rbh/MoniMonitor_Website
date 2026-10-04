@@ -4,6 +4,13 @@ import { apiUrl } from "../config/api";
 
 const API_URL = apiUrl("/MoniMonitor_ToDB");
 
+export const transactionReviewAPI = async (id, answer = null) => {
+    const response = await fetch(apiUrl(`/transactions/${id}/review`), answer ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(answer) } : {});
+    const result = await response.json();
+    if (!response.ok) { handleExpiredSession(response); throw new Error(result.error || 'Could not save your answer'); }
+    return result;
+};
+
 export const getReliabilityAPI = async (id = null) => {
     const response = await fetch(apiUrl(id == null ? '/reliability' : `/transactions/${id}/reliability`));
     if (!response.ok) { handleExpiredSession(response); throw new Error('Reliability checks unavailable'); }
