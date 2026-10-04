@@ -58,6 +58,11 @@ Automatic fast-forward updates and updater restarts require a successful
 `Verify app` push run for the exact main commit. Missing, pending, failed or
 unavailable verification defers deployment. Local development launches remain
 available; these gates do not certify uncommitted changes.
+The supervisor holds an exclusive loopback lock and refuses to launch if the API
+port is already occupied. Version receipts are checked against the serving API's
+captured commit and agent readiness, rather than trusting a saved version marker.
+Shutdown requests drain new supervisors through a local control file. Legacy
+processes can require forced cleanup, followed by durable queue and WAL recovery.
 
 These checks reduce routine inspection. Missing bank evidence, provider errors,
 ambiguous account identity, and statement mismatches still require human review.

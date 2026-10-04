@@ -28,6 +28,9 @@ if errorlevel 1 (
 echo Starting MoniMonitor public services...
 
 call :update_from_github
+for /f "delims=" %%C in ('git rev-parse HEAD 2^>nul') do set "MONIMONITOR_LOCAL_COMMIT=%%C"
+powershell -NoProfile -File "%~dp0scripts\Test-VerifiedRelease.ps1" -Commit "%MONIMONITOR_LOCAL_COMMIT%"
+if errorlevel 1 goto :error
 
 if not exist "%TAILSCALE_EXE%" (
   echo Tailscale is not installed in the expected location.
@@ -104,21 +107,19 @@ powershell -NoProfile -Command "Start-Sleep -Seconds 3"
 exit /b 0
 
 :running_commit_matches
-powershell -NoProfile -Command "$state = Join-Path $env:LOCALAPPDATA 'MoniMonitor'; $marker = Join-Path $state 'running-commit.txt'; if (-not (Test-Path -LiteralPath $marker)) { exit 1 }; $running = (Get-Content -LiteralPath $marker -Raw).Trim(); $current = (& git -C '%~dp0' rev-parse HEAD).Trim(); if ($LASTEXITCODE -eq 0 -and $running -and $running -eq $current) { exit 0 }; exit 1"
+powershell -NoProfile -File "%~dp0scripts\Confirm-RunningRelease.ps1"
 exit /b %errorlevel%
 
 :record_running_commit
-powershell -NoProfile -Command "$state = Join-Path $env:LOCALAPPDATA 'MoniMonitor'; [void](New-Item -ItemType Directory -Path $state -Force); $current = (& git -C '%~dp0' rev-parse HEAD).Trim(); if ($LASTEXITCODE -ne 0 -or -not $current) { exit 1 }; Set-Content -LiteralPath (Join-Path $state 'running-commit.txt') -Value $current"
+powershell -NoProfile -File "%~dp0scripts\Confirm-RunningRelease.ps1" -Record
 exit /b %errorlevel%
 
 :stop_backend
-powershell -NoProfile -Command "$pidFile = Join-Path $env:TEMP 'monimonitor-api.pid'; $candidateIds = [Collections.Generic.HashSet[int]]::new(); if (Test-Path -LiteralPath $pidFile) { $savedPid = 0; if ([int]::TryParse((Get-Content -LiteralPath $pidFile -Raw).Trim(), [ref]$savedPid)) { [void]$candidateIds.Add($savedPid) } }; $nodeProcesses = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' -ErrorAction SilentlyContinue; foreach ($nodeProcess in $nodeProcesses) { if ($nodeProcess.CommandLine -like '*MoniMonitor_Website*concurrently*') { [void]$candidateIds.Add([int]$nodeProcess.ProcessId) } }; foreach ($candidateId in $candidateIds) { if (Get-Process -Id $candidateId -ErrorAction SilentlyContinue) { [void](Start-Process -FilePath taskkill.exe -ArgumentList '/PID',$candidateId,'/T','/F' -Wait -PassThru -WindowStyle Hidden) } }; Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; $remaining = $false; $nodeProcesses = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' -ErrorAction SilentlyContinue; foreach ($nodeProcess in $nodeProcesses) { if ($nodeProcess.CommandLine -like '*MoniMonitor_Website*concurrently*') { $remaining = $true } }; if ($remaining) { exit 1 }; exit 0"
+powershell -NoProfile -File "%~dp0scripts\Stop-Backend.ps1"
 exit /b %errorlevel%
 
 :stop_standalone_api
-rem A successful MoniMonitor health check already established that port 3001 is
-rem our API. Stop only Node listeners on that exact port before supervised start.
-powershell -NoProfile -Command "$listeners = Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue; $ids = [Collections.Generic.HashSet[int]]::new(); foreach ($listener in $listeners) { [void]$ids.Add([int]$listener.OwningProcess) }; if ($ids.Count -eq 0) { exit 0 }; foreach ($processId in $ids) { $process = Get-Process -Id $processId -ErrorAction SilentlyContinue; if (-not $process -or $process.ProcessName -ne 'node') { exit 1 } }; foreach ($processId in $ids) { Stop-Process -Id $processId -Force -ErrorAction Stop }; Start-Sleep -Seconds 1; if (Get-NetTCPConnection -LocalPort 3001 -State Listen -ErrorAction SilentlyContinue) { exit 1 }; exit 0"
+powershell -NoProfile -File "%~dp0scripts\Stop-Backend.ps1"
 exit /b %errorlevel%
 
 :update_from_github

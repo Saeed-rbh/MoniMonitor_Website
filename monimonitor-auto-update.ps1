@@ -29,34 +29,8 @@ function Write-UpdateLog {
 }
 
 function Stop-MoniMonitorBackend {
-    $candidateIds = [System.Collections.Generic.HashSet[int]]::new()
-
-    if (Test-Path -LiteralPath $pidFile) {
-        $savedPid = 0
-        if ([int]::TryParse((Get-Content -LiteralPath $pidFile -Raw).Trim(), [ref]$savedPid)) {
-            [void]$candidateIds.Add($savedPid)
-        }
-    }
-
-    Get-CimInstance Win32_Process -Filter "Name = 'cmd.exe'" -ErrorAction SilentlyContinue |
-        Where-Object { $_.CommandLine -match 'MoniMonitor API \+ Email \+ Telegram' } |
-        ForEach-Object { [void]$candidateIds.Add([int]$_.ProcessId) }
-
-    Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue |
-        Where-Object { $_.CommandLine -like '*MoniMonitor_Website*concurrently*' } |
-        ForEach-Object { [void]$candidateIds.Add([int]$_.ProcessId) }
-
-    foreach ($candidateId in $candidateIds) {
-        $process = Get-CimInstance Win32_Process -Filter "ProcessId = $candidateId" -ErrorAction SilentlyContinue
-        $isLauncher = $process -and $process.Name -eq 'cmd.exe' -and $process.CommandLine -match 'npm run dev'
-        $isSupervisor = $process -and $process.Name -eq 'node.exe' -and
-            $process.CommandLine -like '*MoniMonitor_Website*concurrently*'
-        if ($isLauncher -or $isSupervisor) {
-            & taskkill.exe /PID $candidateId /T /F | Out-Null
-        }
-    }
-
-    Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
+    & powershell -NoProfile -File (Join-Path $repository 'scripts\Stop-Backend.ps1')
+    if ($LASTEXITCODE -ne 0) { throw 'Backend shutdown failed; restart deferred' }
 }
 
 function Write-UpdateReceipt {
@@ -190,11 +164,7 @@ try {
                 $localCommit = (& git -C $repository rev-parse HEAD 2>$null).Trim()
             }
 
-            $runningCommit = if (Test-Path -LiteralPath $runningCommitFile) {
-                (Get-Content -LiteralPath $runningCommitFile -Raw).Trim()
-            } else {
-                ''
-            }
+            $runningCommit = try { (Invoke-RestMethod 'http://127.0.0.1:3001/diagnostics' -TimeoutSec 10).app.commit } catch { '' }
             if ($runningCommit -eq $localCommit) {
                 continue
             }
