@@ -17,9 +17,21 @@ async function repair(db, userId, apply = false) {
         const changed = Object.entries(fields).filter(([key, value]) => row[key] !== value);
         const event = deltaMinor === null ? null : await db.get(
             'SELECT * FROM account_balance_events WHERE sourceTransactionId = ? AND userId = ?', [id, userId]);
-        if (!changed.length && (!event || event.deltaMinor === deltaMinor)) return;
+        // Reviewed classifications belong to the ledger, not to subsequent
+        // provider guesses. Keep every source and payload, but relinquish its
+        // ownership so sync cannot overwrite or delete the reviewed record.
+        const ownedSources = [64570, 64579, 64580].includes(id) ? await db.all(
+            'SELECT * FROM transaction_sources WHERE transactionId = ? AND userId = ? AND ownsTransaction = 1', [id, userId]) : [];
+        if (!changed.length && !ownedSources.length && (!event || event.deltaMinor === deltaMinor)) return;
         changes.push({ id, before: Object.fromEntries(changed.map(([key]) => [key, row[key]])), fields, evidence });
         if (!apply) return;
+        for (const source of ownedSources) {
+            const context = JSON.parse(source.contextPayloadJson || '{}');
+            context.ledgerCorrection = { fields: Object.keys(fields), evidence, reviewedAt: new Date().toISOString() };
+            await db.run(`UPDATE transaction_sources SET ownsTransaction = 0, contextPayloadJson = ?, updatedAt = ?
+                WHERE provider = ? AND externalId = ? AND userId = ?`,
+                [JSON.stringify(context), new Date().toISOString(), source.provider, source.externalId, userId]);
+        }
         if (changed.length) await db.run(`UPDATE transactions SET ${changed.map(([key]) => `${key} = ?`).join(', ')} WHERE id = ? AND userId = ?`,
             [...changed.map(([, value]) => value), id, userId]);
         if (event && event.deltaMinor !== deltaMinor) {

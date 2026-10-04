@@ -204,6 +204,20 @@ test('prefers Plaid available cash over total investment value and cash holdings
     assert.equal(result.cashMinor, 61245);
 });
 
+test('preserves a reviewed internal transfer without a synthetic reference', () => {
+    const existing = { Category: 'Internal', Label: 'Internal Transfer',
+        Reason: 'Internal transfer: Wealthsimple Earnings -> Wealthsimple Savings', ReferenceNumber: null };
+    const incoming = { Category: 'Expense', Label: 'Personal Transfers', Reason: 'Transfer out',
+        AccountFlow: 'OUT', AmountMinor: 500000 };
+    const result = preserveLinkedInternalTransfer(existing, incoming);
+    assert.equal(result.Category, 'Internal');
+    assert.equal(result.Reason, existing.Reason);
+    assert.equal(result.ReferenceNumber, null);
+    assert.equal(result.AccountFlow, 'OUT');
+    assert.equal(result.AmountMinor, 500000);
+    assert.deepEqual(preserveLinkedInternalTransfer({ Category: 'Expense', Label: 'Personal Transfers' }, incoming), incoming);
+});
+
 test('replaces cached account balances with Plaid real-time balances', () => {
     const [account] = mergeAccountBalances(
         [{ account_id: 'tfsa', name: 'TFSA', balances: { current: 10610.321515, available: null } }],

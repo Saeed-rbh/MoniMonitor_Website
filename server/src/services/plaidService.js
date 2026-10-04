@@ -407,9 +407,8 @@ function toAppTransaction(transaction, account, institutionName, options = {}) {
 }
 
 function preserveLinkedInternalTransfer(existing, updates) {
-    const reference = String(existing?.ReferenceNumber || '').trim();
     const isLinkedInternal = existing?.Category === 'Internal' &&
-        existing?.Label === 'Internal Transfer' && /^XFER-/i.test(reference);
+        existing?.Label === 'Internal Transfer';
     if (!isLinkedInternal) return updates;
     return {
         ...updates,
