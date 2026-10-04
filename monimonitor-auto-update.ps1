@@ -29,7 +29,7 @@ function Write-UpdateLog {
 }
 
 function Stop-MoniMonitorBackend {
-    & powershell -NoProfile -File (Join-Path $repository 'scripts\Stop-Backend.ps1')
+    & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repository 'scripts\Stop-Backend.ps1')
     if ($LASTEXITCODE -ne 0) { throw 'Backend shutdown failed; restart deferred' }
 }
 
@@ -142,7 +142,7 @@ try {
             }
 
             if ($localCommit -ne $remoteCommit) {
-                & powershell -NoProfile -File (Join-Path $repository 'scripts\Test-VerifiedRelease.ps1') -Commit $remoteCommit
+                & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repository 'scripts\Test-VerifiedRelease.ps1') -Commit $remoteCommit
                 if ($LASTEXITCODE -ne 0) {
                     Write-UpdateLog 'GitHub verification has not passed for the proposed release. Update deferred.'
                     continue
@@ -168,7 +168,7 @@ try {
             if ($runningCommit -eq $localCommit) {
                 continue
             }
-            & powershell -NoProfile -File (Join-Path $repository 'scripts\Test-VerifiedRelease.ps1') -Commit $localCommit
+            & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repository 'scripts\Test-VerifiedRelease.ps1') -Commit $localCommit
             if ($LASTEXITCODE -ne 0) { continue }
 
             if ($runningCommit) {

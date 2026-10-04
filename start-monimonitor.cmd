@@ -29,7 +29,7 @@ echo Starting MoniMonitor public services...
 
 call :update_from_github
 for /f "delims=" %%C in ('git rev-parse HEAD 2^>nul') do set "MONIMONITOR_LOCAL_COMMIT=%%C"
-powershell -NoProfile -File "%~dp0scripts\Test-VerifiedRelease.ps1" -Commit "%MONIMONITOR_LOCAL_COMMIT%"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Test-VerifiedRelease.ps1" -Commit "%MONIMONITOR_LOCAL_COMMIT%"
 if errorlevel 1 goto :error
 
 if not exist "%TAILSCALE_EXE%" (
@@ -107,19 +107,19 @@ powershell -NoProfile -Command "Start-Sleep -Seconds 3"
 exit /b 0
 
 :running_commit_matches
-powershell -NoProfile -File "%~dp0scripts\Confirm-RunningRelease.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Confirm-RunningRelease.ps1"
 exit /b %errorlevel%
 
 :record_running_commit
-powershell -NoProfile -File "%~dp0scripts\Confirm-RunningRelease.ps1" -Record
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Confirm-RunningRelease.ps1" -Record
 exit /b %errorlevel%
 
 :stop_backend
-powershell -NoProfile -File "%~dp0scripts\Stop-Backend.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Stop-Backend.ps1"
 exit /b %errorlevel%
 
 :stop_standalone_api
-powershell -NoProfile -File "%~dp0scripts\Stop-Backend.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Stop-Backend.ps1"
 exit /b %errorlevel%
 
 :update_from_github
@@ -160,7 +160,7 @@ if errorlevel 1 (
 
 for /f "delims=" %%C in ('git rev-parse HEAD 2^>nul') do set "PRE_UPDATE_COMMIT=%%C"
   for /f "delims=" %%C in ('git rev-parse origin/main 2^>nul') do set "MONIMONITOR_PROPOSED_COMMIT=%%C"
-  powershell -NoProfile -File "%~dp0scripts\Test-VerifiedRelease.ps1" -Commit "%MONIMONITOR_PROPOSED_COMMIT%"
+  powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Test-VerifiedRelease.ps1" -Commit "%MONIMONITOR_PROPOSED_COMMIT%"
   if errorlevel 1 (
     echo GitHub verification has not passed. Continuing with the existing local version.
     exit /b 0
