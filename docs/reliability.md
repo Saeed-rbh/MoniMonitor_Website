@@ -53,11 +53,18 @@ Set repository secrets `MONIMONITOR_MONITOR_BOT_TOKEN` and
 `MONIMONITOR_MONITOR_CHAT_ID` for alerts that remain available if the app stops.
 Consecutive failed completed probes suppress duplicate Telegram alerts using
 GitHub run history; API history failures may cause a repeated alert.
+The repository default branch is `main`, which GitHub uses for scheduled runs.
+Reliability digests escape the complete text for Telegram MarkdownV2. The
+audited `server/scripts/repair-reliability-notifications.js` command can retry
+older malformed reliability digests once; dry run is the default.
 
 Automatic fast-forward updates and updater restarts require a successful
 `Verify app` push run for the exact main commit. Missing, pending, failed or
 unavailable verification defers deployment. Local development launches remain
 available; these gates do not certify uncommitted changes.
+The Vercel project `moni-monitor-website` also requires the GitHub
+`App quality gate` as a blocking production Deployment Check. Vercel builds may
+finish earlier, but future production promotion waits for the aggregate check.
 The supervisor holds an exclusive loopback lock and refuses to launch if the API
 port is already occupied. Version receipts are checked against the serving API's
 captured commit and agent readiness, rather than trusting a saved version marker.

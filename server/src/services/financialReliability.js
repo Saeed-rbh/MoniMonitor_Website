@@ -1,6 +1,5 @@
 const DAY = 86400000;
 const parse = value => { try { return JSON.parse(value || '{}'); } catch { return {}; } };
-const escape = value => String(value).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
 function confirmedDirectionRepair(transaction, sources, override) {
     if (override) return null;
@@ -39,7 +38,7 @@ function assessTransaction(transaction, sources = [], override = null, now = Dat
     if (transaction.Category === 'Investment' && !transaction.PortfolioAccountId && age > 3 * DAY) add('unassigned_trade', 'Assign the investment trade to its brokerage account.');
     if (transaction.Label === 'Refunds & Reversals' && direction !== 'IN') add('refund_direction', 'Review the refund direction; a refund should reduce card debt or increase cash.');
     if (!posted.length && !override && age > 7 * DAY && sources.some(s => s.provider === 'email')) add('unconfirmed_email', 'Match the email to a posted bank record or verify it against a bank statement.');
-    const bankInvestment = sources.some(s => s.provider === 'plaid_investments' && !parse(s.rawPayloadJson).pending);
+    const bankInvestment = sources.some(s => s.provider === 'plaid_investments' && Number.isFinite(parse(s.rawPayloadJson).amount) && !parse(s.rawPayloadJson).pending && parse(s.rawPayloadJson).type !== 'cancel');
     for (const source of sources.filter(s => s.provider === 'plaid_investments')) {
         const raw = parse(source.rawPayloadJson);
         if (raw.iso_currency_code && raw.iso_currency_code !== transaction.Currency) add('currency_conflict', 'Review the brokerage currency and exchange rate against the trade confirmation.');
@@ -87,9 +86,10 @@ async function persistIncidents(db, userId, scope, issues, now = new Date().toIS
         }
         if (transitions.length && process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
             const opened = transitions.filter(t => t.state === 'needs attention');
-            const text = `MoniMonitor ${escape(scope)} check: ${opened.length} new exception(s), ${transitions.length - opened.length} resolved.\n` +
-                opened.slice(0, 5).map(t => `${escape(t.key)}: ${escape(t.issue.action)}`).join('\n') + '\nOpen Profile → Reliability or protected diagnostics for details.';
-            await db.run(`INSERT INTO telegram_outbox(action,payloadJson,status,attempts,nextAttemptAt,createdAt) VALUES ('sendMessage',?,'pending',0,?,?)`, [JSON.stringify({ text }), now, now]);
+            const text = `MoniMonitor ${scope} check: ${opened.length} new exception(s), ${transitions.length - opened.length} resolved.\n` +
+                opened.slice(0, 5).map(t => `${t.key}: ${t.issue.action}`).join('\n') + '\nOpen Profile → Reliability or protected diagnostics for details.';
+            const payload = { text: require('./telegramService').e(text), reliabilityFormatVersion: 1 };
+            await db.run(`INSERT INTO telegram_outbox(action,payloadJson,status,attempts,nextAttemptAt,createdAt) VALUES ('sendMessage',?,'pending',0,?,?)`, [JSON.stringify(payload), now, now]);
         }
     });
 }

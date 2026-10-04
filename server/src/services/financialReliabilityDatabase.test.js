@@ -32,6 +32,10 @@ test('incident transitions and queued notices are atomic and restart-safe withou
         await persistIncidents(db, 'owner', 'financial', issues);
         await persistIncidents(db, 'owner', 'financial', issues);
         assert.equal((await db.get('SELECT COUNT(*) AS n FROM telegram_outbox')).n, 1);
+        const payload = JSON.parse((await db.get('SELECT payloadJson FROM telegram_outbox')).payloadJson);
+        assert.ok(payload.text.includes('exception\\(s\\)'));
+        assert.ok(payload.text.endsWith('details\\.'));
+        assert.equal(payload.reliabilityFormatVersion, 1);
         await persistIncidents(db, 'owner', 'financial', []);
         await persistIncidents(db, 'owner', 'financial', []);
         assert.equal((await db.get('SELECT COUNT(*) AS n FROM telegram_outbox')).n, 2);
@@ -40,4 +44,18 @@ test('incident transitions and queued notices are atomic and restart-safe withou
         if (previousToken === undefined) delete process.env.TELEGRAM_BOT_TOKEN; else process.env.TELEGRAM_BOT_TOKEN = previousToken;
         if (previousChat === undefined) delete process.env.TELEGRAM_CHAT_ID; else process.env.TELEGRAM_CHAT_ID = previousChat;
     }
+});
+test('failed reliability notices can be escaped and retried once without touching ordinary messages', async () => {
+    const { repair } = require('../../scripts/repair-reliability-notifications');
+    const prior = process.env.BACKUP_OWNER_USER_ID; process.env.BACKUP_OWNER_USER_ID = 'owner';
+    try {
+        await dbService.enqueueTelegramOutbox('sendMessage', { text: 'MoniMonitor financial check: 2 new exception(s).' });
+        await dbService.enqueueTelegramOutbox('sendMessage', { text: 'Ordinary formatted message' });
+        assert.equal((await repair()).jobIds.length, 1);
+        assert.equal((await repair({ apply: true })).jobIds.length, 1);
+        assert.equal((await repair({ apply: true })).jobIds.length, 0);
+        const rows = await db.all('SELECT payloadJson FROM telegram_outbox ORDER BY id DESC LIMIT 2');
+        assert.equal(JSON.parse(rows[0].payloadJson).text, 'Ordinary formatted message');
+        assert.ok(JSON.parse(rows[1].payloadJson).text.includes('exception\\(s\\)'));
+    } finally { if (prior === undefined) delete process.env.BACKUP_OWNER_USER_ID; else process.env.BACKUP_OWNER_USER_ID = prior; }
 });

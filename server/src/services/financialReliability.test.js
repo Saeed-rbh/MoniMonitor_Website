@@ -12,6 +12,7 @@ test('posted card credit agrees with a refund and exposes an expense-direction e
 test('pending and missing evidence never produce a bank-recorded status', () => {
     assert.equal(assessTransaction(transaction, []).status, 'Provisional');
     assert.equal(assessTransaction(transaction, [{ ...source, rawPayloadJson: JSON.stringify({ amount: -19.96, pending: true }) }]).status, 'Provisional');
+    assert.equal(assessTransaction(transaction, [{ provider: 'plaid_investments', rawPayloadJson: '{}' }]).status, 'Provisional');
 });
 test('review does not conceal provider currency, amount, or removal conflicts', () => {
     const mismatch = { ...source, rawPayloadJson: JSON.stringify({ amount: -20, iso_currency_code: 'USD' }), contextPayloadJson: JSON.stringify({ providerRemoved: true }) };
