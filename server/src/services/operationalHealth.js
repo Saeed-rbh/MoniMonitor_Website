@@ -15,7 +15,7 @@ function operationalAlerts(health, now = Date.now()) {
     }
     for (const [name, queue] of Object.entries(health.queues || {})) {
         if (queue.dead > 0) add(`${name}_dead_letters`, `${queue.dead} ${name} jobs require review`, 'Open the review queue, inspect the failure evidence, and explicitly retry or resolve each job.');
-        if (queue.depth > 500 || queue.retryAgeSeconds > 3600) add(`${name}_backlog`, `${name} ingestion is behind`, 'Check provider availability and processing errors before retrying the backlog.');
+        if (queue.depth > 500 || (queue.depth > 0 && queue.retryAgeSeconds > 3600)) add(`${name}_backlog`, `${name} ingestion is behind`, 'Check provider availability and processing errors before retrying the backlog.');
     }
     if (health.backup?.stale) add('backup_stale', 'No recent verified backup', 'Create a backup and inspect encryption keys and backup storage.');
     if (!health.backup?.offsiteConfigured) add('backup_offsite_missing', 'Offsite backup copying is not configured', 'Set BACKUP_OFFSITE_DIRECTORY to a separate synchronized or mounted storage location.');

@@ -7,9 +7,15 @@ import urllib.request
 
 def probe():
     for endpoint in ('health', 'ready'):
-        with urllib.request.urlopen('https://monimonitor.saeedarabha.com/api/' + endpoint, timeout=20) as response:
-            if response.status != 200 or json.load(response).get('status') != 'ok':
-                raise RuntimeError('Service unavailable')
+        url = 'https://monimonitor.saeedarabha.com/api/' + endpoint
+        try:
+            with urllib.request.urlopen(url, timeout=20) as response:
+                status = response.status
+                body = json.load(response)
+                if status != 200 or body.get('status') != 'ok':
+                    raise RuntimeError(f'{endpoint} returned status {status} body: {body}')
+        except Exception as error:
+            raise RuntimeError(f'Probe {endpoint} failed: {error}') from error
 
 
 def previous_failed():
@@ -30,7 +36,8 @@ def main():
             probe()
             print('Independent uptime and readiness checks passed.')
             return
-        except Exception:
+        except Exception as error:
+            print(f'Attempt {attempt + 1}/3 failed: {error}')
             if attempt < 2:
                 time.sleep(10)
     token, chat = os.environ.get('MONITOR_BOT_TOKEN'), os.environ.get('MONITOR_CHAT_ID')

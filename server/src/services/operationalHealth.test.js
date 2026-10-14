@@ -16,6 +16,13 @@ test('idle workers with recent heartbeats are healthy without requiring new tran
         backup: { stale: false, offsiteConfigured: true } });
     assert.deepEqual(alerts, []);
 });
+test('dead letters alone without active retries or backlog depth do not trigger a backlog alert', () => {
+    const alerts = operationalAlerts({
+        queues: { telegram: { dead: 5, depth: 0, retry: 0, retryAgeSeconds: null } },
+        backup: { stale: false, offsiteConfigured: true },
+    });
+    assert.deepEqual(alerts.map(a => a.id), ['telegram_dead_letters']);
+});
 test('optional webhook payload omits financial details and sensitive exception text', async () => {
     const previous = process.env.OPERATIONAL_ALERT_WEBHOOK_URL;
     process.env.OPERATIONAL_ALERT_WEBHOOK_URL = 'https://alerts.example.com/monimonitor';
