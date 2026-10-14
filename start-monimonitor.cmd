@@ -1,4 +1,5 @@
 @echo off
+@echo off
 setlocal
 cd /d "%~dp0"
 
@@ -6,7 +7,15 @@ set "PUBLIC_URL=https://monimonitor.saeedarabha.com"
 set "PUBLIC_HEALTH_URL=%PUBLIC_URL%/api/health"
 set "TAILSCALE_EXE=C:\Program Files\Tailscale\tailscale.exe"
 set "AUTO_UPDATE_RESTART="
-if /I "%~1"=="--auto-update-restart" set "AUTO_UPDATE_RESTART=1"
+set "NO_PAUSE="
+for %%A in (%*) do (
+  if /I "%%~A"=="--auto-update-restart" (
+    set "AUTO_UPDATE_RESTART=1"
+    set "NO_PAUSE=1"
+  )
+  if /I "%%~A"=="--no-pause" set "NO_PAUSE=1"
+  if /I "%%~A"=="--headless" set "NO_PAUSE=1"
+)
 
 rem Tailscale Funnel uses an administrator-only control pipe on Windows.
 rem Elevate the complete launcher so a successful start always includes Funnel.
@@ -15,8 +24,10 @@ if errorlevel 1 (
   echo Administrator access is required to manage the public tunnel.
   echo Requesting permission through Windows User Account Control...
   set "MONIMONITOR_LAUNCHER=%~f0"
-  set "MONIMONITOR_RESTART_ARG=--elevated"
+  set "MONIMONITOR_RESTART_ARG="
   if defined AUTO_UPDATE_RESTART set "MONIMONITOR_RESTART_ARG=--auto-update-restart"
+  if defined NO_PAUSE set "MONIMONITOR_RESTART_ARG=%MONIMONITOR_RESTART_ARG% --no-pause"
+  if not defined MONIMONITOR_RESTART_ARG set "MONIMONITOR_RESTART_ARG=--elevated"
   powershell -NoProfile -Command "Start-Process -FilePath $env:MONIMONITOR_LAUNCHER -ArgumentList $env:MONIMONITOR_RESTART_ARG -WorkingDirectory (Split-Path -Parent $env:MONIMONITOR_LAUNCHER) -Verb RunAs"
   if errorlevel 1 (
     echo MoniMonitor could not request administrator access.
@@ -228,6 +239,11 @@ for /L %%A in (1,1,8) do (
   )
 
   echo Public API is not reachable yet. Repairing Funnel ^(%%A/8^)...
+  if %%A gtr 1 (
+    rem Reset HTTPS funnel registration to recover from stale control-plane DNS state
+    "%TAILSCALE_EXE%" funnel --https=443 off >nul 2>&1
+    timeout /t 2 /nobreak >nul
+  )
   "%TAILSCALE_EXE%" funnel --bg 3001 >nul 2>&1
   if %%A==1 (
     timeout /t 15 /nobreak >nul
@@ -243,5 +259,5 @@ exit /b 1
 :error
 echo.
 echo MoniMonitor could not start. Review the error above.
-pause
+if not defined NO_PAUSE pause
 exit /b 1

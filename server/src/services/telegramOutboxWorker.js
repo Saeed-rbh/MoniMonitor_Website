@@ -68,6 +68,14 @@ function startTelegramOutboxWorker() {
         state.running = true;
         try {
             await processTelegramOutboxOnce();
+            const hadError = Boolean(state.lastError);
+            state.lastError = null;
+            reportSubsystem('telegramOutbox', {
+                configured: true,
+                state: 'ready',
+                ...(hadError || !state.lastSuccessAt ? { lastSuccessAt: new Date().toISOString() } : {}),
+                lastError: null,
+            });
         } catch (error) {
             state.lastError = String(error?.message || error);
             reportSubsystem('telegramOutbox', { configured: true, state: 'failed', lastError: state.lastError });

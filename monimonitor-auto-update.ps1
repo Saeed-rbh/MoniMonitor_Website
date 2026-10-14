@@ -88,6 +88,7 @@ function Repair-PublicTunnel {
     Write-UpdateLog 'Public API health check failed; resetting and repairing Tailscale Funnel.'
     for ($attempt = 1; $attempt -le 3; $attempt++) {
         if ($attempt -gt 1) {
+            & $tailscaleExecutable funnel --https=443 off 2>$null | Out-Null
             & $tailscaleExecutable serve reset 2>$null | Out-Null
             Start-Sleep -Seconds 2
         }

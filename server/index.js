@@ -2,6 +2,7 @@ require("dotenv").config();
 const crypto = require("crypto");
 const { validateEncryptionConfiguration } = require("./src/services/encryptionKeys");
 const { validMonth } = require("../shared/calendar.cjs");
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const { validateSession, InvalidSessionError } = require("./src/services/sessionService");
@@ -96,7 +97,7 @@ app.use((req, res, next) => {
 
 app.use(cors({
     origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+        if (!origin || origin === "null" || allowedOrigins.includes(origin)) return callback(null, true);
         return callback(new Error("Origin is not allowed by CORS"));
     },
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -165,6 +166,11 @@ const sendValidationError = (res, error) => {
 const readDiagnostics = require('./src/routes/healthRoutes').registerHealthRoutes(app, {
     dbService, backupService, getAllSubsystemHealth, getTelegramOutboxWorkerHealth,
     runtimeVersion, agentStatus, authenticateToken, requireConfiguredOwner,
+});
+
+app.get(["/health-dashboard", "/status"], (_req, res) => {
+    const dashboardPath = path.resolve(__dirname, "..", "MoniMonitor_HealthDashboard.html");
+    return res.sendFile(dashboardPath);
 });
 
 registerAuthRoutes(app, {

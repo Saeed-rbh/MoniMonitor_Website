@@ -273,7 +273,10 @@ class ImapService {
             const pending = typeof database.claimPendingEmails === 'function'
                 ? await database.claimPendingEmails(this.mailboxKey, uidValidity, WORKER_ID, PENDING_BATCH_SIZE)
                 : await database.getPendingEmails(this.mailboxKey, uidValidity, PENDING_BATCH_SIZE);
-            if (!pending.length) return;
+            if (!pending.length) {
+                reportSubsystem('imap', { configured: true, state: 'connected', lastSuccessAt: new Date().toISOString(), lastError: null });
+                return;
+            }
 
             reportSubsystem('imap', { configured: true, state: 'processing', lastSuccessAt: new Date().toISOString(), lastError: null });
 
@@ -283,6 +286,7 @@ class ImapService {
                 const batch = pending.slice(index, index + CONCURRENCY);
                 await Promise.all(batch.map(({ uid }) => this.processOne(uid, uidValidity, { workerId: WORKER_ID })));
             }
+            reportSubsystem('imap', { configured: true, state: 'connected', lastSuccessAt: new Date().toISOString(), lastError: null });
         } catch (error) {
             console.error('Error synchronizing mailbox:', error);
             reportSubsystem('imap', { configured: true, state: 'failed', lastError: error.message });

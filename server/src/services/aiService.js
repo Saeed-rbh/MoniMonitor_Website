@@ -10,9 +10,9 @@ const {
     SAVING_LABELS,
 } = require('./transactionCategories');
 
-const AI_API_KEY = process.env.AI_API_KEY;
+const AI_API_KEY = process.env.AI_API_KEY || process.env.GEMINI_API_KEY;
 const ai = AI_API_KEY ? new GoogleGenAI({ apiKey: AI_API_KEY }) : null;
-const MODEL_NAME = 'gemini-3.5-flash-lite';
+const MODEL_NAME = process.env.AI_MODEL_NAME || process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const { createAIScheduler, reserveDailyUsage, boundedInteger } = require('./aiScheduler');
 const { getDb } = require('../database/db');
 const MAX_RESPONSE_ATTEMPTS = 2;
