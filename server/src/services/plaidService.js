@@ -803,8 +803,16 @@ async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
         for (const [plaidAccountId, entry] of normalized) {
             const account = accountMap.get(plaidAccountId);
             if (!account?.appAccountId || account.type !== 'investment') continue;
-            if (!await db.get('SELECT id FROM investment_accounts WHERE id = ? AND userId = ?', [account.appAccountId, userId])) {
-                throw new Error('Bank snapshot account does not belong to the user');
+            const stored = await db.get('SELECT * FROM investment_accounts WHERE id = ? AND userId = ?', [account.appAccountId, userId]);
+            if (!stored) throw new Error('Bank snapshot account does not belong to the user');
+            if(stored.holdingsSource === 'bank_ui' || stored.balanceSource === 'bank_ui') {
+                const previous=await db.all('SELECT symbol,quantity,currency FROM investment_holdings WHERE accountId=? AND userId=?',[stored.id,userId]);
+                const positionsMatch=previous.length===entry.holdings.length && previous.every(h=>entry.holdings.some(n=>n.symbol===h.symbol && n.currency===h.currency && Math.abs(n.quantity-h.quantity)<1e-8));
+                if(!positionsMatch || entry.cashReviewRequired || entry.cashMinor!==stored.cashMinor) {
+                    const reason='Provider snapshot differs from verified bank cash or positions; review before replacing it';
+                    await db.run('UPDATE investment_accounts SET balanceReviewReason=?,holdingsReviewReason=? WHERE id=? AND userId=?',[reason,reason,stored.id,userId]);
+                    continue;
+                }
             }
             await db.run('DELETE FROM investment_holdings WHERE accountId = ? AND userId = ?', [account.appAccountId, userId]);
             for (const holding of entry.holdings) {

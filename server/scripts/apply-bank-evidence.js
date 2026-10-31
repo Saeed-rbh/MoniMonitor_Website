@@ -6,6 +6,7 @@ const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const { protectConnection } = require('../src/database/transactionConnection');
 const { mergeTransactionRows } = require('../src/services/transactionDeduplication');
+const { lockFields, relinkSources, applyAccountReviews } = require('../src/services/bankEvidenceReview');
 const { refreshMonthlySummary } = require('../src/database/monthlySummaries');
 async function repair(db, plan, userId) {
     const changes = [], months = new Set(), now = new Date().toISOString();
@@ -42,7 +43,7 @@ async function repair(db, plan, userId) {
             if(!/^\d{4}-\d{2}-\d{2}$/.test(change.fields.Timestamp)) throw new Error('Reviewed statement date required');
             for(const table of ['account_balance_events','portfolio_transactions']) await db.run(`UPDATE ${table} SET occurredAt=? WHERE sourceTransactionId=? AND userId=?`,[change.fields.Timestamp,before.id,userId]);
         }
-        const allowed = new Set(['Currency','Amount','AmountMinor','Category','Label','Reason','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','AccountFlow','Timestamp']);
+        const allowed = new Set(['Currency','Amount','AmountMinor','Category','Label','Reason','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','AccountFlow','Timestamp','ReferenceNumber','Account']);
         if (Object.keys(change.fields).some(k => !allowed.has(k))) throw new Error('Unsupported repair field');
         await db.run(`UPDATE transactions SET ${Object.keys(change.fields).map(k=>`${k}=?`).join(',')} WHERE id=? AND userId=?`,[...Object.values(change.fields),before.id,userId]);
         const prior=await db.get('SELECT fieldsJson FROM transaction_overrides WHERE transactionId=? AND userId=?',[before.id,userId]);
@@ -63,15 +64,19 @@ async function repair(db, plan, userId) {
         if(await db.get("SELECT 1 FROM transaction_sources WHERE provider='bank_csv' AND externalId=?",[entry.key])) continue;
         const fields=entry.fields;
         if(fields.userId !== userId || !Number.isSafeInteger(fields.AmountMinor) || fields.AmountMinor<=0 || !/^[A-Z]{3}$/.test(fields.Currency)) throw new Error('Invalid bank import');
-        const duplicate=await db.get(`SELECT id FROM transactions WHERE userId=? AND substr(Timestamp,1,10)=? AND AmountMinor=? AND BankName=? AND Account=? AND COALESCE(PortfolioSymbol,'')=?`,[userId,fields.Timestamp.slice(0,10),fields.AmountMinor,fields.BankName,fields.Account,fields.PortfolioSymbol||'']);
+        const duplicate=await db.get(`SELECT id FROM transactions WHERE userId=? AND substr(Timestamp,1,10)=? AND AmountMinor=? AND BankName=? AND Account=? AND COALESCE(PortfolioSymbol,'')=? AND COALESCE(ReferenceNumber,'')=? AND COALESCE(AccountFlow,'')=?`,[userId,fields.Timestamp.slice(0,10),fields.AmountMinor,fields.BankName,fields.Account,fields.PortfolioSymbol||'',fields.ReferenceNumber||'',fields.AccountFlow||'']);
         if(duplicate) throw new Error(`Import requires renewed matching: ${duplicate.id}`);
         const columns=Object.keys(fields);
-        if(columns.some(k=>!['userId','Amount','AmountMinor','Currency','Category','Label','Reason','Timestamp','Type','Account','BankName','AccountFlow','BalanceAccountId','BalanceAccountConfidence','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','PortfolioAccountId','PortfolioConfidence'].includes(k))) throw new Error('Invalid import field');
+        if(columns.some(k=>!['userId','Amount','AmountMinor','Currency','Category','Label','Reason','Timestamp','Type','Account','BankName','AccountFlow','BalanceAccountId','BalanceAccountConfidence','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','PortfolioAccountId','PortfolioConfidence','ReferenceNumber','SourceEmailKey'].includes(k))) throw new Error('Invalid import field');
         const result=await db.run(`INSERT INTO transactions(${columns.join(',')}) VALUES(${columns.map(()=>'?').join(',')})`,Object.values(fields));
         await db.run(`INSERT INTO transaction_sources(provider,externalId,userId,transactionId,ownsTransaction,createdAt,updatedAt,rawPayloadJson,contextPayloadJson,capturedAt) VALUES('bank_csv',?,?,?,1,?,?,?,?,?)`,[entry.key,userId,result.lastID,now,now,JSON.stringify(entry.evidence),JSON.stringify({reviewed:true,posting:'history_only_preserve_balance_baseline'}),now]);
+        await relinkSources(db,userId,result.lastID,entry.relinkSources,now);
+        const {userId: ignoredUser, ...locked}=fields;
+        await lockFields(db,userId,result.lastID,locked,entry.evidence,now);
         await db.run('UPDATE investment_accounts SET balanceReviewReason=? WHERE id=? AND userId=?',['Bank history updated; verify the current balance against the bank before relying on it',fields.BalanceAccountId,userId]);
         months.add(fields.Timestamp.slice(0,7));changes.push({importedId:result.lastID,evidence:entry.evidence});
     }
+    changes.push(...await applyAccountReviews(db,plan,userId,now));
     for (const month of months) await refreshMonthlySummary(db,userId,month);
     if(changes.length) await db.run("INSERT INTO agent_audit_log(userId,action,status,details,createdAt) VALUES(?,'bank_evidence_repair','success',?,?)",[userId,JSON.stringify(changes),now]);
     return changes;
@@ -87,7 +92,7 @@ async function main() {
         let changes;
         try { await db.withTransaction(async()=>{ changes=await repair(db,JSON.parse(fs.readFileSync(planPath,'utf8')),userId); if(!apply) throw new Error('PREVIEW_ROLLBACK'); }); }
         catch(e){if(e.message!=='PREVIEW_ROLLBACK')throw e;}
-        console.log(JSON.stringify({applied:apply,updates:changes.filter(c=>c.after).length,merges:changes.filter(c=>c.merged).length,imports:changes.filter(c=>c.importedId).length}));
+        console.log(JSON.stringify({applied:apply,updates:changes.filter(c=>c.after).length,merges:changes.filter(c=>c.merged).length,imports:changes.filter(c=>c.importedId).length,accountReviews:changes.filter(c=>c.balanceBefore||c.accountMerged||c.holdingsBefore||c.accountCreated).length}));
         console.log('Integrity:',await db.get('PRAGMA integrity_check'));
         const foreign=await db.all('PRAGMA foreign_key_check');if(foreign.length)throw new Error('Foreign key check failed');
     } finally {await db.close();}

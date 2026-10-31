@@ -16,6 +16,11 @@ async function setAccountBalanceSnapshot(userId, accountId, cashMinor, currency,
             await db.run('UPDATE investment_accounts SET balanceReviewReason = ? WHERE id = ? AND userId = ?', [reason, accountId, userId]);
             return { status: 'review_required', reason };
         }
+        if(source === 'plaid' && account.balanceSource === 'bank_ui' && cashMinor !== account.cashMinor) {
+            const reason='Provider balance differs from the verified bank snapshot; review before replacing it';
+            await db.run('UPDATE investment_accounts SET balanceReviewReason=? WHERE id=? AND userId=?',[reason,accountId,userId]);
+            return {status:'review_required',reason};
+        }
         await db.run(`UPDATE investment_accounts SET cashMinor = ?, balanceRevision = balanceRevision + 1,
             balanceSource = ?, balanceAsOf = ?, balanceReviewReason = NULL, updatedAt = ? WHERE id = ? AND userId = ?`,
             [cashMinor, source, asOf, asOf, accountId, userId]);

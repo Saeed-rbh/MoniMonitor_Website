@@ -57,3 +57,12 @@ test('received crypto assets are transfers rather than new cash contributions', 
     const normalized=normalizeEmailEvidence({ Currency:'CAD',BankName:'Wealthsimple',Category:'Saving',Label:'Crypto Funding',PortfolioAction:'DEPOSIT',AccountFlow:'IN' },'You received 0.29572 ETH in your account.',[]);
     assert.equal(normalized.Category,'Investment');assert.equal(normalized.PortfolioAction,'TRANSFER');assert.equal(normalized.AccountFlow,'NONE');
 });
+
+test('tracking-link digits cannot invent a Wealthsimple direct-deposit account',()=>{
+ const row={Currency:'CAD',Category:'Income',BankName:'Wealthsimple',Account:'1371',BalanceAccountId:15};
+ const accounts=[{id:12,institution:'Wealthsimple',accountType:'Chequing',balanceSource:'plaid',accountRef:'1832',currency:'CAD'},{id:15,institution:'Wealthsimple',accountType:'Chequing',balanceSource:'manual',accountRef:'1371',currency:'CAD'}];
+ const result=normalizeEmailEvidence(row,'Subject: Direct deposit received\nWe got your direct deposit! Amount: $708.79\nhttps://example.com/tracking/1371',accounts);
+ assert.equal(result.BalanceAccountId,12);assert.equal(result.Account,'1832');
+ const held=normalizeEmailEvidence(row,'Subject: Direct deposit received\nWe got your direct deposit!',[]);
+ assert.equal(held.Account,null);assert.equal(held.IngestionReviewReason,'ambiguous_account');
+});

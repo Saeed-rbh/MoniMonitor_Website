@@ -57,3 +57,60 @@ test('statement dates retain their calendar day without inventing a transaction 
  const text=telegram.formatTransactionMessage({...trade,Amount:9.99,Timestamp:'2026-07-31'});
  assert.match(text,/Jul 31, 2026/);assert.doesNotMatch(text,/Jul 30|a\\.m|p\\.m/);
 });
+
+test('distinct equal-value card purchases keep their own email evidence',async()=>{
+ const {repair}=require('../../scripts/apply-bank-evidence');
+ const base={userId:'u',Amount:8,AmountMinor:800,Currency:'CAD',Category:'Expense',Label:'Digital Services',Reason:'GOOGLE CLOUD',Timestamp:'2026-09-23',BankName:'RBC',Account:'2379',AccountFlow:'OUT',ReferenceNumber:'QKPJ7J',SourceEmailKey:'mail-one'};
+ const original=await service.addTransaction(base);
+ await service.upsertTransactionSource({provider:'email',externalId:'mail-two',userId:'u',transactionId:original,rawPayload:{body:'Separate N5F9NN purchase'}});
+ const plan={updates:[],merges:[],imports:[{key:'card-second-reference',fields:{...base,ReferenceNumber:'N5F9NN',SourceEmailKey:'mail-two'},evidence:'Two posted bank references',relinkSources:[{provider:'email',externalId:'mail-two',expectedTransactionId:original}]}]};
+ const changes=await db.withTransaction(()=>repair(db,plan,'u'));
+ const added=changes.find(c=>c.importedId).importedId;
+ assert.notEqual(added,original);
+ assert.equal((await db.get("SELECT transactionId FROM transaction_sources WHERE provider='email' AND externalId='mail-two'")).transactionId,added);
+ assert.equal((await db.withTransaction(()=>repair(db,plan,'u'))).length,0);
+});
+test('merging an unsupported duplicate account preserves activity and verifies the actual bank balance',async()=>{
+ const {repair}=require('../../scripts/apply-bank-evidence');
+ const real=await service.createInvestmentAccount('u',{name:'Earnings',accountRef:'1832',institution:'Wealthsimple',accountType:'Chequing',currency:'CAD',cashMinor:14172});
+ const fake=await service.createInvestmentAccount('u',{name:'Unsupported account',accountRef:'1371',institution:'Wealthsimple',accountType:'Chequing',currency:'CAD',cashMinor:70879});
+ const id=await service.addTransaction({...trade,userId:'u',Amount:708.79,Category:'Income',Label:'Employment Income',PortfolioAction:null,PortfolioSymbol:null,BalanceAccountId:fake.id,Account:'1371'});
+ const asOf='2026-10-31T23:00:00.000Z';
+ const plan={updates:[],merges:[],accountMerges:[{from:fake.id,to:real.id,expectedRef:'1371',expectedCashMinor:70879,expectedTransactionIds:[id],evidence:'Verified one bank account'}],accountSnapshots:[{id:real.id,expectedRef:'1832',expectedCashMinor:14172,currency:'CAD',cashMinor:50731,asOf,evidence:'Bank reported cash after all three missing legs'}]};
+ await db.withTransaction(()=>repair(db,plan,'u'));
+ assert.equal(await db.get('SELECT * FROM investment_accounts WHERE id=?',[fake.id]),undefined);
+ assert.equal((await service.getTransactionById(id,'u')).BalanceAccountId,real.id);
+ assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[real.id])).cashMinor,50731);
+ assert.equal((await db.withTransaction(()=>repair(db,plan,'u'))).length,0);
+ const historical=await service.addTransaction({...trade,userId:'u',Amount:25,Category:'Income',PortfolioAction:null,AccountFlow:'IN',BalanceAccountId:real.id});
+ assert.equal((await service.syncTransactionAccountBalance('u',historical,{accountId:real.id,confidence:'HIGH'})).status,'snapshot_preserved');
+ const future=await service.addTransaction({...trade,userId:'u',Amount:2,Category:'Expense',PortfolioAction:null,AccountFlow:'OUT',Timestamp:'2026-11-02T12:00:00Z',BalanceAccountId:real.id});
+ await service.syncTransactionAccountBalance('u',future,{accountId:real.id,confidence:'HIGH'});
+ assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[real.id])).cashMinor,50531);
+});
+test('a stale provider snapshot cannot undo verified bank cash or positions',async()=>{
+ const {setAccountBalanceSnapshot}=require('./accountBalanceService');
+ const account=await service.createInvestmentAccount('u',{name:'Verified TFSA',accountType:'TFSA',currency:'CAD',cashMinor:500});
+ await service.upsertInvestmentHolding('u',account.id,{symbol:'TEST',quantity:2,currency:'CAD',priceMinor:5000,averageCostMinor:4000});
+ await db.run("UPDATE investment_accounts SET balanceSource='bank_ui',holdingsSource='bank_ui',balanceAsOf='2026-10-31T23:00:00Z' WHERE id=?",[account.id]);
+ assert.equal((await setAccountBalanceSnapshot('u',account.id,999,'CAD')).status,'review_required');
+ const map=new Map([['bank-account',{appAccountId:account.id,type:'investment',currency:'CAD'}]]);
+ const snapshot={accounts:[{account_id:'bank-account',balances:{available:0,current:50,iso_currency_code:'CAD'}}],securities:[{security_id:'stock',ticker_symbol:'TEST',type:'equity'}],holdings:[{account_id:'bank-account',security_id:'stock',quantity:1,institution_price:50,institution_value:50,iso_currency_code:'CAD'}]};
+ await plaid.applyInvestmentSnapshot('u',map,snapshot);
+ assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[account.id])).cashMinor,500);
+ assert.equal((await db.get('SELECT quantity FROM investment_holdings WHERE accountId=?',[account.id])).quantity,2);
+ snapshot.accounts[0].balances.available=5;snapshot.accounts[0].balances.current=105;
+ snapshot.holdings[0].quantity=2;snapshot.holdings[0].institution_value=100;
+ await plaid.applyInvestmentSnapshot('u',map,snapshot);
+ assert.equal((await db.get('SELECT balanceSource FROM investment_accounts WHERE id=?',[account.id])).balanceSource,'plaid');
+});
+
+test('verified previously untracked accounts add a bank balance without invented income',async()=>{
+ const {repair}=require('../../scripts/apply-bank-evidence');
+ const count=(await db.get('SELECT COUNT(*) n FROM transactions')).n;
+ const plan={updates:[],merges:[],accountCreations:[{fields:{name:'RBC FHSA',institution:'RBC',accountType:'FHSA',currency:'CAD',accountRef:'example-fhsa',cashMinor:200100},asOf:'2026-10-31T23:21:49.000Z',evidence:'Authenticated bank page says cash is the entire balance'}]};
+ const changes=await db.withTransaction(()=>repair(db,plan,'u'));assert.equal(changes.length,1);
+ assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[changes[0].accountCreated])).cashMinor,200100);
+ assert.equal((await db.get('SELECT COUNT(*) n FROM transactions')).n,count);
+ assert.equal((await db.withTransaction(()=>repair(db,plan,'u'))).length,0);
+});

@@ -39,7 +39,7 @@ async function correctionState(db, userId, transactionId) {
         AND id > ? AND reversedAt IS NULL LIMIT 1`, [userId, activity.accountId, activity.id]);
     const cashAbsorbed = recorded && (current.account.balanceSource === 'plaid' ||
         current.account.balanceRevision !== recorded.after.account.balanceRevision);
-    const holdingsAbsorbed = recorded && current.account.holdingsSource === 'plaid' &&
+    const holdingsAbsorbed = recorded && ['plaid', 'bank_ui'].includes(current.account.holdingsSource) &&
         (current.account.holdingsAsOf !== recorded.after.account.holdingsAsOf ||
             recorded.after.account.holdingsSource !== 'plaid');
     let reason = !recorded ? 'This older activity has no saved cost-basis history. Review the current cash and full holdings baseline first.'

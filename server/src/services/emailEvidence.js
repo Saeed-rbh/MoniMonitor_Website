@@ -15,6 +15,21 @@ function sourceEventTimestamp(body = '') {
 function normalizeEmailEvidence(transaction, body, accounts = []) {
     const result = { ...transaction };
     const text = String(body || '');
+    if (/wealthsimple/i.test(result.BankName || '') && /Subject:\s*Direct deposit received/i.test(text)) {
+        // These notifications identify chequing, but omit an account number.
+        // Random digits in footer/tracking URLs are never account evidence.
+        const explicit = text.replace(/https?:\/\/\S+/g,'').match(/(?:account|ending)\s*[:#]?\s*[*•x\s]*(\d{4,})\b/i);
+        if(!explicit) {
+            result.Account = null; result.PortfolioAccountNumber = null;
+            result.BalanceAccountId = null; result.PortfolioAccountId = null;
+            result.Type = 'Chequing';
+            const candidates=accounts.filter(a=>/wealthsimple/i.test(a.institution || '') && a.accountType==='Chequing' && ['plaid','bank_ui'].includes(a.balanceSource));
+            if(candidates.length===1) {
+                result.Account=candidates[0].accountRef;result.BalanceAccountId=candidates[0].id;
+                result.BalanceAccountConfidence='HIGH';
+            } else {result.BalanceAccountConfidence='LOW';result.IngestionReviewReason='ambiguous_account';}
+        }
+    }
     // A security send is not an executed sale and must never debit cash.
     if (/wealthsimple/i.test(result.BankName || '') &&
         /(?:crypto\s+(?:transfer|send|withdrawal)|(?:sent|sending|received|receiving|transfer(?:red)?)\s+(?:of\s+)?[\d.,]+\s+(?:ETH|BTC|SOL)\b)/i.test(text) &&

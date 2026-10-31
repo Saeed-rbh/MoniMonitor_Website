@@ -1,0 +1,77 @@
+// Operations for an explicitly reviewed repair plan. No inference or network IO.
+async function lockFields(db, userId, id, fields, evidence, now) {
+    const previous = await db.get('SELECT fieldsJson FROM transaction_overrides WHERE transactionId=? AND userId=?',[id,userId]);
+    await db.run(`INSERT INTO transaction_overrides(transactionId,userId,fieldsJson,evidence,updatedAt) VALUES(?,?,?,?,?)
+        ON CONFLICT(transactionId) DO UPDATE SET fieldsJson=excluded.fieldsJson,evidence=excluded.evidence,updatedAt=excluded.updatedAt`,
+        [id,userId,JSON.stringify({...JSON.parse(previous?.fieldsJson || '{}'),...fields}),JSON.stringify(evidence),now]);
+}
+async function relinkSources(db, userId, transactionId, sources, now) {
+    for (const source of sources || []) {
+        const before=await db.get('SELECT * FROM transaction_sources WHERE provider=? AND externalId=? AND userId=?',[source.provider,source.externalId,userId]);
+        if (!before || ![source.expectedTransactionId,transactionId].includes(before.transactionId)) throw new Error('Reviewed source mapping changed');
+        await db.run('UPDATE transaction_sources SET transactionId=?,ownsTransaction=0,updatedAt=? WHERE provider=? AND externalId=? AND userId=?',[transactionId,now,source.provider,source.externalId,userId]);
+    }
+}
+async function applyAccountReviews(db, plan, userId, now) {
+    const changes=[];
+    for(const merge of plan.accountMerges || []) {
+        const source=await db.get('SELECT * FROM investment_accounts WHERE id=? AND userId=?',[merge.from,userId]);
+        if(!source) continue;
+        const target=await db.get('SELECT * FROM investment_accounts WHERE id=? AND userId=?',[merge.to,userId]);
+        if(!target || source.accountRef!==merge.expectedRef || source.currency!==target.currency || source.accountType!==target.accountType || source.cashMinor!==merge.expectedCashMinor) throw new Error('Reviewed duplicate account changed');
+        if(await db.get('SELECT 1 FROM investment_holdings WHERE accountId=? UNION ALL SELECT 1 FROM plaid_accounts WHERE appAccountId=? LIMIT 1',[source.id,source.id])) throw new Error('Duplicate account has holdings or a bank connection');
+        const rows=await db.all('SELECT * FROM transactions WHERE userId=? AND (BalanceAccountId=? OR PortfolioAccountId=?)',[userId,source.id,source.id]);
+        if(JSON.stringify(rows.map(r=>r.id).sort())!==JSON.stringify([...merge.expectedTransactionIds].sort())) throw new Error('Duplicate account activity changed');
+        for(const row of rows) {
+            const fields={ Account:target.accountRef, ...(row.BalanceAccountId===source.id?{BalanceAccountId:target.id}:{}), ...(row.PortfolioAccountId===source.id?{PortfolioAccountId:target.id}:{}) };
+            await db.run(`UPDATE transactions SET ${Object.keys(fields).map(k=>`${k}=?`).join(',')} WHERE id=? AND userId=?`,[...Object.values(fields),row.id,userId]);
+            await lockFields(db,userId,row.id,fields,merge.evidence,now);
+        }
+        await db.run('UPDATE account_balance_events SET accountId=?,balanceRevision=? WHERE accountId=? AND userId=?',[target.id,target.balanceRevision,source.id,userId]);
+        await db.run('UPDATE portfolio_transactions SET accountId=? WHERE accountId=? AND userId=?',[target.id,source.id,userId]);
+        await db.run('UPDATE portfolio_transactions SET relatedAccountId=? WHERE relatedAccountId=? AND userId=?',[target.id,source.id,userId]);
+        await db.run('UPDATE balance_snapshots SET accountId=? WHERE accountId=? AND userId=?',[target.id,source.id,userId]);
+        await db.run('DELETE FROM investment_accounts WHERE id=? AND userId=?',[source.id,userId]);
+        changes.push({accountMerged:source,into:target.id,transactions:rows,evidence:merge.evidence});
+    }
+    for(const item of plan.accountCreations || []) {
+        const f=item.fields;
+        if(!['Savings','Chequing','TFSA','FHSA','Brokerage'].includes(f.accountType) || !/^[A-Z]{3}$/.test(f.currency) || !f.accountRef || !Number.isSafeInteger(f.cashMinor) || !f.name || !f.institution) throw new Error('Invalid verified account');
+        const existing=await db.all('SELECT * FROM investment_accounts WHERE userId=? AND institution=? AND accountRef=?',[userId,f.institution,f.accountRef]);
+        if(existing.length>1) throw new Error('Account identity is ambiguous');
+        if(existing.length===1) {
+            if(await db.get("SELECT 1 FROM balance_snapshots WHERE userId=? AND accountId=? AND source='bank_ui' AND asOf=?",[userId,existing[0].id,item.asOf])) continue;
+            throw new Error('Verified account already exists; review its baseline');
+        }
+        const result=await db.run(`INSERT INTO investment_accounts(userId,name,institution,accountType,currency,accountRef,cashMinor,createdAt,updatedAt,balanceSource,balanceRevision,balanceAsOf,holdingsSource,holdingsAsOf)
+            VALUES(?,?,?,?,?,?,?,?,?,'bank_ui',1,?,'bank_ui',?)`,[userId,f.name,f.institution,f.accountType,f.currency,f.accountRef,f.cashMinor,now,now,item.asOf,item.asOf]);
+        await db.run("INSERT INTO balance_snapshots(userId,accountId,cashMinor,currency,source,asOf,createdAt) VALUES(?,?,?,?,'bank_ui',?,?)",[userId,result.lastID,f.cashMinor,f.currency,item.asOf,now]);
+        changes.push({accountCreated:result.lastID,fields:f,evidence:item.evidence});
+    }
+    for(const item of plan.holdingSnapshots || []) {
+        const account=await db.get('SELECT * FROM investment_accounts WHERE id=? AND userId=?',[item.accountId,userId]);
+        if(!account) throw new Error('Holding account missing');
+        const rows=await db.all('SELECT * FROM investment_holdings WHERE accountId=? AND userId=? ORDER BY id',[item.accountId,userId]);
+        if(rows.length!==item.holdings.length) throw new Error('Holding set changed');
+        if(account.holdingsSource==='bank_ui' && account.holdingsAsOf===item.asOf && item.holdings.every(h=>rows.some(r=>r.id===h.id && r.symbol===h.symbol && r.quantity===h.quantity && r.priceMicros===h.priceMicros && r.averageCostMicros===h.averageCostMicros))) continue;
+        for(const h of item.holdings) {
+            const old=rows.find(r=>r.id===h.id);
+            if(!old || old.currency!==h.currency || !Number.isFinite(h.quantity) || h.quantity<0 || !Number.isSafeInteger(h.priceMicros) || h.priceMicros<0 || !Number.isSafeInteger(h.averageCostMicros) || h.averageCostMicros<0) throw new Error('Invalid verified holding');
+            if(old.symbol===h.symbol && old.quantity===h.quantity && old.priceMicros===h.priceMicros && old.averageCostMicros===h.averageCostMicros) continue;
+            if(old.symbol!==h.expected.symbol || old.quantity!==h.expected.quantity) throw new Error('Holding changed after preview');
+            await db.run('UPDATE investment_holdings SET symbol=?,quantity=?,priceMicros=?,priceMinor=?,averageCostMicros=?,averageCostMinor=?,updatedAt=? WHERE id=? AND userId=?',[h.symbol,h.quantity,h.priceMicros,Math.round(h.priceMicros/10000),h.averageCostMicros,Math.round(h.averageCostMicros/10000),item.asOf,h.id,userId]);
+        }
+        await db.run("UPDATE investment_accounts SET holdingsSource='bank_ui',holdingsAsOf=?,holdingsReviewReason=NULL WHERE id=? AND userId=?",[item.asOf,item.accountId,userId]);
+        changes.push({holdingsBefore:rows,holdingsAfter:item.holdings,accountId:item.accountId,evidence:item.evidence});
+    }
+    for(const item of plan.accountSnapshots || []) {
+        if(await db.get("SELECT 1 FROM balance_snapshots WHERE userId=? AND accountId=? AND source='bank_ui' AND asOf=?",[userId,item.id,item.asOf])) continue;
+        const before=await db.get('SELECT * FROM investment_accounts WHERE id=? AND userId=?',[item.id,userId]);
+        if(!before || before.accountRef!==item.expectedRef || before.cashMinor!==item.expectedCashMinor || before.currency!==item.currency || !Number.isSafeInteger(item.cashMinor)) throw new Error('Reviewed balance changed');
+        await db.run("UPDATE investment_accounts SET cashMinor=?,balanceRevision=balanceRevision+1,balanceSource='bank_ui',balanceAsOf=?,balanceReviewReason=NULL,updatedAt=? WHERE id=? AND userId=?",[item.cashMinor,item.asOf,now,item.id,userId]);
+        await db.run("INSERT INTO balance_snapshots(userId,accountId,cashMinor,currency,source,asOf,createdAt) VALUES(?,?,?,?,'bank_ui',?,?)",[userId,item.id,item.cashMinor,item.currency,item.asOf,now]);
+        changes.push({balanceBefore:before,balanceAfter:item.cashMinor,evidence:item.evidence});
+    }
+    return changes;
+}
+module.exports={lockFields,relinkSources,applyAccountReviews};

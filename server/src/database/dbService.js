@@ -703,7 +703,10 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             ? transaction.AmountMinor
             : toMinorUnits(transaction.Amount);
         const deltaMinor = transactionBalanceDelta(transaction, best.account, amountMinor);
-        if (best.account.balanceSource === 'plaid' || (existing &&
+        const statementCovered = best.account.balanceSource === 'bank_ui' &&
+            Number.isFinite(Date.parse(transaction.Timestamp)) && Number.isFinite(Date.parse(best.account.balanceAsOf)) &&
+            Date.parse(transaction.Timestamp) <= Date.parse(best.account.balanceAsOf);
+        if (best.account.balanceSource === 'plaid' || statementCovered || (existing &&
             Number(existing.balanceRevision) !== Number(accounts.find((account) => Number(account.id) === Number(existing.accountId))?.balanceRevision))) {
             if (existing && Number(existing.accountId) !== Number(best.account.id)) {
                 return { status: 'review_required', reason: 'Reassigning activity already covered by a balance snapshot requires review' };
