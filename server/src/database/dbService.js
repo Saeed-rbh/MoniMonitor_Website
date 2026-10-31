@@ -283,7 +283,7 @@ async function updateTransaction(id, updates) {
 async function updateTransactionForUser(id, userId, updates, { reviewed = false } = {}) {
     const db = await getDb();
     const previous = await db.get(
-        'SELECT userId, Timestamp FROM transactions WHERE id = ? AND userId = ?',
+        'SELECT * FROM transactions WHERE id = ? AND userId = ?',
         [id, userId]
     );
     let normalized = normalizeTransactionUpdate(updates);
@@ -312,6 +312,10 @@ async function updateTransactionForUser(id, userId, updates, { reviewed = false 
             [id, userId]
         );
         await refreshTransactionMonths(db, [previous, current]);
+        if (previous.TelegramMessageId && Object.entries(normalized).some(([key,value]) =>
+            !['TelegramMessageId','SourceEmailKey','ReceivedAt'].includes(key) && String(previous[key]) !== String(value))) {
+            await enqueueTelegramOutbox('editMessage', { messageId: previous.TelegramMessageId }, { transactionId: id });
+        }
     }
     return result.changes > 0;
 }
@@ -1703,8 +1707,10 @@ async function claimTelegramOutbox(workerId, limit = 50, now = new Date()) {
         const rows = await db.all(
             `SELECT id, action, payloadJson, transactionId, attempts
              FROM telegram_outbox
-             WHERE (status IN ('pending', 'retry') AND nextAttemptAt <= ?)
-                OR (status = 'processing' AND leaseExpiresAt <= ?)
+             WHERE ((status IN ('pending', 'retry') AND nextAttemptAt <= ?)
+                OR (status = 'processing' AND leaseExpiresAt <= ?))
+                AND NOT EXISTS (SELECT 1 FROM transaction_ingestion_reviews r
+                    WHERE r.transactionId=telegram_outbox.transactionId AND r.resolvedAt IS NULL)
              ORDER BY nextAttemptAt ASC, id ASC LIMIT ?`,
             [nowIso, nowIso, safeLimit]
         );

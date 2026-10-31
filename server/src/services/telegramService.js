@@ -88,12 +88,15 @@ function formatTransactionMessage(tx, action = 'new') {
     const isInternal = tx.Category === 'Internal';
     const portfolioAction = tx.PortfolioAction || null;
     const isTrade = portfolioAction === 'BUY' || portfolioAction === 'SELL';
-    const sign = isTrade ? '' : (isInternal ? '' : (isIncome ? '+' : '-'));
-    const amountStr = `${sign}$${parseFloat(tx.Amount).toFixed(2)}`;
+    const isInvestment = tx.Category === 'Investment';
+    const neutral = isTrade || isInternal || tx.AccountFlow === 'NONE';
+    const sign = neutral ? '' : tx.AccountFlow === 'IN' || isIncome ? '+' : tx.AccountFlow === 'OUT' || tx.Category === 'Expense' ? '-' : '';
+    const amount = Number.isSafeInteger(tx.AmountMinor) ? tx.AmountMinor / 100 : Number(tx.Amount);
+    const amountStr = `${sign}$${amount.toFixed(2)} ${tx.Currency || 'CAD'}`;
     const headerEmoji = action === 'updated' ? '🔄' : (isTrade ? '📈' : (isInternal ? '🔄' : (isIncome ? '💰' : '💸')));
     const headerLabel = action === 'updated'
         ? 'Transaction Updated'
-        : (isTrade ? `${portfolioAction} Order Filled` : (isInternal ? 'Internal Transfer' : (isIncome ? 'Income Received' : 'Expense Detected')));
+        : (isTrade ? `${portfolioAction} Order Filled` : (isInternal ? 'Internal Transfer' : isInvestment ? 'Investment Activity' : tx.Category === 'Saving' ? 'Savings Activity' : (isIncome ? 'Income Received' : 'Expense Detected')));
     const amountEmoji = isTrade ? '⚪' : (isInternal ? '🔄' : (isIncome ? '✅' : '🔴'));
     const divider     = e('─────────────────────');
 

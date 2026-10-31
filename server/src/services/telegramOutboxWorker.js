@@ -17,7 +17,17 @@ const state = {
 };
 
 async function deliver(job) {
-    const payload = job.payload || {};
+    const payload = { ...(job.payload || {}) };
+    if (job.transactionId && ['sendMessage', 'editMessage'].includes(job.action)) {
+        const db = await dbService.getDb();
+        const tx = await db.get('SELECT * FROM transactions WHERE id=?', [job.transactionId]);
+        if (!tx) throw new Error('Notification transaction no longer exists');
+        if (await db.get('SELECT 1 FROM transaction_ingestion_reviews WHERE transactionId=? AND resolvedAt IS NULL', [job.transactionId])) {
+            throw new Error('Transaction evidence requires review before notification');
+        }
+        payload.text = telegram.formatTransactionMessage(tx, job.action === 'editMessage' ? 'updated' : 'new');
+        payload.replyMarkup = telegram.transactionActionKeyboard(tx);
+    }
     switch (job.action) {
         case 'sendMessage':
             return telegram.sendTelegramMessage(
@@ -69,12 +79,11 @@ function startTelegramOutboxWorker() {
         try {
             await processTelegramOutboxOnce();
             const hadError = Boolean(state.lastError);
-            state.lastError = null;
             reportSubsystem('telegramOutbox', {
                 configured: true,
-                state: 'ready',
-                ...(hadError || !state.lastSuccessAt ? { lastSuccessAt: new Date().toISOString() } : {}),
-                lastError: null,
+                state: hadError ? 'degraded' : 'ready',
+                lastSuccessAt: state.lastSuccessAt,
+                lastError: state.lastError,
             });
         } catch (error) {
             state.lastError = String(error?.message || error);
@@ -104,4 +113,4 @@ function getTelegramOutboxWorkerHealth() {
     };
 }
 
-module.exports = { processTelegramOutboxOnce, startTelegramOutboxWorker, getTelegramOutboxWorkerHealth };
+module.exports = { deliver, processTelegramOutboxOnce, startTelegramOutboxWorker, getTelegramOutboxWorkerHealth };

@@ -12,8 +12,28 @@ function sourceEventTimestamp(body = '') {
     return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
-function normalizeEmailEvidence(transaction, body, accounts) {
+function normalizeEmailEvidence(transaction, body, accounts = []) {
     const result = { ...transaction };
+    const text = String(body || '');
+    // A security send is not an executed sale and must never debit cash.
+    if (/wealthsimple/i.test(result.BankName || '') &&
+        /(?:crypto\s+(?:transfer|send|withdrawal)|(?:sent|sending|transfer(?:red)?)\s+(?:of\s+)?[\d.,]+\s+(?:ETH|BTC|SOL)\b)/i.test(text) &&
+        !/\b(?:sold|bought|order filled|trade confirmation)\b/i.test(text)) {
+        result.Category = 'Investment'; result.Label = 'Asset Distribution';
+        result.PortfolioAction = 'TRANSFER'; result.AccountFlow = 'NONE';
+        result.PortfolioPrice = null;
+    }
+    if (!result.Currency) {
+        const explicit = [...text.matchAll(/\b(CAD|USD|EUR|GBP)\b/gi)].map(m => m[1].toUpperCase());
+        const currencies = [...new Set(explicit)];
+        if (currencies.length === 1) result.Currency = currencies[0];
+        else {
+            const reference = getAccountReference(result);
+            const candidates = reference ? accounts.filter(a => accountMatchScore({ ...result, Account: reference }, a) >= 80) : [];
+            if (candidates.length === 1 && candidates[0].currency) result.Currency = candidates[0].currency;
+            else { result.Currency = 'CAD'; result.IngestionReviewReason = 'unconfirmed_currency'; }
+        }
+    }
     if (result.Category === 'Income' && !result.PortfolioAction &&
         /From:[^\n]*rbcroyalbankalerts@alerts\.rbc\.com/i.test(String(body)) &&
         /Subject:\s*(?:Fw:\s*)?Deposit Notice\s*(?:\r?\n|$)/i.test(String(body)) &&

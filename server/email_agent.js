@@ -314,6 +314,12 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         // rather than showing a misleading midnight placeholder in the app.
         expenseData.Timestamp = resolveEmailTimestamp(expenseData.Timestamp, expenseData.ReceivedAt);
         expenseData = normalizeEmailEvidence(expenseData, emailBody, investmentAccounts);
+        if (expenseData.IngestionReviewReason === 'unconfirmed_currency') {
+            await writeAudit('email_currency_review', 'review_required', { messageId: idInfo, sourceEmailKey });
+            // The durable mailbox queue retains the source for retry/review.
+            // Never publish a guessed currency into the ledger or Telegram.
+            return false;
+        }
         const durableSource = buildEmailIngestionSource(
             sourceEmailKey, emailBody, rawEmailSource, receivedAt, expenseData, idInfo
         );

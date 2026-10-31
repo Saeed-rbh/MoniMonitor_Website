@@ -384,7 +384,7 @@ async function mergeTransactionRows(db, canonical, duplicate) {
     // duplicate. The canonical row remains the source of truth for category,
     // amount, and timestamp.
     const fillableColumns = [
-        'ReceivedAt', 'Type', 'Account', 'BankName', 'ReferenceNumber',
+        'ReceivedAt', 'Type', 'Account', 'BankName', 'ReferenceNumber', 'TelegramMessageId',
         'AccountFlow', 'PortfolioAction', 'PortfolioAccountId', 'PortfolioConfidence',
         'PortfolioSymbol', 'PortfolioQuantity', 'PortfolioPrice', 'BalanceAccountId',
         'BalanceAccountConfidence', 'PortfolioAccountNumber', 'PortfolioToSymbol',

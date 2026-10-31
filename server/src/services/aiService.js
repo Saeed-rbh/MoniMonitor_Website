@@ -61,6 +61,7 @@ const NullableSignedNumber = z.preprocess(
 ).optional().default(null);
 
 const ExpenseSchema = z.object({
+    Currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).nullable().optional(),
     Amount: z.string(),
     Category: z.enum(['Expense', 'Income', 'Internal', 'Investment', 'Saving']),
     Label: z.enum(ALL_LABELS),
@@ -178,6 +179,7 @@ ${portfolioContext}
 Return ONLY a valid JSON object with NO markdown or backticks.
 
 Fields to extract:
+- "Currency": Explicit three-letter currency code (CAD, USD, etc.) when stated; otherwise null. Never infer USD from a dollar sign.
 - "Amount": Transaction amount as a string without currency symbols (e.g. "45.99").
 - "Category": MUST be exactly one of: "Expense", "Income", "Internal", "Investment", "Saving".
   - Expense: money going OUT for purchases, bills, fees, e-Transfers sent.

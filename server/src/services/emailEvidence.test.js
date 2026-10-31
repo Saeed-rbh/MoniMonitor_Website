@@ -32,10 +32,23 @@ test('a vague TFSA email cannot authorize either of two TFSA accounts', () => {
 });
 
 test('preserves separate balance source and portfolio destination on internal transfers', () => {
-    const row = { Category: 'Internal', BankName: 'Wealthsimple', PortfolioAction: 'TRANSFER',
+    const row = { Currency: 'CAD', Category: 'Internal', BankName: 'Wealthsimple', PortfolioAction: 'TRANSFER',
         BalanceAccountId: 11, PortfolioAccountId: 10 };
     const normalized = normalizeEmailEvidence(row, 'Account: TFSA', []);
     assert.equal(normalized.BalanceAccountId, 11);
     assert.equal(normalized.PortfolioAccountId, 10);
     assert.equal(normalized.IngestionReviewReason, undefined);
+});
+
+
+test('preserves explicit USD and holds an unspecified currency instead of silently posting CAD', () => {
+    assert.equal(normalizeEmailEvidence({}, 'Purchase amount USD 5.00', []).Currency, 'USD');
+    assert.equal(normalizeEmailEvidence({}, 'Purchase $5.00', []).IngestionReviewReason, 'unconfirmed_currency');
+});
+test('crypto send evidence overrides a hallucinated sale without posting cash', () => {
+    const row = { Currency: 'CAD', BankName: 'Wealthsimple', Category: 'Expense', PortfolioAction: 'SELL', PortfolioPrice: 100 };
+    const result = normalizeEmailEvidence(row, 'Your crypto transfer is complete. You sent 0.25 ETH.', []);
+    assert.equal(result.Category, 'Investment'); assert.equal(result.PortfolioAction, 'TRANSFER');
+    assert.equal(result.AccountFlow, 'NONE'); assert.equal(result.PortfolioPrice, null);
+    assert.equal(normalizeEmailEvidence(row, 'You sold 0.25 ETH. Trade confirmation.', []).PortfolioAction, 'SELL');
 });

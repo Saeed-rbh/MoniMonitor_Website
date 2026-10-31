@@ -1,0 +1,69 @@
+// Reviewed bank evidence only. Preview by default; --apply requires a backup
+// made with VACUUM INTO. No API workers or startup migrations are invoked.
+const fs = require('node:fs');
+const path = require('node:path');
+const sqlite3 = require('sqlite3');
+const { open } = require('sqlite');
+const { protectConnection } = require('../src/database/transactionConnection');
+const { mergeTransactionRows } = require('../src/services/transactionDeduplication');
+const { refreshMonthlySummary } = require('../src/database/monthlySummaries');
+async function repair(db, plan, userId) {
+    const changes = [], months = new Set(), now = new Date().toISOString();
+    const get = async id => {
+        const row = await db.get('SELECT * FROM transactions WHERE id=? AND userId=?', [id,userId]);
+        if (!row) throw new Error(`Missing reviewed transaction ${id}`);
+        months.add(row.Timestamp.slice(0,7)); return row;
+    };
+    for (const change of plan.updates) {
+        const before = await get(change.id);
+        if (Object.entries(change.fields).every(([k,v]) => String(before[k]) === String(v))) continue;
+        for (const [k,v] of Object.entries(change.expected)) if (String(before[k]) !== String(v)) throw new Error(`Evidence changed: ${change.id} ${k}`);
+        if (change.reverseAbsorbedPortfolio) {
+            const events = await db.all('SELECT e.*, a.balanceSource, a.balanceAsOf, a.balanceRevision AS currentRevision, a.holdingsSource, a.holdingsAsOf FROM account_balance_events e JOIN investment_accounts a ON a.id=e.accountId WHERE e.sourceTransactionId=? AND e.userId=?',[before.id,userId]);
+            if (!events.length || events.some(e => e.balanceSource !== 'plaid' || e.holdingsSource !== 'plaid' || e.balanceAsOf <= before.Timestamp || e.holdingsAsOf <= before.Timestamp || e.currentRevision <= e.balanceRevision)) throw new Error('Security transfer requires a verified later balance/holdings baseline');
+            await db.run('UPDATE portfolio_transactions SET reversedAt=?, reversalReason=? WHERE sourceTransactionId=? AND userId=? AND reversedAt IS NULL',[now,'Bank CSV confirms security transfer; preserve later provider cash/holdings snapshot',before.id,userId]);
+            await db.run('DELETE FROM account_balance_events WHERE sourceTransactionId=? AND userId=?',[before.id,userId]);
+        } else if (change.fields.Currency && change.fields.Currency !== before.Currency) {
+            const conflict = await db.get(`SELECT e.id FROM account_balance_events e JOIN investment_accounts a ON a.id=e.accountId WHERE e.sourceTransactionId=? AND a.currency<>?
+                UNION ALL SELECT id FROM portfolio_transactions WHERE sourceTransactionId=? AND reversedAt IS NULL LIMIT 1`,[before.id,change.fields.Currency,before.id]);
+            if (conflict) throw new Error('Currency repair requires posting reversal');
+        }
+        const allowed = new Set(['Currency','Amount','AmountMinor','Category','Label','Reason','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','AccountFlow']);
+        if (Object.keys(change.fields).some(k => !allowed.has(k))) throw new Error('Unsupported repair field');
+        await db.run(`UPDATE transactions SET ${Object.keys(change.fields).map(k=>`${k}=?`).join(',')} WHERE id=? AND userId=?`,[...Object.values(change.fields),before.id,userId]);
+        const prior=await db.get('SELECT fieldsJson FROM transaction_overrides WHERE transactionId=? AND userId=?',[before.id,userId]);
+        await db.run(`INSERT INTO transaction_overrides(transactionId,userId,fieldsJson,evidence,updatedAt) VALUES(?,?,?,?,?) ON CONFLICT(transactionId) DO UPDATE SET fieldsJson=excluded.fieldsJson,evidence=excluded.evidence,updatedAt=excluded.updatedAt`,[before.id,userId,JSON.stringify({...JSON.parse(prior?.fieldsJson||'{}'),...change.fields}),JSON.stringify(change.evidence),now]);
+        changes.push({before,after:await get(before.id),evidence:change.evidence});
+    }
+    for (const pair of plan.merges) {
+        const duplicate=await db.get('SELECT * FROM transactions WHERE id=? AND userId=?',[pair.remove,userId]);
+        if (!duplicate) continue;
+        for (const [k,v] of Object.entries(pair.expected)) if(String(duplicate[k])!==String(v)) throw new Error(`Duplicate changed ${duplicate.id} ${k}`);
+        const canonical=await get(pair.keep); months.add(duplicate.Timestamp.slice(0,7));
+        // Never replay a duplicate notification after it has been merged.
+        await db.run("UPDATE telegram_outbox SET status='dead',lastError='Superseded by reviewed bank evidence merge',nextAttemptAt=NULL WHERE transactionId=? AND status IN ('pending','retry')",[duplicate.id]);
+        await mergeTransactionRows(db,canonical,duplicate);
+        changes.push({merged:duplicate,canonicalId:canonical.id,evidence:pair.evidence});
+    }
+    for (const month of months) await refreshMonthlySummary(db,userId,month);
+    if(changes.length) await db.run("INSERT INTO agent_audit_log(userId,action,status,details,createdAt) VALUES(?,'bank_evidence_repair','success',?,?)",[userId,JSON.stringify(changes),now]);
+    return changes;
+}
+async function main() {
+    const [filename,planPath,userId] = process.argv.slice(2).filter(a=>a!=='--apply');
+    if(!filename||!planPath||!userId) throw new Error('Usage: node apply-bank-evidence.js DB PLAN USER [--apply]');
+    const apply=process.argv.includes('--apply');
+    const db=await open({filename,driver:sqlite3.Database});db.configure('busyTimeout',10000);protectConnection(db);
+    try {
+        if(apply) { const backup=path.resolve(`${filename}.before-bank-evidence-${Date.now()}.sqlite`);await db.exec(`VACUUM INTO '${backup.replace(/'/g,"''")}'`);console.log('Backup:',backup); }
+        await db.exec('PRAGMA foreign_keys=ON');
+        let changes;
+        try { await db.withTransaction(async()=>{ changes=await repair(db,JSON.parse(fs.readFileSync(planPath,'utf8')),userId); if(!apply) throw new Error('PREVIEW_ROLLBACK'); }); }
+        catch(e){if(e.message!=='PREVIEW_ROLLBACK')throw e;}
+        console.log(JSON.stringify({applied:apply,updates:changes.filter(c=>c.after).length,merges:changes.filter(c=>c.merged).length}));
+        console.log('Integrity:',await db.get('PRAGMA integrity_check'));
+        const foreign=await db.all('PRAGMA foreign_key_check');if(foreign.length)throw new Error('Foreign key check failed');
+    } finally {await db.close();}
+}
+if(require.main===module)main().catch(e=>{console.error(e);process.exitCode=1});
+module.exports={repair};

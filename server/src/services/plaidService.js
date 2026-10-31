@@ -548,7 +548,9 @@ function canonicalPlaidSecuritySymbol(security = {}) {
     const isUnhedgedQqc = ticker === 'QQCFF' &&
         /\binvesco\b.*\bnasdaq\s*100\b.*\bcad units\b/i.test(name) &&
         !/\bhedged\b/i.test(name);
-    return isUnhedgedQqc ? 'QQC' : ticker || null;
+    const isCanadianVfv = ticker === 'VFVXF' && /vanguard/i.test(name) &&
+        /s\s*&\s*p\s*500/i.test(name) && /index\s+etf/i.test(name);
+    return isUnhedgedQqc ? 'QQC' : isCanadianVfv ? 'VFV' : ticker || null;
 }
 
 async function fetchYahooMarketPrice(ticker, currency = 'CAD', fetchImpl = fetch) {
@@ -1232,6 +1234,18 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
         });
         return { status: 'review_required', transactionId: currencyConflict.id };
     }
+    const accountCurrency = String(account.currency || account.balances?.iso_currency_code || '').toUpperCase();
+    if (accountCurrency && accountCurrency !== appTransaction.Currency) {
+        // An unconfirmed cross-currency amount must not become another ledger
+        // event. Retain the complete source for review, without converting it.
+        const details = { externalId, itemId: item.itemId, reason: 'provider_account_currency_conflict',
+            transaction, context: sourceContext };
+        const serialized = JSON.stringify(details);
+        if (!await db.get("SELECT id FROM agent_audit_log WHERE userId=? AND action='investment_source_quarantined' AND details=?", [userId, serialized])) {
+            await dbService.writeAgentAudit(userId, 'investment_source_quarantined', 'review_required', details);
+        }
+        return { status: 'review_required' };
+    }
     const transactionId = await dbService.addTransaction({ ...appTransaction, userId });
     await linkSource(
         userId, item.itemId, externalId, transactionId, true,
@@ -1245,7 +1259,7 @@ async function findInvestmentCurrencyConflict(userId, incoming) {
         !incoming.PortfolioSymbol || !Number.isFinite(incoming.PortfolioQuantity) || incoming.PortfolioQuantity <= 0) return null;
     const db = await dbService.getDb();
     const candidates = await db.all(`SELECT * FROM transactions WHERE userId = ? AND AmountMinor = ?
-        AND SourceEmailKey IS NOT NULL AND substr(Timestamp, 1, 10) = ?`,
+        AND substr(Timestamp, 1, 10) = ?`,
         [userId, incoming.AmountMinor, String(incoming.Timestamp).slice(0, 10)]);
     const conflicts = candidates.filter(row => row.Currency !== incoming.Currency &&
         Number.isFinite(row.PortfolioQuantity) && row.PortfolioQuantity > 0 &&
@@ -1885,6 +1899,7 @@ async function disconnectItem(userId, itemId) {
 }
 
 module.exports = {
+    importInvestmentTransaction,
     findInvestmentFallbackMatch,
     confirmInvestmentAccount,
     findInvestmentCurrencyConflict,
