@@ -126,7 +126,10 @@ function formatTransactionMessage(tx, action = 'new') {
         if (tx.ReferenceNumber) lines.push(`🔑  *Ref*             \`${tx.ReferenceNumber}\``);
     }
 
-    const date = tx.Timestamp
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(tx.Timestamp || '');
+    const date = dateOnly
+        ? new Date(`${tx.Timestamp}T12:00:00Z`).toLocaleDateString('en-CA', { timeZone: 'UTC', year: 'numeric', month: 'short', day: 'numeric' })
+        : tx.Timestamp
         ? new Date(tx.Timestamp).toLocaleString('en-CA', {
             timeZone: 'America/Toronto',
             year: 'numeric', month: 'short', day: 'numeric',

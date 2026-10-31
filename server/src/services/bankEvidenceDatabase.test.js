@@ -52,3 +52,8 @@ test('reviewed bank imports are idempotent and preserve the existing cash baseli
  assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[account.id])).cashMinor,before.cashMinor);
  assert.ok((await db.get('SELECT balanceReviewReason FROM investment_accounts WHERE id=?',[account.id])).balanceReviewReason);
 });
+
+test('statement dates retain their calendar day without inventing a transaction time',()=>{
+ const text=telegram.formatTransactionMessage({...trade,Amount:9.99,Timestamp:'2026-07-31'});
+ assert.match(text,/Jul 31, 2026/);assert.doesNotMatch(text,/Jul 30|a\\.m|p\\.m/);
+});

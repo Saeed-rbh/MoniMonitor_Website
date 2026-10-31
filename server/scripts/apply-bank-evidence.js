@@ -38,7 +38,11 @@ async function repair(db, plan, userId) {
                 await db.run('UPDATE account_balance_events SET deltaMinor=? WHERE id=?',[delta,event.id]);
             }
         }
-        const allowed = new Set(['Currency','Amount','AmountMinor','Category','Label','Reason','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','AccountFlow']);
+        if(change.fields.Timestamp) {
+            if(!/^\d{4}-\d{2}-\d{2}$/.test(change.fields.Timestamp)) throw new Error('Reviewed statement date required');
+            for(const table of ['account_balance_events','portfolio_transactions']) await db.run(`UPDATE ${table} SET occurredAt=? WHERE sourceTransactionId=? AND userId=?`,[change.fields.Timestamp,before.id,userId]);
+        }
+        const allowed = new Set(['Currency','Amount','AmountMinor','Category','Label','Reason','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','AccountFlow','Timestamp']);
         if (Object.keys(change.fields).some(k => !allowed.has(k))) throw new Error('Unsupported repair field');
         await db.run(`UPDATE transactions SET ${Object.keys(change.fields).map(k=>`${k}=?`).join(',')} WHERE id=? AND userId=?`,[...Object.values(change.fields),before.id,userId]);
         const prior=await db.get('SELECT fieldsJson FROM transaction_overrides WHERE transactionId=? AND userId=?',[before.id,userId]);
