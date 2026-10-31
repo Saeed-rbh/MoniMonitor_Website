@@ -52,3 +52,8 @@ test('crypto send evidence overrides a hallucinated sale without posting cash', 
     assert.equal(result.AccountFlow, 'NONE'); assert.equal(result.PortfolioPrice, null);
     assert.equal(normalizeEmailEvidence(row, 'You sold 0.25 ETH. Trade confirmation.', []).PortfolioAction, 'SELL');
 });
+
+test('received crypto assets are transfers rather than new cash contributions', () => {
+    const normalized=normalizeEmailEvidence({ Currency:'CAD',BankName:'Wealthsimple',Category:'Saving',Label:'Crypto Funding',PortfolioAction:'DEPOSIT',AccountFlow:'IN' },'You received 0.29572 ETH in your account.',[]);
+    assert.equal(normalized.Category,'Investment');assert.equal(normalized.PortfolioAction,'TRANSFER');assert.equal(normalized.AccountFlow,'NONE');
+});

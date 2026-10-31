@@ -17,7 +17,7 @@ function normalizeEmailEvidence(transaction, body, accounts = []) {
     const text = String(body || '');
     // A security send is not an executed sale and must never debit cash.
     if (/wealthsimple/i.test(result.BankName || '') &&
-        /(?:crypto\s+(?:transfer|send|withdrawal)|(?:sent|sending|transfer(?:red)?)\s+(?:of\s+)?[\d.,]+\s+(?:ETH|BTC|SOL)\b)/i.test(text) &&
+        /(?:crypto\s+(?:transfer|send|withdrawal)|(?:sent|sending|received|receiving|transfer(?:red)?)\s+(?:of\s+)?[\d.,]+\s+(?:ETH|BTC|SOL)\b)/i.test(text) &&
         !/\b(?:sold|bought|order filled|trade confirmation)\b/i.test(text)) {
         result.Category = 'Investment'; result.Label = 'Asset Distribution';
         result.PortfolioAction = 'TRANSFER'; result.AccountFlow = 'NONE';
