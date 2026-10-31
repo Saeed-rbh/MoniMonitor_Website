@@ -120,6 +120,9 @@ test('a compatible bank confirmation resolves an ambiguous investment account ho
     const id = await ingest(row);
     await confirmInvestmentAccount(userId, id, { ...row, PortfolioAccountId: account.id,
         BalanceAccountId: account.id, PortfolioQuantity: 0.1334 });
+    assert.equal((await db.get('SELECT resolvedAt FROM transaction_ingestion_reviews WHERE transactionId = ?', [id])).resolvedAt, null);
+    await confirmInvestmentAccount(userId, id, { ...row, PortfolioAccountId: account.id,
+        BalanceAccountId: account.id, PortfolioQuantity: 0.133 });
     assert.ok((await db.get('SELECT resolvedAt FROM transaction_ingestion_reviews WHERE transactionId = ?', [id])).resolvedAt);
     assert.equal((await service.getTransactionById(id, userId)).PortfolioAccountId, account.id);
     assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id = ?', [account.id])).cashMinor, 10000);

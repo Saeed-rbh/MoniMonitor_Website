@@ -186,3 +186,14 @@ test('matches CUPE acronym to Canadian Union of Public Emplo on same account and
     assert.equal(match.referenceMatch, false);
     assert.ok(match.overlapCount >= 1);
 });
+
+
+test('identical recurring trades on consecutive execution dates stay separate', () => {
+    const {matchesInvestmentIdentity,scoreTransactionMatch}=require('./transactionDeduplication');
+    const trade={Category:'Investment',AmountMinor:999,Currency:'CAD',BankName:'Wealthsimple',Account:'S0K7',PortfolioAction:'BUY',PortfolioSymbol:'VFV',PortfolioQuantity:0.0532,Timestamp:'2026-08-20T12:00:00Z'};
+    const next={...trade,Timestamp:'2026-08-21T12:03:00Z',SourceEmailKey:'next-day'};
+    assert.equal(matchesInvestmentIdentity(trade,next),false);
+    assert.equal(scoreTransactionMatch(trade,next,{incomingProvider:'plaid_investments'}),null);
+    assert.equal(matchesInvestmentIdentity(trade,{...trade,PortfolioQuantity:0.0533}),false);
+    assert.equal(matchesInvestmentIdentity(trade,{...trade,PortfolioQuantity:0.053200000001}),true);
+});

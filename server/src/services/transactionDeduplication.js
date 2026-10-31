@@ -296,10 +296,14 @@ function matchesInvestmentIdentity(candidate, incoming) {
         symbol(candidate.PortfolioSymbol) !== symbol(incoming.PortfolioSymbol)) return false;
     if (candidate.PortfolioAccountId && incoming.PortfolioAccountId &&
         Number(candidate.PortfolioAccountId) !== Number(incoming.PortfolioAccountId)) return false;
+    // Daily recurring trades may have identical symbols, quantities and
+    // amounts on adjacent days. A settlement/receipt window is not identity.
+    if (['BUY', 'SELL'].includes(incoming.PortfolioAction) &&
+        String(candidate.Timestamp).slice(0,10) !== String(incoming.Timestamp).slice(0,10)) return false;
     if (['BUY', 'SELL'].includes(incoming.PortfolioAction) &&
         incoming.PortfolioQuantity !== null && incoming.PortfolioQuantity !== undefined &&
         candidate.PortfolioQuantity !== null && candidate.PortfolioQuantity !== undefined &&
-        Math.abs(Number(candidate.PortfolioQuantity) - Number(incoming.PortfolioQuantity)) > 0.0005) return false;
+        Math.abs(Number(candidate.PortfolioQuantity) - Number(incoming.PortfolioQuantity)) > Math.max(1e-8, Math.abs(Number(incoming.PortfolioQuantity)) * 1e-8)) return false;
     return true;
 }
 
