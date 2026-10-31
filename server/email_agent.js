@@ -537,7 +537,7 @@ async function onTelegramUpdate(update) {
             const queryId = update.inline_query.id;
             const queryText = update.inline_query.query.trim();
             const userId = USER_ID;
-            
+
             let results = [];
             if (queryText.length > 0) {
                 const txs = await dbService.getAllTransactionsForUser(userId, { search: queryText, limit: 15 });
@@ -566,7 +566,7 @@ async function onTelegramUpdate(update) {
                     };
                 });
             }
-            
+
             await answerTelegramInlineQuery(queryId, results);
             return;
         }
@@ -593,7 +593,7 @@ async function onTelegramUpdate(update) {
                 }
                 return;
             }
-            
+
             if (data.startsWith('transfer:') || data.startsWith('save:')) {
                 const txId = data.split(':')[1];
                 const db = await dbService.getDb();
@@ -614,7 +614,7 @@ async function onTelegramUpdate(update) {
                     if (!isOut && !tx.AccountFlow) updates.AccountFlow = 'IN';
 
                     await updateAgentTransaction(txId, updates);
-                    
+
                     if (tx.Reason) {
                         await dbService.saveMerchantRule(tx.userId, tx.Reason, 'Internal', 'Internal Transfer');
                     }
@@ -662,7 +662,7 @@ async function onTelegramUpdate(update) {
                         ]
                     ]
                 };
-                
+
                 const text = query.message?.text ? e(query.message.text) + "\n\n*Select a new category:*" : "*Select a new category:*";
                 await editTelegramMessage(messageId, text, replyMarkup);
             }
@@ -671,9 +671,9 @@ async function onTelegramUpdate(update) {
                 const txId = parts[1];
                 const newCat = parts[2];
                 const newLabel = parts[3];
-                
+
                 await updateAgentTransaction(txId, { Category: newCat, Label: newLabel });
-                
+
                 const db = await dbService.getDb();
                 const tx = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [txId, USER_ID]);
                 if (tx && tx.Reason) {
@@ -690,7 +690,7 @@ async function onTelegramUpdate(update) {
                 }
             }
         }
-        
+
         if (update.message && update.message.text) {
             const text = update.message.text;
             const messageId = update.message.message_id;
