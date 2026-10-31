@@ -28,6 +28,16 @@ async function repair(db, plan, userId) {
                 UNION ALL SELECT id FROM portfolio_transactions WHERE sourceTransactionId=? AND reversedAt IS NULL LIMIT 1`,[before.id,change.fields.Currency,before.id]);
             if (conflict) throw new Error('Currency repair requires posting reversal');
         }
+        if (change.fields.AmountMinor !== undefined && !change.reverseAbsorbedPortfolio) {
+            const events = await db.all('SELECT e.*,a.balanceRevision AS currentRevision,a.balanceSource FROM account_balance_events e JOIN investment_accounts a ON a.id=e.accountId WHERE e.sourceTransactionId=? AND e.userId=?',[before.id,userId]);
+            for(const event of events) {
+                const delta = Math.sign(event.deltaMinor) * Number(change.fields.AmountMinor);
+                if(event.balanceSource !== 'plaid' && event.balanceRevision === event.currentRevision) {
+                    await db.run('UPDATE investment_accounts SET cashMinor=cashMinor+?,updatedAt=? WHERE id=? AND userId=?',[delta-event.deltaMinor,now,event.accountId,userId]);
+                }
+                await db.run('UPDATE account_balance_events SET deltaMinor=? WHERE id=?',[delta,event.id]);
+            }
+        }
         const allowed = new Set(['Currency','Amount','AmountMinor','Category','Label','Reason','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','AccountFlow']);
         if (Object.keys(change.fields).some(k => !allowed.has(k))) throw new Error('Unsupported repair field');
         await db.run(`UPDATE transactions SET ${Object.keys(change.fields).map(k=>`${k}=?`).join(',')} WHERE id=? AND userId=?`,[...Object.values(change.fields),before.id,userId]);
@@ -45,6 +55,19 @@ async function repair(db, plan, userId) {
         await mergeTransactionRows(db,canonical,duplicate);
         changes.push({merged:duplicate,canonicalId:canonical.id,evidence:pair.evidence});
     }
+    for (const entry of plan.imports || []) {
+        if(await db.get("SELECT 1 FROM transaction_sources WHERE provider='bank_csv' AND externalId=?",[entry.key])) continue;
+        const fields=entry.fields;
+        if(fields.userId !== userId || !Number.isSafeInteger(fields.AmountMinor) || fields.AmountMinor<=0 || !/^[A-Z]{3}$/.test(fields.Currency)) throw new Error('Invalid bank import');
+        const duplicate=await db.get(`SELECT id FROM transactions WHERE userId=? AND substr(Timestamp,1,10)=? AND AmountMinor=? AND BankName=? AND Account=? AND COALESCE(PortfolioSymbol,'')=?`,[userId,fields.Timestamp.slice(0,10),fields.AmountMinor,fields.BankName,fields.Account,fields.PortfolioSymbol||'']);
+        if(duplicate) throw new Error(`Import requires renewed matching: ${duplicate.id}`);
+        const columns=Object.keys(fields);
+        if(columns.some(k=>!['userId','Amount','AmountMinor','Currency','Category','Label','Reason','Timestamp','Type','Account','BankName','AccountFlow','BalanceAccountId','BalanceAccountConfidence','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','PortfolioAccountId','PortfolioConfidence'].includes(k))) throw new Error('Invalid import field');
+        const result=await db.run(`INSERT INTO transactions(${columns.join(',')}) VALUES(${columns.map(()=>'?').join(',')})`,Object.values(fields));
+        await db.run(`INSERT INTO transaction_sources(provider,externalId,userId,transactionId,ownsTransaction,createdAt,updatedAt,rawPayloadJson,contextPayloadJson,capturedAt) VALUES('bank_csv',?,?,?,1,?,?,?,?,?)`,[entry.key,userId,result.lastID,now,now,JSON.stringify(entry.evidence),JSON.stringify({reviewed:true,posting:'history_only_preserve_balance_baseline'}),now]);
+        await db.run('UPDATE investment_accounts SET balanceReviewReason=? WHERE id=? AND userId=?',['Bank history updated; verify the current balance against the bank before relying on it',fields.BalanceAccountId,userId]);
+        months.add(fields.Timestamp.slice(0,7));changes.push({importedId:result.lastID,evidence:entry.evidence});
+    }
     for (const month of months) await refreshMonthlySummary(db,userId,month);
     if(changes.length) await db.run("INSERT INTO agent_audit_log(userId,action,status,details,createdAt) VALUES(?,'bank_evidence_repair','success',?,?)",[userId,JSON.stringify(changes),now]);
     return changes;
@@ -60,7 +83,7 @@ async function main() {
         let changes;
         try { await db.withTransaction(async()=>{ changes=await repair(db,JSON.parse(fs.readFileSync(planPath,'utf8')),userId); if(!apply) throw new Error('PREVIEW_ROLLBACK'); }); }
         catch(e){if(e.message!=='PREVIEW_ROLLBACK')throw e;}
-        console.log(JSON.stringify({applied:apply,updates:changes.filter(c=>c.after).length,merges:changes.filter(c=>c.merged).length}));
+        console.log(JSON.stringify({applied:apply,updates:changes.filter(c=>c.after).length,merges:changes.filter(c=>c.merged).length,imports:changes.filter(c=>c.importedId).length}));
         console.log('Integrity:',await db.get('PRAGMA integrity_check'));
         const foreign=await db.all('PRAGMA foreign_key_check');if(foreign.length)throw new Error('Foreign key check failed');
     } finally {await db.close();}

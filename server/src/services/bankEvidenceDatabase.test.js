@@ -41,3 +41,14 @@ test('unreviewed evidence holds notification jobs instead of claiming them for d
  const claimed=await service.claimTelegramOutbox('test',50);
  assert.ok(!claimed.some(x=>x.id===job));
 });
+
+test('reviewed bank imports are idempotent and preserve the existing cash baseline',async()=>{
+ const { repair }=require('../../scripts/apply-bank-evidence');
+ const before=await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[account.id]);
+ const plan={updates:[],merges:[],imports:[{key:'fixture-bank-row',fields:{userId:'u',Amount:25,AmountMinor:2500,Currency:'CAD',Category:'Income',Label:'Other Income',Reason:'Bank confirmed deposit',Timestamp:'2026-10-30',BankName:'Example Bank',Account:'1234',BalanceAccountId:account.id},evidence:{amount:25,currency:'CAD'}}]};
+ const changes=await db.withTransaction(()=>repair(db,plan,'u'));
+ assert.equal(changes.length,1);
+ assert.equal((await db.withTransaction(()=>repair(db,plan,'u'))).length,0);
+ assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[account.id])).cashMinor,before.cashMinor);
+ assert.ok((await db.get('SELECT balanceReviewReason FROM investment_accounts WHERE id=?',[account.id])).balanceReviewReason);
+});
