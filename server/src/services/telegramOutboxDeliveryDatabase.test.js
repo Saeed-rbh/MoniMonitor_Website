@@ -1,0 +1,52 @@
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const {EventEmitter}=require('node:events');
+const https=require('node:https');
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'moni-telegram-delivery-'));
+process.env.MONIMONITOR_DB_PATH=path.join(directory,'test.sqlite');
+process.env.TELEGRAM_BOT_TOKEN='12345:test-token';process.env.TELEGRAM_CHAT_ID='42';
+process.env.TELEGRAM_DISABLE_NETWORK='false';
+const service=require('../database/dbService');
+const telegram=require('./telegramService');
+const worker=require('./telegramOutboxWorker');
+let db;
+test.before(async()=>{db=await service.getDb();await service.createUser('u','delivery-owner','unused');});
+test.after(async()=>{await db.close();fs.rmSync(directory,{recursive:true,force:true});});
+test('the durable worker records unchanged content as completed and preserves the message id',async t=>{
+    t.mock.method(https,'request',(_options,callback)=>{
+        const req=new EventEmitter();req.write=()=>{};req.end=()=>{const res=new EventEmitter();res.statusCode=400;callback(res);queueMicrotask(()=>{res.emit('data',JSON.stringify({ok:false,error_code:400,description:'Bad Request: message is not modified: content and markup already match'}));res.emit('end');});};return req;
+    });
+    const transactionId=await service.addTransaction({userId:'u',Amount:12,Category:'Expense',Reason:'Corrected bank purchase',Timestamp:'2026-10-31',TelegramMessageId:123});
+    const id=await service.enqueueTelegramOutbox('editMessage',{messageId:123},{transactionId});
+    await worker.processTelegramOutboxOnce();
+    const row=await db.get('SELECT * FROM telegram_outbox WHERE id=?',[id]);
+    assert.equal(row.status,'processed');assert.ok(row.processedAt);assert.equal(row.lastError,null);
+    assert.equal((await service.getTransactionById(transactionId,'u')).TelegramMessageId,123);
+});
+test('temporary connection errors do not exhaust edit retries, but blocked bot errors do',async t=>{
+    let response={ok:false,retryable:true,error_code:'ETIMEDOUT',description:'Connection timed out'};
+    t.mock.method(telegram,'editTelegramMessage',async()=>response);
+    const id=await service.enqueueTelegramOutbox('editMessage',{messageId:124,text:'correction'});
+    await db.run('UPDATE telegram_outbox SET attempts=7 WHERE id=?',[id]);
+    await worker.processTelegramOutboxOnce();
+    let row=await db.get('SELECT * FROM telegram_outbox WHERE id=?',[id]);
+    assert.equal(row.attempts,8);assert.equal(row.status,'retry');
+    response={ok:false,error_code:429,description:'Too Many Requests',parameters:{retry_after:7200}};
+    await db.run("UPDATE telegram_outbox SET nextAttemptAt='2000-01-01' WHERE id=?",[id]);
+    const before=Date.now();await worker.processTelegramOutboxOnce();
+    row=await db.get('SELECT * FROM telegram_outbox WHERE id=?',[id]);
+    assert.equal(row.attempts,9);assert.equal(row.status,'retry');assert.ok(Date.parse(row.nextAttemptAt)>=before+7200000);
+    response={ok:false,error_code:403,description:'Forbidden: bot was blocked by the user'};
+    await db.run("UPDATE telegram_outbox SET nextAttemptAt='2000-01-01' WHERE id=?",[id]);
+    await worker.processTelegramOutboxOnce();
+    row=await db.get('SELECT * FROM telegram_outbox WHERE id=?',[id]);
+    assert.equal(row.status,'dead');assert.equal(row.lastError,response.description);
+});
+test('failed new sends cannot be completed as an unchanged edit',async t=>{
+    t.mock.method(telegram,'sendTelegramMessage',async()=>({ok:false,error_code:400,description:'Bad Request: message is not modified'}));
+    const id=await service.enqueueTelegramOutbox('sendMessage',{text:'new message'});
+    await worker.processTelegramOutboxOnce();
+    const row=await db.get('SELECT * FROM telegram_outbox WHERE id=?',[id]);
+    assert.equal(row.status,'retry');assert.equal(row.processedAt,null);
+});

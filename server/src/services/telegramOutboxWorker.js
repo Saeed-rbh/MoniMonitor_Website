@@ -51,7 +51,14 @@ async function processTelegramOutboxOnce(limit = 50) {
         if (workersPaused()) break;
         try {
             const result = await deliver(job);
-            if (!result?.ok) throw new Error(result?.description || 'Telegram API did not confirm delivery');
+            if (!result?.ok) {
+                const error = new Error(result?.description || 'Telegram API did not confirm delivery');
+                error.retryable = job.action === 'editMessage' && Boolean(result?.retryable ||
+                    result?.error_code === 429 || Number(result?.error_code) >= 500);
+                const retryAfter = Number(result?.parameters?.retry_after);
+                if (Number.isFinite(retryAfter) && retryAfter > 0) error.retryAfterMs = retryAfter * 1000;
+                throw error;
+            }
             await dbService.completeTelegramOutbox(job.id, WORKER_ID, result?.result?.message_id || null);
             logger.info('telegram_outbox.delivered', { correlationId: `job:telegram:${job.id}`, jobId: job.id, action: job.action });
             state.lastSuccessAt = new Date().toISOString();

@@ -16,16 +16,22 @@ function telegramJsonRequest(method, payload) {
             timeout: TELEGRAM_REQUEST_TIMEOUT_MS,
         }, (res) => {
             let data = '';
+            const interrupted = () => resolve({ ok: false, error_code: 'ECONNRESET', retryable: true,
+                description: `Telegram ${method} response was interrupted` });
+            res.on('aborted', interrupted);
+            res.on('error', interrupted);
             res.on('data', (chunk) => { data += chunk; });
             res.on('end', () => {
                 try { resolve(JSON.parse(data)); }
-                catch { resolve(null); }
+                catch { resolve({ ok: false, error_code: res.statusCode, retryable: res.statusCode >= 500,
+                    description: `Telegram ${method} returned an invalid response (HTTP ${res.statusCode})` }); }
             });
         });
-        req.on('timeout', () => req.destroy(new Error(`Telegram ${method} request timed out`)));
+        req.on('timeout', () => req.destroy(Object.assign(new Error(`Telegram ${method} request timed out`), { code: 'ETIMEDOUT' })));
         req.on('error', (error) => {
             console.error(`[Telegram] ${method} failed:`, error.message);
-            resolve(null);
+            resolve({ ok: false, error_code: error.code || 'NETWORK_ERROR', retryable: true,
+                description: `Telegram ${method} connection failed (${error.code || 'NETWORK_ERROR'})` });
         });
         req.write(body);
         req.end();
@@ -286,7 +292,13 @@ async function editTelegramMessage(messageId, text, replyMarkup = null) {
     };
     if (replyMarkup) payload.reply_markup = replyMarkup;
 
-    return telegramJsonRequest('editMessageText', payload);
+    const response = await telegramJsonRequest('editMessageText', payload);
+    // Telegram confirms that both content and markup already match. A retry
+    // after an uncertain network response must complete rather than dead-letter.
+    if (response?.error_code === 400 && /^Bad Request: message is not modified(?::|$)/i.test(response.description || '')) {
+        return { ok: true, unchanged: true, result: isInlineMessage ? true : { message_id: Number(messageId) } };
+    }
+    return response;
 }
 
 async function setTelegramReaction(messageId, emoji) {

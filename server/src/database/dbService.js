@@ -1781,8 +1781,10 @@ async function failTelegramOutbox(id, workerId, error, now = new Date()) {
     );
     if (!row) return { status: 'lost_lease' };
     const attempts = Number(row.attempts || 0);
-    const dead = attempts >= TELEGRAM_OUTBOX_MAX_ATTEMPTS;
-    const nextAttemptAt = dead ? null : new Date(now.getTime() + retryDelayMs(attempts)).toISOString();
+    const dead = !error?.retryable && attempts >= TELEGRAM_OUTBOX_MAX_ATTEMPTS;
+    const retryAfterMs = Number(error?.retryAfterMs);
+    const delayMs = Math.max(retryDelayMs(attempts), Number.isFinite(retryAfterMs) && retryAfterMs > 0 ? retryAfterMs : 0);
+    const nextAttemptAt = dead ? null : new Date(now.getTime() + delayMs).toISOString();
     await db.run(
         `UPDATE telegram_outbox
          SET status = ?, lastError = ?, nextAttemptAt = ?, leaseOwner = NULL, leaseExpiresAt = NULL
