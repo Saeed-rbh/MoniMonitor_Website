@@ -390,6 +390,7 @@ function toAppTransaction(transaction, account, institutionName, options = {}) {
     if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) return null;
     const classification = classifyPlaidTransaction(transaction, { ...options, account });
     return {
+        PostingStatus: transaction.pending ? 'pending' : 'posted',
         AmountMinor: amountMinor,
         Amount: amountMinor / 100,
         Currency: String(transaction.iso_currency_code || transaction.unofficial_currency_code || 'CAD').toUpperCase(),
@@ -428,7 +429,8 @@ async function findFallbackMatch(userId, appTransaction) {
 }
 
 function plaidCanonicalUpdates(existing, plaidTransaction) {
-    const updates = { Timestamp: plaidTransaction.Timestamp };
+    const updates = { Timestamp: plaidTransaction.Timestamp, PostingStatus: plaidTransaction.PostingStatus,
+        Amount: plaidTransaction.Amount, AmountMinor: plaidTransaction.AmountMinor, Currency: plaidTransaction.Currency };
     for (const column of ['Type', 'Account', 'BankName', 'ReferenceNumber', 'AccountFlow']) {
         if ((existing[column] === null || existing[column] === undefined || existing[column] === '') &&
             plaidTransaction[column] !== null && plaidTransaction[column] !== undefined && plaidTransaction[column] !== '') {
@@ -853,6 +855,14 @@ async function linkSource(userId, itemId, externalId, transactionId, ownsTransac
     });
 }
 
+async function isSupersededAuthorization(db, userId, transactionId, incoming) {
+    if (!incoming.pending) return false;
+    return Boolean(await db.get(`SELECT 1 FROM transaction_sources
+        WHERE userId=? AND transactionId=? AND provider='plaid' AND externalId<>?
+          AND json_valid(rawPayloadJson) AND json_extract(rawPayloadJson,'$.pending')=0 LIMIT 1`,
+        [userId, transactionId, incoming.transaction_id]));
+}
+
 async function importAddedTransaction(userId, item, transaction, accountMap, ownerUsername = null) {
     const db = await dbService.getDb();
     const existingSource = await db.get(
@@ -866,6 +876,7 @@ async function importAddedTransaction(userId, item, transaction, accountMap, own
             userId, item.itemId, transaction.transaction_id, existingSource.transactionId,
             Boolean(existingSource.ownsTransaction), 'plaid', transaction, sourceContext
         );
+        if (await isSupersededAuthorization(db, userId, existingSource.transactionId, transaction)) return {status:'known',transactionId:existingSource.transactionId};
         const existingTransaction = await dbService.getTransactionById(existingSource.transactionId, userId);
         const appTransaction = toAppTransaction(transaction, account, item.institutionName, { ownerUsername });
         if (existingTransaction && appTransaction && existingSource.ownsTransaction && !existingTransaction.SourceEmailKey) {
@@ -873,9 +884,12 @@ async function importAddedTransaction(userId, item, transaction, accountMap, own
                 existingSource.transactionId, userId,
                 preserveLinkedInternalTransfer(existingTransaction, appTransaction)
             );
+            await dbService.syncTransactionAccountBalance(userId, existingSource.transactionId, {accountId:account.appAccountId,confidence:account.appAccountId ? 'HIGH' : null});
             await dbService.reconcileIngestedTransaction(userId, existingSource.transactionId);
             return { status: 'updated', transactionId: existingSource.transactionId };
         }
+        if (existingTransaction && appTransaction) await dbService.updateTransactionForUser(existingSource.transactionId, userId, plaidCanonicalUpdates(existingTransaction, appTransaction));
+        await dbService.syncTransactionAccountBalance(userId, existingSource.transactionId, {accountId:account.appAccountId,confidence:account.appAccountId ? 'HIGH' : null});
         await dbService.reconcileIngestedTransaction(userId, existingSource.transactionId);
         return { status: 'known', transactionId: existingSource.transactionId };
     }
@@ -900,7 +914,7 @@ async function importAddedTransaction(userId, item, transaction, accountMap, own
             await dbService.updateTransactionForUser(
                 match.id, userId, preserveLinkedInternalTransfer(match, appTransaction)
             );
-        } else if (match.SourceEmailKey && !replacement) {
+        } else {
             // The email received time can fall on the previous local calendar
             // day. Once Plaid confirms the event, use its bank transaction date
             // while preserving the email's richer category and description.
@@ -919,6 +933,7 @@ async function importAddedTransaction(userId, item, transaction, accountMap, own
                 [transaction.pending_transaction_id, userId]
             );
         }
+        await dbService.syncTransactionAccountBalance(userId, match.id, {accountId:account.appAccountId,confidence:account.appAccountId ? 'HIGH' : null});
         await dbService.reconcileIngestedTransaction(userId, match.id);
         return { status: replacement ? 'replaced_pending' : 'matched_email', transactionId: match.id };
     }
@@ -952,7 +967,11 @@ async function applyModifiedTransaction(userId, item, transaction, accountMap, o
         userId, item.itemId, transaction.transaction_id, source.transactionId,
         Boolean(source.ownsTransaction), 'plaid', transaction, sourceContext
     );
+    if (await isSupersededAuthorization(db, userId, source.transactionId, transaction)) return {status:'linked_source_preserved'};
     if (!source.ownsTransaction || source.SourceEmailKey) {
+        const confirmed = toAppTransaction(transaction, account, item.institutionName, { ownerUsername });
+        if (confirmed) await dbService.updateTransactionForUser(source.transactionId, userId, plaidCanonicalUpdates(source, confirmed));
+        await dbService.syncTransactionAccountBalance(userId, source.transactionId, {accountId:account.appAccountId,confidence:account.appAccountId ? 'HIGH' : null});
         await dbService.reconcileIngestedTransaction(userId, source.transactionId);
         return { status: 'linked_source_preserved' };
     }
@@ -961,11 +980,7 @@ async function applyModifiedTransaction(userId, item, transaction, accountMap, o
     await dbService.updateTransactionForUser(
         source.transactionId, userId, preserveLinkedInternalTransfer(source, appTransaction)
     );
-    if (account.appAccountId) {
-        await dbService.syncTransactionAccountBalance(userId, source.transactionId, {
-            accountId: account.appAccountId, confidence: 'HIGH',
-        });
-    }
+    await dbService.syncTransactionAccountBalance(userId, source.transactionId, {accountId:account.appAccountId,confidence:account.appAccountId ? 'HIGH' : null});
     await dbService.reconcileIngestedTransaction(userId, source.transactionId);
     return { status: 'updated' };
 }
@@ -1907,6 +1922,8 @@ async function disconnectItem(userId, itemId) {
 }
 
 module.exports = {
+    importAddedTransaction,
+    applyModifiedTransaction,
     importInvestmentTransaction,
     findInvestmentFallbackMatch,
     confirmInvestmentAccount,

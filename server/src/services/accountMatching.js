@@ -79,6 +79,7 @@ function accountMatchScore(transaction, account, preferredAccountId, preferredCo
 }
 
 function transactionBalanceDelta(transaction, account, amountMinor) {
+    if (transaction.PostingStatus && transaction.PostingStatus !== 'posted') return null;
     const isCreditCard = account.accountType === 'Credit Card';
     const accountFlow = String(transaction.AccountFlow || '').toUpperCase();
     if (accountFlow === 'IN') return isCreditCard ? -amountMinor : amountMinor;

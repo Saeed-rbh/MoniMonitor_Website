@@ -5,7 +5,7 @@ function transactionCalendarDate(timestamp) {
     const date = parseTimestamp(timestamp);
     return date ? { year: date.year, month: date.month, day: date.day } : null;
 }
-const { amountMinorOf, isIncome, isExpense } = require('../../../shared/financialSemantics.cjs');
+const { amountMinorOf, isIncome, isExpense, isPosted } = require('../../../shared/financialSemantics.cjs');
 const amountOf = amountMinorOf;
 
 function investmentKind(account) {
@@ -17,6 +17,7 @@ function investmentKind(account) {
 }
 
 function investmentContributionDelta(transaction, investmentAccountIds) {
+    if (!isPosted(transaction)) return 0;
     const accountName = String(transaction?.Account || '').toLowerCase();
     const accountId = Number(transaction?.PortfolioAccountId ?? transaction?.BalanceAccountId);
     const belongsToInvestmentAccount = accountName.includes('tfsa') ||

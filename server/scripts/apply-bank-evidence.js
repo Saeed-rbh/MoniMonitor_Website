@@ -43,11 +43,22 @@ async function repair(db, plan, userId) {
             if(!/^\d{4}-\d{2}-\d{2}$/.test(change.fields.Timestamp)) throw new Error('Reviewed statement date required');
             for(const table of ['account_balance_events','portfolio_transactions']) await db.run(`UPDATE ${table} SET occurredAt=? WHERE sourceTransactionId=? AND userId=?`,[change.fields.Timestamp,before.id,userId]);
         }
-        const allowed = new Set(['Currency','Amount','AmountMinor','Category','Label','Reason','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','AccountFlow','Timestamp','ReferenceNumber','Account']);
+        if (change.fields.PostingStatus && change.fields.PostingStatus !== 'posted') {
+            const events=await db.all('SELECT e.*,a.balanceSource,a.balanceAsOf,a.balanceRevision AS currentRevision FROM account_balance_events e JOIN investment_accounts a ON a.id=e.accountId WHERE e.sourceTransactionId=? AND e.userId=?',[before.id,userId]);
+            for (const event of events) {
+                const covered=['bank_ui','plaid'].includes(event.balanceSource) && Date.parse(event.occurredAt)<=Date.parse(event.balanceAsOf);
+                if (!covered) throw new Error('Non-posted repair requires a verified later balance baseline');
+            }
+            await db.run('DELETE FROM account_balance_events WHERE sourceTransactionId=? AND userId=?',[before.id,userId]);
+            const pairings=await db.all('SELECT * FROM refund_pairings WHERE userId=? AND (refundTransactionId=? OR purchaseTransactionId=?)',[userId,before.id,before.id]);
+            await db.run('DELETE FROM refund_pairings WHERE userId=? AND (refundTransactionId=? OR purchaseTransactionId=?)',[userId,before.id,before.id]);
+            if (pairings.length) changes.push({removedNonPostedPairings:pairings,evidence:change.evidence});
+        }
+        const allowed = new Set(['Currency','Amount','AmountMinor','Category','Label','Reason','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','AccountFlow','Timestamp','ReferenceNumber','Account','PostingStatus']);
         if (Object.keys(change.fields).some(k => !allowed.has(k))) throw new Error('Unsupported repair field');
         await db.run(`UPDATE transactions SET ${Object.keys(change.fields).map(k=>`${k}=?`).join(',')} WHERE id=? AND userId=?`,[...Object.values(change.fields),before.id,userId]);
-        const prior=await db.get('SELECT fieldsJson FROM transaction_overrides WHERE transactionId=? AND userId=?',[before.id,userId]);
-        await db.run(`INSERT INTO transaction_overrides(transactionId,userId,fieldsJson,evidence,updatedAt) VALUES(?,?,?,?,?) ON CONFLICT(transactionId) DO UPDATE SET fieldsJson=excluded.fieldsJson,evidence=excluded.evidence,updatedAt=excluded.updatedAt`,[before.id,userId,JSON.stringify({...JSON.parse(prior?.fieldsJson||'{}'),...change.fields}),JSON.stringify(change.evidence),now]);
+        if (change.fields.PostingStatus && !['posted','pending','unposted'].includes(change.fields.PostingStatus)) throw new Error('Invalid posting status');
+        await lockFields(db,userId,before.id,change.fields,change.evidence,now);
         changes.push({before,after:await get(before.id),evidence:change.evidence});
     }
     for (const pair of plan.merges) {
@@ -75,6 +86,14 @@ async function repair(db, plan, userId) {
         await lockFields(db,userId,result.lastID,locked,entry.evidence,now);
         await db.run('UPDATE investment_accounts SET balanceReviewReason=? WHERE id=? AND userId=?',['Bank history updated; verify the current balance against the bank before relying on it',fields.BalanceAccountId,userId]);
         months.add(fields.Timestamp.slice(0,7));changes.push({importedId:result.lastID,evidence:entry.evidence});
+    }
+    for (const item of plan.reviewResolutions || []) {
+        await get(item.id);
+        const review = await db.get('SELECT * FROM transaction_ingestion_reviews WHERE transactionId=?',[item.id]);
+        if (!review || review.reason !== item.expectedReason || !item.evidence) throw new Error('Reviewed ingestion flag changed');
+        if (review.resolvedAt) continue;
+        await db.run('UPDATE transaction_ingestion_reviews SET resolvedAt=? WHERE transactionId=?',[now,item.id]);
+        changes.push({reviewResolved:item.id,reason:review.reason,evidence:item.evidence});
     }
     changes.push(...await applyAccountReviews(db,plan,userId,now));
     for (const month of months) await refreshMonthlySummary(db,userId,month);

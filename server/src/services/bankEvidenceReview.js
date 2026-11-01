@@ -1,9 +1,12 @@
 // Operations for an explicitly reviewed repair plan. No inference or network IO.
 async function lockFields(db, userId, id, fields, evidence, now) {
     const previous = await db.get('SELECT fieldsJson FROM transaction_overrides WHERE transactionId=? AND userId=?',[id,userId]);
+    const locked = {...JSON.parse(previous?.fieldsJson || '{}'),...fields};
+    // A later bank confirmation must be able to settle an authorization.
+    if (fields.PostingStatus && fields.PostingStatus !== 'posted') delete locked.PostingStatus;
     await db.run(`INSERT INTO transaction_overrides(transactionId,userId,fieldsJson,evidence,updatedAt) VALUES(?,?,?,?,?)
         ON CONFLICT(transactionId) DO UPDATE SET fieldsJson=excluded.fieldsJson,evidence=excluded.evidence,updatedAt=excluded.updatedAt`,
-        [id,userId,JSON.stringify({...JSON.parse(previous?.fieldsJson || '{}'),...fields}),JSON.stringify(evidence),now]);
+        [id,userId,JSON.stringify(locked),JSON.stringify(evidence),now]);
 }
 async function relinkSources(db, userId, transactionId, sources, now) {
     for (const source of sources || []) {

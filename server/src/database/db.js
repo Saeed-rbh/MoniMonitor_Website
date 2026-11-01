@@ -222,6 +222,7 @@ async function getDb() {
             const transactionColumns = await db.all("PRAGMA table_info(transactions)");
             const hasColumn = (name) => transactionColumns.some((column) => column.name === name);
             if (!hasColumn("AmountMinor")) await db.exec("ALTER TABLE transactions ADD COLUMN AmountMinor INTEGER");
+            if (!hasColumn("PostingStatus")) await db.exec("ALTER TABLE transactions ADD COLUMN PostingStatus TEXT NOT NULL DEFAULT 'posted' CHECK(PostingStatus IN ('posted','pending','unposted'))");
             if (!hasColumn("Currency")) await db.exec("ALTER TABLE transactions ADD COLUMN Currency TEXT NOT NULL DEFAULT 'CAD'");
             if (!hasColumn("PortfolioAction")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioAction TEXT");
             if (!hasColumn("PortfolioAccountId")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioAccountId INTEGER");
@@ -465,8 +466,9 @@ async function getDb() {
                         changedAt = CURRENT_TIMESTAMP;
                 END;
 
-                CREATE TRIGGER IF NOT EXISTS trg_monthly_summary_transaction_update
-                AFTER UPDATE OF userId, AmountMinor, Category, Label, Reason, Timestamp, PortfolioAction, Account
+                DROP TRIGGER IF EXISTS trg_monthly_summary_transaction_update;
+                CREATE TRIGGER trg_monthly_summary_transaction_update
+                AFTER UPDATE OF userId, AmountMinor, Category, Label, Reason, Timestamp, PortfolioAction, Account, AccountFlow, Currency, PostingStatus
                 ON transactions
                 BEGIN
                     INSERT INTO monthly_summary_dirty (userId, month, revision, changedAt)

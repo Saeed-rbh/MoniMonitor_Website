@@ -1,3 +1,4 @@
+const { isPosted } = require('../../../shared/financialSemantics.cjs');
 const { refreshTransactionMonths } = require('../database/monthlySummaries');
 
 function normalizeIdentity(value) {
@@ -85,6 +86,7 @@ function areAccountsCompatible(purchase, refund) {
 }
 
 function isRefundTransaction(transaction) {
+    if (!isPosted(transaction)) return false;
     if (!transaction) return false;
     if (String(transaction.AccountFlow || '').toUpperCase() === 'OUT' || transaction.Category === 'Expense') return false;
     if (transaction.Category === 'Internal' || /^XFER-/i.test(String(transaction.ReferenceNumber || ''))) {
@@ -140,6 +142,7 @@ async function findPurchaseCandidateForRefund(db, userId, refund, options = {}) 
     let ambiguous = false;
 
     for (const candidate of candidates) {
+        if (!isPosted(candidate)) continue;
         if (!areAccountsCompatible(candidate, refund)) continue;
         if (String(candidate.Currency || 'CAD').toUpperCase() !== String(refund.Currency || 'CAD').toUpperCase()) continue;
 
@@ -307,7 +310,7 @@ async function getRefundPairingForTransaction(db, userId, transactionId) {
  * Handles pairing for any newly ingested transaction (whether it is a refund or an expense).
  */
 async function pairTransactionOnIngestion(db, userId, transaction, options = {}) {
-    if (!transaction || !userId) return null;
+    if (!transaction || !userId || !isPosted(transaction)) return null;
     if (isRefundTransaction(transaction)) {
         return await pairRefundTransaction(db, userId, transaction, options);
     }

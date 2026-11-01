@@ -15,6 +15,11 @@ function sourceEventTimestamp(body = '') {
 function normalizeEmailEvidence(transaction, body, accounts = []) {
     const result = { ...transaction };
     const text = String(body || '');
+    // Card alerts describe authorizations, not proof of bank settlement.
+    if (/From:[^\n]*rbcroyalbankalerts@alerts\.rbc\.com/i.test(text) &&
+        /credit[ -]?card|visa/i.test(String(result.Type || '') + ' ' + text.match(/Subject:[^\n]*/i)?.[0])) {
+        result.PostingStatus = 'pending';
+    }
     if (/wealthsimple/i.test(result.BankName || '') && /Subject:\s*Direct deposit received/i.test(text)) {
         // These notifications identify chequing, but omit an account number.
         // Random digits in footer/tracking URLs are never account evidence.

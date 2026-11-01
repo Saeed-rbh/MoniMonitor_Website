@@ -16,9 +16,9 @@ async function refreshMonthlySummary(db, userId, month, expectedRevision = null)
     nextMonthDate.setUTCMonth(nextMonthDate.getUTCMonth() + 1);
     const nextMonth = nextMonthDate.toISOString().slice(0, 10);
     const transactions = await db.all(
-        `SELECT AmountMinor, Category, Label, Reason, Account, PortfolioAction, Type, AccountFlow
+        `SELECT AmountMinor, Category, Label, Reason, Account, PortfolioAction, Type, AccountFlow, PostingStatus
          FROM transactions
-         WHERE userId = ? AND Timestamp >= ? AND Timestamp < ? AND COALESCE(Currency, 'CAD') = 'CAD'`,
+         WHERE userId = ? AND Timestamp >= ? AND Timestamp < ? AND COALESCE(Currency, 'CAD') = 'CAD' AND PostingStatus = 'posted'`,
         [userId, start, nextMonth]
     );
 

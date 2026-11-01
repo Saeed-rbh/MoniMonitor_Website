@@ -34,7 +34,12 @@ function isRefundMarker(transaction = {}) {
         /^(refund|reversal|chargeback)\b/i.test(String(transaction.Reason || '').trim());
 }
 
+function isPosted(transaction = {}) {
+    return !transaction.PostingStatus || transaction.PostingStatus === 'posted';
+}
+
 function isIncome(transaction = {}) {
+    if (!isPosted(transaction)) return false;
     if (isInternalTransfer(transaction)) return false;
     const category = normalize(transaction.Category);
     if (category) return category === 'income';
@@ -42,6 +47,7 @@ function isIncome(transaction = {}) {
 }
 
 function isExpense(transaction = {}) {
+    if (!isPosted(transaction)) return false;
     if (isInternalTransfer(transaction) || isRefundMarker(transaction)) return false;
     const description = String(transaction.Reason || '').trim();
     if (/credit[ -]?card payment/i.test(description)) return false;
@@ -62,6 +68,7 @@ function parseInternalTransfer(reason) {
 }
 
 function getSavingEffectMinor(transaction) {
+    if (!isPosted(transaction)) return 0;
     const amountMinor = amountMinorOf(transaction);
     if (['income', 'expense'].includes(normalize(transaction?.Category))) return 0;
 
@@ -93,4 +100,4 @@ function getSavingEffectMinor(transaction) {
     return 0;
 }
 
-module.exports = { getSavingEffectMinor, parseInternalTransfer, toMinorUnits, amountMinorOf, isIncome, isExpense, isInternalTransfer };
+module.exports = { isPosted, getSavingEffectMinor, parseInternalTransfer, toMinorUnits, amountMinorOf, isIncome, isExpense, isInternalTransfer };

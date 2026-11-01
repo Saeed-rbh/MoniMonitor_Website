@@ -142,7 +142,12 @@ async function getAllTransactionsForUser(userId, filters = {}) {
     return withDisplayAmounts(await db.all(query, params));
 }
 
+function validatePostingStatus(value) {
+    if (value !== undefined && !['posted', 'pending', 'unposted'].includes(value)) throw new Error('Invalid transaction posting status');
+}
+
 async function addTransaction(transaction) {
+    validatePostingStatus(transaction.PostingStatus);
     if (!parseTimestamp(transaction.Timestamp)) throw new Error('Invalid transaction timestamp');
     const db = await getDb();
     const result = await db.run(
@@ -151,8 +156,8 @@ async function addTransaction(transaction) {
              Type, Account, BankName, ReferenceNumber, Frequency, TelegramMessageId, PortfolioAction,
              PortfolioAccountId, PortfolioConfidence, PortfolioSymbol, PortfolioQuantity, PortfolioPrice,
              BalanceAccountConfidence, PortfolioAccountNumber, PortfolioToSymbol, PortfolioToQuantity, AccountFlow,
-             SourceEmailKey)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             SourceEmailKey, PostingStatus)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             transaction.userId,
             (Number.isSafeInteger(transaction.AmountMinor) ? transaction.AmountMinor : toMinorUnits(transaction.Amount)) / 100,
@@ -181,6 +186,7 @@ async function addTransaction(transaction) {
             transaction.PortfolioToQuantity || null,
             transaction.AccountFlow || null,
             transaction.SourceEmailKey || null,
+            transaction.PostingStatus || 'posted',
         ]
     );
     if (transaction.BalanceAccountId !== undefined && transaction.BalanceAccountId !== null) {
@@ -264,6 +270,7 @@ async function getTransactionById(id, userId) {
 }
 
 function normalizeTransactionUpdate(updates) {
+    validatePostingStatus(updates.PostingStatus);
     if (updates.Timestamp !== undefined && !parseTimestamp(updates.Timestamp)) throw new Error('Invalid transaction timestamp');
     const normalized = { ...updates };
     if (normalized.Amount !== undefined) {
@@ -1451,10 +1458,11 @@ async function getSummaryForUser(userId) {
     const db = await getDb();
     const [byMonth, byLabel] = await Promise.all([
         getStoredMonthlySummaries(db, userId),
-        db.all("SELECT Label, Category, Type, Reason, AccountFlow, AmountMinor FROM transactions WHERE userId = ? AND COALESCE(Currency, 'CAD') = 'CAD'", [userId]),
+        db.all("SELECT Label, Category, Type, Reason, AccountFlow, AmountMinor, PostingStatus FROM transactions WHERE userId = ? AND COALESCE(Currency, 'CAD') = 'CAD'", [userId]),
     ]);
     const labels = new Map();
     for (const transaction of byLabel) {
+        if (transaction.PostingStatus && transaction.PostingStatus !== 'posted') continue;
         const income = isIncome(transaction);
         const expense = isExpense(transaction);
         if (['Income', 'Expense'].includes(transaction.Category) && !income && !expense) continue;

@@ -36,6 +36,7 @@ async function createTestDb() {
             Amount REAL,
             AmountMinor INTEGER,
             Currency TEXT,
+            PostingStatus TEXT NOT NULL DEFAULT 'posted',
             Category TEXT,
             Label TEXT,
             Reason TEXT,

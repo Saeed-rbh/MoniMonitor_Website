@@ -180,7 +180,7 @@ async function runTimesFm(dates, values) {
 async function getExpenseForecast(userId) {
     const db = await dbService.getDb();
     const transactions = await db.all(
-        `SELECT Amount, AmountMinor, Currency, Category, Type, AccountFlow, Timestamp
+        `SELECT Amount, AmountMinor, Currency, Category, Type, AccountFlow, PostingStatus, Timestamp
          FROM transactions WHERE userId = ? ORDER BY Timestamp ASC`,
         [userId]
     );
