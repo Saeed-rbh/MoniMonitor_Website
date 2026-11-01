@@ -137,3 +137,18 @@ test('reviewed historical account assignments preserve cash, reject wrong identi
  assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[account.id])).cashMinor,before);
  assert.equal((await db.withTransaction(()=>repair(db,plan,'u'))).length,0);
 });
+test('merging reviewed historical portfolio duplicates preserves later verified bank cash and holdings',async()=>{
+ const {repair}=require('../../scripts/apply-bank-evidence');
+ const target=await service.createInvestmentAccount('u',{name:'Reviewed duplicate fixture',institution:'Wealthsimple',accountType:'TFSA',accountRef:'DUP1',currency:'CAD',cashMinor:500});
+ await service.upsertInvestmentHolding('u',target.id,{symbol:'DUP',quantity:1,currency:'CAD',priceMinor:1000,averageCostMinor:1000});
+ await db.run("UPDATE investment_accounts SET balanceSource='bank_ui',holdingsSource='bank_ui',balanceAsOf='2026-10-31',holdingsAsOf='2026-10-31' WHERE id=?",[target.id]);
+ const ids=[];
+ for(let i=0;i<2;i++) {
+  const id=await service.addTransaction({...trade,userId:'u',Account:'DUP1',PortfolioAccountId:target.id});ids.push(id);
+  await db.run("INSERT INTO portfolio_transactions(userId,accountId,sourceTransactionId,kind,amountMinor,symbol,quantity,occurredAt) VALUES(?,?,?,'BUY',1000,'DUP',1,'2026-10-13')",['u',target.id,id]);
+ }
+ await db.withTransaction(()=>repair(db,{updates:[],merges:[{keep:ids[0],remove:ids[1],expected:{AmountMinor:1000},evidence:'One bank execution, two import copies'}]},'u'));
+ assert.equal((await db.get('SELECT COUNT(*) n FROM portfolio_transactions WHERE accountId=?',[target.id])).n,1);
+ assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[target.id])).cashMinor,500);
+ assert.equal((await db.get('SELECT quantity FROM investment_holdings WHERE accountId=?',[target.id])).quantity,1);
+});

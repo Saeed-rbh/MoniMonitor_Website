@@ -456,7 +456,11 @@ async function mergeTransactionRows(db, canonical, duplicate) {
                     }
                 } else if (!row.reversedAt) {
                     const account = await db.get('SELECT * FROM investment_accounts WHERE id = ?', [row.accountId]);
-                    if (account && (account.balanceSource !== 'plaid' || account.holdingsSource !== 'plaid')) {
+                    const coveredByBankReview = account?.balanceSource === 'bank_ui' && account.holdingsSource === 'bank_ui' &&
+                        account.balanceAsOf && account.holdingsAsOf && row.occurredAt &&
+                        new Date(row.occurredAt).getTime() <= new Date(account.balanceAsOf).getTime() &&
+                        new Date(row.occurredAt).getTime() <= new Date(account.holdingsAsOf).getTime();
+                    if (account && (account.balanceSource !== 'plaid' || account.holdingsSource !== 'plaid') && !coveredByBankReview) {
                         throw new Error('Duplicate applied portfolio activity requires an audited reversal before merging');
                     }
                 }

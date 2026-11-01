@@ -56,7 +56,7 @@ async function applyAccountReviews(db, plan, userId, now) {
         const bankRef=normalize(item.bankAccountRef),accountRef=normalize(account?.accountRef);
         if(!row || !account || !accountRef || (!bankRef.endsWith(accountRef) && !bankRef.replace(/(?:CAD|USD)$/,'').endsWith(accountRef)) || bankRef.length<accountRef.length ||
             account.institution!==item.institution || row.Currency!==account.currency ||
-            !item.evidence || !account.balanceAsOf || row.Timestamp.slice(0,10)>account.balanceAsOf.slice(0,10)) {
+            !item.evidence || !account.balanceAsOf || !(new Date(row.Timestamp).getTime()<=new Date(account.balanceAsOf).getTime())) {
             throw new Error('Reviewed historical account assignment lacks a verified identity/baseline');
         }
         const fields={Account:account.accountRef,PortfolioAccountNumber:item.bankAccountRef,Currency:account.currency};
@@ -72,7 +72,7 @@ async function applyAccountReviews(db, plan, userId, now) {
             for(const event of events) {
                 if(event.accountId===account.id) continue;
                 const old=await db.get('SELECT * FROM investment_accounts WHERE id=? AND userId=?',[event.accountId,userId]);
-                if(!old?.balanceAsOf || event.occurredAt.slice(0,10)>old.balanceAsOf.slice(0,10)) throw new Error('Account assignment would move an unabsorbed posting');
+                if(!old?.balanceAsOf || !(new Date(event.occurredAt).getTime()<=new Date(old.balanceAsOf).getTime())) throw new Error('Account assignment would move an unabsorbed posting');
                 await db.run(`UPDATE ${table} SET accountId=?${table==='account_balance_events'?',balanceRevision=?':''} WHERE id=?`,
                     table==='account_balance_events'?[account.id,account.balanceRevision,event.id]:[account.id,event.id]);
             }
