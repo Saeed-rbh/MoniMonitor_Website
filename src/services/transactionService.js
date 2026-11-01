@@ -37,7 +37,7 @@ export const getInternalTransferKey = (transaction) => {
 };
 
 export const getSavingEffect = (transaction) => semantics.getSavingEffectMinor(transaction) / 100;
-export const getSaveInvestActivity = (transaction) => transaction?.Category === 'Investment'
+export const getSaveInvestActivity = (transaction) => !semantics.isPosted(transaction) ? 0 : transaction?.Category === 'Investment'
   ? semantics.amountMinorOf(transaction) / 100 : Math.abs(getSavingEffect(transaction));
 
 export const isSaveInvestTransaction = (transaction) =>
@@ -46,7 +46,7 @@ export const isSaveInvestTransaction = (transaction) =>
 export const uniqueInternalTransfers = (transactions) => {
   const seen = new Set();
   return (transactions || []).filter((transaction) => {
-    if (!isInternalTransfer(transaction)) return false;
+    if (!semantics.isPosted(transaction) || !isInternalTransfer(transaction)) return false;
     const key = getInternalTransferKey(transaction);
     if (seen.has(key)) return false;
     seen.add(key);
@@ -155,7 +155,7 @@ export const groupTransactionsByMonth = (transactions) => {
     const label = transaction.Label;
     const amount = semantics.amountMinorOf(transaction);
 
-    if (isInternalTransfer(transaction)) {
+    if (semantics.isPosted(transaction) && isInternalTransfer(transaction)) {
       const transferKey = getInternalTransferKey(transaction);
       if (!groupedTransactions[key].internalTransferKeys.has(transferKey)) {
         groupedTransactions[key].internalTransferKeys.add(transferKey);

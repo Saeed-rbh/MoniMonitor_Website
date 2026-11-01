@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAccountTransactions } from '../pages/SaveInvest/accountStatistics';
+import { getAccountTransactions, buildAccountStatistics } from '../pages/SaveInvest/accountStatistics';
 import {
   buildDashboardBootstrapData,
   getNetAmounts,
@@ -200,4 +200,22 @@ describe("groupTransactionsByMonth", () => {
 
     expect(uniqueInternalTransfers(transfers).map(({ id }) => id)).toEqual([1, 3]);
   });
+});
+
+it('keeps authorization history visible while excluding it from all financial totals', () => {
+  const base = { Timestamp:'2026-10-20', Currency:'CAD', BalanceAccountId:9, Amount:10 };
+  const rows = [
+    {...base,id:1,Category:'Expense',PostingStatus:'pending'},
+    {...base,id:2,Category:'Income',PostingStatus:'unposted'},
+    {...base,id:3,Category:'Internal',Label:'Internal Transfer',AccountFlow:'IN',PostingStatus:'pending'},
+    {...base,id:4,Category:'Investment',PostingStatus:'pending'},
+    {...base,id:5,Category:'Expense',PostingStatus:'posted'},
+  ];
+  const grouped=groupTransactionsByMonth(rows), month=grouped['2026-10'];
+  expect(month.transactions).toHaveLength(5);
+  expect(month.totalExpense).toBe(10);expect(month.totalIncome).toBe(0);
+  expect(month.totalInternal).toBe(0);expect(month.totalSaveInvest).toBe(0);
+  expect(uniqueInternalTransfers(rows)).toHaveLength(0);
+  const [account]=buildAccountStatistics([{id:9,currency:'CAD'}],grouped);
+  expect(account.moneyInMinor).toBe(0);expect(account.moneyOutMinor).toBe(1000);
 });

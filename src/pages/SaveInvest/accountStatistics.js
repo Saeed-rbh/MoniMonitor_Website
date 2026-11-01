@@ -1,3 +1,5 @@
+import semantics from '../../../shared/financialSemantics.cjs';
+
 const MONTH_KEY = /^\d{4}-\d{2}$/;
 
 const normalize = (value) => String(value || "")
@@ -40,6 +42,7 @@ export const getAccountTransactions = (account, allTransactions = {}, accounts =
     .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp));
 
 export const getAccountTransactionFlow = (transaction) => {
+  if (!semantics.isPosted(transaction)) return null;
   const explicitFlow = String(transaction?.AccountFlow || "").toUpperCase();
   if (explicitFlow === "IN" || explicitFlow === "OUT") return explicitFlow;
   const category = String(transaction?.Category || "").toLowerCase();
