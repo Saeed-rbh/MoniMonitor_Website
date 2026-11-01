@@ -48,6 +48,45 @@ async function applyAccountReviews(db, plan, userId, now) {
         await db.run("INSERT INTO balance_snapshots(userId,accountId,cashMinor,currency,source,asOf,createdAt) VALUES(?,?,?,?,'bank_ui',?,?)",[userId,result.lastID,f.cashMinor,f.currency,item.asOf,now]);
         changes.push({accountCreated:result.lastID,fields:f,evidence:item.evidence});
     }
+    for(const item of plan.transactionAccountAssignments || []) {
+        const candidates=await db.all('SELECT * FROM investment_accounts WHERE userId=? AND '+(item.accountId?'id=?':'accountRef=? AND institution=?'),item.accountId?[userId,item.accountId]:[userId,item.accountRef,item.institution]);
+        const account=candidates.length===1?candidates[0]:null;
+        const row=await db.get('SELECT * FROM transactions WHERE id=? AND userId=?',[item.transactionId,userId]);
+        const normalize=value=>String(value||'').replace(/[^a-z0-9]/gi,'').toUpperCase();
+        const bankRef=normalize(item.bankAccountRef),accountRef=normalize(account?.accountRef);
+        if(!row || !account || !accountRef || (!bankRef.endsWith(accountRef) && !bankRef.replace(/(?:CAD|USD)$/,'').endsWith(accountRef)) || bankRef.length<accountRef.length ||
+            account.institution!==item.institution || row.Currency!==account.currency ||
+            !item.evidence || !account.balanceAsOf || row.Timestamp.slice(0,10)>account.balanceAsOf.slice(0,10)) {
+            throw new Error('Reviewed historical account assignment lacks a verified identity/baseline');
+        }
+        const fields={Account:account.accountRef,PortfolioAccountNumber:item.bankAccountRef,Currency:account.currency};
+        if(item.balance) {fields.BalanceAccountId=account.id;fields.BalanceAccountConfidence='HIGH';}
+        if(item.portfolio) {fields.PortfolioAccountId=account.id;fields.PortfolioConfidence='HIGH';}
+        if(!item.balance && !item.portfolio) throw new Error('Account assignment has no ledger target');
+        if(Object.entries(fields).every(([key,value])=>String(row[key])===String(value))) continue;
+        for(const[key,value]of Object.entries(item.expected||{})) if(String(row[key])!==String(value)) throw new Error('Reviewed account assignment changed');
+        // Historical postings are already included in the independently verified bank
+        // baseline. Reassign their provenance without replaying cash or holdings.
+        for(const table of [...(item.balance?['account_balance_events']:[]),...(item.portfolio?['portfolio_transactions']:[])]) {
+            const events=await db.all(`SELECT * FROM ${table} WHERE sourceTransactionId=? AND userId=?`,[row.id,userId]);
+            for(const event of events) {
+                if(event.accountId===account.id) continue;
+                const old=await db.get('SELECT * FROM investment_accounts WHERE id=? AND userId=?',[event.accountId,userId]);
+                if(!old?.balanceAsOf || event.occurredAt.slice(0,10)>old.balanceAsOf.slice(0,10)) throw new Error('Account assignment would move an unabsorbed posting');
+                await db.run(`UPDATE ${table} SET accountId=?${table==='account_balance_events'?',balanceRevision=?':''} WHERE id=?`,
+                    table==='account_balance_events'?[account.id,account.balanceRevision,event.id]:[account.id,event.id]);
+            }
+        }
+        await db.run(`UPDATE transactions SET ${Object.keys(fields).map(key=>`${key}=?`).join(',')} WHERE id=? AND userId=?`,[...Object.values(fields),row.id,userId]);
+        await lockFields(db,userId,row.id,fields,item.evidence,now);
+        if(item.resolveReviewReason) {
+            if(!['ambiguous_account','provider_currency_conflict'].includes(item.resolveReviewReason)) throw new Error('Unsupported reviewed account flag');
+            const review=await db.get('SELECT reason,resolvedAt FROM transaction_ingestion_reviews WHERE transactionId=?',[row.id]);
+            if(!review || review.reason!==item.resolveReviewReason) throw new Error('Reviewed ingestion flag changed');
+            await db.run('UPDATE transaction_ingestion_reviews SET resolvedAt=? WHERE transactionId=?',[now,row.id]);
+        }
+        changes.push({accountAssignmentBefore:row,accountId:account.id,fields,evidence:item.evidence});
+    }
     for(const item of plan.holdingSnapshots || []) {
         const account=await db.get('SELECT * FROM investment_accounts WHERE id=? AND userId=?',[item.accountId,userId]);
         if(!account) throw new Error('Holding account missing');

@@ -114,3 +114,26 @@ test('verified previously untracked accounts add a bank balance without invented
  assert.equal((await db.get('SELECT COUNT(*) n FROM transactions')).n,count);
  assert.equal((await db.withTransaction(()=>repair(db,plan,'u'))).length,0);
 });
+
+test('a concrete unknown bank reference cannot fall back to the unique symbol holder',async()=>{
+ await service.upsertInvestmentHolding('u',account.id,{symbol:'IDENTITY',quantity:1,currency:'CAD',priceMinor:100,averageCostMinor:100});
+ const result=await service.resolvePortfolioActivityAccount('u',{BankName:'Wealthsimple',Account:'TFSA',PortfolioAccountNumber:'WK4J413K3CAD'},{action:'BUY',symbol:'IDENTITY'});
+ assert.equal(result.account,null);assert.equal(result.reason,'unmatched_account_reference');
+ const known=await service.resolvePortfolioActivityAccount('u',{BankName:'Wealthsimple',Account:'TFSA',PortfolioAccountNumber:'HQ656S0K7CAD'},{action:'BUY',symbol:'IDENTITY'});
+ assert.equal(known.account.id,account.id);
+});
+test('reviewed historical account assignments preserve cash, reject wrong identities, and are idempotent',async()=>{
+ const {repair}=require('../../scripts/apply-bank-evidence');
+ await db.run("UPDATE investment_accounts SET balanceSource='bank_ui',balanceAsOf='2026-10-31T23:00:00Z' WHERE id=?",[account.id]);
+ const id=await service.addTransaction({...trade,userId:'u',Account:null,PortfolioAccountId:null,BalanceAccountId:null});
+ await db.run("INSERT INTO transaction_ingestion_reviews(transactionId,reason,createdAt) VALUES(?,'ambiguous_account',?)",[id,new Date().toISOString()]);
+ const before=(await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[account.id])).cashMinor;
+ const assignment={transactionId:id,accountId:account.id,bankAccountRef:'HQ656S0K7CAD',institution:'Wealthsimple',balance:true,portfolio:true,resolveReviewReason:'ambiguous_account',expected:{Account:null,PortfolioAccountId:null,BalanceAccountId:null},evidence:'Bank execution date, symbol, amount and precise quantity identify this account'};
+ await assert.rejects(()=>db.withTransaction(()=>repair(db,{updates:[],merges:[],transactionAccountAssignments:[{...assignment,bankAccountRef:'WK4J413K3CAD'}]},'u')),/verified identity/);
+ const plan={updates:[],merges:[],transactionAccountAssignments:[assignment]};
+ assert.equal((await db.withTransaction(()=>repair(db,plan,'u'))).length,1);
+ assert.equal((await service.getTransactionById(id,'u')).BalanceAccountId,account.id);
+ assert.ok((await db.get('SELECT resolvedAt FROM transaction_ingestion_reviews WHERE transactionId=?',[id])).resolvedAt);
+ assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[account.id])).cashMinor,before);
+ assert.equal((await db.withTransaction(()=>repair(db,plan,'u'))).length,0);
+});

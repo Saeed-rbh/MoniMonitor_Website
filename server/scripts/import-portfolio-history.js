@@ -5,6 +5,7 @@ const path = require('path');
 const { getDb } = require('../src/database/db');
 const { accountMatchScore, transactionBalanceDelta } = require('../src/services/accountMatching');
 const { CATEGORY_LABELS } = require('../src/services/transactionCategories');
+const { validateLegacyPortfolioAccountReferences } = require('../src/services/legacyPortfolioIdentity');
 
 const inputPath = process.argv[2] ? path.resolve(process.argv[2]) : null;
 const replaceAll = process.argv.includes('--replace-all');
@@ -53,6 +54,7 @@ function parseTransactionFile(filePath) {
 
 let rows = parseTransactionFile(inputPath);
 if (!Array.isArray(rows) || !rows.length) throw new Error('The transaction file must be a non-empty JSON array');
+validateLegacyPortfolioAccountReferences(rows);
 
 if (replaceAll) {
     for (const row of rows) {

@@ -1062,6 +1062,13 @@ async function resolvePortfolioActivityAccount(userId, source = {}, activity = {
         return { account: ranked[0].account, reason: 'identity_match' };
     }
 
+    // A concrete but unknown bank reference must not fall back to another
+    // account merely because it holds the same ETF or has the same tax type.
+    if (normalizedReference.length >= 4 && /\d/.test(normalizedReference) &&
+        normalizedReference !== normalizedType) {
+        return { account: null, reason: 'unmatched_account_reference' };
+    }
+
     const normalizedSymbol = String(activity.symbol || source.PortfolioSymbol || '').trim().toUpperCase();
     if (isTrade && normalizedSymbol) {
         const holders = await db.all(
