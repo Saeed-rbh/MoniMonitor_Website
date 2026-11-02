@@ -24,8 +24,6 @@
   .transaction-search-field { transition: none; }
 }
 
-.transaction-search button.transaction-search-result { width: 100%; border: 1px solid rgba(255, 255, 255, .1); border-radius: 18px; background: rgba(255, 255, 255, .07); box-shadow: 0 2px 8px rgba(0, 0, 0, .06); padding: 12px; text-align: left; min-height: 62px; }
-.transaction-search button.transaction-search-result:hover { background: rgba(255, 255, 255, .11); }
 
 
 .transaction-search-results { display: flex; flex-direction: column; gap: 10px; flex: 0 0 auto; padding: 0 3px; }
@@ -36,7 +34,6 @@
 .transaction-search-active-filters:empty { display: none; }
 .transaction-search-field button[aria-expanded="true"] { background: var(--Bc-4); color: var(--Bc-1); }
 .transaction-search-date-group { margin: 18px 0 6px; font-size: .75rem; font-weight: 500; color: var(--Ac-2); }
-.transaction-search-result mark { color: var(--Ac-1); background: var(--Bc-3); border-radius: 3px; }
 
 .transaction-date-popup-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .transaction-date-popup h2 { margin: 0; font-size: 1.1rem; font-weight: 600; }

@@ -1,12 +1,26 @@
-.AccountTransactions_Row {
+.TransactionCard.AccountTransactions_Row {
   min-height: 62px;
-  padding: 8px 4px;
-  border-top: 1px solid var(--Ac-4);
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, .1);
   display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   box-sizing: border-box;
+  width: 100%;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .07);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+  font: inherit;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+  user-select: none;
+}
+
+.TransactionCard.AccountTransactions_Row:active {
+  background: var(--Ac-4);
 }
 
 .AccountTransactions_Icon {
@@ -17,6 +31,7 @@
   color: var(--Bc-1);
   display: grid;
   place-items: center;
+  flex-shrink: 0;
 }
 
 .AccountTransactions_Icon svg {
@@ -24,37 +39,53 @@
   height: 17px;
 }
 
-.AccountTransactions_Reason,
-.AccountTransactions_Amount {
+.AccountTransactions_Reason {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .AccountTransactions_Reason strong {
   display: block;
+  width: 100%;
   overflow: hidden;
   color: var(--Ac-1);
   font-size: 0.76rem;
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
-.AccountTransactions_Reason span,
-.AccountTransactions_Amount span {
+.AccountTransactions_Reason span {
   display: block;
   margin-top: 3px;
   color: var(--Ac-3);
-  font-size: 0.57rem;
+  font-size: 0.7rem;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .AccountTransactions_Amount {
   text-align: right;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
 }
 
 .AccountTransactions_Amount strong {
+  display: block;
   color: var(--Gc-1);
   font-size: 0.75rem;
   font-weight: 550;
+  letter-spacing: -0.01em;
 }
 
 .AccountTransactions_Amount.in strong {
@@ -65,3 +96,15 @@
   color: var(--Ac-1);
 }
 
+.AccountTransactions_Amount span {
+  display: block;
+  margin-top: 3px;
+  color: var(--Ac-3);
+  font-size: 0.7rem;
+  text-transform: lowercase;
+}
+
+
+.TransactionCard.AccountTransactions_Row:hover { background: rgba(255, 255, 255, .11); }
+.TransactionCard.AccountTransactions_Row:focus-visible { outline: 2px solid var(--Bc-1); outline-offset: 2px; }
+.TransactionCard mark { color: var(--Ac-1); background: var(--Bc-3); border-radius: 3px; }
