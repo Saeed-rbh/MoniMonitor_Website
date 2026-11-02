@@ -93,5 +93,6 @@
 .transaction-date-popup .date-range-calendar-grid button:hover { border-color: var(--Bc-1); }
 .transaction-date-popup > .transaction-search-date-reset { display: block; margin: 0 0 10px auto; }
 
-.transaction-date-popup .date-range-calendar-grid button:disabled { opacity: .25; cursor: default; }
-.transaction-date-popup .date-range-calendar-grid button:disabled:hover { border-color: transparent; }
+.transaction-date-popup .date-range-calendar-grid button.has-transactions { position: relative; }
+.transaction-date-popup .date-range-calendar-grid button.has-transactions::after { content: ""; position: absolute; bottom: 4px; left: calc(50% - 2px); width: 4px; height: 4px; border-radius: 50%; background: var(--Bc-1); }
+.transaction-date-popup .date-range-calendar-grid button.has-transactions.is-selected::after { background: var(--Ec-1); }

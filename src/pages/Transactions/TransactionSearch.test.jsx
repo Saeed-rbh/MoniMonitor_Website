@@ -268,7 +268,7 @@ test("tapping the selected day again confirms it and closes the popup", () => {
     render(<TransactionSearch />);
     fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
     expect(screen.queryByRole("button", { name: "Single day" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "October 9, 2026", exact: true })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "October 9, 2026", exact: true })).toBeEnabled();
     expect(screen.getByRole("button", { name: "October 10, 2026", exact: true })).toBeEnabled();
     fireEvent.click(screen.getByRole("button", { name: "October 10, 2026", exact: true }));
     expect(screen.getByLabelText("From")).toHaveValue("2026-10-10");
@@ -281,5 +281,25 @@ test("tapping the selected day again confirms it and closes the popup", () => {
     fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
     fireEvent.click(screen.getByRole("button", { name: "October 10, 2026", exact: true }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  } finally { vi.useRealTimers(); }
+});
+
+test("allows empty days as range boundaries and marks days with transactions", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 9, 10, 12));
+  testData.extra = [{ Timestamp: "2026-10-13", Reason: "Range match", Amount: 10, Category: "Expense" }];
+  try {
+    render(<TransactionSearch />);
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    expect(screen.getByRole("button", { name: "October 13, 2026", exact: true })).toHaveClass("has-transactions");
+    const start = screen.getByRole("button", { name: "October 12, 2026", exact: true });
+    expect(start).toBeEnabled();
+    expect(start).not.toHaveClass("has-transactions");
+    fireEvent.click(start);
+    fireEvent.click(screen.getByRole("button", { name: "October 14, 2026", exact: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent("2026-10-12 – 2026-10-14");
+    expect(screen.getByText("Range match")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Weekly groceries/ })).not.toBeInTheDocument();
   } finally { vi.useRealTimers(); }
 });

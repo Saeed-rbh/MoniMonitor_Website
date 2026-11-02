@@ -39,11 +39,7 @@ export default function DateRangeCalendar({ start, end, onChange, onComplete, in
     const offsets = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
     if (!(event.key in offsets)) return;
     event.preventDefault();
-    let next = new Date(month.getFullYear(), month.getMonth(), day + offsets[event.key]);
-    const forward = offsets[event.key] > 0;
-    const candidate = forward ? available.find(value => value >= valueOf(next)) : available.findLast(value => value <= valueOf(next));
-    if (!candidate) return;
-    next = parseTransactionCalendarDate(candidate);
+    const next = new Date(month.getFullYear(), month.getMonth(), day + offsets[event.key]);
     if (next.getMonth() !== month.getMonth() || next.getFullYear() !== month.getFullYear()) {
       setMonth(new Date(next.getFullYear(), next.getMonth(), 1));
     }
@@ -74,7 +70,8 @@ export default function DateRangeCalendar({ start, end, onChange, onComplete, in
         <span aria-live="polite">{month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</span>
         <button type="button" aria-label="Next month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight size={18} aria-hidden="true" /></button>
       </div>
-      <p className="date-range-calendar-hint" role="status">{endpoint === "start" ? "Select a day with transactions" : "Tap this date again to confirm, or another day for a range."}</p>
+      <p className="date-range-calendar-hint" role="status">{endpoint === "start" ? "Select a day" : "Tap this date again to confirm, or another day for a range."}</p>
+      <span id="calendar-activity-description" className="transaction-search-label">Has transactions</span>
       <div className="date-range-calendar-grid" ref={calendarRef} role="group" aria-label="Choose date range">
         {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => <span key={`weekday-${index}`} className="date-range-weekday" aria-hidden="true">{day}</span>)}
         {Array.from({ length: month.getDay() }, (_, index) => <span key={`blank-${index}`} aria-hidden="true" />)}
@@ -83,8 +80,9 @@ export default function DateRangeCalendar({ start, end, onChange, onComplete, in
           const date = new Date(month.getFullYear(), month.getMonth(), day);
           const value = valueOf(date);
           const selected = value === start || value === end;
-          return <button key={value} type="button" data-date={value} disabled={!availableDates.has(value)}
-            className={`${selected ? "is-selected" : ""} ${start && end && value > start && value < end ? "in-range" : ""}`}
+          return <button key={value} type="button" data-date={value} title={availableDates.has(value) ? "Has transactions" : undefined}
+            aria-describedby={availableDates.has(value) ? "calendar-activity-description" : undefined}
+            className={`${availableDates.has(value) ? "has-transactions" : ""} ${selected ? "is-selected" : ""} ${start && end && value > start && value < end ? "in-range" : ""}`}
             aria-label={date.toLocaleDateString("en-CA", { month: "long", day: "numeric", year: "numeric" })}
             aria-pressed={selected} aria-current={value === today ? "date" : undefined}
             onClick={() => select(value)} onKeyDown={event => moveFocus(event, day)}>{day}</button>;
