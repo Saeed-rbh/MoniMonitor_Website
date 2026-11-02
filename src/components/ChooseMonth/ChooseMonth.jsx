@@ -371,7 +371,7 @@ const ChooseMonth = ({
           style={{ ...OpenAllStyle, ...OpenAllStyleAmin }}
         ></animated.div>
       )}
-      <div style={MainStyle} ref={containerRef}>
+      <div data-header-month-selector style={MainStyle} ref={containerRef}>
         <p style={MonthStyle} onClick={toggleOpen}>
           {selectedMonth} <span style={MonthSpanStyle}>{selectedYear}</span>
         </p>

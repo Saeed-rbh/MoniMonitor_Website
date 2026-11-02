@@ -27,13 +27,21 @@ const MoreOpen = ({
 
   useLayoutEffect(() => {
     const header = document.querySelector(".MoneyMonitor_header");
+    const monthSelector = header?.querySelector("[data-header-month-selector]");
     const updateBoundary = () => {
-      setHeaderBottom(Math.max(0, header?.getBoundingClientRect().bottom ?? 0));
+      // The absolutely positioned selector can extend below the header box.
+      const bottom = Math.max(
+        0,
+        header?.getBoundingClientRect().bottom ?? 0,
+        monthSelector?.getBoundingClientRect().bottom ?? 0,
+      );
+      setHeaderBottom(header ? Math.ceil(bottom) + 8 : 0);
     };
     updateBoundary();
     const observer = typeof ResizeObserver !== "undefined"
       ? new ResizeObserver(updateBoundary) : null;
     if (header) observer?.observe(header);
+    if (monthSelector) observer?.observe(monthSelector);
     window.addEventListener("resize", updateBoundary);
     return () => {
       observer?.disconnect();
@@ -65,7 +73,7 @@ const MoreOpen = ({
             <motion.div
               key="more-open-backdrop"
               className="MoreOpen_Backdrop"
-              style={{ zIndex: zIndex - 1 }}
+              style={{ zIndex: zIndex - 1, top: headerBottom }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
