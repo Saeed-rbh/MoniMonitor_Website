@@ -256,3 +256,19 @@ test("normalizes a range selected backwards and rejects invalid typed dates", ()
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid date");
   } finally { vi.useRealTimers(); }
 });
+
+test("selects a single day with one calendar click and closes the popup", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 9, 10, 12));
+  try {
+    render(<TransactionSearch />);
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Single day" }));
+    expect(screen.getByRole("button", { name: "Single day" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "October 10, 2026", exact: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent("2026-10-10 – 2026-10-10");
+    expect(screen.getByRole("button", { name: /Weekly groceries/ })).toBeInTheDocument();
+    expect(screen.queryByText("Salary")).not.toBeInTheDocument();
+  } finally { vi.useRealTimers(); }
+});

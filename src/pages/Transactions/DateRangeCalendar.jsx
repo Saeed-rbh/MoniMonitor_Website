@@ -13,10 +13,16 @@ export default function DateRangeCalendar({ start, end, onChange, onComplete, in
   const initial = validCalendarDate(start) ? parseTransactionCalendarDate(start) : new Date();
   const [month, setMonth] = useState(new Date(initial.getFullYear(), initial.getMonth(), 1));
   const [endpoint, setEndpoint] = useState(start && !end ? "end" : "start");
+  const [mode, setMode] = useState("range");
   const calendarRef = useRef(null);
   const today = valueOf(new Date());
   const count = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
   const select = value => {
+    if (mode === "day") {
+      onChange(value, value);
+      onComplete?.();
+      return;
+    }
     if (endpoint === "start") {
       onChange(value, end && value > end ? "" : end);
       setEndpoint("end");
@@ -39,8 +45,12 @@ export default function DateRangeCalendar({ start, end, onChange, onComplete, in
   };
   return (
     <div className="date-range-calendar">
-      <div className="transaction-search-dates">
-        {[{ key: "start", label: "From", value: start }, { key: "end", label: "To", value: end }].map(item => (
+      <div className="date-range-mode" role="group" aria-label="Date selection mode">
+        <button type="button" aria-pressed={mode === "day"} onClick={() => setMode("day")}>Single day</button>
+        <button type="button" aria-pressed={mode === "range"} onClick={() => { setMode("range"); setEndpoint("start"); }}>Date range</button>
+      </div>
+      <div className={`transaction-search-dates ${mode === "day" ? "single-day" : ""}`}>
+        {(mode === "day" ? [{ key: "start", label: "Date", value: start }] : [{ key: "start", label: "From", value: start }, { key: "end", label: "To", value: end }]).map(item => (
           <label key={item.key} className={endpoint === item.key ? "is-active" : ""}>
             <span className="transaction-search-label">{item.label}</span>
             <input type="text" inputMode="numeric" placeholder="YYYY-MM-DD" aria-label={item.label}
@@ -48,7 +58,7 @@ export default function DateRangeCalendar({ start, end, onChange, onComplete, in
               onFocus={() => setEndpoint(item.key)}
               onChange={event => {
                 const value = event.target.value;
-                onChange(item.key === "start" ? value : start, item.key === "end" ? value : end);
+                onChange(mode === "day" || item.key === "start" ? value : start, mode === "day" || item.key === "end" ? value : end);
                 if (validCalendarDate(value)) {
                   const date = parseTransactionCalendarDate(value);
                   setMonth(new Date(date.getFullYear(), date.getMonth(), 1));
@@ -62,7 +72,7 @@ export default function DateRangeCalendar({ start, end, onChange, onComplete, in
         <span aria-live="polite">{month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</span>
         <button type="button" aria-label="Next month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight size={18} aria-hidden="true" /></button>
       </div>
-      <p className="date-range-calendar-hint" role="status">{endpoint === "start" ? "Select a start date" : "Select an end date"}</p>
+      <p className="date-range-calendar-hint" role="status">{mode === "day" ? "Select a day" : endpoint === "start" ? "Select a start date" : "Select an end date"}</p>
       <div className="date-range-calendar-grid" ref={calendarRef} role="group" aria-label="Choose date range">
         {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => <span key={`weekday-${index}`} className="date-range-weekday" aria-hidden="true">{day}</span>)}
         {Array.from({ length: month.getDay() }, (_, index) => <span key={`blank-${index}`} aria-hidden="true" />)}
@@ -70,9 +80,9 @@ export default function DateRangeCalendar({ start, end, onChange, onComplete, in
           const day = index + 1;
           const date = new Date(month.getFullYear(), month.getMonth(), day);
           const value = valueOf(date);
-          const selected = value === start || value === end;
+          const selected = value === start || (mode === "range" && value === end);
           return <button key={value} type="button" data-date={value}
-            className={`${selected ? "is-selected" : ""} ${start && end && value > start && value < end ? "in-range" : ""}`}
+            className={`${selected ? "is-selected" : ""} ${mode === "range" && start && end && value > start && value < end ? "in-range" : ""}`}
             aria-label={date.toLocaleDateString("en-CA", { month: "long", day: "numeric", year: "numeric" })}
             aria-pressed={selected} aria-current={value === today ? "date" : undefined}
             onClick={() => select(value)} onKeyDown={event => moveFocus(event, day)}>{day}</button>;
