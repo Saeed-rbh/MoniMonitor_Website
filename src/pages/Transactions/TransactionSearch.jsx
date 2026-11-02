@@ -65,11 +65,7 @@ export default function TransactionSearch() {
   };
 
   return (
-    <section className="transaction-search" aria-labelledby="transaction-search-title">
-      <header>
-        <h1 id="transaction-search-title">Transactions</h1>
-        <p>All your activity, in one place.</p>
-      </header>
+    <section className="transaction-search" aria-label="Transaction search">
       <label className="transaction-search-label" htmlFor="transaction-query">Merchant, category, bank or amount</label>
       <form className="transaction-search-field" role="search" onSubmit={event => { event.preventDefault(); inputRef.current?.blur(); }}>
         <Search size={20} aria-hidden="true" />

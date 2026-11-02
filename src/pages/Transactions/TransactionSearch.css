@@ -1,6 +1,5 @@
-.transaction-search { display: flex; flex-direction: column; min-height: 0; height: 100%; padding: 16px; box-sizing: border-box; color: var(--Ac-1); text-align: left; overflow-y: auto; }
-.transaction-search h1 { font-size: 1.35rem; margin: 0 0 6px; }
-.transaction-search header p, .transaction-search-count { color: var(--Ac-2); font-size: .85rem; margin: 0 0 16px; }
+.transaction-search { display: flex; flex-direction: column; min-height: 0; height: 100%; padding: 20px 18px; box-sizing: border-box; color: var(--Ac-1); text-align: left; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: var(--Bc-3) transparent; }
+.transaction-search-count { color: var(--Ac-2); font-size: .85rem; margin: 0 0 16px; }
 .transaction-search label { font-size: .8rem; margin-bottom: 8px; }
 .transaction-search-field { display: flex; align-items: center; gap: 10px; border: 1px solid var(--Bc-2); border-radius: 14px; padding: 0 12px; background: var(--Ac-4); color: var(--Bc-1); }
 .transaction-search-field input { min-width: 0; width: 100%; min-height: 48px; border: 0; background: transparent; color: var(--Ac-1); font: inherit; font-size: 16px; outline: none; }
@@ -20,11 +19,6 @@
 .transaction-search-empty p { color: var(--Ac-2); font-size: .85rem; line-height: 1.6; }
 .transaction-search-more { width: 100%; margin: 16px 0; }
 
-/* Keep the search tools visible while browsing results. */
-.transaction-search { overflow: hidden; padding: 20px 18px 0; gap: 0; }
-.transaction-search > header { margin-bottom: 20px; }
-.transaction-search h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -.035em; }
-.transaction-search header p { margin: 0; line-height: 1.6; }
 .transaction-search-label { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .transaction-search-field { flex-shrink: 0; min-height: 54px; border-color: var(--Ac-3); border-radius: 18px; padding-left: 16px; transition: border-color .15s ease, background .15s ease; }
 .transaction-search-filters { flex-shrink: 0; gap: 6px; margin: 16px 0; }
@@ -42,7 +36,7 @@
 .transaction-search button.transaction-search-result:hover { background: var(--Ac-5); }
 .transaction-search-result:first-child { border-top: 0; }
 
-.transaction-search-results { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 3px 20px; scrollbar-width: thin; scrollbar-color: var(--Bc-3) transparent; }
+.transaction-search-results { flex: 0 0 auto; padding: 0 3px; }
 
 .transaction-search-dates { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 12px; flex-shrink: 0; min-width: 0; margin: 0 0 14px; padding: 0; border: 0; }
 .transaction-search-dates legend { font-size: .8rem; margin-bottom: 8px; color: var(--Ac-2); }
