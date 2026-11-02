@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { cashPositionOf } from '../../../shared/accountBalances.cjs';
 import NativeCurrencyValues from '../../components/NativeCurrencyValues';
-import PendingTradeEstimate, { PendingTradeReviewItems } from '../../components/PendingTradeEstimate';
+import { PendingTradeReviewItems } from '../../components/PendingTradeEstimate';
 import { useNavigate } from "react-router-dom";
 import { useTransactions } from "../../context/TransactionContext";
 import { getPortfolioAPI } from "../../services/apiService";
@@ -267,8 +267,6 @@ const SaveInvestInsights = () => {
                       <span className="AccountsOverview_AssetTitle">Asset Breakdown</span>
                       <span className="AccountsOverview_TotalVal">Total: {money(totalVal, account.currency)}</span>
                       <NativeCurrencyValues totals={account.byCurrency} baseCurrency={account.currency} />
-                      {account.balanceReviewReason && <p role="status">Cash needs review: {account.balanceReviewReason}</p>}
-                      <PendingTradeEstimate account={account} />
                     </div>
 
                     <div className="AccountsOverview_AssetBar" aria-hidden="true">
