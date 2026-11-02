@@ -3,9 +3,11 @@
 const {createHash}=require('node:crypto');
 const names=require('../../../shared/transactionNames.cjs');
 const {lockFields}=require('./bankEvidenceReview');
+const semantics=require('../../../shared/financialSemantics.cjs');
+const reportingMeaning=row=>['isIncome','isExpense','isInternalTransfer','getSavingEffectMinor','investmentActivityMinor'].map(key=>semantics[key](row));
 const identityFields=['Reason','AmountMinor','Currency','Timestamp','Category','Label','AccountFlow','PostingStatus','BalanceAccountId','PortfolioAccountId'];
 async function repairBankDescriptions(db,userId,entries) {
-    let updated=0,addedEvidence=0;
+    let updated=0,addedEvidence=0,preservedFinancialMeaning=0;
     const now=new Date().toISOString();
     await db.withTransaction(async()=>{
         for(const entry of entries){
@@ -30,6 +32,11 @@ async function repairBankDescriptions(db,userId,entries) {
                 addedEvidence++;
             }
             if(row.Reason===reason)continue;
+            // Legacy reporting can encode an internal transfer in Reason.
+            // Retain that verified meaning when the bank's wording is generic.
+            if(JSON.stringify(reportingMeaning(row))!==JSON.stringify(reportingMeaning({...row,Reason:reason}))){
+                preservedFinancialMeaning++;continue;
+            }
             const verified=await db.get('SELECT * FROM verified_history_entries WHERE userId=? AND transactionId=?',[userId,row.id]);
             await db.run('UPDATE transactions SET Reason=? WHERE id=? AND userId=?',[reason,row.id,userId]);
             await lockFields(db,userId,row.id,{Reason:reason},proof,now);
@@ -44,6 +51,6 @@ async function repairBankDescriptions(db,userId,entries) {
             updated++;
         }
     });
-    return {updated,addedEvidence};
+    return {updated,addedEvidence,preservedFinancialMeaning};
 }
-module.exports={repairBankDescriptions,identityFields};
+module.exports={repairBankDescriptions,identityFields,reportingMeaning};

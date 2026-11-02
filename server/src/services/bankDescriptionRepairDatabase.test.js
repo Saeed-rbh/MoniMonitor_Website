@@ -17,9 +17,9 @@ test('repairs bank wording, preserves financial history and protects the correct
  const entries=[await fixture('MISC PAYMENT WISE'),await fixture('E-TRANSFER - AUTODEPOSIT MARA TAYLOR C1AKFKNECQJU',1)];
  const financial=async()=>(await db.all('SELECT * FROM transactions ORDER BY id')).map(({Reason,CounterpartyName,...row})=>row);
  const before=await financial();
- assert.deepEqual(await repairBankDescriptions(db,user,entries),{updated:2,addedEvidence:2});
+ assert.deepEqual(await repairBankDescriptions(db,user,entries),{updated:2,addedEvidence:2,preservedFinancialMeaning:0});
  assert.deepEqual(await financial(),before);
- assert.deepEqual(await repairBankDescriptions(db,user,entries),{updated:0,addedEvidence:0});
+ assert.deepEqual(await repairBankDescriptions(db,user,entries),{updated:0,addedEvidence:0,preservedFinancialMeaning:0});
  await service.updateTransactionForUser(entries[0].transactionId,user,{Reason:'E-Transfer via Example Chequing'});
  assert.equal((await service.getTransactionById(entries[0].transactionId,user)).DisplayReason,'MISC PAYMENT WISE');
  await require('./transactionNames').enrichCounterpartyNames(user);
@@ -32,12 +32,26 @@ test('repairs bank wording, preserves financial history and protects the correct
  assert.equal((await db.get('SELECT COUNT(*) n FROM transaction_sources')).n,2);
  assert.equal((await db.get('SELECT COUNT(*) n FROM account_balance_events')).n,0);
 });
+test('preserves a verified internal transfer when generic bank wording would incorrectly report income',async()=>{
+ const entry=await fixture('DEPOSIT ONLINE TRANSFER',4);
+ await db.run("UPDATE transactions SET Category='Income',AccountFlow='IN',Reason='Internal transfer: Example Savings -> Example Chequing' WHERE id=?",[entry.transactionId]);
+ const before=await db.get('SELECT * FROM transactions WHERE id=?',[entry.transactionId]);
+ entry.expected=Object.fromEntries(identityFields.map(k=>[k,before[k]]));
+ assert.equal(require('./transactionClassification').isIncome(before),false);
+ const result=await repairBankDescriptions(db,user,[entry]);
+ assert.deepEqual(result,{updated:0,addedEvidence:1,preservedFinancialMeaning:1});
+ const after=await db.get('SELECT * FROM transactions WHERE id=?',[entry.transactionId]);
+ assert.equal(after.Reason,before.Reason);
+ assert.equal(require('./transactionClassification').isIncome(after),false);
+ assert.equal((await repairBankDescriptions(db,user,[entry])).addedEvidence,0);
+});
 test('rejects stale or incomplete identities and rolls back the entire plan',async()=>{
+ const sourceCount=(await db.get('SELECT COUNT(*) n FROM transaction_sources')).n;
  const first=await fixture('MISC PAYMENT PAYPAL',2),second=await fixture('MISC PAYMENT PAYPAL',3);
  second.expected.AmountMinor=9999;
  await assert.rejects(repairBankDescriptions(db,user,[first,second]),/identity changed/);
  assert.equal((await db.get('SELECT Reason FROM transactions WHERE id=?',[first.transactionId])).Reason,first.expected.Reason);
- assert.equal((await db.get('SELECT COUNT(*) n FROM transaction_sources')).n,2);
+ assert.equal((await db.get('SELECT COUNT(*) n FROM transaction_sources')).n,sourceCount);
  delete second.expected.AmountMinor;
  await assert.rejects(repairBankDescriptions(db,user,[second]),/Incomplete/);
  await assert.rejects(repairBankDescriptions(db,'other-owner',[first]),/Invalid/);

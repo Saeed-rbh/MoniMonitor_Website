@@ -61,6 +61,8 @@ add `--apply` to create a SQLite backup and apply it. The operation adds bank
 evidence, audits the previous wording, locks the corrected reason against provider
 replay and updates recovery facts. It cannot modify amounts, account assignments,
 categories, dates or posting status. Rerunning the same plan makes no changes.
+If replacing a legacy reason would change income, expense, investment or internal
+transfer reporting, it retains the verified wording and only adds the bank evidence.
 The automatic counterparty enrichment then extracts names from that retained
 evidence; financial history and all existing source identities remain intact.
 
