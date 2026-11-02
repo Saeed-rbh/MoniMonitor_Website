@@ -197,8 +197,6 @@ export default function TransactionSearch() {
               onChange={(start, end) => { setStartDate(start); setEndDate(end); setLimit(pageSize); }} />
             {(startDate || endDate) && <button type="button" className="transaction-search-date-reset" onClick={clearDates}>Clear dates</button>}
       {invalidRange && <p id="transaction-date-error" className="transaction-search-date-error" role="alert">{dateError}</p>}
-            <button type="button" className="transaction-date-done" disabled={invalidRange}
-              onClick={() => setDatesOpen(false)}>Done</button>
           </div>
         )}
       />

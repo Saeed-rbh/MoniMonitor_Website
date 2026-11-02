@@ -59,7 +59,7 @@ test("opens the shared details popup and preserves the search when closed", () =
 test("filters inclusive calendar dates and supports either boundary independently", () => {
   render(<TransactionSearch />);
   const open = () => fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
-  const done = () => fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  const done = () => fireEvent.click(screen.getByRole("button", { name: "Close dialog" }));
   open();
   fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-01" } });
   done();
@@ -92,7 +92,7 @@ test("explains reversed date ranges and preserves text search when dates are cle
   expect(screen.getByRole("alert")).toHaveTextContent("Choose an end date on or after the start date.");
   fireEvent.click(screen.getByRole("button", { name: "Clear dates" }));
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  fireEvent.click(screen.getByRole("button", { name: "Close dialog" }));
   expect(screen.getByRole("searchbox")).toHaveValue("groceries");
   expect(screen.getByRole("button", { name: /Weekly groceries/ })).toBeInTheDocument();
 });
@@ -104,7 +104,7 @@ test("toggles date controls, shows a removable range chip, and clears all filter
   expect(screen.queryByLabelText("From")).not.toBeInTheDocument();
   fireEvent.click(calendar);
   fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-01" } });
-  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  fireEvent.click(screen.getByRole("button", { name: "Close dialog" }));
   expect(screen.queryByLabelText("From")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Remove date range" }));
   expect(screen.getByText("Salary")).toBeInTheDocument();
@@ -118,7 +118,7 @@ test("restores the search and scroll position without reopening the popup", () =
   const first = render(<TransactionSearch />);
   fireEvent.change(screen.getByRole("searchbox"), { target: { value: "groceries" } });
   fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
-  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  fireEvent.click(screen.getByRole("button", { name: "Close dialog" }));
   const page = screen.getByRole("region", { name: "Transaction search" });
   page.scrollTop = 120;
   fireEvent.scroll(page);
@@ -162,10 +162,12 @@ test("traps focus in the date popup, closes with Escape, and restores focus", ()
   fireEvent.click(calendar);
   const popup = screen.getByRole("dialog", { name: "Date filters" });
   expect(popup).toHaveAttribute("aria-modal", "true");
+  expect(screen.queryByRole("button", { name: "Done" })).not.toBeInTheDocument();
   expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Close dialog" })).toHaveFocus();
+  const buttons = [...popup.querySelectorAll("button")].filter(button => !button.disabled);
   fireEvent.keyDown(document.activeElement, { key: "Tab", shiftKey: true });
-  expect(screen.getByRole("button", { name: "Done" })).toHaveFocus();
+  expect(buttons.at(-1)).toHaveFocus();
   fireEvent.keyDown(document.activeElement, { key: "Escape" });
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(calendar).toHaveFocus();
@@ -195,7 +197,7 @@ test.each([
     expect(screen.getByLabelText("From")).toHaveValue(start);
     expect(screen.getByLabelText("To")).toHaveValue(end);
     expect(screen.getByRole("button", { name: label, exact: true })).toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close dialog" }));
     expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent(start === end ? start : `${start} – ${end}`);
   } finally { vi.useRealTimers(); }
 });
@@ -254,7 +256,7 @@ test("normalizes a range selected backwards and rejects invalid typed dates", ()
     expect(screen.getByLabelText("From")).toHaveValue("2028-02-27");
     expect(screen.getByLabelText("To")).toHaveValue("2028-02-29");
     fireEvent.change(screen.getByLabelText("To"), { target: { value: "2028-02-30" } });
-    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(screen.getByLabelText("To")).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid date");
   } finally { vi.useRealTimers(); }
 });
