@@ -437,3 +437,55 @@ pairing skips ambiguous duplicates, and snapshots upsert existing holding IDs.
 Positions absent from a complete snapshot are retained with zero quantity. Duplicate
 connection cleanup reassigns source evidence to the retained connection. Explicit
 manual deletion/merge commands remain separate from automatic correction.
+
+## Automatic learning and recovery
+
+The API's operational monitor runs automatic care at startup and every fifteen
+minutes, and a successful Plaid Item sync forces a fresh pass immediately. State,
+learning evidence and notification decisions persist in SQLite across restarts.
+No additional service or Transactions Refresh add-on is required.
+
+- Account aliases are learned only from consistent, posted Plaid/email matches in
+  the same user, institution and currency. At least two distinct financial events
+  are required; replayed IDs or equivalent duplicate records do not increase
+  confidence. Investment mappings also include the security symbol. Conflicting,
+  removed or mismatched evidence disables the rule without deleting its history.
+- Explicit user category/label corrections bootstrap scoped merchant preferences,
+  including earlier reviewed corrections. Future email and Plaid records reuse
+  those choices only for the same merchant, currency and cash direction. Transfers,
+  investment actions, amounts and account facts cannot be overwritten by merchant
+  preferences. Legacy substring rules now require an exact reason match.
+- Held account assignments are reconsidered as rules mature, and retained provider
+  facts are replayed as evidence changes. Exact retrospective matches can attach a
+  bank source to an existing email record; the superseded row remains unposted and
+  the original source assignment remains in source history. Similar purchases alone
+  never justify this operation. Existing posted portfolio activity and reviewed
+  overrides remain protected.
+- Each snapshot is retained for cash/quantity comparison. Checks also identify
+  incomplete transfer groups and potentially duplicated active cash effects. These
+  checks do not claim complete statement reconciliation without matching cutoffs,
+  and they do not insert adjustments to force a balance match.
+- Missing webhooks or sync failures queue durable recovery. A healthy Item without
+  a successful sync for six hours is checked incrementally; unfinished investment
+  data is retried sooner. Existing retry backoff is preserved. Automatic recovery
+  does not reset the cursor or routinely download the full history.
+- User-action notices are deduplicated persistently. Pending bank data and transient
+  retries stay quiet; reconnection/consent notices are sent only for an authorization
+  episode. Financial questions are grouped at most once per day and do not repeat
+  unchanged evidence after reconnection or worker restarts. Optional operational
+  webhook notices have a durable retry outbox. Notification preferences are honored.
+
+Transaction rows, financial source evidence, learning provenance, closed holdings
+and ingestion receipts are retained. Automatic email-evidence expiry is disabled;
+startup still rotates encryption without deleting old evidence. Source history,
+manual corrections and bank-required authorization are never replaced by guesses.
+The existing authenticated `/reliability` response includes automatic learning
+counts and snapshot checks; no additional pending-state UI is introduced.
+
+
+Existing reviewed financial choices are reused once as acknowledged evidence, so
+upgrading does not ask the same currency/direction question again. A later change
+to the bank's financial facts still reopens the question. Source IDs, encryption
+nonces and worker timestamps alone do not. Optional operational webhook notices
+are persisted atomically with incident transitions and retried without replaying
+successful notifications.

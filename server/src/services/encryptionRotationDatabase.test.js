@@ -42,11 +42,11 @@ test('startup migrations rotate stored email evidence and Plaid tokens without c
   assert.equal((await migrateAccessTokenEncryption()).migrated, 0);
 });
 
-test('unreadable evidence is preserved and expired evidence is pruned without its retired key', async () => {
+test('unreadable evidence is preserved regardless of age', async () => {
   await db.run("UPDATE transaction_sources SET rawPayloadJson = 'enc:v2:missing:invalid', capturedAt = ? WHERE externalId = 'source-1'", [new Date().toISOString()]);
   await assert.rejects(service.migrateAndPruneRawEmailSources(), /Invalid encrypted payload/);
   assert.equal((await db.get("SELECT rawPayloadJson FROM transaction_sources WHERE externalId = 'source-1'")).rawPayloadJson, 'enc:v2:missing:invalid');
   await db.run("UPDATE transaction_sources SET capturedAt = '2000-01-01' WHERE externalId = 'source-1'");
-  assert.equal((await service.migrateAndPruneRawEmailSources()).pruned, 1);
-  assert.equal((await db.get("SELECT rawPayloadJson FROM transaction_sources WHERE externalId = 'source-1'")).rawPayloadJson, null);
+  await assert.rejects(service.migrateAndPruneRawEmailSources(), /Invalid encrypted payload/);
+  assert.equal((await db.get("SELECT rawPayloadJson FROM transaction_sources WHERE externalId = 'source-1'")).rawPayloadJson, 'enc:v2:missing:invalid');
 });

@@ -3,7 +3,7 @@ const { registerWorker } = require('./workerLifecycle');
 
 function operationalAlerts(health, now = Date.now()) {
     const alerts = [];
-    const add = (id, reason, action) => alerts.push({ id, reason, action });
+    const add = (id, reason, action, actionRequired) => alerts.push({ id, reason, action, ...(actionRequired===false?{actionRequired:false}:{}) });
     if (health.agent?.enabled && health.agent.state === 'failed') add('email_agent_failed', 'Email agent startup failed', 'Inspect the supervisor log and verify integration credentials, then restart the service.');
     if (health.financialChecks && (health.financialChecks.missing > 0 || now - Date.parse(health.financialChecks.oldestCheckAt) > 60 * 60000)) add('financial_checks_stale', 'Financial evidence checks are overdue', 'Inspect the operational monitor and its database errors; restart the worker after correcting the cause.');
     for (const [name, state] of Object.entries(health.subsystems || {})) {
@@ -24,7 +24,7 @@ function operationalAlerts(health, now = Date.now()) {
     for (const item of health.integrations || []) {
         const lastSync = Date.parse(item.lastSyncedAt || '');
         if (item.status !== 'active' || !Number.isFinite(lastSync) || now - lastSync > 48 * 60 * 60_000) {
-            add(`bank_${item.id}`, `Bank integration ${item.institutionName || item.id} needs attention`, 'Open Profile → Bank fallback to reconnect or sync the institution and review stale balances.');
+            add(`bank_${item.id}`, `Bank integration ${item.institutionName || item.id} needs attention`, 'Open Profile → Bank fallback to reconnect or sync the institution and review stale balances.', ['login_required','attention_required'].includes(item.status) || !Number.isFinite(lastSync) || now-lastSync>48*60*60_000);
         }
     }
     return alerts;
@@ -42,27 +42,43 @@ async function deliverOperationalAlert(alert, fetchImpl = globalThis.fetch) {
     if (!response.ok) throw new Error('Operational alert delivery failed');
 }
 
+async function drainOperationalNotices(fetchImpl=globalThis.fetch) {
+    if(!process.env.OPERATIONAL_ALERT_WEBHOOK_URL) return {delivered:0,retried:0};
+    const db=await require('../database/db').getDb(),now=new Date().toISOString();
+    await db.run("UPDATE operational_notice_outbox SET status='retry',nextAttemptAt=? WHERE status='processing' AND updatedAt<?",[now,new Date(Date.now()-5*60000).toISOString()]);
+    const jobs=await db.all("SELECT * FROM operational_notice_outbox WHERE status IN ('pending','retry') AND nextAttemptAt<=? ORDER BY id LIMIT 5",[now]);
+    const result={delivered:0,retried:0};
+    for(const job of jobs) {
+        const claimed=await db.run("UPDATE operational_notice_outbox SET status='processing',attempts=attempts+1,updatedAt=? WHERE id=? AND status IN ('pending','retry')",[now,job.id]);
+        if(!claimed.changes) continue;
+        try {
+            await deliverOperationalAlert(JSON.parse(job.payloadJson),fetchImpl);
+            await db.run("UPDATE operational_notice_outbox SET status='processed',lastError=NULL,updatedAt=? WHERE id=?",[new Date().toISOString(),job.id]);
+            result.delivered++;
+        } catch(error) {
+            const next=new Date(Date.now()+Math.min(6*3600000,60000*2**Math.min(8,job.attempts))).toISOString();
+            await db.run("UPDATE operational_notice_outbox SET status='retry',nextAttemptAt=?,lastError=?,updatedAt=? WHERE id=?",[next,String(error.message).slice(0,500),new Date().toISOString(),job.id]);
+            result.retried++;
+        }
+    }
+    return result;
+}
+
 function startOperationalMonitor(readDiagnostics) {
-    let previous = new Map(), inFlight = null, timer;
+    let inFlight = null, timer;
     const tick = () => {
         if (inFlight) return inFlight;
         inFlight = (async () => {
-            const health = await readDiagnostics();
             const db = await require('../database/db').getDb();
             const users = await db.all('SELECT id FROM users');
-            for (const user of users) await require('./financialReliability').checkFinancialReliability(user.id);
-            const owner = process.env.BACKUP_OWNER_USER_ID;
-            if (owner && await db.get('SELECT id FROM users WHERE id=?', [owner])) await require('./financialReliability').persistIncidents(db, owner, 'operations', health.alerts);
-            const next = new Map(health.alerts.map(alert => [alert.id, alert]));
-            for (const [id, alert] of next) if (!previous.has(id)) {
-                logger.warn('operations.incident.open', alert);
-                await deliverOperationalAlert({ ...alert, state: 'open' });
+            for (const user of users) await require('./automaticCare').runAutomaticCare(user.id);
+            const health = await readDiagnostics();
+            const owner = process.env.BACKUP_OWNER_USER_ID || process.env.USER_ID;
+            if (owner && await db.get('SELECT id FROM users WHERE id=?', [owner])) {
+                const transitions=await require('./financialReliability').persistIncidents(db,owner,'operations',health.alerts);
+                for(const transition of transitions || []) logger.info(`operations.incident.${transition.state==='resolved'?'resolved':'open'}`,{incident:transition.key});
             }
-            for (const [id, alert] of previous) if (!next.has(id)) {
-                logger.info('operations.incident.resolved', { incident: id });
-                await deliverOperationalAlert({ ...alert, state: 'resolved' });
-            }
-            previous = next;
+            await drainOperationalNotices();
         })().catch(error => logger.error('operations.monitor.failed', { error: error.message })).finally(() => { inFlight = null; });
         return inFlight;
     };
@@ -71,4 +87,4 @@ function startOperationalMonitor(readDiagnostics) {
     start();
 }
 
-module.exports = { operationalAlerts, deliverOperationalAlert, startOperationalMonitor };
+module.exports = { operationalAlerts, deliverOperationalAlert, drainOperationalNotices, startOperationalMonitor };

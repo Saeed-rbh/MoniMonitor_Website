@@ -24,8 +24,10 @@ function assessTransaction(transaction, sources = [], override = null, now = Dat
     // Legacy ordinary income/expense entries use category-based balance posting.
     const direction = transaction.AccountFlow || (transaction.Category === 'Income' ? 'IN' : transaction.Category === 'Expense' ? 'OUT' : null);
     const add = (kind, action) => issues.push({ key: `${kind}:${transaction.id}`, kind, transactionId: transaction.id, action });
-    const posted = sources.filter(s => s.provider === 'plaid' && !parse(s.rawPayloadJson).pending && Number.isFinite(parse(s.rawPayloadJson).amount));
-    for (const source of posted) {
+    const bankSources = sources.filter(s => s.provider === 'plaid' && !parse(s.rawPayloadJson).pending && Number.isFinite(parse(s.rawPayloadJson).amount));
+    const posted=bankSources.filter(s=>!parse(s.contextPayloadJson).providerRemoved);
+    for (const source of bankSources) {
+        if(posted.length && parse(source.contextPayloadJson).providerRemoved) continue;
         const raw = parse(source.rawPayloadJson);
         if (parse(source.contextPayloadJson).providerRemoved) add('removed_bank_record', 'The bank removed a reviewed record. Review the original correction before reversing it.');
         const currency = raw.iso_currency_code || raw.unofficial_currency_code;
@@ -37,9 +39,10 @@ function assessTransaction(transaction, sources = [], override = null, now = Dat
     const age = now - Date.parse(transaction.Timestamp);
     if (transaction.Category === 'Investment' && !transaction.PortfolioAccountId && age > 3 * DAY) add('unassigned_trade', 'Assign the investment trade to its brokerage account.');
     if (transaction.Label === 'Refunds & Reversals' && direction !== 'IN') add('refund_direction', 'Review the refund direction; a refund should reduce card debt or increase cash.');
-    if (!posted.length && !override && age > 7 * DAY && sources.some(s => s.provider === 'email')) add('unconfirmed_email', 'Match the email to a posted bank record or verify it against a bank statement.');
-    const bankInvestment = sources.some(s => s.provider === 'plaid_investments' && Number.isFinite(parse(s.rawPayloadJson).amount) && !parse(s.rawPayloadJson).pending && parse(s.rawPayloadJson).type !== 'cancel');
+    const bankInvestment = sources.some(s => s.provider === 'plaid_investments' && !parse(s.contextPayloadJson).providerRemoved && Number.isFinite(parse(s.rawPayloadJson).amount) && !parse(s.rawPayloadJson).pending && parse(s.rawPayloadJson).type !== 'cancel');
+    if (!posted.length && !bankInvestment && !override && age > 7 * DAY && sources.some(s => s.provider === 'email')) add('unconfirmed_email', 'Match the email to a posted bank record or verify it against a bank statement.');
     for (const source of sources.filter(s => s.provider === 'plaid_investments')) {
+        if(bankInvestment && parse(source.contextPayloadJson).providerRemoved) continue;
         const raw = parse(source.rawPayloadJson);
         if (raw.iso_currency_code && raw.iso_currency_code !== transaction.Currency) add('currency_conflict', 'Review the brokerage currency and exchange rate against the trade confirmation.');
         if (parse(source.contextPayloadJson).providerRemoved) add('removed_bank_record', 'The bank removed a reviewed trade. Review the correction before reversing it.');
@@ -68,7 +71,7 @@ function reconcileSnapshots(account, snapshots, transactions) {
 
 async function persistIncidents(db, userId, scope, issues, now = new Date().toISOString()) {
     const next = new Map(issues.map(i => [`${scope}:${i.key || i.id}`, i]));
-    await db.withTransaction(async () => {
+    return db.withTransaction(async () => {
         const previous = await db.all('SELECT * FROM reliability_incidents WHERE userId = ? AND kind = ? AND resolvedAt IS NULL', [userId, scope]);
         const keys = new Set(previous.map(i => i.incidentKey));
         const transitions = [];
@@ -84,21 +87,34 @@ async function persistIncidents(db, userId, scope, issues, now = new Date().toIS
             await db.run('UPDATE reliability_incidents SET resolvedAt=?, updatedAt=? WHERE userId=? AND incidentKey=?', [now, now, userId, incident.incidentKey]);
             await notify(incident.incidentKey, parse(incident.detailsJson), 'resolved');
         }
-        if (scope === 'financial' && process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
-            const opened = transitions.filter(t => t.state === 'needs attention');
-            const transactionIds = [...new Set(opened.map(t => t.issue.transactionId).filter(Boolean))].slice(0, 5);
-            const buttons = [];
-            for (const id of transactionIds) {
-                const tx = await db.get('SELECT * FROM transactions WHERE userId=? AND id=?', [userId, id]);
-                if (tx) buttons.push([{ text: require('./reliabilityReview').title(tx).slice(0, 100), callback_data: `review:${id}` }]);
-            }
-            // One quiet transaction inbox update; no resolved-count or operations chatter.
-            if (buttons.length) {
-                const payload = { text: require('./telegramService').e('Transactions to review\nChoose a transaction below. I’ll ask one question at a time. More are available in Profile → Transactions to review.'),
-                    replyMarkup: { inline_keyboard: buttons }, silent: true, reliabilityFormatVersion: 2 };
-                await db.run(`INSERT INTO telegram_outbox(action,payloadJson,status,attempts,nextAttemptAt,createdAt) VALUES ('sendMessage',?,'pending',0,?,?)`, [JSON.stringify(payload), now, now]);
+        if(scope==='operations' && process.env.OPERATIONAL_ALERT_WEBHOOK_URL) {
+            for(const transition of transitions) {
+                if(transition.issue.actionRequired===false) continue;
+                const payload={...transition.issue,state:transition.state==='resolved'?'resolved':'open'};
+                await db.run(`INSERT OR IGNORE INTO operational_notice_outbox(userId,noticeKey,payloadJson,nextAttemptAt,updatedAt)
+                    VALUES (?,?,?,?,?)`,[userId,`${transition.key}:${payload.state}:${now}`,JSON.stringify(payload),now,now]);
             }
         }
+        if (scope === 'financial' && process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+            const recovering=await db.get(`SELECT itemId FROM plaid_items WHERE userId=? AND
+                (status<>'active' OR holdingsStatus IN ('pending','error') OR investmentTransactionsStatus IN ('pending','error')) LIMIT 1`,[userId]);
+            const recent=await db.get("SELECT createdAt FROM attention_deliveries WHERE userId=? AND noticeKey='financial-inbox' ORDER BY createdAt DESC LIMIT 1",[userId]);
+            if(recovering || recent && Date.parse(now)-Date.parse(recent.createdAt)<86400000) return transitions;
+            const actionable=new Set(['currency_conflict','amount_conflict','direction_conflict','credit_as_expense','refund_direction','override_conflict','duplicate','balance']);
+            const relevant=[...next.values()].filter(i=>!i.kind || actionable.has(i.kind));
+            const ids=[...new Set(relevant.map(i=>i.transactionId).filter(Boolean))].sort((a,b)=>a-b);
+            const buttons=[], evidence=[];
+            for(const id of ids) {
+                const tx=await db.get('SELECT * FROM transactions WHERE userId=? AND id=?',[userId,id]);
+                if(!tx) continue;
+                const sources=await db.all('SELECT * FROM transaction_sources WHERE userId=? AND transactionId=?',[userId,id]);
+                evidence.push([id,require('./reliabilityReview').fingerprint(tx,sources)]);
+                if(buttons.length<5) buttons.push([{text:require('./reliabilityReview').title(tx).slice(0,100),callback_data:`review:${id}`}]);
+            }
+            if(buttons.length) await require('./attentionNotices').enqueueAttentionNotice(userId,'financial-inbox',evidence,
+                'Transactions to review\nChoose a transaction below. I’ll ask one question at a time. More are available in Profile → Transactions to review.',buttons);
+        }
+        return transitions;
     });
 }
 
@@ -153,7 +169,8 @@ async function checkFinancialReliability(userId, { force = false } = {}) {
         const t = transactions.find(t => t.id === id);
         return { id, title: t.Reason || t.Label || 'Transaction', amount: Number(t.Amount), currency: t.Currency, date: t.Timestamp, account: t.Account || t.BankName, questions: unique.filter(i => i.transactionId === id).length };
     });
-    const report = { checkedAt: new Date().toISOString(), status: unique.length ? 'Needs review' : 'No detected conflicts', issues: unique, cards, statuses, accounts: accountChecks, coverageDays: 90 };
+    const automatic= parse((await db.get('SELECT reportJson FROM automatic_care_runs WHERE userId=?',[userId]))?.reportJson);
+    const report = { automaticChecks:automatic.checks || [], automaticLearning:automatic.learned || {}, checkedAt: new Date().toISOString(), status: unique.length ? 'Needs review' : 'No detected conflicts', issues: unique, cards, statuses, accounts: accountChecks, coverageDays: 90 };
     await persistIncidents(db, userId, 'financial', unique);
     await db.run(`INSERT INTO reliability_runs VALUES (?,?,?) ON CONFLICT(userId) DO UPDATE SET checkedAt=excluded.checkedAt,reportJson=excluded.reportJson`, [userId, report.checkedAt, JSON.stringify(report)]);
     return report;

@@ -290,7 +290,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
 
         // Apply learned merchant rules (user category/label overrides)
         const rule = await dbService.getMerchantRuleForReason(USER_ID, expenseData.Reason);
-        if (rule) {
+        if (rule && !expenseData.PortfolioAction && ['Expense','Income'].includes(expenseData.Category) && rule.category===expenseData.Category) {
             console.log(`[${idInfo}] Override matched: setting Category (${expenseData.Category} -> ${rule.category}) and Label (${expenseData.Label} -> ${rule.label})`);
             expenseData.Category = rule.category;
             expenseData.Label = rule.label;
@@ -314,6 +314,8 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         // rather than showing a misleading midnight placeholder in the app.
         expenseData.Timestamp = resolveEmailTimestamp(expenseData.Timestamp, expenseData.ReceivedAt);
         expenseData = normalizeEmailEvidence(expenseData, emailBody, investmentAccounts);
+        expenseData = await require('./src/services/automaticLearning').applyLearnedAccount(USER_ID,expenseData,emailBody);
+        expenseData = await require('./src/services/automaticLearning').personalizeTransaction(USER_ID,expenseData);
         if (expenseData.IngestionReviewReason === 'unconfirmed_currency') {
             await writeAudit('email_currency_review', 'review_required', { messageId: idInfo, sourceEmailKey });
             // The durable mailbox queue retains the source for retry/review.

@@ -16,13 +16,19 @@ const questions = {
     duplicate: 'Is this a separate real transaction on your statement?',
 };
 function fingerprint(transaction, sources) {
-    // Ignore display/worker metadata; reopen the question when financial evidence changes.
-    const fields = ['AmountMinor', 'Currency', 'Category', 'Label', 'Timestamp', 'AccountFlow', 'BalanceAccountId', 'PortfolioAccountId', 'ReferenceNumber'];
-    return crypto.createHash('sha256').update(JSON.stringify([
-        fields.map(k => transaction[k] ?? null),
-        sources.map(s => [s.provider, s.externalId, s.rawPayloadJson, s.contextPayloadJson]).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
-    ])).digest('hex');
+    const fields = ['AmountMinor','Currency','Category','Label','Timestamp','AccountFlow','BalanceAccountId','PortfolioAccountId',
+        'ReferenceNumber','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','PostingStatus'];
+    const parse = value => { try { return JSON.parse(value || '{}'); } catch { return {}; } };
+    const activeProviders=new Set(sources.filter(s=>!parse(s.contextPayloadJson).providerRemoved).map(s=>s.provider));
+    const facts = sources.filter(s=>!(parse(s.contextPayloadJson).providerRemoved && activeProviders.has(s.provider))).map(s => {
+        const raw = s.provider==='email' ? {} : parse(s.rawPayloadJson), context=parse(s.contextPayloadJson);
+        const bankFields=['amount','iso_currency_code','unofficial_currency_code','pending','date','authorized_date','quantity','price','type','subtype','security_id','cancel_transaction_id'];
+        return [s.provider,bankFields.map(k=>raw[k]??null),context.account?.appAccountId??null,Boolean(context.providerRemoved)];
+    });
+    const uniqueFacts=[...new Map(facts.map(fact=>[JSON.stringify(fact),fact])).values()].sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
+    return crypto.createHash('sha256').update(JSON.stringify([fields.map(k=>transaction[k]??null),uniqueFacts])).digest('hex');
 }
+
 function title(t) { return `${t.Reason || t.Label || 'Transaction'} · ${t.Currency} ${Number(t.Amount).toFixed(2)}`; }
 
 async function getReview(userId, id) {

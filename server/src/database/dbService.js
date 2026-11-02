@@ -301,6 +301,8 @@ async function updateTransactionForUser(id, userId, updates, { reviewed = false 
         // Keep raw provider facts in transaction_sources; do not erase review.
         normalized = Object.fromEntries(Object.entries(normalized).filter(([key]) => !(key in locked)));
     }
+    if (!reviewed) normalized=Object.fromEntries(Object.entries(normalized).filter(([key,value]) =>
+        key==='Amount' ? Number(previous[key])!==Number(value) : previous[key]!==value && !(previous[key]==null && value==null)));
     if (reviewed) {
         const fields = { ...JSON.parse(override?.fieldsJson || '{}'), ...normalized };
         await db.run(`INSERT INTO transaction_overrides VALUES (?, ?, ?, 'User reviewed correction', ?)
@@ -319,6 +321,10 @@ async function updateTransactionForUser(id, userId, updates, { reviewed = false 
             [id, userId]
         );
         await refreshTransactionMonths(db, [previous, current]);
+        if (reviewed && (normalized.Category || normalized.Label)) {
+            const learned = await db.get('SELECT * FROM transactions WHERE id=? AND userId=?',[id,userId]);
+            await require('../services/automaticLearning').rememberMerchantPreference(userId, learned);
+        }
         if (previous.TelegramMessageId && Object.entries(normalized).some(([key,value]) =>
             !['TelegramMessageId','SourceEmailKey','ReceivedAt'].includes(key) && String(previous[key]) !== String(value))) {
             await enqueueTelegramOutbox('editMessage', { messageId: previous.TelegramMessageId }, { transactionId: id });
@@ -472,12 +478,9 @@ async function getTransactionSourcesForUser(transactionId, userId) {
 
 async function migrateAndPruneRawEmailSources() {
     const db = await getDb();
-    const retentionDays = Math.max(1, Number(process.env.EMAIL_SOURCE_RETENTION_DAYS) || 90);
-    const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString();
     const rows = await db.all(
         `SELECT provider, externalId, rawPayloadJson FROM transaction_sources
-         WHERE provider = 'email' AND rawPayloadJson IS NOT NULL AND rawPayloadJson <> ''
-           AND (capturedAt IS NULL OR capturedAt >= ?)`, [cutoff]
+         WHERE provider = 'email' AND rawPayloadJson IS NOT NULL AND rawPayloadJson <> ''`, []
     );
     let encrypted = 0;
     for (const row of rows) {
@@ -489,12 +492,9 @@ async function migrateAndPruneRawEmailSources() {
         );
         encrypted += result.changes;
     }
-    const pruned = await db.run(
-        `UPDATE transaction_sources SET rawPayloadJson = NULL, updatedAt = ?
-         WHERE provider = 'email' AND rawPayloadJson IS NOT NULL AND capturedAt IS NOT NULL AND capturedAt < ?`,
-        [new Date().toISOString(), cutoff]
-    );
-    return { encrypted, pruned: Number(pruned.changes || 0), retentionDays };
+    // Historical evidence is retained indefinitely. The legacy function name is
+    // kept for callers; startup performs encryption migration only.
+    return { encrypted, pruned: 0, retentionDays: null };
 }
 
 async function getEmailSourceKeysNeedingReplay(userId, mailboxKey, limit = 250) {
@@ -1891,7 +1891,7 @@ async function getMerchantRuleForReason(userId, reason) {
 
     // Fetch rules and search for any pattern that matches as a substring of cleanReason
     const rules = await db.all('SELECT * FROM merchant_rules WHERE userId = ?', [userId]);
-    const matchingRule = rules.find(rule => cleanReason.includes(rule.pattern.toLowerCase()));
+    const matchingRule = rules.find(rule => cleanReason === rule.pattern.toLowerCase());
     return matchingRule || null;
 }
 

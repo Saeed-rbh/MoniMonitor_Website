@@ -49,3 +49,13 @@ test('automatic direction repair requires one posted source, matching currency, 
     assert.equal(confirmedDirectionRepair({ ...tx, Currency: 'USD' }, [bank], null), null);
     assert.equal(confirmedDirectionRepair({ ...tx, BalanceAccountId: 5 }, [bank], null), null);
 });
+
+test('confirmed investment email is not repeatedly reported as unconfirmed',()=>{
+ const tx={...transaction,Category:'Investment',PortfolioAccountId:1,PortfolioAction:'BUY',Timestamp:'2020-01-01'};
+ const sources=[{provider:'email'},{provider:'plaid_investments',rawPayloadJson:JSON.stringify({amount:19.96,iso_currency_code:'CAD',type:'buy'})}];
+ assert.ok(!assessTransaction(tx,sources).issues.some(i=>i.kind==='unconfirmed_email'));
+});
+test('an active replacement supersedes old removal and currency-warning evidence',()=>{
+ const old={...source,rawPayloadJson:JSON.stringify({amount:20,iso_currency_code:'USD'}),contextPayloadJson:JSON.stringify({providerRemoved:true})};
+ assert.equal(assessTransaction(transaction,[old,source]).status,'Bank recorded');
+});

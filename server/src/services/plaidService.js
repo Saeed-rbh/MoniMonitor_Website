@@ -9,6 +9,7 @@ const { isExplicitSelfTransferDescription } = require('./selfTransfer');
 const { workersPaused, registerWorker } = require('./workerLifecycle');
 
 const PLAID_ENVIRONMENTS = new Set(['sandbox', 'development', 'production']);
+const { personalizeTransaction } = require('./automaticLearning');
 const { createItemSyncCoordinator } = require('./itemSyncCoordinator');
 const itemSyncCoordinator = createItemSyncCoordinator(performItemSync, async (item) => {
     const db = await dbService.getDb();
@@ -457,6 +458,9 @@ function plaidCanonicalUpdates(existing, plaidTransaction) {
         updates.Category = plaidTransaction.Category;
         updates.Label = plaidTransaction.Label;
     }
+    if(plaidTransaction._personalized && existing.Category!=='Internal') {
+        updates.Category=plaidTransaction.Category; updates.Label=plaidTransaction.Label;
+    }
     // Explicit user/bank-evidence overrides are enforced by updateTransactionForUser.
     return preserveLinkedInternalTransfer(existing, updates);
 }
@@ -529,6 +533,7 @@ async function applyAuthoritativeBalances(userId, accountMap) {
         const currency = String(
             account.balances?.iso_currency_code || account.balances?.unofficial_currency_code || 'CAD'
         ).toUpperCase();
+        await require('./automaticCare').recordCheckpoint(userId,account.appAccountId,'cash',{cashMinor:totalBalanceMinor,currency});
         const result = await setAccountBalanceSnapshot(userId, account.appAccountId, totalBalanceMinor, currency, 'plaid', now);
         if (result.status === 'applied') updated += 1;
     }
@@ -828,6 +833,7 @@ async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
             if (!account?.appAccountId || account.type !== 'investment') continue;
             const stored = await db.get('SELECT * FROM investment_accounts WHERE id = ? AND userId = ?', [account.appAccountId, userId]);
             if (!stored) throw new Error('Bank snapshot account does not belong to the user');
+            await require('./automaticCare').recordCheckpoint(userId,account.appAccountId,'holdings',{positions:entry.holdings.map(h=>({symbol:h.symbol,currency:h.currency,quantity:h.quantity})).sort((a,b)=>a.symbol.localeCompare(b.symbol))});
             if(stored.holdingsSource === 'bank_ui' || stored.balanceSource === 'bank_ui') {
                 const previous=await db.all('SELECT symbol,quantity,currency FROM investment_holdings WHERE accountId=? AND userId=? AND quantity > 0',[stored.id,userId]);
                 const positionsMatch=previous.length===entry.holdings.length && previous.every(h=>entry.holdings.some(n=>n.symbol===h.symbol && n.currency===h.currency && Math.abs(n.quantity-h.quantity)<1e-8));
@@ -868,6 +874,7 @@ async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
                 await db.run('UPDATE investment_accounts SET balanceReviewReason = ? WHERE id = ? AND userId = ?',
                     ['A native cash balance or recorded exchange rates are needed for mixed-currency holdings', account.appAccountId, userId]);
             } else {
+                await require('./automaticCare').recordCheckpoint(userId,account.appAccountId,'cash',{cashMinor:entry.cashMinor,currency});
                 await setAccountBalanceSnapshot(userId, account.appAccountId, entry.cashMinor, currency);
             }
             accountsUpdated += 1;
@@ -906,7 +913,7 @@ async function importAddedTransaction(userId, item, transaction, accountMap, own
         );
         if (await isSupersededAuthorization(db, userId, existingSource.transactionId, transaction)) return {status:'known',transactionId:existingSource.transactionId};
         const existingTransaction = await dbService.getTransactionById(existingSource.transactionId, userId);
-        const appTransaction = toAppTransaction(transaction, account, item.institutionName, { ownerUsername });
+        const appTransaction = await personalizeTransaction(userId,toAppTransaction(transaction, account, item.institutionName, { ownerUsername }),transaction);
         if (existingTransaction && appTransaction && existingSource.ownsTransaction && !existingTransaction.SourceEmailKey) {
             await dbService.updateTransactionForUser(
                 existingSource.transactionId, userId,
@@ -921,7 +928,7 @@ async function importAddedTransaction(userId, item, transaction, accountMap, own
         await dbService.reconcileIngestedTransaction(userId, existingSource.transactionId);
         return { status: 'known', transactionId: existingSource.transactionId };
     }
-    const appTransaction = toAppTransaction(transaction, account, item.institutionName, { ownerUsername });
+    const appTransaction = await personalizeTransaction(userId,toAppTransaction(transaction, account, item.institutionName, { ownerUsername }),transaction);
     if (!appTransaction) return { status: 'ignored' };
 
     let replacement = null;
@@ -997,13 +1004,13 @@ async function applyModifiedTransaction(userId, item, transaction, accountMap, o
     );
     if (await isSupersededAuthorization(db, userId, source.transactionId, transaction)) return {status:'linked_source_preserved'};
     if (!source.ownsTransaction || source.SourceEmailKey) {
-        const confirmed = toAppTransaction(transaction, account, item.institutionName, { ownerUsername });
+        const confirmed = await personalizeTransaction(userId,toAppTransaction(transaction, account, item.institutionName, { ownerUsername }),transaction);
         if (confirmed) await dbService.updateTransactionForUser(source.transactionId, userId, plaidCanonicalUpdates(source, confirmed));
         await dbService.syncTransactionAccountBalance(userId, source.transactionId, {accountId:account.appAccountId,confidence:account.appAccountId ? 'HIGH' : null});
         await dbService.reconcileIngestedTransaction(userId, source.transactionId);
         return { status: 'linked_source_preserved' };
     }
-    const appTransaction = toAppTransaction(transaction, account, item.institutionName, { ownerUsername });
+    const appTransaction = await personalizeTransaction(userId,toAppTransaction(transaction, account, item.institutionName, { ownerUsername }),transaction);
     if (!appTransaction) return { status: 'ignored' };
     await dbService.updateTransactionForUser(
         source.transactionId, userId, preserveLinkedInternalTransfer(source, appTransaction)
@@ -1347,7 +1354,7 @@ async function resolveConfirmedSourceReview(userId, transactionId, facts) {
     if (facts.Category === 'Investment') columns.push('PortfolioAction','PortfolioAccountId','PortfolioSymbol','PortfolioQuantity');
     if (columns.some(key => facts[key] !== undefined && facts[key] !== null && String(current[key]) !== String(facts[key]))) return;
     await db.run(`UPDATE transaction_ingestion_reviews SET resolvedAt = ? WHERE transactionId = ?
-        AND reason IN ('ambiguous_account','unconfirmed_currency','provider_currency_conflict') AND resolvedAt IS NULL`,
+        AND reason IN ('ambiguous_account','unconfirmed_currency','provider_currency_conflict','provider_removed_linked_activity') AND resolvedAt IS NULL`,
         [new Date().toISOString(),transactionId]);
 }
 
@@ -1409,12 +1416,13 @@ async function refreshStoredPlaidSourceDetails(userId, { itemId = null, includeL
         const context = parseStoredSourcePayload(row.contextPayloadJson) || {};
         if (context.providerRemoved) continue;
         if (!rawPayload) continue;
-        const updates = row.provider === 'plaid'
+        let updates = row.provider === 'plaid'
             ? toAppTransaction(rawPayload, context.account || {}, context.institutionName, { ownerUsername: user?.username })
             : toAppInvestmentTransaction(
                 rawPayload, context.account || {}, context.security || {}, context.institutionName
             );
         if (!updates) continue;
+        if(row.provider==='plaid') updates=await personalizeTransaction(userId,updates,rawPayload);
         const accountCurrency = String(context.account?.currency || context.account?.balances?.iso_currency_code || '').toUpperCase();
         if (row.provider === 'plaid_investments' &&
             ((accountCurrency && accountCurrency !== updates.Currency) || (row.Currency && row.Currency !== updates.Currency))) {
@@ -1603,6 +1611,7 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
                 investmentTransactionsResult.skipped ? item.investmentTransactionsLastError : investmentTransactionsError,
                 investmentTransactionsResult.history ? now : null, now, item.itemId, item.userId]
         );
+        await require('./automaticCare').runAutomaticCare(item.userId,{force:true});
         await dbService.writeAgentAudit(item.userId, 'plaid_auto_reconciliation', needsInvestmentRetry(totals) ? 'partial' : 'success', { itemId: item.itemId, ...totals });
         return totals;
     } catch (error) {
@@ -1619,16 +1628,19 @@ function syncItem(item, options = {}, ensureFresh = false) {
     return itemSyncCoordinator.sync(item, options, ensureFresh);
 }
 
-async function enqueueImmediateReconciliation(db, itemId) {
+async function enqueueImmediateReconciliation(db, itemId, options = {}) {
     return db.withTransaction(async () => {
-        const queued = await db.get(`SELECT id FROM plaid_webhook_events WHERE itemId = ?
+        const queued = await db.get(`SELECT id,payloadJson FROM plaid_webhook_events WHERE itemId = ?
             AND webhookType = 'LOCAL' AND webhookCode = 'RECONCILE' AND status IN ('pending','retry') ORDER BY id LIMIT 1`, [itemId]);
         const now = new Date().toISOString();
         if (queued) {
-            await db.run("UPDATE plaid_webhook_events SET status = 'pending', nextAttemptAt = ?, updatedAt = ? WHERE id = ?", [now,now,queued.id]);
+            const payload=JSON.parse(queued.payloadJson),previous=payload.reconcile_options || {};
+            payload.reconcile_options={forceHoldings:previous.forceHoldings!==false || options.forceHoldings!==false,
+                backfillSources:previous.backfillSources!==false || options.backfillSources!==false};
+            await db.run("UPDATE plaid_webhook_events SET status = 'pending', nextAttemptAt = ?, updatedAt = ?,payloadJson=? WHERE id = ?", [now,now,JSON.stringify(payload),queued.id]);
             return queued.id;
         }
-        const payload = { item_id: itemId, webhook_type: 'LOCAL', webhook_code: 'RECONCILE' };
+        const payload = { item_id: itemId, webhook_type: 'LOCAL', webhook_code: 'RECONCILE',reconcile_options:{forceHoldings:options.forceHoldings!==false,backfillSources:options.backfillSources!==false} };
         const result = await db.run(`INSERT INTO plaid_webhook_events
             (eventKey,itemId,webhookType,webhookCode,payloadJson,status,attempts,receivedAt,nextAttemptAt,updatedAt)
             VALUES (?,?,'LOCAL','RECONCILE',?,'pending',0,?,?,?)`,
@@ -1720,14 +1732,14 @@ function startAutomaticReconciliation() {
     return reconciliationTimer;
 }
 
-const webhookSyncOptions = ({ webhook_type: type, webhook_code: code } = {}) => {
+const webhookSyncOptions = ({ webhook_type: type, webhook_code: code, reconcile_options: options = {} } = {}) => {
     if (type === 'TRANSACTIONS' && code === 'SYNC_UPDATES_AVAILABLE') return { forceHoldings: false };
     if (type === 'HOLDINGS' && code === 'DEFAULT_UPDATE') return { forceHoldings: true };
     if (type === 'INVESTMENTS_TRANSACTIONS' && ['DEFAULT_UPDATE', 'HISTORICAL_UPDATE'].includes(code)) {
         return { forceHoldings: true };
     }
     if (type === 'ITEM' && code === 'LOGIN_REPAIRED') return { forceHoldings: true, backfillSources: true };
-    if (type === 'LOCAL' && code === 'RECONCILE') return { forceHoldings: true, backfillSources: true };
+    if (type === 'LOCAL' && code === 'RECONCILE') return { forceHoldings: options.forceHoldings!==false, backfillSources: options.backfillSources!==false };
     return null;
 };
 
@@ -2057,6 +2069,7 @@ module.exports = {
     exchangePublicToken,
     syncUserItems,
     requestImmediateReconciliation,
+    enqueueImmediateReconciliation,
     plaidCanonicalUpdates,
     reconciliationIntervalMs,
     reconcileAllPlaidItems,

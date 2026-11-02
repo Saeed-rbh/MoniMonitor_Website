@@ -1,5 +1,44 @@
 const MIGRATIONS = [
     {
+        version: 16,
+        name: 'automatic_learning_and_recovery',
+        async up(db) {
+            await db.exec(`
+                CREATE TABLE account_learning_evidence (
+                    userId TEXT NOT NULL REFERENCES users(id), ruleKey TEXT NOT NULL,
+                    sourceKey TEXT NOT NULL, transactionId INTEGER NOT NULL, accountId INTEGER NOT NULL, eventFingerprint TEXT NOT NULL,
+                    active INTEGER NOT NULL DEFAULT 1, createdAt TEXT NOT NULL, updatedAt TEXT NOT NULL,
+                    PRIMARY KEY(userId,ruleKey,sourceKey,accountId));
+                CREATE TABLE learned_account_rules (
+                    userId TEXT NOT NULL REFERENCES users(id), ruleKey TEXT NOT NULL, ruleJson TEXT NOT NULL,
+                    accountId INTEGER, evidenceCount INTEGER NOT NULL, status TEXT NOT NULL,
+                    updatedAt TEXT NOT NULL, PRIMARY KEY(userId,ruleKey));
+                CREATE TABLE merchant_preferences (
+                    userId TEXT NOT NULL REFERENCES users(id), merchantKey TEXT NOT NULL, currency TEXT NOT NULL,
+                    flow TEXT NOT NULL, category TEXT NOT NULL, label TEXT NOT NULL,
+                    transactionId INTEGER NOT NULL, updatedAt TEXT NOT NULL,
+                    PRIMARY KEY(userId,merchantKey,currency,flow));
+                CREATE TABLE automatic_care_runs (
+                    userId TEXT PRIMARY KEY REFERENCES users(id), checkedAt TEXT NOT NULL,
+                    reportJson TEXT NOT NULL, lastError TEXT);
+                CREATE TABLE attention_deliveries (
+                    userId TEXT NOT NULL REFERENCES users(id), noticeKey TEXT NOT NULL,
+                    fingerprint TEXT NOT NULL, createdAt TEXT NOT NULL,
+                    PRIMARY KEY(userId,noticeKey,fingerprint));
+                CREATE TABLE operational_notice_outbox (
+                    id INTEGER PRIMARY KEY, userId TEXT NOT NULL REFERENCES users(id), noticeKey TEXT NOT NULL,
+                    payloadJson TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,
+                    nextAttemptAt TEXT NOT NULL, updatedAt TEXT NOT NULL, lastError TEXT,
+                    UNIQUE(userId,noticeKey));
+                CREATE TABLE financial_checkpoints (
+                    id INTEGER PRIMARY KEY, userId TEXT NOT NULL REFERENCES users(id), accountId INTEGER NOT NULL,
+                    kind TEXT NOT NULL, fingerprint TEXT NOT NULL, evidenceJson TEXT NOT NULL,
+                    capturedAt TEXT NOT NULL, lastSeenAt TEXT NOT NULL,
+                    UNIQUE(userId,accountId,kind,fingerprint));
+            `);
+        },
+    },
+    {
         version: 15,
         name: 'guided_reliability_reviews',
         async up(db) {

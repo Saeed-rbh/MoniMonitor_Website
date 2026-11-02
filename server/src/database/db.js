@@ -609,9 +609,7 @@ async function getDb() {
                     ON plaid_webhook_events(status, nextAttemptAt, id);
             `);
 
-            // Cleanup processed_emails older than 90 days to prevent DB bloat
-            const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
-            await db.run('DELETE FROM processed_emails WHERE processedAt < ?', [cutoff]);
+            // Keep ingestion receipts and source evidence for replay safety and audit history.
             const tenantOwnerId = process.env.BACKUP_OWNER_USER_ID || process.env.USER_ID;
             // Startup preserves history. Destructive duplicate merges belong only
             // to the explicitly invoked reconciliation command, never auto-sync.
