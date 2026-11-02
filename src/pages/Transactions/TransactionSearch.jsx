@@ -165,7 +165,7 @@ export default function TransactionSearch() {
               {quickDateRanges().map(range => (
                 <button key={range.label} type="button"
                   aria-pressed={startDate === range.start && endDate === range.end}
-                  onClick={() => { setStartDate(range.start); setEndDate(range.end); setLimit(pageSize); }}>
+                  onClick={() => { setStartDate(range.start); setEndDate(range.end); setLimit(pageSize); setDatesOpen(false); }}>
                   {range.label}
                 </button>
               ))}

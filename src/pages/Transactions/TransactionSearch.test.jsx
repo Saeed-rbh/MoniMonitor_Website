@@ -179,13 +179,19 @@ test.each([
   ["Last 7 days", "2026-10-26", "2026-11-01"],
   ["This month", "2026-11-01", "2026-11-30"],
   ["Last month", "2026-10-01", "2026-10-31"],
-])("selects %s and updates the date inputs and selected state", (label, start, end) => {
+])("selects %s, closes the popup, and preserves the range on reopening", (label, start, end) => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date(2026, 10, 1, 12));
   try {
     render(<TransactionSearch />);
-    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    const opener = screen.getByRole("button", { name: "Date filters" });
+    opener.focus();
+    fireEvent.click(opener);
     fireEvent.click(screen.getByRole("button", { name: label, exact: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent(`${start} – ${end}`);
+    fireEvent.click(opener);
     expect(screen.getByLabelText("From")).toHaveValue(start);
     expect(screen.getByLabelText("To")).toHaveValue(end);
     expect(screen.getByRole("button", { name: label, exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -204,6 +210,8 @@ test.each([
     render(<TransactionSearch />);
     fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
     fireEvent.click(screen.getByRole("button", { name: "Last month", exact: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
     expect(screen.getByLabelText("From")).toHaveValue(start);
     expect(screen.getByLabelText("To")).toHaveValue(end);
     fireEvent.change(screen.getByLabelText("From"), { target: { value: end } });
