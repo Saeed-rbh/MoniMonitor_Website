@@ -156,7 +156,7 @@ test("traps focus in the date popup, closes with Escape, and restores focus", ()
 test.each([
   ["Today", "2026-11-01", "2026-11-01"],
   ["Last 7 days", "2026-10-26", "2026-11-01"],
-  ["This month", "2026-11-01", "2026-11-30"],
+  ["This month", "2026-11-01", "2026-11-01"],
   ["Last month", "2026-10-01", "2026-10-31"],
 ])("selects %s, closes the popup, and preserves the range on reopening", (label, start, end) => {
   vi.useFakeTimers();
@@ -202,11 +202,12 @@ test.each([
 test("selects a range across months directly in the embedded calendar", () => {
   testData.extra = ["2026-10-30", "2026-11-02"].map(Timestamp => ({ Timestamp, Reason: "Range payment", Amount: 1, Category: "Expense" }));
   vi.useFakeTimers();
-  vi.setSystemTime(new Date(2026, 9, 10, 12));
+  vi.setSystemTime(new Date(2026, 10, 10, 12));
   try {
     render(<TransactionSearch />);
     fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
     expect(document.querySelector('input[type="date"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
     fireEvent.click(screen.getByRole("button", { name: "October 30, 2026", exact: true }));
     expect(screen.getByLabelText("Selected dates")).toHaveTextContent("2026-10-30");
     fireEvent.click(screen.getByRole("button", { name: "Next month" }));
@@ -223,7 +224,7 @@ test("selects a range across months directly in the embedded calendar", () => {
 test("normalizes a range selected backwards", () => {
   testData.extra = ["2028-02-27", "2028-02-29"].map(Timestamp => ({ Timestamp, Reason: "Leap payment", Amount: 1, Category: "Expense" }));
   vi.useFakeTimers();
-  vi.setSystemTime(new Date(2028, 1, 10, 12));
+  vi.setSystemTime(new Date(2028, 1, 29, 12));
   try {
     render(<TransactionSearch />);
     fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
@@ -261,7 +262,7 @@ test("tapping the selected day again confirms it and closes the popup", () => {
 
 test("allows empty days as range boundaries and marks days with transactions", () => {
   vi.useFakeTimers();
-  vi.setSystemTime(new Date(2026, 9, 10, 12));
+  vi.setSystemTime(new Date(2026, 9, 31, 12));
   testData.extra = [{ Timestamp: "2026-10-13", Reason: "Range match", Amount: 10, Category: "Expense" }];
   try {
     render(<TransactionSearch />);
@@ -288,4 +289,25 @@ test("category selection does not show Clear all until a search or date filter i
   expect(screen.getByRole("button", { name: "Clear all" })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
   expect(screen.queryByRole("button", { name: "Clear all" })).not.toBeInTheDocument();
+});
+
+test("disables future dates but keeps past empty dates selectable", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 10, 1, 12));
+  try {
+    render(<TransactionSearch />);
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+    const today = screen.getByRole("button", { name: "November 1, 2026", exact: true });
+    expect(today).toBeEnabled();
+    const future = screen.getByRole("button", { name: "November 4, 2026", exact: true });
+    expect(future).toBeDisabled();
+    fireEvent.click(today);
+    fireEvent.click(future);
+    expect(screen.getByLabelText("Selected dates")).toHaveTextContent(/^2026-11-01$/);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next month" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Previous month" }));
+    expect(screen.getByRole("button", { name: "October 12, 2026", exact: true })).toBeEnabled();
+  } finally { vi.useRealTimers(); }
 });

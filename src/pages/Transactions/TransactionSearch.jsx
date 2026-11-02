@@ -26,7 +26,7 @@ const quickDateRanges = () => {
   return [
     { label: "Today", from: today, to: today },
     { label: "Last 7 days", from: new Date(year, month, today.getDate() - 6), to: today },
-    { label: "This month", from: new Date(year, month, 1), to: new Date(year, month + 1, 0) },
+    { label: "This month", from: new Date(year, month, 1), to: today },
     { label: "Last month", from: new Date(year, month - 1, 1), to: new Date(year, month, 0) },
   ].map(range => ({ label: range.label, start: dateInputValue(range.from), end: dateInputValue(range.to) }));
 };

@@ -94,3 +94,7 @@
 .date-range-calendar-grid button.has-transactions.is-selected .date-range-day::after { background: var(--Ec-1); }
 .transaction-date-shortcut-top { gap: 6px; font-size: .75rem; }
 .transaction-date-shortcut-top > span { min-width: 0; }
+
+.transaction-date-popup .date-range-calendar-grid button:disabled { opacity: .25; cursor: default; }
+.transaction-date-popup .date-range-calendar-grid button:disabled:hover .date-range-day { border-color: transparent; }
+.date-range-calendar-nav button:disabled { cursor: default; }
