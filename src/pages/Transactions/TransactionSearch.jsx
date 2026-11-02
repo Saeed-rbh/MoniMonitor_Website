@@ -81,13 +81,13 @@ export default function TransactionSearch() {
           onClick={() => { setCategory(item); setLimit(pageSize); }}>{item}</button>)}
       </div>
       <fieldset className="transaction-search-dates">
-        <legend>Date range</legend>
-        <label htmlFor="transaction-start-date">From
+        <legend className="transaction-search-label">Date range</legend>
+        <label htmlFor="transaction-start-date"><span className="transaction-search-label">From</span>
           <input id="transaction-start-date" type="date" value={startDate} max={endDate || undefined}
             aria-invalid={invalidRange} aria-describedby={invalidRange ? "transaction-date-error" : undefined}
             onChange={event => { setStartDate(event.target.value); setLimit(pageSize); }} />
         </label>
-        <label htmlFor="transaction-end-date">To
+        <label htmlFor="transaction-end-date"><span className="transaction-search-label">To</span>
           <input id="transaction-end-date" type="date" value={endDate} min={startDate || undefined}
             aria-invalid={invalidRange} aria-describedby={invalidRange ? "transaction-date-error" : undefined}
             onChange={event => { setEndDate(event.target.value); setLimit(pageSize); }} />
