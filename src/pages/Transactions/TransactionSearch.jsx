@@ -1,6 +1,5 @@
 import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { useModalFocus } from "../../utils/modalFocus";
+import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import { Search, X, CalendarDays } from "lucide-react";
 import { useTransactions } from "../../context/TransactionContext";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
@@ -65,8 +64,6 @@ export default function TransactionSearch() {
   const invalidRange = Boolean(startDate && endDate && startDate > endDate);
   const [limit, setLimit] = useState(initial.limit || pageSize);
   const [datesOpen, setDatesOpen] = useState(false);
-  const datePopupRef = useRef(null);
-  useModalFocus(datesOpen, datePopupRef, () => setDatesOpen(false));
   const inputRef = useRef(null);
   const pageRef = useRef(null);
   const sentinelRef = useRef(null);
@@ -152,15 +149,17 @@ export default function TransactionSearch() {
           aria-label="Remove date range">{startDate || "Any date"} – {endDate || "Any date"}<X size={14} aria-hidden="true" /></button>}
         {hasFilters && <button type="button" className="transaction-search-clear-all" onClick={clear}>Clear all</button>}
       </div>
-      {datesOpen && createPortal(
-        <div className="transaction-date-overlay" onClick={event => {
-          if (event.target === event.currentTarget) setDatesOpen(false);
-        }}>
-          <div ref={datePopupRef} id="transaction-date-filters" className="transaction-date-popup"
-            role="dialog" aria-modal="true" aria-labelledby="transaction-date-popup-title" tabIndex={-1}>
+      <MoreOpen
+        isClicked={datesOpen}
+        setIsClicked={() => setDatesOpen(false)}
+        dialogLabel="Date filters"
+        sheetHeight="auto"
+        zIndex={125}
+        overflow="auto"
+        feed={() => (
+          <div id="transaction-date-filters" className="transaction-date-popup">
             <div className="transaction-date-popup-header">
-              <h2 id="transaction-date-popup-title">Date filters</h2>
-              <button type="button" aria-label="Close date filters" onClick={() => setDatesOpen(false)}><X size={20} aria-hidden="true" /></button>
+              <h2>Date filters</h2>
             </div>
             <div className="transaction-date-shortcuts" role="group" aria-label="Quick date ranges">
               {quickDateRanges().map(range => (
@@ -190,7 +189,8 @@ export default function TransactionSearch() {
             <button type="button" className="transaction-date-done" disabled={invalidRange}
               onClick={() => setDatesOpen(false)}>Done</button>
           </div>
-        </div>, document.body)}
+        )}
+      />
       {!datesOpen && invalidRange && <p className="transaction-search-date-error" role="alert">Choose an end date on or after the start date.</p>}
       <div className="transaction-search-results">
         {results.slice(0, limit).map((transaction, index) => {

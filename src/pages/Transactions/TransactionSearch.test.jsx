@@ -1,7 +1,13 @@
 import React from "react";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render as testingRender, screen } from "@testing-library/react";
 import { beforeEach, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import TransactionSearch from "./TransactionSearch";
+
+const render = ui => testingRender(<MemoryRouter>{ui}</MemoryRouter>);
+vi.mock("framer-motion", async importOriginal => ({
+  ...await importOriginal(), AnimatePresence: ({ children }) => children,
+}));
 
 const testData = vi.hoisted(() => ({ userId: 0, extra: [] }));
 beforeEach(() => { testData.userId += 1; testData.extra = []; });
@@ -157,14 +163,14 @@ test("traps focus in the date popup, closes with Escape, and restores focus", ()
   const popup = screen.getByRole("dialog", { name: "Date filters" });
   expect(popup).toHaveAttribute("aria-modal", "true");
   expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Close date filters" })).toHaveFocus();
+  expect(screen.getByRole("button", { name: "Close dialog" })).toHaveFocus();
   fireEvent.keyDown(document.activeElement, { key: "Tab", shiftKey: true });
   expect(screen.getByRole("button", { name: "Done" })).toHaveFocus();
   fireEvent.keyDown(document.activeElement, { key: "Escape" });
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(calendar).toHaveFocus();
   fireEvent.click(calendar);
-  fireEvent.click(screen.getByRole("dialog").parentElement);
+  fireEvent.click(document.querySelector(".MoreOpen_Backdrop"));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
 
