@@ -167,3 +167,40 @@ test("traps focus in the date popup, closes with Escape, and restores focus", ()
   fireEvent.click(screen.getByRole("dialog").parentElement);
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
+
+test.each([
+  ["Today", "2026-11-01", "2026-11-01"],
+  ["Last 7 days", "2026-10-26", "2026-11-01"],
+  ["This month", "2026-11-01", "2026-11-30"],
+  ["Last month", "2026-10-01", "2026-10-31"],
+])("selects %s and updates the date inputs and selected state", (label, start, end) => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 10, 1, 12));
+  try {
+    render(<TransactionSearch />);
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    fireEvent.click(screen.getByRole("button", { name: label, exact: true }));
+    expect(screen.getByLabelText("From")).toHaveValue(start);
+    expect(screen.getByLabelText("To")).toHaveValue(end);
+    expect(screen.getByRole("button", { name: label, exact: true })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent(`${start} – ${end}`);
+  } finally { vi.useRealTimers(); }
+});
+
+test.each([
+  [new Date(2027, 0, 5, 12), "2026-12-01", "2026-12-31"],
+  [new Date(2028, 2, 1, 12), "2028-02-01", "2028-02-29"],
+])("handles previous-month year and leap-day boundaries", (today, start, end) => {
+  vi.useFakeTimers();
+  vi.setSystemTime(today);
+  try {
+    render(<TransactionSearch />);
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Last month", exact: true }));
+    expect(screen.getByLabelText("From")).toHaveValue(start);
+    expect(screen.getByLabelText("To")).toHaveValue(end);
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: end } });
+    expect(screen.getByRole("button", { name: "Last month", exact: true })).toHaveAttribute("aria-pressed", "false");
+  } finally { vi.useRealTimers(); }
+});

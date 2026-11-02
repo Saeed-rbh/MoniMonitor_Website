@@ -13,6 +13,18 @@ import "./TransactionSearch.css";
 const categories = ["All", "Expense", "Income", "Save & invest"];
 const pageSize = 30;
 const savedSearches = new Map();
+const dateInputValue = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const quickDateRanges = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  return [
+    { label: "Today", from: today, to: today },
+    { label: "Last 7 days", from: new Date(year, month, today.getDate() - 6), to: today },
+    { label: "This month", from: new Date(year, month, 1), to: new Date(year, month + 1, 0) },
+    { label: "Last month", from: new Date(year, month - 1, 1), to: new Date(year, month, 0) },
+  ].map(range => ({ label: range.label, start: dateInputValue(range.from), end: dateInputValue(range.to) }));
+};
 const dateGroup = value => {
   const date = parseTransactionCalendarDate(value);
   if (Number.isNaN(date.getTime())) return "Unknown date";
@@ -150,7 +162,16 @@ export default function TransactionSearch() {
               <h2 id="transaction-date-popup-title">Date filters</h2>
               <button type="button" aria-label="Close date filters" onClick={() => setDatesOpen(false)}><X size={20} aria-hidden="true" /></button>
             </div>
-      <fieldset  className="transaction-search-dates">
+            <div className="transaction-date-shortcuts" role="group" aria-label="Quick date ranges">
+              {quickDateRanges().map(range => (
+                <button key={range.label} type="button"
+                  aria-pressed={startDate === range.start && endDate === range.end}
+                  onClick={() => { setStartDate(range.start); setEndDate(range.end); setLimit(pageSize); }}>
+                  {range.label}
+                </button>
+              ))}
+            </div>
+      <fieldset className="transaction-search-dates">
         <legend className="transaction-search-label">Date range</legend>
         <label htmlFor="transaction-start-date"><span className="transaction-search-label">From</span>
           <input id="transaction-start-date" type="date" value={startDate} max={endDate || undefined}
