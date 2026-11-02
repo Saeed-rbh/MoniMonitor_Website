@@ -57,3 +57,15 @@ test('new bank ingestion persists posted cash date separately from authorization
  await service.syncTransactionAccountBalance(user,id,{accountId:account.id,confidence:'HIGH'});
  assert.equal((await db.get('SELECT occurredAt FROM account_balance_events WHERE sourceTransactionId=?',[id])).occurredAt,'2026-09-01');
 });
+
+test('already-correct automatic dates still receive durable recovery facts and reviewed source proof',async()=>{
+ const id=await service.addTransaction({userId:user,Amount:1,Currency:'CAD',Category:'Expense',Label:'Other Expense',Reason:'Already normalized',Timestamp:'2026-08-31',CashDate:'2026-09-01',AccountFlow:'OUT',BalanceAccountId:account.id});
+ const facts=await service.getTransactionById(id,user);delete facts.CashDate;
+ await db.run('INSERT INTO verified_history_entries VALUES(?,?,?,?,?,?)',[user,id,account.id,JSON.stringify(facts),'{}','2026-10-31']);
+ const p={userId:user,cutoffDate:'2026-10-31',basis:{checkpointSha256:'d'.repeat(64)},entries:[],controls:[],updates:[{id,expected:{CashDate:null},fields:{CashDate:'2026-09-01'},source:{provider:'bank_csv',externalId:'already-correct-proof',rawPayload:{postedDate:'2026-09-01'}}}]};
+ assert.deepEqual(await db.withTransaction(()=>applyPlan(db,user,p)),{restored:0,updated:0});
+ assert.equal(JSON.parse((await db.get('SELECT factsJson FROM verified_history_entries WHERE transactionId=?',[id])).factsJson).CashDate,'2026-09-01');
+ assert.equal((await db.get("SELECT transactionId FROM transaction_sources WHERE externalId='already-correct-proof'")).transactionId,id);
+ const audit=(await db.get('SELECT COUNT(*) n FROM agent_audit_log')).n;
+ assert.deepEqual(await db.withTransaction(()=>applyPlan(db,user,p)),{restored:0,updated:0});assert.equal((await db.get('SELECT COUNT(*) n FROM agent_audit_log')).n,audit);
+});

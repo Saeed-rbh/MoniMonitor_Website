@@ -16,9 +16,20 @@ async function applyPlan(db,userId,plan){
  const restored=await restoreVerifiedHistory(userId);
  for(const change of plan.updates||[]){
   const row=await db.get('SELECT * FROM transactions WHERE id=? AND userId=?',[change.id,userId]);if(!row)throw Error('History correction missing row');
-  if(Object.entries(change.fields).every(([k,v])=>row[k]===v))continue;
+  const financiallyChanged=!Object.entries(change.fields).every(([k,v])=>row[k]===v);
   for(const[k,v]of Object.entries(change.expected))if(row[k]!==v&&row[k]!==change.fields[k])throw Error(`Financial facts changed: ${change.id} ${k}`);
   if(Object.keys(change.fields).some(k=>!protectedFields.includes(k)))throw Error('Unsupported reviewed field');
+  if(change.source&&(change.source.provider!=='bank_csv'||!change.source.externalId||!change.source.rawPayload))throw Error('Invalid reviewed bank source');
+  if(!financiallyChanged){
+   const saved=await db.get('SELECT factsJson FROM verified_history_entries WHERE userId=? AND transactionId=?',[userId,change.id]);
+   const locked=await db.get('SELECT fieldsJson FROM transaction_overrides WHERE userId=? AND transactionId=?',[userId,change.id]);
+   const facts=JSON.parse(saved?.factsJson||'{}'),fields=JSON.parse(locked?.fieldsJson||'{}');
+   const complete=Object.entries(change.fields).every(([k,v])=>(!saved||facts[k]===v)&&fields[k]===v);
+   const source=change.source&&await db.get('SELECT * FROM transaction_sources WHERE provider=? AND externalId=?',[change.source.provider,change.source.externalId]);
+   const sourceComplete=!change.source||source?.userId===userId&&source.transactionId===change.id&&
+    source.rawPayloadJson===JSON.stringify(change.source.rawPayload)&&source.contextPayloadJson===JSON.stringify({...change.source.contextPayload,reviewed:true});
+   if(complete&&sourceComplete)continue;
+  }
   await service.updateTransactionForUser(change.id,userId,change.fields,{reviewed:true});
   const postingHistory={};
   if(change.fields.Timestamp||change.fields.CashDate){
@@ -37,7 +48,8 @@ async function applyPlan(db,userId,plan){
   const verified=await db.get('SELECT * FROM verified_history_entries WHERE userId=? AND transactionId=?',[userId,change.id]);
   if(verified)await db.run('UPDATE verified_history_entries SET factsJson=?,verifiedAt=? WHERE userId=? AND transactionId=?',
    [JSON.stringify({...JSON.parse(verified.factsJson),...change.fields}),now,userId,change.id]);
-  await service.writeAgentAudit(userId,'verified_history_correction','success',{before:row,fields:change.fields,basis:plan.basis,evidence:change.evidence,previousVerifiedFacts:verified?.factsJson,postingHistory});updated++;
+  await service.writeAgentAudit(userId,financiallyChanged?'verified_history_correction':'verified_history_evidence_confirmed','success',{before:row,fields:change.fields,basis:plan.basis,evidence:change.evidence,previousVerifiedFacts:verified?.factsJson,postingHistory});
+  if(financiallyChanged)updated++;
  }
  for(const correction of plan.snapshots||[]){
   const a=await db.get('SELECT * FROM investment_accounts WHERE id=? AND userId=?',[correction.accountId,userId]);
