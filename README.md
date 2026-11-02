@@ -415,3 +415,9 @@ queued for automatic retry, even if its bank-transaction portion succeeded. The
 worker uses its existing retry backoff and continues until the investment products
 are ready; unsupported products and missing consent do not retry indefinitely.
 Audit runs distinguish partial investment results from successful completion.
+
+
+If Plaid removes an investment source that already has posted portfolio activity,
+retain the source/transaction for review instead of deleting its evidence or
+aborting the rest of the sync. Such removed sources are excluded from correction
+replays; resolving their financial effects requires explicit reversal evidence.

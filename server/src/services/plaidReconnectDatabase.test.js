@@ -93,3 +93,17 @@ test('linked investment facts are corrected while a conflicting source currency 
  assert.equal(corrected.AmountMinor,1000);assert.equal(corrected.PortfolioQuantity,0.05);
  assert.equal(corrected.PortfolioAccountId,account.id);assert.equal(corrected.Reason,'Keep this note');
 });
+
+
+test('provider removals retain posted portfolio evidence for review without aborting correction',async()=>{
+ const source=await db.get("SELECT * FROM transaction_sources WHERE provider='plaid_investments' AND externalId='trade'");
+ await db.run("UPDATE transaction_sources SET ownsTransaction=1 WHERE provider='plaid_investments' AND externalId='trade'");
+ const account=await db.get("SELECT * FROM investment_accounts WHERE accountRef='S0K7'");
+ await db.run(`INSERT INTO portfolio_transactions(userId,accountId,sourceTransactionId,kind,amountMinor,occurredAt)
+  VALUES('u',?,?,'EMAIL_BUY',1000,'2026-10-20')`,[account.id,source.transactionId]);
+ await assert.doesNotReject(plaid.removeMissingInvestmentTransactions('u','item','2026-10-01',new Set()));
+ const retained=await db.get("SELECT * FROM transaction_sources WHERE provider='plaid_investments' AND externalId='trade'");
+ assert.ok(retained);assert.equal(retained.ownsTransaction,0);assert.equal(JSON.parse(retained.contextPayloadJson).providerRemoved,true);
+ assert.ok(await service.getTransactionById(source.transactionId,'u'));
+ assert.equal((await db.get('SELECT reason FROM transaction_ingestion_reviews WHERE transactionId=?',[source.transactionId])).reason,'provider_removed_linked_activity');
+});

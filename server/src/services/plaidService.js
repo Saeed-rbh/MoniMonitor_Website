@@ -1007,7 +1007,15 @@ async function applyModifiedTransaction(userId, item, transaction, accountMap, o
 }
 
 async function retainReviewedRemoval(db, source, userId) {
-    if (!await db.get('SELECT transactionId FROM transaction_overrides WHERE transactionId=? AND userId=?', [source.transactionId, userId])) return false;
+    const reviewed = await db.get('SELECT transactionId FROM transaction_overrides WHERE transactionId=? AND userId=?', [source.transactionId,userId]);
+    const postedPortfolio = await db.get('SELECT id FROM portfolio_transactions WHERE sourceTransactionId=? AND userId=? AND reversedAt IS NULL', [source.transactionId,userId]);
+    if (!reviewed && !postedPortfolio) return false;
+    if (postedPortfolio && !reviewed) {
+        await db.run(`INSERT INTO transaction_ingestion_reviews(transactionId,reason,createdAt)
+            VALUES (?,'provider_removed_linked_activity',?) ON CONFLICT(transactionId) DO UPDATE
+            SET reason=excluded.reason,createdAt=excluded.createdAt,resolvedAt=NULL
+            WHERE transaction_ingestion_reviews.resolvedAt IS NOT NULL`, [source.transactionId,new Date().toISOString()]);
+    }
     const context = parseStoredSourcePayload(source.contextPayloadJson) || {};
     await db.run('UPDATE transaction_sources SET contextPayloadJson=?, ownsTransaction=0 WHERE provider=? AND externalId=? AND userId=?',
         [JSON.stringify({ ...context, providerRemoved: true }), source.provider, source.externalId, userId]);
@@ -1398,6 +1406,7 @@ async function refreshStoredPlaidSourceDetails(userId, { itemId = null, includeL
         if (!includeLinked && (!row.ownsTransaction || row.SourceEmailKey)) continue;
         const rawPayload = parseStoredSourcePayload(row.rawPayloadJson);
         const context = parseStoredSourcePayload(row.contextPayloadJson) || {};
+        if (context.providerRemoved) continue;
         if (!rawPayload) continue;
         const updates = row.provider === 'plaid'
             ? toAppTransaction(rawPayload, context.account || {}, context.institutionName, { ownerUsername: user?.username })
@@ -2036,6 +2045,7 @@ module.exports = {
     importAddedTransaction,
     applyModifiedTransaction,
     importInvestmentTransaction,
+    removeMissingInvestmentTransactions,
     findInvestmentFallbackMatch,
     confirmInvestmentAccount,
     findInvestmentCurrencyConflict,
