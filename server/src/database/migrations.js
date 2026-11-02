@@ -1,5 +1,18 @@
 const MIGRATIONS = [
     {
+        version: 17, name: 'verified_history_controls',
+        async up(db) {
+            await db.exec(`CREATE TABLE verified_history_entries (
+                userId TEXT NOT NULL,transactionId INTEGER NOT NULL,accountId INTEGER,
+                factsJson TEXT NOT NULL,basisJson TEXT NOT NULL,verifiedAt TEXT NOT NULL,
+                PRIMARY KEY(userId,transactionId));
+                CREATE TABLE verified_ledger_controls (
+                userId TEXT NOT NULL,accountId INTEGER NOT NULL,cutoffDate TEXT NOT NULL,
+                cashMinor INTEGER NOT NULL,basisJson TEXT NOT NULL,
+                PRIMARY KEY(userId,accountId,cutoffDate));`);
+        }
+    },
+    {
         version: 16,
         name: 'automatic_learning_and_recovery',
         async up(db) {

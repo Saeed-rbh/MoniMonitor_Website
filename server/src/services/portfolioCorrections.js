@@ -88,10 +88,10 @@ async function reverseState(db, userId, state, reason, verifiedBaseline) {
         if (!state.holdingsAbsorbed) for (const symbol of state.affected) {
             const previous = before.holdings.find(h => h.symbol === symbol);
             const current = state.current.holdings.find(h => h.symbol === symbol);
-            await db.run('DELETE FROM investment_holdings WHERE accountId = ? AND userId = ? AND symbol = ?', [state.activity.accountId, userId, symbol]);
+            if (!previous && current) await db.run('UPDATE investment_holdings SET quantity=0,updatedAt=? WHERE id=? AND userId=?',[now,current.id,userId]);
             if (previous) await db.run(`INSERT INTO investment_holdings
                 (userId, accountId, symbol, name, quantity, averageCostMinor, averageCostMicros, priceMinor, priceMicros, currency, updatedAt)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [userId, state.activity.accountId, symbol, previous.name,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(accountId,symbol) DO UPDATE SET quantity=excluded.quantity,averageCostMinor=excluded.averageCostMinor,averageCostMicros=excluded.averageCostMicros,priceMinor=excluded.priceMinor,priceMicros=excluded.priceMicros,updatedAt=excluded.updatedAt`, [userId, state.activity.accountId, symbol, previous.name,
                 previous.quantity, previous.averageCostMinor, previous.averageCostMicros,
                 current?.priceMinor ?? previous.priceMinor, current?.priceMicros ?? previous.priceMicros, previous.currency, now]);
         }

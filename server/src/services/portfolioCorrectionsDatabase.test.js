@@ -52,7 +52,7 @@ test('reversing a buy restores exact original shares and cost basis, retains evi
 
 test('reversing a complete sell recreates the original holding and its cost basis', async () => {
     const f = await fixture('SELL', 5);
-    assert.equal(await holding(f), undefined);
+    assert.equal((await holding(f)).quantity, 0);
     await reverse(f);
     assert.equal(await cash(f), 10000);
     assert.equal((await holding(f)).quantity, 5);

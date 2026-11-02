@@ -205,6 +205,26 @@ async function addTransaction(transaction) {
  * intent (or the inverse). Ambiguous balance matches remain intentionally
  * deferred to the idempotent reconciliation path.
  */
+async function ensureEmailTransferFunding(db,transaction,source,primaryId) {
+    const endpoints=transaction._internalTransfer;
+    if(!endpoints||!source?.externalId||transaction.Category!=='Internal'||transaction.AccountFlow!=='IN')return;
+    const from=await db.get('SELECT * FROM investment_accounts WHERE id=? AND userId=?',[endpoints.fromAccountId,transaction.userId]);
+    const to=await db.get('SELECT * FROM investment_accounts WHERE id=? AND userId=?',[endpoints.toAccountId,transaction.userId]);
+    if(!from||!to||from.id===to.id||from.currency!==to.currency||from.currency!==transaction.Currency)return;
+    const externalId=`${source.externalId}:funding`;
+    if(await db.get("SELECT transactionId FROM transaction_sources WHERE userId=? AND provider='derived_transfer' AND externalId=?",[transaction.userId,externalId]))return;
+    const reference=transaction.ReferenceNumber||`XFER-EMAIL-${require('node:crypto').createHash('sha256').update(source.externalId).digest('hex').slice(0,20)}`;
+    const leg={...transaction,SourceEmailKey:externalId,PortfolioAction:null,PortfolioAccountId:null,PortfolioAccountNumber:null,
+        Account:from.accountRef,Type:from.accountType,BalanceAccountId:from.id,BalanceAccountConfidence:'HIGH',AccountFlow:'OUT',ReferenceNumber:reference};
+    const match=await findTransactionMatchResult(db,transaction.userId,leg,{incomingProvider:'email',mode:'bank'});
+    if(match.reviewIds.length)return;
+    const id=match.match?.id||await addTransaction(leg);
+    await upsertTransactionSource({provider:'derived_transfer',externalId,userId:transaction.userId,transactionId:id,ownsTransaction:!match.match,
+        rawPayload:{sourceExternalId:source.externalId,primaryTransactionId:primaryId,fromAccountId:from.id,toAccountId:to.id},contextPayload:{explicitEmailEndpoints:true}});
+    if(!transaction.ReferenceNumber)await db.run('UPDATE transactions SET ReferenceNumber=COALESCE(ReferenceNumber,?) WHERE id=? AND userId=?',[reference,primaryId,transaction.userId]);
+    await syncTransactionAccountBalance(transaction.userId,id,{accountId:from.id,confidence:'HIGH'});
+}
+
 async function commitEmailTransaction({ transaction, source, balance = null, outbox = null }) {
     const db = await getDb();
     return await db.withTransaction(async () => {
@@ -226,11 +246,13 @@ async function commitEmailTransaction({ transaction, source, balance = null, out
             }
             if (source) await upsertTransactionSource({ ...source, userId: transaction.userId,
                 transactionId: match.id, provider: 'email', ownsTransaction: false });
+            await ensureEmailTransferFunding(db,transaction,source,match.id);
             return match.id;
         }
         const transactionId = await addTransaction(transaction);
         const reviewReason = transaction.IngestionReviewReason || (decision.reviewIds.length ? 'possible_duplicate' : null);
         if (reviewReason) {
+            await db.run("UPDATE transactions SET PostingStatus='unposted' WHERE id=? AND userId=?",[transactionId,transaction.userId]);
             await db.run(`INSERT INTO transaction_ingestion_reviews
                 (transactionId, reason, candidateIdsJson, createdAt) VALUES (?, ?, ?, ?)`,
                 [transactionId, reviewReason, JSON.stringify(decision.reviewIds), new Date().toISOString()]);
@@ -260,6 +282,7 @@ async function commitEmailTransaction({ transaction, source, balance = null, out
                 : outbox.payload;
             await enqueueTelegramOutbox(outbox.action || 'sendMessage', payload, { transactionId });
         }
+        if(!reviewReason)await ensureEmailTransferFunding(db,transaction,source,transactionId);
         return transactionId;
     });
 }
@@ -709,6 +732,12 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
         const amountMinor = Number.isSafeInteger(transaction.AmountMinor)
             ? transaction.AmountMinor
             : toMinorUnits(transaction.Amount);
+        // Portfolio activity owns cash and positions together. The email
+        // transaction boundary must not debit cash again before/after that path.
+        if (transaction.PortfolioAction && portfolioActivityCategories.has(transaction.Category) &&
+            Number(transaction.PortfolioAccountId) === Number(best.account.id)) {
+            return { status: 'portfolio_posting', accountId: best.account.id };
+        }
         const deltaMinor = transactionBalanceDelta(transaction, best.account, amountMinor);
         const statementCovered = best.account.balanceSource === 'bank_ui' &&
             Number.isFinite(Date.parse(transaction.Timestamp)) && Number.isFinite(Date.parse(best.account.balanceAsOf)) &&
@@ -736,7 +765,7 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
                     'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
                     [restoredCashMinor, new Date().toISOString(), existing.accountId, userId]
                 );
-                await db.run('DELETE FROM account_balance_events WHERE id = ? AND userId = ?', [existing.id, userId]);
+                await db.run('UPDATE account_balance_events SET deltaMinor = 0 WHERE id = ? AND userId = ?', [existing.id, userId]);
             }
             return { status: 'not_balance_posting' };
         }
@@ -1158,6 +1187,29 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
         if (currencyOf(source) !== currencyOf(account)) {
             return { status: 'review_required', reason: 'Cross-currency portfolio activity requires a recorded exchange rate' };
         }
+        if(isTrade){
+            const total=Number.isSafeInteger(source.AmountMinor)?source.AmountMinor:toMinorUnits(source.Amount);
+            if(Math.abs(Math.round(tradeQuantity*tradePrice*100)-total)>Math.max(2,Math.round(total*0.02)))
+                return {status:'review_required',reason:'Trade total does not match shares multiplied by execution price'};
+            if(action==='SELL'){
+                const holding=await db.get('SELECT quantity FROM investment_holdings WHERE userId=? AND accountId=? AND symbol=?',[userId,account.id,normalizedSymbol]);
+                if(!holding||tradeQuantity>Number(holding.quantity)+1e-9)return {status:'review_required',reason:'Sell exceeds the recorded number of shares'};
+            }
+        }
+
+        const cashCovered = account.balanceSource === 'plaid' || account.balanceSource === 'bank_ui' &&
+            Date.parse(source.Timestamp) <= Date.parse(account.balanceAsOf);
+        // Absorb legacy general-balance postings without removing their history.
+        const legacyEvent = await db.get('SELECT * FROM account_balance_events WHERE userId=? AND sourceTransactionId=? AND accountId=?',
+            [userId,transactionId,account.id]);
+        if (legacyEvent?.deltaMinor && Number(legacyEvent.balanceRevision) === Number(account.balanceRevision) && !cashCovered) {
+            const cash = Number(account.cashMinor) - Number(legacyEvent.deltaMinor);
+            if (!Number.isSafeInteger(cash)) throw new Error('Unsafe legacy portfolio cash correction');
+            await db.run('UPDATE investment_accounts SET cashMinor=? WHERE id=? AND userId=?',[cash,account.id,userId]);
+            await writeAgentAudit(userId,'portfolio_cash_ownership','success',{transactionId,previousEvent:legacyEvent});
+            await db.run('UPDATE account_balance_events SET deltaMinor=0 WHERE id=?',[legacyEvent.id]);
+            account.cashMinor=cash;
+        }
 
         if (isTrade && (account.holdingsSource !== 'manual' || account.balanceSource === 'plaid' || await db.get(
             'SELECT plaidAccountId FROM plaid_accounts WHERE userId = ? AND appAccountId = ? LIMIT 1', [userId, resolvedAccountId]))) {
@@ -1192,7 +1244,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
                     : explicitFlow === 'NONE'
                         ? 0
                         : (emailCashActions[action] || 0);
-            const nextCashMinor = account.cashMinor + (cashMultiplier * amountMinor);
+            const nextCashMinor = account.cashMinor + (cashCovered ? 0 : cashMultiplier * amountMinor);
             if (!Number.isSafeInteger(nextCashMinor)) {
                 return { status: 'review_required', reason: 'Portfolio action exceeds supported balance limits' };
             }
@@ -1206,7 +1258,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
                 const nextQuantity = Number(holding?.quantity || 0) + delta;
                 if (nextQuantity < -1e-8) throw new Error(`Portfolio action would make ${holdingSymbol} negative`);
                 if (nextQuantity <= 1e-8) {
-                    if (holding) await db.run('DELETE FROM investment_holdings WHERE id = ? AND userId = ?', [holding.id, userId]);
+                    if (holding) await db.run('UPDATE investment_holdings SET quantity=0,updatedAt=? WHERE id=? AND userId=?', [occurredAt,holding.id,userId]);
                     return;
                 }
                 const actionPriceMicros = Number.isFinite(tradePrice) && tradePrice > 0
@@ -1331,8 +1383,8 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
             if (totalShares <= 1e-9) {
                 totalShares = 0;
                 await db.run(
-                    'DELETE FROM investment_holdings WHERE id = ? AND userId = ?',
-                    [holding.id, userId]
+                    'UPDATE investment_holdings SET quantity=0,updatedAt=? WHERE id = ? AND userId = ?',
+                    [occurredAt,holding.id, userId]
                 );
             } else {
                 await db.run(

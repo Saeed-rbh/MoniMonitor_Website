@@ -15,6 +15,43 @@ function sourceEventTimestamp(body = '') {
 function normalizeEmailEvidence(transaction, body, accounts = []) {
     const result = { ...transaction };
     const text = String(body || '');
+    const sourceText=text.replace(/https?:\/\/\S+/g,'').replace(/<[^>]*>/g,' ');
+    const canadianAmount=/\bCA\$/.test(sourceText);
+    if (!result.Currency && canadianAmount) result.Currency='CAD';
+    if(/wealthsimple/i.test(result.BankName||'')&&/Subject:\s*You earned a dividend/im.test(sourceText)) {
+        result.Category='Investment';result.Label='Dividends';result.PortfolioAction='DIVIDEND';result.AccountFlow='IN';
+    }
+    if(/rbc|royal bank/i.test(result.BankName||'')&&/From:[^\n]*catch@payments\.interac\.ca/i.test(text)&&
+        /you sent|your transfer to/i.test(sourceText)&&!result.Account){
+        const candidates=accounts.filter(a=>/rbc|royal bank/i.test(a.institution||'')&&a.accountType==='Chequing');
+        if(candidates.length===1){result.Account=candidates[0].accountRef;result.BalanceAccountId=candidates[0].id;result.BalanceAccountConfidence='HIGH';result.AccountFlow='OUT';}
+    }
+    // Read both explicit endpoints. The amount belongs to the identified leg,
+    // rather than the direction guessed by the model for the other endpoint.
+    if (/wealthsimple/i.test(result.BankName||'') && /Subject:\s*You made a transfer/im.test(sourceText)) {
+        // Ignore mail headers; only the transfer detail block is account proof.
+        const details=sourceText.match(/Amount:\s*\$[\d,.]+\s*(?:CAD|USD)?\s*\nFrom:\s*([^\n]+)\nTo:\s*([^\n]+)/i);
+        if(details){
+            const resolve=label=>{
+                const words=label.replace(/\([^)]*\)/g,'').trim().toLowerCase();
+                const ref=label.match(/[*•]+([A-Z0-9]{3,})(?:\))/i)?.[1]?.replace(/CAD$|USD$/i,'');
+                const candidates=accounts.filter(a=>/wealthsimple/i.test(a.institution||'')&&
+                    (ref?String(a.accountRef).toUpperCase().endsWith(ref.toUpperCase()):words&&String(a.name).toLowerCase().includes(words)));
+                return candidates.length===1?candidates[0]:null;
+            };
+            const destination=resolve(details[2]);
+            const origin=resolve(details[1]);
+            if(destination){
+                result.Category='Internal';result.Label='Internal Transfer';result.PortfolioAction='TRANSFER';
+                result.AccountFlow='IN';result.Account=destination.accountRef;result.PortfolioAccountNumber=destination.accountRef;
+                result.BalanceAccountId=result.PortfolioAccountId=destination.id;
+                result.BalanceAccountConfidence=result.PortfolioConfidence='HIGH';
+                result.Reason=`Internal transfer: ${details[1].trim()} -> ${details[2].trim()}`;
+                if(origin&&origin.id!==destination.id&&origin.currency===destination.currency)
+                    Object.defineProperty(result,'_internalTransfer',{value:{fromAccountId:origin.id,toAccountId:destination.id}});
+            }
+        }
+    }
     // Card alerts describe authorizations, not proof of bank settlement.
     if (/From:[^\n]*rbcroyalbankalerts@alerts\.rbc\.com/i.test(text) &&
         /credit[ -]?card|visa/i.test(String(result.Type || '') + ' ' + text.match(/Subject:[^\n]*/i)?.[0])) {
@@ -37,11 +74,13 @@ function normalizeEmailEvidence(transaction, body, accounts = []) {
     }
     // A security send is not an executed sale and must never debit cash.
     if (/wealthsimple/i.test(result.BankName || '') &&
-        /(?:crypto\s+(?:transfer|send|withdrawal)|(?:sent|sending|received|receiving|transfer(?:red)?)\s+(?:of\s+)?[\d.,]+\s+(?:ETH|BTC|SOL)\b)/i.test(text) &&
+        /(?:crypto\s+(?:transfer|send|withdrawal)|(?:sent|sending|received|recieved|receiving|transfer(?:red)?)\s+(?:of\s+)?[\d.,]+\s+(?:ETH|BTC|SOL)\b)/i.test(text) &&
         !/\b(?:sold|bought|order filled|trade confirmation)\b/i.test(text)) {
         result.Category = 'Investment'; result.Label = 'Asset Distribution';
         result.PortfolioAction = 'TRANSFER'; result.AccountFlow = 'NONE';
         result.PortfolioPrice = null;
+        const candidates=accounts.filter(a=>/wealthsimple/i.test(a.institution||'')&&/crypto/i.test(a.accountType||'')&&(!result.Currency||a.currency===result.Currency));
+        if(candidates.length===1){result.Account=candidates[0].accountRef;result.PortfolioAccountNumber=candidates[0].accountRef;result.BalanceAccountId=result.PortfolioAccountId=candidates[0].id;result.Currency ||= candidates[0].currency;}
     }
     if (!result.Currency) {
         const explicit = [...text.matchAll(/\b(CAD|USD|EUR|GBP)\b/gi)].map(m => m[1].toUpperCase());

@@ -1,0 +1,50 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('fs'),os=require('os'),path=require('path');
+const dir=fs.mkdtempSync(path.join(os.tmpdir(),'october-posting-'));process.env.MONIMONITOR_DB_PATH=path.join(dir,'test.sqlite');process.env.USER_ID='october';process.env.BACKUP_OWNER_USER_ID='october';process.env.EMAIL_SOURCE_ENCRYPTION_KEY=Buffer.alloc(32,7).toString('base64');delete process.env.TELEGRAM_BOT_TOKEN;delete process.env.PLAID_SECRET;
+let current;const ai=require('./aiService');ai.parseEmailWithGemini=async()=>({...current});
+const service=require('../database/dbService'),{onNewEmail}=require('../../email_agent'),plaid=require('./plaidService'),care=require('./automaticCare');let db,account;
+test.before(async()=>{db=await service.getDb();await service.createUser('october','october','unused');account=await service.createInvestmentAccount('october',{name:'TFSA',institution:'Wealthsimple',accountType:'TFSA',accountRef:'S0K7',currency:'CAD',cashMinor:10000});});
+test.after(async()=>{await db.close();fs.rmSync(dir,{recursive:true,force:true});});const cash=async id=>(await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[id])).cashMinor;
+test('full email ingestion and retries post one investment cash movement and one position',async()=>{
+ current={Amount:'10',Currency:'CAD',Category:'Investment',Label:'ETF & Stock Purchase',Reason:'QQC',Timestamp:'2026-10-01T15:00:00Z',Type:'TFSA',Account:'S0K7',BankName:'Wealthsimple',PortfolioAction:'BUY',PortfolioAccountId:account.id,BalanceAccountId:account.id,PortfolioConfidence:'HIGH',BalanceAccountConfidence:'HIGH',PortfolioSymbol:'QQC',PortfolioQuantity:0.2,PortfolioPrice:50,AccountFlow:'OUT'};
+ const body='From: Wealthsimple <notifications@o.wealthsimple.com>\nSubject: Your order has been filled\nAccount: TFSA\nSymbol: QQC\nTotal value: $10 CAD';
+ for(let n=0;n<3;n++)assert.equal(await onNewEmail(body,'trade','2026-10-01T15:00:00Z',{allowBeforeSnapshot:true,suppressNotifications:true,sourceEmailKey:'october-trade'}),true);
+ assert.equal(await cash(account.id),9000);assert.equal((await db.get('SELECT quantity FROM investment_holdings WHERE accountId=?',[account.id])).quantity,0.2);assert.equal((await db.get('SELECT COUNT(*) n FROM transactions')).n,1);assert.equal((await db.get('SELECT COUNT(*) n FROM account_balance_events WHERE deltaMinor<>0')).n,0);
+});
+test('snapshot-covered dividend does not credit current cash again',async()=>{
+ await db.run("UPDATE investment_accounts SET balanceSource='bank_ui',balanceAsOf='2026-10-31',cashMinor=40444 WHERE id=?",[account.id]);
+ const id=await service.addTransaction({userId:'october',Amount:9.13,Currency:'CAD',Category:'Investment',Label:'Dividends',Reason:'VFV',Timestamp:'2026-10-06',PortfolioAction:'DIVIDEND',PortfolioAccountId:account.id,BalanceAccountId:account.id,AccountFlow:'IN'});
+ assert.equal((await service.applyEmailPortfolioActivity('october',id,{accountId:account.id,confidence:'HIGH',action:'DIVIDEND',accountFlow:'IN'})).status,'applied');assert.equal(await cash(account.id),40444);
+});
+test('cash transfers retain direction while security valuations never become cash',()=>{
+ const a={appAccountId:account.id,mask:'S0K7'};assert.equal(plaid.toAppInvestmentTransaction({type:'transfer',amount:-2000,date:'2026-10-29',quantity:0,iso_currency_code:'CAD'},a).AccountFlow,'IN');assert.equal(plaid.toAppInvestmentTransaction({type:'transfer',amount:2000,date:'2026-10-29',quantity:0.2,security_id:'ETH',iso_currency_code:'CAD'},a).AccountFlow,'NONE');
+});
+test('reconnection retains both rows, links exact native proof and preserves bank snapshot',async()=>{
+ const a=await service.createInvestmentAccount('october',{name:'Earnings',institution:'Wealthsimple',accountType:'Chequing',accountRef:'1832',currency:'CAD',cashMinor:53953});await db.run("UPDATE investment_accounts SET balanceSource='plaid' WHERE id=?",[a.id]);
+ const t={userId:'october',Amount:5000,Currency:'CAD',Category:'Internal',Label:'Internal Transfer',Reason:'Internal transfer: Earnings -> Savings',Account:'1832',BankName:'Wealthsimple',Timestamp:'2026-10-01',AccountFlow:'OUT',BalanceAccountId:a.id};const canonical=await service.addTransaction(t),copy=await service.addTransaction({...t,Category:'Expense',Label:'Personal Transfers',Reason:'Transfer out'});
+ for(const[id,key,native]of [[canonical,'old','old-account'],[copy,'new','new-account']])await service.upsertTransactionSource({provider:'plaid',externalId:key,userId:'october',transactionId:id,ownsTransaction:id===copy,rawPayload:{transaction_id:key,account_id:native,amount:5000,date:'2026-10-01',name:'Transfer out',iso_currency_code:'CAD'},contextPayload:{account:{appAccountId:a.id,mask:'1832'},institutionName:'Wealthsimple'}});
+ const count=(await db.get('SELECT COUNT(*) n FROM transactions')).n;assert.equal(await care.reconcileExistingSources('october'),1);assert.equal((await db.get('SELECT COUNT(*) n FROM transactions')).n,count);assert.equal((await service.getTransactionById(copy,'october')).PostingStatus,'unposted');assert.equal(await cash(a.id),53953);assert.equal((await db.get("SELECT transactionId FROM transaction_sources WHERE externalId='new'")).transactionId,canonical);assert.equal(await care.reconcileExistingSources('october'),0);
+ const {findRetainedSourceMatch}=require('./sourceReconciliation');assert.equal(await findRetainedSourceMatch(db,'october','plaid',{transaction_id:'third',account_id:'new-account',amount:5000,date:'2026-10-01',name:'Transfer out',iso_currency_code:'CAD'},{account:{appAccountId:a.id,mask:'1832'}}),null);
+});
+test('verified history adds missing rows idempotently and independently checks the cutoff ledger',async()=>{
+ const {applyPlan}=require('../../scripts/repair-retained-history'),{checkVerifiedLedgers}=require('./verifiedHistory');const a=await service.createInvestmentAccount('october',{name:'Savings',institution:'Wealthsimple',accountType:'Savings',accountRef:'WX05',currency:'CAD',cashMinor:8630});
+ const fact={id:99991,userId:'october',Amount:86.3,AmountMinor:8630,Currency:'CAD',Category:'Investment',Label:'Investment Interest',Reason:'Interest',Timestamp:'2026-10-01',Account:'WX05',BankName:'Wealthsimple',BalanceAccountId:a.id,PortfolioAccountId:a.id,PortfolioAction:'INTEREST',AccountFlow:'IN',PostingStatus:'posted'};const plan={userId:'october',cutoffDate:'2026-10-31',basis:{checkpointSha256:'a'.repeat(64)},entries:[{transaction:fact,accountId:a.id}],controls:[{accountId:a.id,cashMinor:8630}]};
+ assert.equal((await db.withTransaction(()=>applyPlan(db,'october',plan))).restored,1);assert.equal((await db.withTransaction(()=>applyPlan(db,'october',plan))).restored,0);assert.equal(await cash(a.id),8630);assert.equal((await checkVerifiedLedgers('october')).find(c=>c.accountId===a.id).status,'agrees');await db.run("UPDATE transactions SET AccountFlow='NONE' WHERE id=99991");assert.equal((await checkVerifiedLedgers('october')).find(c=>c.accountId===a.id).status,'conflict');
+});
+
+test('investment reconnection reuses execution identity without changing shares or cash',async()=>{
+ const id=await service.addTransaction({userId:'october',Amount:10,Currency:'CAD',Category:'Investment',Label:'ETF & Stock Purchase',Reason:'QQC',Timestamp:'2026-10-12',Account:'S0K7',BankName:'Wealthsimple',AccountFlow:'OUT',PortfolioAction:'BUY',PortfolioSymbol:'QQC',PortfolioQuantity:0.2,PortfolioPrice:50,PortfolioAccountId:account.id,BalanceAccountId:account.id});
+ const raw={investment_transaction_id:'execution-old',account_id:'portfolio-old',amount:10,date:'2026-10-12',iso_currency_code:'CAD',type:'buy',subtype:'buy',name:'Buy',quantity:0.2,price:50,security_id:'QQC-id'},context={account:{appAccountId:account.id,mask:'S0K7',currency:'CAD'},security:{ticker_symbol:'QQC'},institutionName:'Wealthsimple'};
+ await service.upsertTransactionSource({provider:'plaid_investments',externalId:'execution-old',transactionId:id,userId:'october',itemId:'same-item',rawPayload:raw,contextPayload:context});
+ const before=await cash(account.id),count=(await db.get('SELECT COUNT(*) n FROM transactions')).n;
+ const result=await plaid.importInvestmentTransaction('october',{itemId:'same-item',institutionName:'Wealthsimple'},{...raw,investment_transaction_id:'execution-new',account_id:'portfolio-new'},new Map([['portfolio-new',context.account]]),new Map([['QQC-id',context.security]]));
+ assert.equal(result.transactionId,id);assert.equal((await db.get('SELECT COUNT(*) n FROM transactions')).n,count);assert.equal(await cash(account.id),before);
+});
+
+test('explicit internal-transfer email posts both known cash accounts once',async()=>{
+ const from=await service.createInvestmentAccount('october',{name:'Earnings source',institution:'Wealthsimple',accountType:'Chequing',accountRef:'F123',currency:'CAD',cashMinor:100000});
+ const to=await service.createInvestmentAccount('october',{name:'Savings target',institution:'Wealthsimple',accountType:'Savings',accountRef:'Z991',currency:'CAD',cashMinor:0});
+ current={Amount:'100',Category:'Internal',Label:'Internal Transfer',Reason:'Wealthsimple',Timestamp:'2026-10-02T12:00:00Z',Account:'Z991',BankName:'Wealthsimple',PortfolioAction:'TRANSFER',AccountFlow:'OUT'};
+ const body='From: Wealthsimple <notifications@o.wealthsimple.com>\nSubject: You made a transfer\nAmount: $100.00 CAD\nFrom: Earnings source (Chequing)\nTo: Savings target (******Z991CAD)';
+ for(let n=0;n<2;n++)assert.equal(await onNewEmail(body,'transfer','2026-10-02T12:00:00Z',{allowBeforeSnapshot:true,suppressNotifications:true,sourceEmailKey:'explicit-transfer'}),true);
+ assert.equal(await cash(from.id),90000);assert.equal(await cash(to.id),10000);assert.equal((await db.get("SELECT COUNT(*) n FROM transaction_sources WHERE provider='derived_transfer' AND externalId='explicit-transfer:funding'")).n,1);
+});

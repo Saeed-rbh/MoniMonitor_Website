@@ -489,3 +489,17 @@ to the bank's financial facts still reopens the question. Source IDs, encryption
 nonces and worker timestamps alone do not. Optional operational webhook notices
 are persisted atomically with incident transitions and retried without replaying
 successful notifications.
+
+Verified history is retained independently of provider connection IDs. The automatic-care worker
+restores missing verified rows from retained facts and compares signed posted ledger movements
+with installed bank cutoff controls. A current provider balance alone is not historical
+reconciliation. Reconnection matching requires retained native identity or reviewed bank CSV
+proof; equal repeated activity without unique proof remains separate or held for confirmation.
+Investment cash and quantities use the portfolio posting boundary, so the general email balance
+updater cannot apply a second cash effect. Closed holdings remain as zero-quantity history.
+
+A reviewed private reconciliation plan can be previewed with
+`node server/scripts/repair-retained-history.js DB PLAN USER` and applied with `--apply`.
+The command creates a consistent database backup before applying corrections. It adds missing
+verified rows and locks evidenced financial corrections; it does not delete history or replace
+an active database with a checkpoint. Keep financial plans, checkpoint facts, and reports private.

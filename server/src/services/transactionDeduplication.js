@@ -146,6 +146,14 @@ function isComplementaryDepositPair(left, right) {
         (isDepositNotice(right) && isInteracDeposit(left));
 }
 
+function isWithdrawalNotice(row) {
+    return transactionDirection(row)==='OUT' && !row.PortfolioAction && !transactionReferences(row).size &&
+        /^Withdrawal from RBC/i.test(row.Reason||'');
+}
+function isOutgoingConfirmation(row) {
+    return transactionDirection(row)==='OUT' && transactionReferences(row).size>0 && /interac|e.transfer/i.test(`${row.Type||''} ${row.Reason||''}`);
+}
+
 const localDay = value => {
     const time = new Date(value).getTime();
     return Number.isFinite(time) ? new Intl.DateTimeFormat('en-CA', {
@@ -251,6 +259,12 @@ function scoreTransactionMatch(candidate, incoming, options = {}) {
         };
     }
 
+    const withdrawalPair=isWithdrawalNotice(candidate)&&isOutgoingConfirmation(incoming)||isWithdrawalNotice(incoming)&&isOutgoingConfirmation(candidate);
+    if(withdrawalPair&&sameAccount&&sameBank&&normalizeBank(candidate.BankName)==='rbc'&&sameDirection&&sameDay&&
+        Math.abs(Date.parse(candidate.ReceivedAt)-Date.parse(incoming.ReceivedAt))<=30*60000){
+        return {score:85,referenceMatch:false,overlapCount:overlap.length,withdrawalNoticeMatch:true};
+    }
+
     if (candidate.SourceEmailKey && incoming.SourceEmailKey &&
         candidate.SourceEmailKey !== incoming.SourceEmailKey && !complementaryBankSources) return null;
 
@@ -326,7 +340,7 @@ async function findTransactionMatchResult(db, userId, incoming, options = {}) {
          FROM transactions t
          WHERE t.userId = ? AND t.id != ? AND t.AmountMinor = ?
            AND (t.Currency = ? OR t.Currency IS NULL)
-           AND t.Timestamp BETWEEN ? AND ?`,
+           AND t.PostingStatus <> 'unposted' AND t.Timestamp BETWEEN ? AND ?`,
         [userId, options.excludeTransactionId || -1, amountMinor,
             String(incoming.Currency || 'CAD').toUpperCase(), from, to]
     );
@@ -367,7 +381,20 @@ async function findTransactionMatchResult(db, userId, incoming, options = {}) {
             return { match: null, reviewIds: depositCandidates.map(row => row.id) };
         }
     }
-    if (!ranked.length) return { match: null, reviewIds: [] };
+    if (!ranked.length) {
+        // Generic alerts with conflicting event dates cannot establish a
+        // second movement. Retain the notice, but await bank confirmation.
+        const generic=row=>isWithdrawalNotice(row)||isDepositNotice(row);
+        const possible=candidates.filter(row=>incoming.SourceEmailKey&&row.SourceEmailKey&&
+            row.SourceEmailKey!==incoming.SourceEmailKey&&generic(row)&&generic(incoming)&&
+            normalizeBank(row.BankName)==='rbc'&&normalizeBank(incoming.BankName)==='rbc'&&
+            row.BalanceAccountId&&Number(row.BalanceAccountId)===Number(incoming.BalanceAccountId)&&
+            transactionDirection(row)===transactionDirection(incoming)&&
+            String(row.Timestamp).slice(0,10)!==String(incoming.Timestamp).slice(0,10)&&
+            Math.abs(Date.parse(row.ReceivedAt)-Date.parse(incoming.ReceivedAt))<=6*3600000&&
+            Math.abs(Date.parse(row.Timestamp)-timestamp)<=86400000);
+        return {match:null,reviewIds:possible.map(row=>row.id)};
+    }
     if (!ranked[0].match.referenceMatch && ranked[1] &&
         ranked[0].match.score === ranked[1].match.score) return { match: null,
             reviewIds: ranked.filter(r => r.match.score === ranked[0].match.score).map(r => r.candidate.id) };

@@ -943,7 +943,8 @@ async function importAddedTransaction(userId, item, transaction, accountMap, own
 
     const match = replacement
         ? await dbService.getTransactionById(replacement.transactionId, userId)
-        : await findFallbackMatch(userId, appTransaction);
+        : await require('./sourceReconciliation').findRetainedSourceMatch(db,userId,'plaid',transaction,sourceContext) ||
+            await findFallbackMatch(userId, appTransaction);
     if (match) {
         if (replacement?.ownsTransaction && !match.SourceEmailKey) {
             await dbService.updateTransactionForUser(
@@ -1104,7 +1105,10 @@ function toAppInvestmentTransaction(transaction, account = {}, security = {}, in
     if (type === 'cancel') return null;
     const signedAmount = Number(transaction.amount);
     const amountMinor = Number.isFinite(signedAmount) ? Math.abs(Math.round(signedAmount * 100)) : 0;
-    const flow = type === 'transfer' ? 'NONE' : signedAmount > 0 ? 'OUT' : signedAmount < 0 ? 'IN' : 'NONE';
+    // Cash transfers have no security. Security transfers carry quantity or a
+    // security identity and their reported amount is valuation, not cash.
+    const securityTransfer = type === 'transfer' && (transaction.security_id || Number(transaction.quantity));
+    const flow = securityTransfer ? 'NONE' : signedAmount > 0 ? 'OUT' : signedAmount < 0 ? 'IN' : 'NONE';
     let Category = 'Investment';
     let Label = flow === 'IN' ? 'Investment Reimbursements' : 'Investment Fees';
     let PortfolioAction = flow === 'IN' ? 'REIMBURSEMENT' : 'FEE';
@@ -1213,7 +1217,7 @@ async function findInvestmentFallbackMatch(userId, appTransaction, currentItemId
     const to = new Date(timestamp.getTime() + 5 * 86400000).toISOString();
     const candidates = await db.all(
         `SELECT t.* FROM transactions t
-         WHERE t.userId = ? AND t.AmountMinor = ? AND t.Timestamp BETWEEN ? AND ?
+         WHERE t.userId = ? AND t.PostingStatus='posted' AND t.AmountMinor = ? AND t.Timestamp BETWEEN ? AND ?
            AND NOT EXISTS (
                SELECT 1 FROM transaction_sources s
                WHERE s.transactionId = t.id AND s.provider = 'plaid_investments'
@@ -1282,7 +1286,8 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
         await confirmInvestmentAccount(userId, existing.transactionId, appTransaction);
         return { status: 'known', transactionId: existing.transactionId };
     }
-    const match = await findInvestmentFallbackMatch(userId, appTransaction, item.itemId);
+    const match = await require('./sourceReconciliation').findRetainedSourceMatch(db,userId,'plaid_investments',transaction,sourceContext) ||
+        await findInvestmentFallbackMatch(userId, appTransaction, item.itemId);
     if (match) {
         await linkSource(
             userId, item.itemId, externalId, match.id, false,
@@ -1350,12 +1355,15 @@ async function resolveConfirmedSourceReview(userId, transactionId, facts) {
     const db = await dbService.getDb();
     const current = await dbService.getTransactionById(transactionId, userId);
     if (!current) return;
-    const columns = ['AmountMinor','Currency','BalanceAccountId','AccountFlow','PostingStatus'];
+    const held=await db.get("SELECT 1 FROM transaction_ingestion_reviews WHERE transactionId=? AND resolvedAt IS NULL AND reason IN ('ambiguous_account','unconfirmed_currency','provider_currency_conflict','provider_removed_linked_activity')",[transactionId]);
+    const columns = ['AmountMinor','Currency','BalanceAccountId','AccountFlow'];
+    if(!held)columns.push('PostingStatus');
     if (facts.Category === 'Investment') columns.push('PortfolioAction','PortfolioAccountId','PortfolioSymbol','PortfolioQuantity');
     if (columns.some(key => facts[key] !== undefined && facts[key] !== null && String(current[key]) !== String(facts[key]))) return;
     await db.run(`UPDATE transaction_ingestion_reviews SET resolvedAt = ? WHERE transactionId = ?
         AND reason IN ('ambiguous_account','unconfirmed_currency','provider_currency_conflict','provider_removed_linked_activity') AND resolvedAt IS NULL`,
         [new Date().toISOString(),transactionId]);
+    if(held&&current.PostingStatus==='unposted')await dbService.updateTransactionForUser(transactionId,userId,{PostingStatus:facts.PostingStatus||'posted'});
 }
 
 async function confirmInvestmentAccount(userId, transactionId, providerTransaction) {

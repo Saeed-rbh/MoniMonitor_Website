@@ -36,7 +36,7 @@ async function resolveLearnedReviews(userId) {
         if((posting && posting.accountId!==accountId)||(portfolio && portfolio.accountId!==accountId)) continue;
         try {
             await db.withTransaction(async()=>{
-                const fields={BalanceAccountId:proposed.BalanceAccountId,BalanceAccountConfidence:'HIGH',Account:proposed.Account};
+                const fields={BalanceAccountId:proposed.BalanceAccountId,BalanceAccountConfidence:'HIGH',Account:proposed.Account,PostingStatus:'posted'};
                 if(proposed.PortfolioAccountId) Object.assign(fields,{PortfolioAccountId:proposed.PortfolioAccountId,PortfolioConfidence:'HIGH',PortfolioAccountNumber:proposed.PortfolioAccountNumber});
                 await service().updateTransactionForUser(tx.id,userId,fields);
                 const current=await service().getTransactionById(tx.id,userId);
@@ -60,6 +60,7 @@ async function reconcileExistingSources(userId) {
         WHERE s.userId=? AND s.provider IN ('plaid','plaid_investments') AND t.SourceEmailKey IS NULL AND t.PostingStatus='posted'`,[userId]);
     let matched=0;
     for(const source of rows) {
+        if(!source.ownsTransaction) continue;
         const context=parse(source.contextPayloadJson),raw=parse(source.rawPayloadJson);
         if(context.providerRemoved || raw.pending || !context.account?.appAccountId) continue;
         const incoming=source.provider==='plaid'?plaid.toAppTransaction(raw,context.account,context.institutionName):
@@ -67,25 +68,26 @@ async function reconcileExistingSources(userId) {
         if(!incoming || incoming.Currency!==source.Currency) continue;
         if(await db.get('SELECT transactionId FROM transaction_overrides WHERE transactionId=? AND userId=?',[source.transactionId,userId]) ||
             await db.get('SELECT id FROM portfolio_transactions WHERE sourceTransactionId=? AND userId=? AND reversedAt IS NULL',[source.transactionId,userId])) continue;
+        const retained=await require('./sourceReconciliation').findRetainedSourceMatch(db,userId,source.provider,raw,context,{excludeTransactionId:source.transactionId});
         const result=await require('./transactionDeduplication').findTransactionMatchResult(db,userId,incoming,{
             excludeTransactionId:source.transactionId,incomingProvider:source.provider,mode:source.provider==='plaid'?'bank':'investment'});
-        const canonical=result.match;
-        if(!canonical?.SourceEmailKey) continue;
+        const canonical=retained||result.match;
+        if(!canonical || !retained&&!canonical.SourceEmailKey) continue;
         const sameAccount=Number(canonical.PortfolioAccountId||canonical.BalanceAccountId)===Number(incoming.PortfolioAccountId||incoming.BalanceAccountId);
         const sameReference=incoming.ReferenceNumber && canonical.ReferenceNumber===incoming.ReferenceNumber;
         const sameTrade=source.provider==='plaid_investments' && sameAccount && ['BUY','SELL'].includes(incoming.PortfolioAction) &&
             incoming.PortfolioSymbol===canonical.PortfolioSymbol && incoming.PortfolioAction===canonical.PortfolioAction &&
             Math.abs(Number(incoming.PortfolioQuantity)-Number(canonical.PortfolioQuantity))<1e-8 &&
             String(incoming.Timestamp).slice(0,10)===String(canonical.Timestamp).slice(0,10);
-        if(!sameAccount || !(sameReference||sameTrade)) continue;
+        if(!sameAccount || !(retained||sameReference||sameTrade)) continue;
         const other=await db.all('SELECT * FROM transaction_sources WHERE userId=? AND transactionId=? AND provider=?',[userId,canonical.id,source.provider]);
-        if(other.some(s=>!parse(s.contextPayloadJson).providerRemoved)) continue;
+        if(!retained&&other.some(s=>!parse(s.contextPayloadJson).providerRemoved)) continue;
         await db.withTransaction(async()=>{
             // Preserve the duplicate row and its old source assignment in the source-history trigger.
             await service().updateTransactionForUser(canonical.id,userId,plaid.plaidCanonicalUpdates(canonical,incoming));
             await service().upsertTransactionSource({userId,provider:source.provider,externalId:source.externalId,transactionId:canonical.id,
                 itemId:source.itemId,ownsTransaction:false,rawPayload:raw,contextPayload:{...context,previousTransactionId:source.transactionId}});
-            await service().updateTransactionForUser(source.transactionId,userId,{PostingStatus:'unposted'});
+            await service().updateTransactionForUser(source.transactionId,userId,{PostingStatus:'unposted'}, {reviewed:true});
             await service().syncTransactionAccountBalance(userId,source.transactionId);
             await service().syncTransactionAccountBalance(userId,canonical.id,{accountId:incoming.BalanceAccountId,confidence:'HIGH'});
             await service().writeAgentAudit(userId,'automatic_source_match','success',{
@@ -120,7 +122,7 @@ async function reuseReviewedCorrections(userId) {
 }
 
 async function consistencyChecks(userId) {
-    const db=await service().getDb(),checks=[];
+    const db=await service().getDb(),checks=await require('./verifiedHistory').checkVerifiedLedgers(userId);
     const accounts=await db.all('SELECT * FROM investment_accounts WHERE userId=?',[userId]);
     for(const account of accounts) {
         for(const kind of ['cash','holdings']) {
@@ -182,6 +184,7 @@ async function performCare(userId,{force=false}={}) {
     const previous=await db.get('SELECT * FROM automatic_care_runs WHERE userId=?',[userId]);
     if(!force && previous && !previous.lastError && Date.now()-Date.parse(previous.checkedAt)<15*60000) return parse(previous.reportJson);
     try {
+        const restoredHistory=await require('./verifiedHistory').restoreVerifiedHistory(userId);
         const reviewedPreferences=await learning.learnReviewedPreferences(userId);
         const storedSources=await require('./plaidService').refreshStoredPlaidSourceDetails(userId,{includeLinked:true});
         let learned=await learning.learnAccountMappings(userId);
@@ -191,7 +194,7 @@ async function performCare(userId,{force=false}={}) {
         const reusedReviews=await reuseReviewedCorrections(userId);
         const checks=await consistencyChecks(userId);
         const recoveryQueued=await scheduleRecovery(userId);
-        const report={checkedAt:new Date().toISOString(),learned,assigned,sourceMatches,storedSources,reviewedPreferences,reusedReviews,checks,recoveryQueued};
+        const report={checkedAt:new Date().toISOString(),restoredHistory,learned,assigned,sourceMatches,storedSources,reviewedPreferences,reusedReviews,checks,recoveryQueued};
         await db.run(`INSERT INTO automatic_care_runs VALUES (?,?,?,NULL) ON CONFLICT(userId)
             DO UPDATE SET checkedAt=excluded.checkedAt,reportJson=excluded.reportJson,lastError=NULL`,[userId,report.checkedAt,JSON.stringify(report)]);
         await require('./financialReliability').checkFinancialReliability(userId,{force:true});
