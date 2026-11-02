@@ -6,7 +6,7 @@ async function applyPlan(db,userId,plan){
  const now=new Date().toISOString();let updated=0;
  for(const entry of plan.entries){
   const t=entry.transaction;if(t.userId!==userId||!Number.isSafeInteger(t.id))throw Error('Invalid history owner');
-  await db.run('INSERT OR IGNORE INTO verified_history_entries VALUES(?,?,?,?,?,?)',[userId,t.id,entry.accountId,JSON.stringify(t),JSON.stringify(plan.basis),now]);
+  await db.run('INSERT OR IGNORE INTO verified_history_entries VALUES(?,?,?,?,?,?)',[userId,t.id,entry.accountId,JSON.stringify(t),JSON.stringify({...plan.basis,retainedSources:entry.sources||[]}),now]);
  }
  for(const c of plan.controls){
   if(!await db.get('SELECT id FROM investment_accounts WHERE id=? AND userId=?',[c.accountId,userId]))throw Error('Control account not found');

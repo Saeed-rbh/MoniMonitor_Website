@@ -12,6 +12,14 @@ async function restoreVerifiedHistory(userId){
   await db.run(`INSERT INTO transactions(${keys.join(',')}) VALUES(${keys.map(()=>'?').join(',')})`,keys.map(k=>facts[k]));
   await service.upsertTransactionSource({userId,transactionId:facts.id,provider:'bank_checkpoint',externalId:`verified:${userId}:${facts.id}`,ownsTransaction:false,
    rawPayload:{facts,basis:parse(entry.basisJson)},contextPayload:{reviewed:true,historyOnly:true}});
+  // Keep the original native identities as inactive evidence. A provider can
+  // reactivate its own ID later without manufacturing a second history row.
+  for(const source of parse(entry.basisJson).retainedSources||[]){
+   if(source.userId!==userId||source.transactionId!==facts.id||!['plaid','plaid_investments'].includes(source.provider))throw Error('Invalid retained source owner');
+   if(await db.get('SELECT 1 FROM transaction_sources WHERE provider=? AND externalId=?',[source.provider,source.externalId]))continue;
+   await service.upsertTransactionSource({userId,transactionId:facts.id,provider:source.provider,externalId:source.externalId,itemId:source.itemId,ownsTransaction:false,
+    rawPayload:parse(source.rawPayloadJson),contextPayload:{...parse(source.contextPayloadJson),providerRemoved:true,recoveredFromCheckpoint:true,originalCreatedAt:source.createdAt}});
+  }
   await service.updateTransactionForUser(facts.id,userId,Object.fromEntries(protectedFields.filter(k=>Object.hasOwn(facts,k)).map(k=>[k,facts[k]])),{reviewed:true});
   await service.writeAgentAudit(userId,'verified_history_restored','success',{transactionId:facts.id,basis:parse(entry.basisJson)});restored++;
  });
