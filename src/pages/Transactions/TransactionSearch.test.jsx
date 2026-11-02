@@ -259,7 +259,7 @@ test("normalizes a range selected backwards and rejects invalid typed dates", ()
   } finally { vi.useRealTimers(); }
 });
 
-test("one calendar click selects a single day without mode buttons", () => {
+test("tapping the selected day again confirms it and closes the popup", () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date(2026, 9, 10, 12));
   try {
@@ -271,10 +271,13 @@ test("one calendar click selects a single day without mode buttons", () => {
     fireEvent.click(screen.getByRole("button", { name: "October 10, 2026", exact: true }));
     expect(screen.getByLabelText("From")).toHaveValue("2026-10-10");
     expect(screen.getByLabelText("To")).toHaveValue("2026-10-10");
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    fireEvent.click(screen.getByRole("button", { name: "October 10, 2026", exact: true }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent(/^2026-10-10$/);
     expect(screen.getByRole("button", { name: /Weekly groceries/ })).toBeInTheDocument();
     expect(screen.queryByText("Salary")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "October 10, 2026", exact: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   } finally { vi.useRealTimers(); }
 });

@@ -21,6 +21,10 @@ export default function DateRangeCalendar({ start, end, onChange, onComplete, in
   const today = valueOf(new Date());
   const count = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
   const select = value => {
+    if (value === start && value === end) {
+      onComplete?.();
+      return;
+    }
     if (endpoint === "start") {
       onChange(value, value);
       setEndpoint("end");
@@ -70,7 +74,7 @@ export default function DateRangeCalendar({ start, end, onChange, onComplete, in
         <span aria-live="polite">{month.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</span>
         <button type="button" aria-label="Next month" onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}><ChevronRight size={18} aria-hidden="true" /></button>
       </div>
-      <p className="date-range-calendar-hint" role="status">{endpoint === "start" ? "Select a day with transactions" : "Single day selected. Choose another day for a range, or Done."}</p>
+      <p className="date-range-calendar-hint" role="status">{endpoint === "start" ? "Select a day with transactions" : "Tap this date again to confirm, or another day for a range."}</p>
       <div className="date-range-calendar-grid" ref={calendarRef} role="group" aria-label="Choose date range">
         {["S", "M", "T", "W", "T", "F", "S"].map((day, index) => <span key={`weekday-${index}`} className="date-range-weekday" aria-hidden="true">{day}</span>)}
         {Array.from({ length: month.getDay() }, (_, index) => <span key={`blank-${index}`} aria-hidden="true" />)}
