@@ -75,7 +75,7 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
         });
         if (!saved) return setStatus('Could not save the holding.');
         setHolding(emptyHolding);
-        setStatus('Holding saved. Entering the same symbol updates it.');
+        setStatus('Holding saved.');
         onRefresh();
     };
 
@@ -123,7 +123,7 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
                         }
                     }} style={{ ...styles.button, padding: '4px 7px' }}>Remove</button></div></div>
                 </div>;
-            }) : <p style={styles.secondary}>No stocks in this account. It can remain cash-only.</p>}
+            }) : <p style={styles.secondary}>No holdings</p>}
         </div>}
 
         {canHoldInvestments && <form onSubmit={saveHolding} style={{ marginTop: '10px' }}>
@@ -175,7 +175,7 @@ const SaveInvest = () => {
 
     return <main style={styles.page}>
         <div style={{ ...styles.row, alignItems: 'start', flexWrap: 'wrap', marginBottom: '14px' }}>
-            <div><h1 style={{ fontSize: '1.35rem', margin: '4px 0' }}>Save & Invest</h1><p style={{ ...styles.secondary, margin: 0 }}>Current account value, separate from contributions.</p></div>
+            <div><h1 style={{ fontSize: '1.35rem', margin: '4px 0' }}>Accounts</h1></div>
             <div style={{ ...styles.row, gap: '6px', marginLeft: 'auto' }}>
                 <button type='button' onClick={() => navigate('/SaveInvest')} style={styles.button}>Insights</button>
                 <button type='button' onClick={() => setShowForm((value) => !value)} style={styles.button}>{showForm ? 'Cancel' : '+ Account'}</button>
@@ -196,18 +196,14 @@ const SaveInvest = () => {
 
         {portfolio.emailActivities?.length > 0 && <section style={styles.card}>
             <h2 style={{ fontSize: '1rem', marginTop: 0 }}>Recent email activity</h2>
-            <p style={{ ...styles.secondary, marginTop: '-2px' }}>Saving and investment emails identified by the AI agent.</p>
             {portfolio.emailActivities.map((activity) => {
                 const applied = Boolean(activity.kind);
                 const withdrawal = activity.kind === 'EMAIL_WITHDRAWAL';
-                const action = activity.kind?.replace('EMAIL_', '').toLowerCase();
                 return <div key={activity.sourceTransactionId} style={{ ...styles.row, borderTop: '1px solid var(--Bc-4)', padding: '11px 0' }}>
                     <div style={{ minWidth: 0 }}>
                         <strong style={{ fontSize: '.9rem' }}>{activity.reason || activity.label}</strong>
                         <div style={styles.secondary}>
-                            {applied
-                                ? `AI identified ${action} · applied to ${activity.accountName}`
-                                : 'AI identified investment activity · account match needs review'}
+                            {applied ? activity.accountName : 'Not applied'}
                         </div>
                         <div style={styles.secondary}>{new Date(activity.occurredAt).toLocaleString()} {activity.referenceNumber ? `· Ref ${activity.referenceNumber}` : ''}</div>
                     </div>
@@ -220,7 +216,6 @@ const SaveInvest = () => {
 
         {showForm && <form onSubmit={addAccount} style={styles.card}>
             <h2 style={{ fontSize: '1rem', marginTop: 0 }}>New account</h2>
-            <p style={styles.secondary}>Use the name and institution shown in its emails so automatic deposits can be matched safely.</p>
             <div style={styles.grid}>
                 <input aria-label='Account name' placeholder='Emergency fund' value={account.name} onChange={(event) => setAccount({ ...account, name: event.target.value })} style={styles.field} maxLength='120' required />
                 <input aria-label='Institution' placeholder='Institution (optional)' value={account.institution} onChange={(event) => setAccount({ ...account, institution: event.target.value })} style={styles.field} maxLength='120' />
@@ -232,7 +227,7 @@ const SaveInvest = () => {
         </form>}
 
         {portfolio.accounts.length ? portfolio.accounts.map((item) => <AccountCard key={item.id} account={item} onRefresh={load} setStatus={setStatus} />) :
-            <section style={styles.card}><h2 style={{ fontSize: '1rem', marginTop: 0 }}>No accounts yet</h2><p style={styles.secondary}>Add a savings or investment account. Each account can hold only cash, only stocks, or both.</p></section>}
+            <section style={styles.card}><h2 style={{ fontSize: '1rem', marginTop: 0 }}>No accounts yet</h2><p style={styles.secondary}>Select + Account to get started.</p></section>}
     </main>;
 };
 
