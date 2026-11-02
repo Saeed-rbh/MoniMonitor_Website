@@ -96,10 +96,6 @@ export default function TransactionSearch() {
           onClick={() => { setStartDate(""); setEndDate(""); setLimit(pageSize); }}>Clear dates</button>}
       </fieldset>
       {invalidRange && <p id="transaction-date-error" className="transaction-search-date-error" role="alert">Choose an end date on or after the start date.</p>}
-      <p className="transaction-search-count" role="status">
-        {results.length} {results.length === 1 ? "transaction" : "transactions"}
-        {query.trim() ? " found" : " · Newest first"}
-      </p>
       <div className="transaction-search-results">
         {results.slice(0, limit).map((transaction, index) => {
           const flow = String(transaction.AccountFlow || "").toUpperCase();
