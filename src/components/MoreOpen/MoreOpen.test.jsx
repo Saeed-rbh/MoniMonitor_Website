@@ -37,3 +37,33 @@ describe('Shared sheet keyboard access', () => {
         expect(document.activeElement).toBe(outerFocus);
     });
 });
+
+
+describe('Shared sheet header boundary', () => {
+    it('keeps the sheet and backdrop below an overflowing month selector after resize', () => {
+        const header = document.createElement('header');
+        header.className = 'MoneyMonitor_header';
+        const selector = document.createElement('div');
+        selector.setAttribute('data-header-month-selector', '');
+        header.appendChild(selector);
+        document.body.appendChild(header);
+        let selectorBottom = 72;
+        header.getBoundingClientRect = () => ({ bottom: 55 });
+        selector.getBoundingClientRect = () => ({ bottom: selectorBottom });
+        try {
+            render(<MemoryRouter><MoreOpen isClicked fillAvailable setIsClicked={vi.fn()}
+                feed={() => <p>Transactions</p>} /></MemoryRouter>);
+            const dialog = screen.getByRole('dialog');
+            const backdrop = document.querySelector('.MoreOpen_Backdrop');
+            expect(dialog.style.maxHeight).toBe('calc(100dvh - 80px)');
+            expect(dialog.style.height).toBe('calc(100dvh - 80px)');
+            expect(backdrop.style.top).toBe('80px');
+            selectorBottom = 88;
+            fireEvent(window, new Event('resize'));
+            expect(dialog.style.maxHeight).toBe('calc(100dvh - 96px)');
+            expect(backdrop.style.top).toBe('96px');
+        } finally {
+            header.remove();
+        }
+    });
+});
