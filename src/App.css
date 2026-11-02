@@ -545,3 +545,6 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+.footer-search-button:focus-visible { outline: 2px solid var(--Bc-1); outline-offset: 3px; }
+.footer-search-button[aria-current="page"] { box-shadow: 0 0 0 1px var(--Bc-2); }

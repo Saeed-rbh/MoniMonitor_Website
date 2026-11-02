@@ -1,3 +1,4 @@
+@import "../../components/TransactionRow.css";
 .SaveInvestInsights {
   width: 100%;
   max-width: var(--app-max-width);
@@ -900,73 +901,6 @@
 
 .AccountTransactions_List {
   margin-top: 10px;
-}
-
-.AccountTransactions_Row {
-  min-height: 62px;
-  padding: 8px 4px;
-  border-top: 1px solid var(--Ac-4);
-  display: grid;
-  grid-template-columns: 42px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 9px;
-  box-sizing: border-box;
-}
-
-.AccountTransactions_Icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 13px;
-  background: var(--Ac-4);
-  color: var(--Bc-1);
-  display: grid;
-  place-items: center;
-}
-
-.AccountTransactions_Icon svg {
-  width: 17px;
-  height: 17px;
-}
-
-.AccountTransactions_Reason,
-.AccountTransactions_Amount {
-  min-width: 0;
-}
-
-.AccountTransactions_Reason strong {
-  display: block;
-  overflow: hidden;
-  color: var(--Ac-1);
-  font-size: 0.76rem;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.AccountTransactions_Reason span,
-.AccountTransactions_Amount span {
-  display: block;
-  margin-top: 3px;
-  color: var(--Ac-3);
-  font-size: 0.57rem;
-}
-
-.AccountTransactions_Amount {
-  text-align: right;
-}
-
-.AccountTransactions_Amount strong {
-  color: var(--Gc-1);
-  font-size: 0.75rem;
-  font-weight: 550;
-}
-
-.AccountTransactions_Amount.in strong {
-  color: var(--Fc-1);
-}
-
-.AccountTransactions_Amount.neutral strong {
-  color: var(--Ac-1);
 }
 
 .AccountTransactions_Sentinel {
