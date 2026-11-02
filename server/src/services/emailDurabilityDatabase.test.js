@@ -191,3 +191,16 @@ test('rolls every email-ingestion write back when alert creation is injected to 
     assert.equal((await db.get("SELECT COUNT(*) AS count FROM transactions WHERE Reason = 'Injected rollback'")).count, 0);
     assert.equal((await db.get("SELECT COUNT(*) AS count FROM transaction_sources WHERE externalId = 'atomic@example.com:rollback'")).count, 0);
 });
+
+test('free-model configuration and infrastructure outages retain automatic retries after the normal attempt limit', async()=>{
+ const mailbox='free-ai@example.com:INBOX',validity='free';
+ await dbService.enqueueDiscoveredEmails(mailbox,validity,[901]);
+ const db=await dbService.getDb();
+ await db.run('UPDATE email_ingestion_queue SET attempts=20 WHERE mailboxKey=?',[mailbox]);
+ const now=new Date();
+ const claim=await dbService.claimPendingEmails(mailbox,validity,'free-ai-worker',1,now);
+ assert.equal(claim.length,1);
+ const result=await dbService.failEmailQueueItem(901,mailbox,validity,'free-ai-worker',Object.assign(Error('AI_FREE_PROVIDER_NOT_CONFIGURED'),{retryable:true}),now);
+ assert.equal(result.status,'retry');assert.ok(Date.parse(result.nextAttemptAt)>now.getTime());
+ assert.equal(await dbService.isEmailProcessed(901,mailbox,validity),false);
+});

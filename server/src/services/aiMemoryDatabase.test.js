@@ -1,0 +1,78 @@
+const test=require('node:test'),assert=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'moni-ai-memory-'));
+process.env.MONIMONITOR_DB_PATH=path.join(directory,'test.sqlite');
+process.env.EMAIL_SOURCE_ENCRYPTION_KEY=Buffer.alloc(32,7).toString('base64');
+process.env.MARKET_QUOTES_ENABLED='false';
+const service=require('../database/dbService');
+const {cachedExtraction,verifiedExamples,hash}=require('./aiMemory');
+const {candidatesFor,applyCandidates,diagnoseChecks}=require('./aiDiagnosis');
+let db,account,txId,verified;
+const user='ai-memory',body='From: RBC <rbcroyalbankalerts@alerts.rbc.com>\nSubject: Deposit Notice\nAmount: $10.00 CAD';
+test.before(async()=>{
+ db=await service.getDb();await service.createUser(user,user,'unused');
+ account=await service.createInvestmentAccount(user,{name:'Bank',institution:'RBC',accountType:'Chequing',currency:'CAD',accountRef:'A123',cashMinor:0});
+ txId=await service.addTransaction({userId:user,Amount:10,Currency:'CAD',Category:'Income',Label:'Cash & Cheque Deposits',Reason:'Deposit',Timestamp:'2026-08-20T12:00:00.000Z',AccountFlow:'IN',BalanceAccountId:account.id});
+ await service.upsertTransactionSource({userId:user,provider:'email',externalId:'email',transactionId:txId,rawPayload:{rawBody:body},ownsTransaction:true});
+ await service.upsertTransactionSource({userId:user,provider:'bank_csv',externalId:'bank-proof',transactionId:txId,rawPayload:{amount:10,currency:'CAD'},ownsTransaction:false});
+ verified=await service.getTransactionById(txId,user);
+ await db.run('INSERT INTO verified_history_entries VALUES(?,?,?,?,?,?)',[user,txId,account.id,JSON.stringify(verified),JSON.stringify({authority:'bank_csv'}),'2026-08-21T00:00:00.000Z']);
+});
+test.after(async()=>{await db.close();fs.rmSync(directory,{recursive:true,force:true});});
+test('cache encrypts outputs and isolates users, providers, account context and prompt versions',async()=>{
+ let calls=0;const extract=async()=>({Amount:'10',Reason:'private-bank-value',serial:++calls});
+ const input={body,provider:'local:test',accounts:[1]};
+ assert.equal((await cachedExtraction(db,user,input,extract)).serial,1);
+ assert.equal((await cachedExtraction(db,user,input,extract)).serial,1);
+ assert.equal((await cachedExtraction(db,'other',input,extract)).serial,2);
+ assert.equal((await cachedExtraction(db,user,{...input,provider:'local:changed'},extract)).serial,3);
+ assert.equal((await cachedExtraction(db,user,{...input,accounts:[2]},extract)).serial,4);
+ const encrypted=await db.get('SELECT resultEncrypted FROM ai_extractions WHERE userId=?',[user]);
+ assert.match(encrypted.resultEncrypted,/^enc:/);assert.ok(!encrypted.resultEncrypted.includes('private-bank-value'));
+ for(let i=0;i<2;i++)await cachedExtraction(db,user,{failed:true},async()=>{calls++;return null;});
+ assert.equal(calls,6);
+});
+test('verified retrieval excludes other users, future verifications, future event dates and changed facts',async()=>{
+ assert.equal((await verifiedExamples(db,user,body,'2026-08-20T23:59:00.000Z')).length,0);
+ assert.equal((await verifiedExamples(db,'other',body,'2026-09-01T00:00:00.000Z')).length,0);
+ const examples=await verifiedExamples(db,user,body,'2026-09-01T00:00:00.000Z');
+ assert.equal(examples.length,1);assert.equal(examples[0].transactionId,txId);assert.ok(!examples[0].source.includes('parsedTransaction'));
+ await db.run('UPDATE transactions SET Reason=? WHERE id=?',['Changed',txId]);
+ assert.equal((await verifiedExamples(db,user,body,'2026-09-01T00:00:00.000Z')).length,0);
+ await db.run('UPDATE transactions SET Reason=? WHERE id=?',[verified.Reason,txId]);
+});
+test('diagnostic changes roll back when bank controls disagree and preserve all history',async()=>{
+ await db.run('UPDATE transactions SET Timestamp=? WHERE id=?',['2026-09-02T12:00:00.000Z',txId]);
+ await db.run('INSERT INTO verified_ledger_controls VALUES(?,?,?,?,?)',[user,account.id,'2026-08-31',1000,'{}']);
+ const checks=[{accountId:account.id,status:'conflict',kind:'verified_ledger'}];
+ const candidates=await candidatesFor(db,user,checks);assert.equal(candidates.length,1);
+ const beforeCount=(await db.get('SELECT COUNT(*) n FROM transactions')).n;
+ await db.run('UPDATE verified_ledger_controls SET cashMinor=999 WHERE userId=?',[user]);
+ await assert.rejects(applyCandidates(db,user,candidates,[txId]),/financial controls/);
+ assert.equal((await service.getTransactionById(txId,user)).Timestamp,'2026-09-02T12:00:00.000Z');
+ await db.run('UPDATE verified_ledger_controls SET cashMinor=1000 WHERE userId=?',[user]);
+ assert.equal(await applyCandidates(db,user,candidates,[txId]),1);
+ assert.equal((await service.getTransactionById(txId,user)).Timestamp,verified.Timestamp);
+ assert.equal((await db.get('SELECT COUNT(*) n FROM transactions')).n,beforeCount);
+ assert.equal((await db.get('SELECT COUNT(*) n FROM transaction_sources WHERE transactionId=?',[txId])).n,2);
+ await assert.rejects(applyCandidates(db,user,candidates,[txId]),/evidence changed/);
+});
+test('diagnostic proposals are cached, encrypted, source-bound and cannot invent ids or amounts',async()=>{
+ let calls=0;const checks=[{accountId:account.id,status:'conflict',kind:'cash_snapshot'}];
+ const generate=async()=>{calls++;return{text:JSON.stringify({cause:'insufficient_evidence',candidateIds:[]})};};
+ const first=await diagnoseChecks(user,checks,{enabled:true,generate});
+ assert.equal(first.applied,0);assert.equal((await diagnoseChecks(user,checks,{enabled:true,generate})).cached,true);assert.equal(calls,1);
+ await assert.rejects(diagnoseChecks(user,[{...checks[0],differenceMinor:1}],{enabled:true,generate:async()=>({text:JSON.stringify({cause:'date_or_classification',candidateIds:[999999]})})}),/Invalid diagnostic/);
+ const stored=await db.get('SELECT resultEncrypted FROM ai_diagnoses');assert.match(stored.resultEncrypted,/^enc:/);
+ assert.equal((await diagnoseChecks(user,checks,{enabled:false})).status,'waiting_for_free_provider');
+});
+test('simultaneous retries share one extraction and a proposal cannot tamper with bank facts',async()=>{
+ let calls=0;const input={body:'concurrent',provider:'local:test'};
+ await Promise.all([1,2,3].map(()=>cachedExtraction(db,user,input,async()=>{calls++;await new Promise(resolve=>setImmediate(resolve));return{Amount:'10'};})));
+ assert.equal(calls,1);
+ await db.run('UPDATE transactions SET Reason=? WHERE id=?',['Drift',txId]);
+ const candidates=await candidatesFor(db,user,[{accountId:account.id}]);
+ const tampered=candidates.map(c=>({...c,fields:{Amount:999}}));
+ await assert.rejects(applyCandidates(db,user,tampered,[txId]),/differs from bank facts/);
+ assert.equal((await service.getTransactionById(txId,user)).Amount,10);
+});

@@ -5,6 +5,7 @@ function operationalAlerts(health, now = Date.now()) {
     const alerts = [];
     const add = (id, reason, action, actionRequired) => alerts.push({ id, reason, action, ...(actionRequired===false?{actionRequired:false}:{}) });
     if (health.agent?.enabled && health.agent.state === 'failed') add('email_agent_failed', 'Email agent startup failed', 'Inspect the supervisor log and verify integration credentials, then restart the service.');
+    if (health.agent?.enabled && health.ai?.enabled === false && health.queues?.email?.retry > 0) add('free_ai_unavailable','Some emails are waiting for a free AI provider','Configure a local model or a confirmed unbilled Gemini project; retained emails retry automatically.');
     if (health.financialChecks && (health.financialChecks.missing > 0 || now - Date.parse(health.financialChecks.oldestCheckAt) > 60 * 60000)) add('financial_checks_stale', 'Financial evidence checks are overdue', 'Inspect the operational monitor and its database errors; restart the worker after correcting the cause.');
     for (const [name, state] of Object.entries(health.subsystems || {})) {
         if (!state.configured) continue;

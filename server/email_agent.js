@@ -250,14 +250,14 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
             console.log(`[${idInfo}] Email predates the financial snapshot; marking processed without analysis.`);
             return true;
         }
-        console.log(`[${idInfo}] Sending to Gemini for analysis...`);
+        console.log(`[${idInfo}] Analyzing financial email...`);
 
         // Bank accounts help classification; portfolio accounts allow a safe, explicit destination match.
         const [knownAccounts, investmentAccounts] = await Promise.all([
             dbService.getAccountsForUser(USER_ID),
             dbService.getInvestmentAccounts(USER_ID),
         ]);
-        let expenseData = await parseEmailWithGemini(emailBody, knownAccounts, investmentAccounts);
+        let expenseData = await parseEmailWithGemini(emailBody, knownAccounts, investmentAccounts, {userId:USER_ID,receivedAt});
 
         if (!expenseData) {
             console.log(`[${idInfo}] Parsing failed due to error or hallucination. Retrying later.`);
@@ -500,6 +500,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         await writeAudit('email_processed', 'success', { messageId: idInfo, transactionId: activeId });
         return true;
     } catch (err) {
+        if (err.retryable) throw err;
         await writeAudit('email_processed', 'error', { messageId: idInfo, error: err.message });
         console.error(`[${idInfo}] Unexpected error processing email:`, err);
         return false;

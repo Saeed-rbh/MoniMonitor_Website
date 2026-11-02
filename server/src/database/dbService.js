@@ -1745,8 +1745,8 @@ async function failEmailQueueItem(uid, mailboxKey, uidValidity, workerId, error,
     );
     if (!row) return { status: 'lost_lease' };
     const attempts = Number(row.attempts || 0);
-    const dead = attempts >= EMAIL_QUEUE_MAX_ATTEMPTS;
-    const nextAttemptAt = dead ? null : new Date(now.getTime() + retryDelayMs(attempts)).toISOString();
+    const dead = !error?.retryable && attempts >= EMAIL_QUEUE_MAX_ATTEMPTS;
+    const nextAttemptAt = dead ? null : new Date(now.getTime() + Math.max(error?.retryable ? 60000 : 0, retryDelayMs(Math.min(attempts, 20)))).toISOString();
     await db.run(
         `UPDATE email_ingestion_queue
          SET status = ?, lastError = ?, nextAttemptAt = ?, leaseOwner = NULL, leaseExpiresAt = NULL

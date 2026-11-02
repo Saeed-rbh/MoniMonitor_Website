@@ -1,5 +1,17 @@
 const MIGRATIONS = [
     {
+        version: 19, name: 'evidenced_ai_extraction_and_diagnosis',
+        async up(db) {
+            await db.exec(`CREATE TABLE ai_extractions (
+                userId TEXT NOT NULL, inputHash TEXT NOT NULL, version TEXT NOT NULL, provider TEXT NOT NULL,
+                resultEncrypted TEXT NOT NULL, createdAt TEXT NOT NULL, PRIMARY KEY(userId,inputHash));
+                CREATE TABLE ai_diagnoses (
+                userId TEXT NOT NULL, fingerprint TEXT NOT NULL, version TEXT NOT NULL,
+                resultEncrypted TEXT NOT NULL, status TEXT NOT NULL, createdAt TEXT NOT NULL,
+                PRIMARY KEY(userId,fingerprint));`);
+        }
+    },
+    {
         version: 18, name: 'separate_verified_cash_settlement_date',
         async up(db) {
             await db.exec('ALTER TABLE transactions ADD COLUMN CashDate TEXT');

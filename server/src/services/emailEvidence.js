@@ -5,10 +5,14 @@ const { getAccountReference, inferAccountType } = require('./accountDiscovery');
 // convert a named timezone. Receipt time remains separate for forwarded mail.
 function sourceEventTimestamp(body = '') {
     const text = String(body).replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ');
-    const match = text.match(/Time:\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s*(EDT|EST|UTC|GMT)/i);
+    const match = text.match(/Time:\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s*(?:(AM|PM)\s*,?\s*)?(EDT|EST|UTC|GMT)/i);
     if (!match) return null;
-    const offset = { EDT: '-04:00', EST: '-05:00', UTC: '+00:00', GMT: '+00:00' }[match[3].toUpperCase()];
-    const date = new Date(`${match[1]} ${match[2]} ${offset}`);
+    const offset = { EDT: '-04:00', EST: '-05:00', UTC: '+00:00', GMT: '+00:00' }[match[4].toUpperCase()];
+    const parts=match[2].split(':').map(Number);
+    if(parts[0]>(match[3]?12:23)||parts[1]>59||(parts[2]||0)>59||match[3]&&parts[0]<1)return null;
+    if(match[3])parts[0]=parts[0]%12+(match[3].toUpperCase()==='PM'?12:0);
+    const clock=parts.map(n=>String(n).padStart(2,'0')).join(':');
+    const date = new Date(`${match[1]} ${clock} ${offset}`);
     return Number.isFinite(date.getTime()) ? date.toISOString() : null;
 }
 
@@ -30,7 +34,7 @@ function normalizeEmailEvidence(transaction, body, accounts = []) {
     // rather than the direction guessed by the model for the other endpoint.
     if (/wealthsimple/i.test(result.BankName||'') && /Subject:\s*You made a transfer/im.test(sourceText)) {
         // Ignore mail headers; only the transfer detail block is account proof.
-        const details=sourceText.match(/Amount:\s*\$[\d,.]+\s*(?:CAD|USD)?\s*\nFrom:\s*([^\n]+)\nTo:\s*([^\n]+)/i);
+        const details=sourceText.match(/Amount:\s*\$[\d,.]+\s*(?:CAD|USD)?\s*\nFrom:\s*([^\n]+)\nTo:\s*([^\n]+)/i) || sourceText.match(/Amount:\s*\$[\d,.]+\s*(?:CAD|USD)?\s+From:\s*(.+?)\s+To:\s*(.+?)(?=\s+(?:Track the|View activity|Learn more)|$)/i);
         if(details){
             const resolve=label=>{
                 const words=label.replace(/\([^)]*\)/g,'').trim().toLowerCase();

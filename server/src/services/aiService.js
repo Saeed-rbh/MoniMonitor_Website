@@ -12,6 +12,7 @@ const {
 
 const AI_API_KEY = process.env.AI_API_KEY || process.env.GEMINI_API_KEY;
 const ai = AI_API_KEY ? new GoogleGenAI({ apiKey: AI_API_KEY }) : null;
+const provider = require('./aiProvider').createProvider(process.env, { gemini: ai });
 const MODEL_NAME = process.env.AI_MODEL_NAME || process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const { createAIScheduler, reserveDailyUsage, boundedInteger } = require('./aiScheduler');
 const { getDb } = require('../database/db');
@@ -19,16 +20,13 @@ const MAX_RESPONSE_ATTEMPTS = 2;
 const requestLimit = boundedInteger(process.env.AI_DAILY_REQUEST_LIMIT, 500, 1, 10000);
 const inputLimit = boundedInteger(process.env.AI_DAILY_INPUT_BYTES, 8000000, 1000, 100000000);
 const scheduler = createAIScheduler({
-    generate: request => {
-        if (!ai) throw new Error('AI_NOT_CONFIGURED');
-        return ai.models.generateContent(request);
-    },
+    generate: provider.generate,
     reserveUsage: async usage => reserveDailyUsage(await getDb(), { ...usage, requestLimit, inputLimit }),
     deadlineMs: boundedInteger(process.env.AI_REQUEST_DEADLINE_MS, 45000, 1000, 120000),
     callTimeoutMs: boundedInteger(process.env.AI_CALL_TIMEOUT_MS, 15000, 1000, 30000),
     maxQueue: boundedInteger(process.env.AI_MAX_QUEUE, 8, 1, 32),
 });
-const generateContentWithQuotaProtection = request => scheduler.run(request);
+const generateContentWithQuotaProtection = request => provider.enabled ? scheduler.run(request) : Promise.reject(new (require('./aiScheduler').AIProcessingError)('AI_FREE_PROVIDER_NOT_CONFIGURED'));
 
 // ─── Zod Schema ────────────────────────────────────────────────────────────
 function normalizeNullablePositiveNumber(value) {
@@ -67,6 +65,9 @@ const ExpenseSchema = z.object({
     Label: z.enum(ALL_LABELS),
     Reason: z.string(),
     Timestamp: z.string().nullable().optional(),
+    CashDate: z.string().nullable().optional(),
+    Evidence: z.record(z.string(), z.string().nullable()).optional(),
+    ExtractionVersion: z.string().optional(),
     Type: z.string().nullable().optional(),
     Account: z.string().nullable(),
     BankName: z.string().nullable(),
@@ -156,7 +157,17 @@ function parseAIResponseText(responseText) {
 
 // ─── AI Parser ─────────────────────────────────────────────────────────────
 // knownAccounts: optional array of { Account, BankName, Type }
-async function parseEmailWithGemini(emailBody, knownAccounts = [], investmentAccounts = []) {
+async function parseEmailWithGemini(emailBody, knownAccounts = [], investmentAccounts = [], options = {}) {
+    const template = require('./emailTemplates').parseKnownEmail(emailBody);
+    if (template) return parseAIResponseText(JSON.stringify(template));
+    const memory = require('./aiMemory');
+    const db = options.userId ? await getDb() : null;
+    const examples = options.examples || (db ? await memory.verifiedExamples(db, options.userId, emailBody, options.receivedAt) : []);
+    const extract = () => extractEmail(emailBody, knownAccounts, investmentAccounts, examples);
+    return db && !options.bypassCache ? memory.cachedExtraction(db, options.userId,
+        {body:minimizeEmailForAI(emailBody),knownAccounts,investmentAccounts,examples,provider:provider.identity},extract) : extract();
+}
+async function extractEmail(emailBody, knownAccounts, investmentAccounts, examples) {
     const minimizedEmail = minimizeEmailForAI(emailBody);
     const accountContext = knownAccounts.length > 0
         ? `\nKnown accounts for this user (use these to correctly classify Type):\n` +
@@ -177,6 +188,18 @@ Only extract fields if it is a direct bank transaction notification. The email t
 ${accountContext}
 ${portfolioContext}
 Return ONLY a valid JSON object with NO markdown or backticks.
+
+Evidence contract:
+Return an Evidence object with Amount, Currency, Account, ReferenceNumber, Timestamp, CashDate,
+PortfolioAction, PortfolioSymbol, PortfolioQuantity, PortfolioPrice, PortfolioToSymbol, PortfolioToQuantity,
+AccountFlow, FromAccount and ToAccount. Each value is an EXACT contiguous quote from Email Text,
+maximum 500 characters, or null. Quotes must support the corresponding value, not just appear in the email.
+Unknown values MUST be null. Never quote the examples or supplied account list as email evidence.
+Account ids require a unique explicit reference or canonical account name in the source; otherwise null.
+For an internal transfer include BOTH account endpoint quotes, or an explicit credit card payment.
+CashDate is a YYYY-MM-DD settlement date ONLY when explicitly stated; never calculate it from trade date.
+The following bank-verified PRIOR examples illustrate interpretation, NEVER values to copy into the new email:
+${JSON.stringify(examples)}
 
 Fields to extract:
 - "Currency": Explicit three-letter currency code (CAD, USD, etc.) when stated; otherwise null. Never infer USD from a dollar sign.
@@ -277,10 +300,15 @@ ${minimizedEmail}
             const response = await generateContentWithQuotaProtection({
                 model: MODEL_NAME,
                 contents: `${prompt}${retryInstruction}`,
-                config: { responseMimeType: 'application/json' }
+                config: { responseMimeType: 'application/json', responseJsonSchema: require('./extractionEvidence').RESPONSE_SCHEMA }
             });
 
-            return parseAIResponseText(response.text);
+            const parsed = parseAIResponseText(response.text);
+            if(parsed.error && /^From:[^\n]*(?:wealthsimple\.com|alerts\.rbc\.com|interac\.ca)/im.test(String(emailBody))) {
+                throw Object.assign(new Error('A financial sender cannot be discarded by AI alone'), {code:'AI_UNCONFIRMED_REJECTION'});
+            }
+            parsed.ExtractionVersion = require('./extractionEvidence').VERSION;
+            return require('./extractionEvidence').validateEvidence(parsed,minimizedEmail,investmentAccounts);
         } catch (err) {
             lastError = err;
             if (err?.code?.startsWith('AI_')) break;
@@ -293,12 +321,16 @@ ${minimizedEmail}
         }
     }
 
+    if (lastError?.code?.startsWith('AI_') && !['AI_SOURCE_EVIDENCE','AI_UNCONFIRMED_REJECTION'].includes(lastError.code)) {
+        lastError.retryable=true;
+        throw lastError;
+    }
     console.error('AI Parsing or Validation Error after retries:', lastError);
     return null;
 }
 
 async function rankMonthlyInsightCandidates(candidates = []) {
-    if (!ai || !candidates.length) return null;
+    if (!provider.enabled || !candidates.length) return null;
     const safeCandidates = candidates.map((candidate) => ({
         id: candidate.id,
         type: candidate.type,
@@ -362,7 +394,7 @@ const AISynthesisResponseSchema = z.object({
 });
 
 async function synthesizeMonthlyInsightsWithGemini(richData) {
-    if (!ai) return null;
+    if (!provider.enabled) return null;
     const prompt = `
 You are an observant personal financial intelligence analyst.
 Observe the user's real financial ledger and 6-month historical trends for ${richData.targetMonth || richData.month}.
@@ -416,6 +448,8 @@ ${JSON.stringify(richData)}
 }
 
 module.exports = {
+    generateContentWithQuotaProtection,
+    providerStatus: () => ({ enabled:provider.enabled, identity:provider.identity }),
     parseEmailWithGemini,
     rankMonthlyInsightCandidates,
     synthesizeMonthlyInsightsWithGemini,

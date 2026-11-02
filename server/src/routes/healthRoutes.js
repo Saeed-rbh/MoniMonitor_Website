@@ -18,6 +18,7 @@ function registerHealthRoutes(app, { dbService, backupService, getAllSubsystemHe
         const health = { app: runtimeVersion, database: { state: 'ready' }, agent: agentStatus,
             telegramOutbox: getTelegramOutboxWorkerHealth(), queues: await dbService.getQueueHealth(),
             backup: await backupService.getBackupHealth(), subsystems: getAllSubsystemHealth(), integrations };
+        health.ai = require('../services/aiService').providerStatus();
         health.financialChecks = await db.get(`SELECT MIN(r.checkedAt) AS oldestCheckAt,
             SUM(CASE WHEN r.checkedAt IS NULL THEN 1 ELSE 0 END) AS missing
             FROM users u LEFT JOIN reliability_runs r ON r.userId=u.id`);

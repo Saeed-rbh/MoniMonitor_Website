@@ -192,9 +192,13 @@ async function performCare(userId,{force=false}={}) {
         const sourceMatches=await reconcileExistingSources(userId);
         if(sourceMatches) { learned=await learning.learnAccountMappings(userId); assigned+=await resolveLearnedReviews(userId); }
         const reusedReviews=await reuseReviewedCorrections(userId);
-        const checks=await consistencyChecks(userId);
+        let checks=await consistencyChecks(userId);
+        let aiDiagnosis;
+        try { aiDiagnosis=await require('./aiDiagnosis').diagnoseChecks(userId,checks); }
+        catch { aiDiagnosis={status:'retry_later',applied:0}; }
+        if(aiDiagnosis.applied) checks=await consistencyChecks(userId);
         const recoveryQueued=await scheduleRecovery(userId);
-        const report={checkedAt:new Date().toISOString(),restoredHistory,learned,assigned,sourceMatches,storedSources,reviewedPreferences,reusedReviews,checks,recoveryQueued};
+        const report={checkedAt:new Date().toISOString(),restoredHistory,learned,assigned,sourceMatches,storedSources,reviewedPreferences,reusedReviews,checks,recoveryQueued,aiDiagnosis};
         await db.run(`INSERT INTO automatic_care_runs VALUES (?,?,?,NULL) ON CONFLICT(userId)
             DO UPDATE SET checkedAt=excluded.checkedAt,reportJson=excluded.reportJson,lastError=NULL`,[userId,report.checkedAt,JSON.stringify(report)]);
         await require('./financialReliability').checkFinancialReliability(userId,{force:true});
