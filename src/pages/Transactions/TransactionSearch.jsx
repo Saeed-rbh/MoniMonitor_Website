@@ -2,7 +2,7 @@ import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState 
 import { motion, useReducedMotion } from "framer-motion";
 import DateRangeCalendar, { validCalendarDate } from "./DateRangeCalendar";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
-import { Search, X, CalendarDays, Check, ArrowDownLeft, ArrowUpRight, Landmark, Layers } from "lucide-react";
+import { Search, X, CalendarDays, CalendarCheck, CalendarRange, History, ArrowDownLeft, ArrowUpRight, Landmark, Layers } from "lucide-react";
 import { useTransactions } from "../../context/TransactionContext";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import { getTransactionIcon } from "../../components/Categories";
@@ -184,17 +184,19 @@ export default function TransactionSearch() {
               <h2>Date filters</h2>
             </div>
             <div className="transaction-date-shortcuts" role="group" aria-label="Quick date ranges">
-              {quickDateRanges().map(range => (
+              {quickDateRanges().map((range, index) => {
+                const Icon = [CalendarCheck, History, CalendarDays, CalendarRange][index];
+                return (
                 <button key={range.label} type="button" aria-label={range.label} title={range.label}
                   aria-pressed={startDate === range.start && endDate === range.end}
                   onClick={() => { setStartDate(range.start); setEndDate(range.end); setLimit(pageSize); setDatesOpen(false); }}>
-                  <span className="transaction-date-shortcut-top"><span>{compactRange(range)}</span>
-                    <Check className="transaction-date-shortcut-check" size={16} aria-hidden="true" />
+                  <span className="transaction-date-shortcut-top"><Icon size={16} aria-hidden="true" /><span>{compactRange(range)}</span>
                   </span>
                 </button>
-              ))}
+              );
+              })}
             </div>
-            <DateRangeCalendar availableDates={availableDates} onComplete={() => setDatesOpen(false)} start={startDate} end={endDate} invalid={invalidRange} errorId="transaction-date-error"
+            <DateRangeCalendar availableDates={availableDates} onComplete={() => setDatesOpen(false)} start={startDate} end={endDate}
               onChange={(start, end) => { setStartDate(start); setEndDate(end); setLimit(pageSize); }} />
             {(startDate || endDate) && <button type="button" className="transaction-search-date-reset" onClick={clearDates}>Clear dates</button>}
       {invalidRange && <p id="transaction-date-error" className="transaction-search-date-error" role="alert">{dateError}</p>}

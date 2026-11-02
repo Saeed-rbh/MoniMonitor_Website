@@ -30,13 +30,8 @@
 
 .transaction-search-results { flex: 0 0 auto; padding: 0 3px; }
 
-.transaction-search-dates { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px 12px; flex-shrink: 0; min-width: 0; margin: 0 0 14px; padding: 0; border: 0; }
-.transaction-search-dates label { min-width: 0; display: grid; gap: 6px; margin: 0; font-size: .75rem; }
-.transaction-search-dates input { width: 100%; min-width: 0; min-height: 44px; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--Ac-3); border-radius: 12px; background: var(--Ac-4); color: var(--Ac-1); color-scheme: dark; font: inherit; font-size: 16px; }
-.transaction-search-dates input:focus-visible { outline: 2px solid var(--Bc-1); outline-offset: 2px; }
 .transaction-search button.transaction-search-date-reset { grid-column: 1 / -1; justify-self: end; padding: 4px 8px; background: transparent; border: 0; font-size: .75rem; color: var(--Bc-1); }
 .transaction-search-date-error { flex-shrink: 0; margin: 0 0 12px; color: var(--Gc-1); font-size: .8rem; }
-.transaction-search-dates[hidden] { display: none; }
 .transaction-search-active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-shrink: 0; }
 .transaction-search-active-filters:empty { display: none; }
 .transaction-search-field button[aria-expanded="true"] { background: var(--Bc-4); color: var(--Bc-1); }
@@ -70,29 +65,29 @@
 .transaction-date-shortcuts button { text-align: left; min-width: 0; padding: 10px 12px; border-color: var(--Ac-4); background: var(--Ac-4); border-radius: 16px; transition: border-color .15s ease, background .15s ease; }
 .transaction-date-shortcut-top { display: flex; align-items: center; gap: 8px; font-size: .8rem; line-height: 1.4; }
 .transaction-date-shortcut-top > svg { flex-shrink: 0; color: var(--Bc-1); }
-.transaction-date-shortcut-check { margin-left: auto; visibility: hidden; }
 .transaction-date-shortcuts button[aria-pressed="true"] { background: var(--Bc-4); border-color: var(--Bc-2); color: var(--Ac-1); }
-.transaction-date-shortcuts button[aria-pressed="true"] .transaction-date-shortcut-check { visibility: visible; }
 .transaction-date-shortcuts button:hover { border-color: var(--Bc-2); background: var(--Bc-4); }
-.transaction-date-popup .transaction-search-dates { padding-top: 18px; border-top: 1px solid var(--Ac-4); }
 @media (prefers-reduced-motion: reduce) {
   .transaction-search-filters button, .transaction-date-shortcuts button { transition: none; }
 }
 .date-range-calendar { border-top: 1px solid var(--Ac-4); padding-top: 16px; margin-bottom: 16px; }
-.transaction-date-popup .date-range-calendar .transaction-search-dates { border: 0; padding: 0; margin-bottom: 12px; }
-.date-range-calendar .transaction-search-dates label.is-active input { border-color: var(--Bc-1); background: var(--Bc-4); }
 .date-range-calendar-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: .9rem; font-weight: 500; }
 .date-range-calendar-nav button { display: grid; place-items: center; padding: 0; background: transparent; border: 0; }
 .date-range-calendar-hint { margin: 6px 0 10px; font-size: .75rem; color: var(--Ac-2); text-align: center; }
 .date-range-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
 .date-range-weekday { text-align: center; padding: 8px 0; color: var(--Ac-2); font-size: .7rem; }
 .transaction-date-popup .date-range-calendar-grid button { min-width: 0; min-height: 44px; padding: 4px 0; background: transparent; border: 1px solid transparent; border-radius: 10px; font-size: .8rem; }
-.transaction-date-popup .date-range-calendar-grid button[aria-current="date"] { border-color: var(--Bc-2); }
-.transaction-date-popup .date-range-calendar-grid button.in-range { background: var(--Bc-4); border-radius: 4px; }
-.transaction-date-popup .date-range-calendar-grid button.is-selected { background: var(--Bc-1); color: var(--Ec-1); }
-.transaction-date-popup .date-range-calendar-grid button:hover { border-color: var(--Bc-1); }
 .transaction-date-popup > .transaction-search-date-reset { display: block; margin: 0 0 10px auto; }
 
-.transaction-date-popup .date-range-calendar-grid button.has-transactions { position: relative; }
-.transaction-date-popup .date-range-calendar-grid button.has-transactions::after { content: ""; position: absolute; bottom: 4px; left: calc(50% - 2px); width: 4px; height: 4px; border-radius: 50%; background: var(--Bc-1); }
-.transaction-date-popup .date-range-calendar-grid button.has-transactions.is-selected::after { background: var(--Ec-1); }
+
+.date-range-selection { margin: 0 0 12px; text-align: center; color: var(--Bc-1); font-size: .8rem; font-variant-numeric: tabular-nums; }
+.transaction-date-popup .date-range-calendar-grid button { position: relative; display: grid; place-items: center; padding: 0; border: 0; border-radius: 0; min-height: 46px; background: transparent; }
+.date-range-day { position: relative; display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid transparent; border-radius: 50%; box-sizing: border-box; z-index: 1; }
+.date-range-calendar-grid button.in-range::before { content: ""; position: absolute; inset: 5px -1px; background: var(--Bc-4); }
+.date-range-calendar-grid button.is-selected .date-range-day { background: var(--Bc-1); color: var(--Ec-1); box-shadow: 0 2px 10px var(--Bc-4); }
+.date-range-calendar-grid button[aria-current="date"] .date-range-day { border-color: var(--Bc-2); }
+.date-range-calendar-grid button:hover .date-range-day { border-color: var(--Bc-1); }
+.date-range-calendar-grid button.has-transactions .date-range-day::after { content: ""; position: absolute; bottom: 3px; left: calc(50% - 2px); width: 4px; height: 4px; border-radius: 50%; background: var(--Bc-1); }
+.date-range-calendar-grid button.has-transactions.is-selected .date-range-day::after { background: var(--Ec-1); }
+.transaction-date-shortcut-top { gap: 6px; font-size: .75rem; }
+.transaction-date-shortcut-top > span { min-width: 0; }
