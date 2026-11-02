@@ -1,3 +1,4 @@
+import TransactionRow from "../../components/TransactionRow";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
@@ -298,26 +299,14 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
             : Math.round(Number(transaction.Amount || 0) * 100);
 
           return (
-            <article
-              className="AccountTransactions_Row"
+            <TransactionRow
               key={transaction.id ?? `${transaction.Timestamp}-${index}`}
               onClick={() => setViewingTx(transaction)}
-              style={{ cursor: "pointer" }}
-              role="button"
-              tabIndex={0}
-            >
-              <div className="AccountTransactions_Icon" aria-hidden="true">
-                {getTransactionIcon(transaction.Category, transaction.Label)}
-              </div>
-              <div className="AccountTransactions_Reason">
-                <strong>{reason || "Transaction"}</strong>
-                <span>{transactionDate(transaction.Timestamp)}</span>
-              </div>
-              <div className={`AccountTransactions_Amount ${direction}`}>
-                <strong>{direction === "in" ? "+" : "−"}{money(txAmtMinor)}</strong>
-                <span>{direction === "in" ? "in" : "out"}</span>
-              </div>
-            </article>
+              aria-haspopup="dialog"
+              icon={getTransactionIcon(transaction.Category, transaction.Label)}
+              reason={reason} date={transactionDate(transaction.Timestamp)}
+              direction={direction} amount={money(txAmtMinor)}
+            />
           );
         })}
 

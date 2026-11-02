@@ -1,4 +1,5 @@
 import { matchesReportingCategory, isIncome } from "../../services/transactionService";
+import TransactionRow from "../../components/TransactionRow";
 import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import DateRangeCalendar, { validCalendarDate } from "./DateRangeCalendar";
@@ -214,21 +215,12 @@ export default function TransactionSearch() {
           return (
             <Fragment key={transaction.id || `${transaction.Timestamp}-${index}`}>
             {(index === 0 || group !== dateGroup(results[index - 1].Timestamp)) && <h2 className="transaction-search-date-group">{group}</h2>}
-            <button type="button" className="transaction-search-result AccountTransactions_Row"
-              key={transaction.id || `${transaction.Timestamp}-${index}`}
-              onClick={() => setViewingTransaction(transaction)} aria-haspopup="dialog">
-              <span className="AccountTransactions_Icon" aria-hidden="true">
-                {getTransactionIcon(transaction.Category, transaction.Label)}
-              </span>
-              <span className="AccountTransactions_Reason">
-                <strong>{highlight(getTransactionDisplayReason(transaction.Reason, transaction.Label), query)}</strong>
-                <span>{transactionDate(transaction.Timestamp)}</span>
-              </span>
-              <span className={`AccountTransactions_Amount ${direction}`}>
-                <strong>{direction === "neutral" ? "" : direction === "in" ? "+" : "−"}{money(transaction)}</strong>
-                <span>{direction === "neutral" ? "transfer" : direction === "in" ? "in" : "out"}</span>
-              </span>
-            </button>
+            <TransactionRow className="transaction-search-result"
+              onClick={() => setViewingTransaction(transaction)} aria-haspopup="dialog"
+              icon={getTransactionIcon(transaction.Category, transaction.Label)}
+              reason={highlight(getTransactionDisplayReason(transaction.Reason, transaction.Label), query)}
+              date={transactionDate(transaction.Timestamp)} direction={direction} amount={money(transaction)}
+            />
             </Fragment>
           );
         })}

@@ -1,3 +1,4 @@
+import TransactionRow from "../../components/TransactionRow";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getTransactionIcon } from "../../components/Categories";
@@ -117,26 +118,14 @@ const AccountTransactions = () => {
                   const direction = transactionDirection(transaction);
                   const reason = getTransactionDisplayReason(transaction.Reason, transaction.Label);
                   return (
-                    <article
-                      className="AccountTransactions_Row"
-                      key={transaction.id ?? `${transaction.Timestamp}-${index}`}
-                      onClick={() => setViewingTx(transaction)}
-                      style={{ cursor: "pointer" }}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <div className="AccountTransactions_Icon" aria-hidden="true">
-                        {getTransactionIcon(transaction.Category, transaction.Label)}
-                      </div>
-                      <div className="AccountTransactions_Reason">
-                        <strong>{reason || "Transaction"}</strong>
-                        <span>{transactionDate(transaction.Timestamp)}</span>
-                      </div>
-                      <div className={`AccountTransactions_Amount ${direction}`}>
-                        <strong>{direction === "in" ? "+" : "−"}{money(transaction, account.currency)}</strong>
-                        <span>{direction === "in" ? "in" : "out"}</span>
-                      </div>
-                    </article>
+                    <TransactionRow
+              key={transaction.id ?? `${transaction.Timestamp}-${index}`}
+              onClick={() => setViewingTx(transaction)}
+              aria-haspopup="dialog"
+              icon={getTransactionIcon(transaction.Category, transaction.Label)}
+              reason={reason} date={transactionDate(transaction.Timestamp)}
+              direction={direction} amount={money(transaction, account.currency)}
+            />
                   );
                 })}
                 {!transactions.length && (

@@ -1,3 +1,4 @@
+import TransactionRow from "../../components/TransactionRow";
 import React, { useState, useEffect, useCallback } from "react";
 import { useSpring, animated, config } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
@@ -183,17 +184,9 @@ const TransactionListItem = ({
               ? "translateX(380px)"
               : "translateX(0px)",
     touchAction: "pan-y",
-    marginTop: finalDel || finalMod ? -52 : 0,
+    marginTop: finalDel || finalMod ? -72 : 0,
     opacity: finalDel || finalMod ? 0 : 1,
     scale: isScaled && !isSwiped ? 0.98 : 1,
-    width: "100%",
-    height: "52px",
-    minHeight: "52px",
-    display: "grid",
-    gridTemplateColumns: "38px minmax(0, 1fr) auto",
-    alignItems: "center",
-    gap: "8px",
-    boxSizing: "border-box",
     onRest: () => handlecomplete(),
     onResolve: () => handleResolve(),
   });
@@ -209,9 +202,15 @@ const TransactionListItem = ({
   return (
     <>
       {!isdeleted && (
-        <animated.li
+        <TransactionRow
+          as={animated.li}
+          role="button"
+          tabIndex={0}
+          onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick?.(); } }}
+          icon={ModifyLabel} reason={displayReason} date={formatTransactionDate(time)}
+          direction={direction} amount={formatMoney(amount)}
           {...bind()}
-          className="AccountTransactions_Row TransactionList_ItemRow"
+          className="TransactionList_ItemRow"
           style={swipeStyle}
           onClick={() => { if (onClick) onClick(); }}
           onMouseDown={handleMouseDown}
@@ -229,20 +228,6 @@ const TransactionListItem = ({
               Modify
             </ScalableElement>
           )}
-          <div className="AccountTransactions_Icon" aria-hidden="true">
-            {ModifyLabel}
-          </div>
-          <div className="AccountTransactions_Reason">
-            <strong>{displayReason || "Transaction"}</strong>
-            <span>{formatTransactionDate(time)}</span>
-          </div>
-          <div className={`AccountTransactions_Amount ${direction}`}>
-            <strong>
-              {direction === "neutral" ? "" : direction === "in" ? "+" : "−"}
-              {formatMoney(amount)}
-            </strong>
-            <span>{direction === "neutral" ? "transfer" : direction === "in" ? "in" : "out"}</span>
-          </div>
           {showLeftActions && (
             <ScalableElement
               as="div"
@@ -252,7 +237,7 @@ const TransactionListItem = ({
               Delete
             </ScalableElement>
           )}
-        </animated.li>
+        </TransactionRow>
       )}
     </>
   );
