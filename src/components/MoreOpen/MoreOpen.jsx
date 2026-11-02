@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useLayoutEffect, useState } from "react";
 import { motion, useDragControls } from "framer-motion";
 import { RxCross2 } from "react-icons/rx";
 import { ScalableElement } from "../../utils/tools";
@@ -9,14 +9,29 @@ const MoreOpen = ({
   isClicked,
   setIsClicked,
   feed,
-  MoreOpenHeight,
+  fillAvailable = false,
   handleCloseAddTransaction,
   zIndex = 105,
   toRedirect,
-  overflow,
 }) => {
   const redirect = useNavigate();
   const controls = useDragControls();
+  const [headerBottom, setHeaderBottom] = useState(0);
+
+  useLayoutEffect(() => {
+    const header = document.querySelector(".MoneyMonitor_header");
+    const updateBoundary = () => {
+      setHeaderBottom(Math.max(0, header?.getBoundingClientRect().bottom ?? 0));
+    };
+    updateBoundary();
+    const observer = new ResizeObserver(updateBoundary);
+    if (header) observer.observe(header);
+    window.addEventListener("resize", updateBoundary);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateBoundary);
+    };
+  }, [isClicked]);
 
   const handleClose = () => {
     setIsClicked(null);
@@ -50,21 +65,20 @@ const MoreOpen = ({
 
   return (
     <motion.div
-      className="MoreOpen_Main"
+      className={`MoreOpen_Main${fillAvailable ? " MoreOpen_Main--fill" : ""}`}
       initial="hidden"
       animate={!!isClicked ? "visible" : "hidden"}
       variants={variants}
       onAnimationComplete={handleAnimationComplete}
       style={{
         zIndex: zIndex,
-        height: `calc(100vh - ${MoreOpenHeight}px)`,
+        "--popup-max-height": `calc(100dvh - ${headerBottom}px)`,
         bottom: 0,
         position: "fixed",
         left: 0,
         right: 0,
         margin: "0 auto",
         width: "100%",
-        maxHeight: "100vh",
         display: "flex",
         justifyContent: "center",
         pointerEvents: !!isClicked ? "auto" : "none", // Disable interaction when hidden
@@ -83,11 +97,9 @@ const MoreOpen = ({
         className="MoreOpen_Wall"
         style={{
           background: "var(--Ec-2)",
-          overflow: overflow,
           width: "100%",
           maxWidth: "var(--app-max-width)",
           boxSizing: "border-box",
-          height: "100%",
         }}
       >
         <ScalableElement

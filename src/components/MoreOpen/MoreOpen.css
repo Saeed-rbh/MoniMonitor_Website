@@ -4,7 +4,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 0;
+  height: auto;
+  max-height: var(--popup-max-height);
   z-index: 10;
   width: 100%;
   max-width: var(--app-max-width);
@@ -15,12 +16,14 @@
 }
 
 .MoreOpen_Wall {
-  position: absolute;
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  height: calc(100%);
+  height: auto;
+  max-height: var(--popup-max-height);
+  min-height: 0;
   padding-bottom: 10px;
   width: calc(100%);
   box-sizing: border-box;
@@ -29,6 +32,20 @@
   border: 1px solid var(--Ac-3);
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+.MoreOpen_Main--fill,
+.MoreOpen_Main--fill > .MoreOpen_Wall {
+  height: var(--popup-max-height);
+}
+
+/* Keep compact feeds in normal flow so their content determines sheet height. */
+.MoreOpen_Wall > .AddTransactionFeed,
+.MoreOpen_Wall > .TransactionList_MonthlyFooter {
+  position: relative;
+  top: auto;
+  margin-top: 62px;
+  flex-shrink: 0;
 }
 
 .MoreOpen_Wall::-webkit-scrollbar {
