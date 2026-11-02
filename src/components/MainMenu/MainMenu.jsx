@@ -397,6 +397,8 @@ const MainMenu = () => {
             aria-label="Search transactions"
             aria-current={location === "/Search" ? "page" : undefined}
             onClick={() => navigate("/Search")}
+            className="footer-search-button"
+            title="Search transactions"
             style={{ ...styles.mainMenuItem, opacity: 1, border: 0, background: "transparent", padding: "4px 8px", minWidth: 48, minHeight: 48, fontFamily: "inherit" }}
           >
             <div
@@ -418,7 +420,7 @@ const MainMenu = () => {
                 <HiOutlineSearch aria-hidden="true" />
               </ShineBorder>
             </div>
-            <span style={{ marginTop: 3 }}>Search</span>
+            
           </button>
 
           {menuItemsR.map((item, index) => (
