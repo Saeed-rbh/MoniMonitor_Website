@@ -29,7 +29,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  height: 100%;
+  height: auto;
+  min-height: 0;
   padding-bottom: 10px;
   width: 100%;
   box-sizing: border-box;
@@ -94,4 +95,13 @@
 .MoreOpen_Close:focus-visible {
   outline: 3px solid var(--Bc-2);
   outline-offset: 3px;
+}
+
+/* Keep compact feeds in normal flow so their content determines sheet height. */
+.MoreOpen_Wall > .AddTransactionFeed,
+.MoreOpen_Wall > .TransactionList_MonthlyFooter {
+  position: relative;
+  top: auto;
+  margin-top: 62px;
+  flex-shrink: 0;
 }

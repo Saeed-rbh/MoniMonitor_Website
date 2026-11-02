@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useDragControls, useReducedMotion } from "framer-motion";
 import { RxCross2 } from "react-icons/rx";
@@ -10,7 +10,7 @@ const MoreOpen = ({
   isClicked,
   setIsClicked,
   feed,
-  MoreOpenHeight = 75,
+  fillAvailable = false,
   sheetHeight = null,
   handleCloseAddTransaction,
   zIndex = 105,
@@ -23,6 +23,23 @@ const MoreOpen = ({
   const controls = useDragControls();
   const dialogRef = useRef(null);
   const reducedMotion = useReducedMotion();
+  const [headerBottom, setHeaderBottom] = useState(0);
+
+  useLayoutEffect(() => {
+    const header = document.querySelector(".MoneyMonitor_header");
+    const updateBoundary = () => {
+      setHeaderBottom(Math.max(0, header?.getBoundingClientRect().bottom ?? 0));
+    };
+    updateBoundary();
+    const observer = typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(updateBoundary) : null;
+    if (header) observer?.observe(header);
+    window.addEventListener("resize", updateBoundary);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", updateBoundary);
+    };
+  }, [isClicked]);
 
   const handleClose = () => {
     setIsClicked(null);
@@ -36,10 +53,9 @@ const MoreOpen = ({
     }
   };
 
-  const isAutoHeight = sheetHeight === "auto" || sheetHeight === "fit-content";
-  const calculatedHeight = isAutoHeight
-    ? "auto"
-    : (sheetHeight || `calc(100dvh - ${MoreOpenHeight}px)`);
+  const maxHeight = `calc(100dvh - ${headerBottom}px)`;
+  const isAutoHeight = !fillAvailable && (!sheetHeight || sheetHeight === "auto" || sheetHeight === "fit-content");
+  const calculatedHeight = isAutoHeight ? "auto" : maxHeight;
 
   const content = (
     <AnimatePresence onExitComplete={handleExitComplete}>
@@ -72,7 +88,7 @@ const MoreOpen = ({
             style={{
               zIndex: zIndex,
               height: calculatedHeight,
-              maxHeight: "92dvh",
+              maxHeight,
               bottom: 0,
               position: "fixed",
               left: 0,
@@ -99,12 +115,12 @@ const MoreOpen = ({
             <div
               className="MoreOpen_Wall"
               style={{
-                overflow: overflow,
+                overflowY: isAutoHeight ? "auto" : overflow,
                 width: "100%",
                 maxWidth: "var(--dialog-max-width)",
                 boxSizing: "border-box",
                 height: isAutoHeight ? "auto" : "100%",
-                maxHeight: "92dvh",
+                maxHeight,
               }}
             >
               <div
