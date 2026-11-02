@@ -385,3 +385,26 @@ Profile → Bank fallback → Connect a bank with Plaid.
 - Source mappings attach matching Plaid records to existing email transactions instead of inserting duplicates.
 - Transaction loading checks Plaid at most once every ten minutes; Profile also provides a manual sync.
 - `PLAID_ENV=sandbox` is suitable for testing. Change it to `production` only with the matching Production secret and approved Plaid application.
+
+
+Plaid connection and reconnection now trigger an immediate, durable correction
+job through the existing webhook worker. New connections save the job in the same
+transaction as encrypted credentials; update-mode success uses `/plaid/sync` to
+queue and run corrections without the normal read cooldown. Network failures and
+interrupted jobs retry automatically. No Transactions Refresh add-on is requested.
+
+Every successful Item sync rechecks retained Plaid sources linked to email records,
+even when the incremental cursor returns no new transactions. Confirmed settlement,
+amount, cash direction, account identity and investment trade details replace model
+guesses. Reviewed field overrides, notes and established internal-transfer links
+remain protected; contradictory investment currency evidence stays quarantined.
+Current balances and holdings are applied after transaction corrections, so cached
+financial effects are not added on top of the bank snapshot. Correction counts are
+recorded in the agent audit log.
+
+Signed data-ready and login-repaired webhooks continue the correction when bank
+history arrives after Link success. Webhooks received during an existing fetch
+coalesce into a subsequent pass using the latest committed cursor; a stronger
+reconnection request also forces investment snapshots in that pass. Reconnection
+starts processing immediately, but Plaid/bank data readiness still determines when
+individual corrections can complete. Ambiguous matches remain review items.

@@ -33,7 +33,7 @@ function registerIntegrationRoutes(app, { authenticateToken, authRateLimit, plai
     app.post('/plaid/exchange', authenticateToken, authRateLimit, async (req, res) => {
         try {
             const connection = await plaidService.exchangePublicToken(req.user.userId, req.body?.publicToken, req.body?.metadata);
-            const sync = await plaidService.syncUserItems(req.user.userId, { force: true });
+            const sync = await plaidService.requestImmediateReconciliation(req.user.userId, connection.itemId);
             return res.status(201).json({ connection, sync });
         } catch (error) {
             if (error.statusCode && error.statusCode < 500) return res.status(error.statusCode).json({ error: error.message });
@@ -41,7 +41,7 @@ function registerIntegrationRoutes(app, { authenticateToken, authRateLimit, plai
         }
     });
     app.post('/plaid/sync', authenticateToken, async (req, res) => {
-        try { return res.json(await plaidService.syncUserItems(req.user.userId, { force: true })); }
+        try { return res.json(await plaidService.requestImmediateReconciliation(req.user.userId)); }
         catch (error) { return sendValidationError(res, error); }
     });
     app.delete('/plaid/items/:itemId', authenticateToken, async (req, res) => {

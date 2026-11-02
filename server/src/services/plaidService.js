@@ -9,7 +9,12 @@ const { isExplicitSelfTransferDescription } = require('./selfTransfer');
 const { workersPaused, registerWorker } = require('./workerLifecycle');
 
 const PLAID_ENVIRONMENTS = new Set(['sandbox', 'development', 'production']);
-const syncPromises = new Map();
+const { createItemSyncCoordinator } = require('./itemSyncCoordinator');
+const itemSyncCoordinator = createItemSyncCoordinator(performItemSync, async (item) => {
+    const db = await dbService.getDb();
+    return db.get('SELECT * FROM plaid_items WHERE itemId = ? AND userId = ?', [item.itemId, item.userId]);
+});
+const syncPromises = itemSyncCoordinator.running;
 const webhookVerificationKeys = new Map();
 let reconciliationTimer = null;
 let reconciliationStartupTimer = null;
@@ -244,6 +249,7 @@ async function exchangePublicToken(userId, publicToken, metadata = {}) {
     }
     const result = await plaidRequest('/item/public_token/exchange', { public_token: publicToken });
     const db = await dbService.getDb();
+    return db.withTransaction(async () => {
     const existing = await db.get('SELECT userId FROM plaid_items WHERE itemId = ?', [result.item_id]);
     if (existing && existing.userId !== userId) {
         const error = new Error('This bank connection belongs to another user');
@@ -279,7 +285,9 @@ async function exchangePublicToken(userId, publicToken, metadata = {}) {
             await db.run('DELETE FROM plaid_items WHERE itemId = ? AND userId = ?', [dup.itemId, userId]);
         }
     }
+    await enqueueImmediateReconciliation(db, result.item_id);
     return { itemId: result.item_id };
+    });
 }
 
 function accountTypeLabel(account = {}) {
@@ -429,15 +437,28 @@ async function findFallbackMatch(userId, appTransaction) {
 }
 
 function plaidCanonicalUpdates(existing, plaidTransaction) {
-    const updates = { Timestamp: plaidTransaction.Timestamp, PostingStatus: plaidTransaction.PostingStatus,
-        Amount: plaidTransaction.Amount, AmountMinor: plaidTransaction.AmountMinor, Currency: plaidTransaction.Currency };
-    for (const column of ['Type', 'Account', 'BankName', 'ReferenceNumber', 'AccountFlow']) {
-        if ((existing[column] === null || existing[column] === undefined || existing[column] === '') &&
-            plaidTransaction[column] !== null && plaidTransaction[column] !== undefined && plaidTransaction[column] !== '') {
-            updates[column] = plaidTransaction[column];
-        }
+    const updates = {
+        Timestamp: plaidTransaction.Timestamp, PostingStatus: plaidTransaction.PostingStatus || 'posted',
+        Amount: plaidTransaction.Amount, AmountMinor: plaidTransaction.AmountMinor, Currency: plaidTransaction.Currency,
+    };
+    // Signed bank cash flow, account identity and trade facts supersede model guesses.
+    for (const column of ['AccountFlow', 'BalanceAccountId', 'BalanceAccountConfidence', 'Type', 'Account', 'BankName']) {
+        if (plaidTransaction[column] !== null && plaidTransaction[column] !== undefined) updates[column] = plaidTransaction[column];
     }
-    return updates;
+    if (plaidTransaction.ReferenceNumber && !existing.ReferenceNumber) updates.ReferenceNumber = plaidTransaction.ReferenceNumber;
+    if (plaidTransaction.Category === 'Investment') {
+        for (const column of ['Category','Label','PortfolioAction','PortfolioAccountId','PortfolioAccountNumber',
+            'PortfolioConfidence','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','PortfolioToSymbol','PortfolioToQuantity']) {
+            if (plaidTransaction[column] !== undefined) updates[column] = plaidTransaction[column];
+        }
+    } else if (existing.Category !== 'Internal' &&
+        (['Internal','Investment'].includes(plaidTransaction.Category) ||
+         ['Expense','Income'].includes(existing.Category) && existing.Category !== plaidTransaction.Category)) {
+        updates.Category = plaidTransaction.Category;
+        updates.Label = plaidTransaction.Label;
+    }
+    // Explicit user/bank-evidence overrides are enforced by updateTransactionForUser.
+    return preserveLinkedInternalTransfer(existing, updates);
 }
 
 async function upsertPlaidAccounts(userId, item, accounts = []) {
@@ -954,7 +975,7 @@ async function importAddedTransaction(userId, item, transaction, accountMap, own
 async function applyModifiedTransaction(userId, item, transaction, accountMap, ownerUsername = null) {
     const db = await dbService.getDb();
     const source = await db.get(
-        `SELECT s.*, t.SourceEmailKey, t.Category, t.Label, t.Reason, t.ReferenceNumber
+        `SELECT s.*, t.SourceEmailKey, t.Category, t.Label, t.Reason, t.ReferenceNumber, t.Currency
          FROM transaction_sources s
          JOIN transactions t ON t.id = s.transactionId AND t.userId = s.userId
          WHERE s.provider = 'plaid' AND s.externalId = ? AND s.userId = ?`,
@@ -1199,7 +1220,7 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
     const db = await dbService.getDb();
     const externalId = transaction.investment_transaction_id;
     const existing = await db.get(
-        `SELECT s.*, t.SourceEmailKey, t.Category, t.Label, t.Reason, t.ReferenceNumber
+        `SELECT s.*, t.SourceEmailKey, t.Category, t.Label, t.Reason, t.ReferenceNumber, t.Currency
          FROM transaction_sources s
          JOIN transactions t ON t.id = s.transactionId AND t.userId = s.userId
          WHERE s.provider = 'plaid_investments' AND s.externalId = ? AND s.userId = ?`,
@@ -1221,6 +1242,10 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
             userId, item.itemId, externalId, existing.transactionId,
             Boolean(existing.ownsTransaction), 'plaid_investments', transaction, sourceContext
         );
+        const accountCurrency = String(account.currency || account.balances?.iso_currency_code || '').toUpperCase();
+        if ((accountCurrency && accountCurrency !== appTransaction.Currency) || existing.Currency !== appTransaction.Currency) {
+            return { status: 'review_required', transactionId: existing.transactionId };
+        }
         if (existing.ownsTransaction && !existing.SourceEmailKey) {
             await dbService.updateTransactionForUser(
                 existing.transactionId, userId,
@@ -1228,6 +1253,9 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
             );
             return { status: 'updated', transactionId: existing.transactionId };
         }
+        const linked = await dbService.getTransactionById(existing.transactionId, userId);
+        if (linked) await dbService.updateTransactionForUser(existing.transactionId, userId, plaidCanonicalUpdates(linked, appTransaction));
+        await confirmInvestmentAccount(userId, existing.transactionId, appTransaction);
         return { status: 'known', transactionId: existing.transactionId };
     }
     const match = await findInvestmentFallbackMatch(userId, appTransaction, item.itemId);
@@ -1236,6 +1264,9 @@ async function importInvestmentTransaction(userId, item, transaction, accountMap
             userId, item.itemId, externalId, match.id, false,
             'plaid_investments', transaction, sourceContext
         );
+        const mappedCurrency = String(account.currency || account.balances?.iso_currency_code || '').toUpperCase();
+        if (mappedCurrency && mappedCurrency !== appTransaction.Currency) return { status: 'review_required', transactionId: match.id };
+        await dbService.updateTransactionForUser(match.id, userId, plaidCanonicalUpdates(match, appTransaction));
         await confirmInvestmentAccount(userId, match.id, appTransaction);
         return { status: 'matched_email', transactionId: match.id };
     }
@@ -1290,6 +1321,19 @@ async function findInvestmentCurrencyConflict(userId, incoming) {
     return conflicts.length === 1 ? conflicts[0] : null;
 }
 
+async function resolveConfirmedSourceReview(userId, transactionId, facts) {
+    if (!facts.BalanceAccountId || !facts.Currency) return;
+    const db = await dbService.getDb();
+    const current = await dbService.getTransactionById(transactionId, userId);
+    if (!current) return;
+    const columns = ['AmountMinor','Currency','BalanceAccountId','AccountFlow','PostingStatus'];
+    if (facts.Category === 'Investment') columns.push('PortfolioAction','PortfolioAccountId','PortfolioSymbol','PortfolioQuantity');
+    if (columns.some(key => facts[key] !== undefined && facts[key] !== null && String(current[key]) !== String(facts[key]))) return;
+    await db.run(`UPDATE transaction_ingestion_reviews SET resolvedAt = ? WHERE transactionId = ?
+        AND reason IN ('ambiguous_account','unconfirmed_currency','provider_currency_conflict') AND resolvedAt IS NULL`,
+        [new Date().toISOString(),transactionId]);
+}
+
 async function confirmInvestmentAccount(userId, transactionId, providerTransaction) {
     if (!providerTransaction.PortfolioAccountId) return;
     const db = await dbService.getDb();
@@ -1302,9 +1346,7 @@ async function confirmInvestmentAccount(userId, transactionId, providerTransacti
             PortfolioConfidence: 'HIGH', BalanceAccountConfidence: 'HIGH',
             Account: providerTransaction.Account, PortfolioAccountNumber: providerTransaction.PortfolioAccountNumber,
         });
-        await db.run(`UPDATE transaction_ingestion_reviews SET resolvedAt = ?
-            WHERE transactionId = ? AND reason = 'ambiguous_account' AND resolvedAt IS NULL`,
-            [new Date().toISOString(), transactionId]);
+        await resolveConfirmedSourceReview(userId, transactionId, providerTransaction);
     });
 }
 
@@ -1339,7 +1381,7 @@ function parseStoredSourcePayload(value) {
     catch { return null; }
 }
 
-async function refreshStoredPlaidSourceDetails(userId) {
+async function refreshStoredPlaidSourceDetails(userId, { itemId = null, includeLinked = false } = {}) {
     const db = await dbService.getDb();
     const user = await db.get('SELECT username FROM users WHERE id = ?', [userId]);
     const rows = await db.all(
@@ -1347,12 +1389,13 @@ async function refreshStoredPlaidSourceDetails(userId) {
          FROM transaction_sources s
          JOIN transactions t ON t.id = s.transactionId AND t.userId = s.userId
          WHERE s.userId = ? AND s.provider IN ('plaid', 'plaid_investments')
-           AND s.rawPayloadJson IS NOT NULL AND length(s.rawPayloadJson) > 2`,
-        [userId]
+           AND s.rawPayloadJson IS NOT NULL AND length(s.rawPayloadJson) > 2
+           AND (? IS NULL OR s.itemId = ?)`,
+        [userId, itemId, itemId]
     );
     const refreshed = { bank: 0, investments: 0 };
     for (const row of rows) {
-        if (!row.ownsTransaction || row.SourceEmailKey) continue;
+        if (!includeLinked && (!row.ownsTransaction || row.SourceEmailKey)) continue;
         const rawPayload = parseStoredSourcePayload(row.rawPayloadJson);
         const context = parseStoredSourcePayload(row.contextPayloadJson) || {};
         if (!rawPayload) continue;
@@ -1362,9 +1405,18 @@ async function refreshStoredPlaidSourceDetails(userId) {
                 rawPayload, context.account || {}, context.security || {}, context.institutionName
             );
         if (!updates) continue;
+        const accountCurrency = String(context.account?.currency || context.account?.balances?.iso_currency_code || '').toUpperCase();
+        if (row.provider === 'plaid_investments' &&
+            ((accountCurrency && accountCurrency !== updates.Currency) || (row.Currency && row.Currency !== updates.Currency))) {
+            // Retained cross-currency conflicts are evidence for review, not permission to overwrite a bank-reviewed trade.
+            continue;
+        }
+        if (row.provider === 'plaid' && await isSupersededAuthorization(db, userId, row.id, rawPayload)) continue;
         await dbService.updateTransactionForUser(
-            row.id, userId, preserveLinkedInternalTransfer(row, updates)
+            row.id, userId, includeLinked ? plaidCanonicalUpdates(row, updates) : preserveLinkedInternalTransfer(row, updates)
         );
+        if (includeLinked) await resolveConfirmedSourceReview(userId, row.id, updates);
+        if (includeLinked && row.provider === 'plaid') await dbService.reconcileIngestedTransaction(userId, row.id);
         if (row.provider === 'plaid') refreshed.bank += 1;
         else refreshed.investments += 1;
     }
@@ -1489,6 +1541,7 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
         } else {
             totals.investmentTransactionsStatus = item.investmentTransactionsStatus || 'unknown';
         }
+        totals.storedSourcesCorrected = await refreshStoredPlaidSourceDetails(item.userId, { itemId: item.itemId, includeLinked: true });
         const transferReconciliation = await reconcileHistoricalInternalTransfers(db, item.userId);
         await require('./refundPairing').reconcileRefundPairings(db, item.userId);
         await refreshReconciledTelegramMessages(
@@ -1538,6 +1591,7 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
                 investmentTransactionsResult.skipped ? item.investmentTransactionsLastError : investmentTransactionsError,
                 investmentTransactionsResult.history ? now : null, now, item.itemId, item.userId]
         );
+        await dbService.writeAgentAudit(item.userId, 'plaid_auto_reconciliation', 'success', { itemId: item.itemId, ...totals });
         return totals;
     } catch (error) {
         const status = plaidFailureStatus(error, item.status);
@@ -1549,11 +1603,51 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
     }
 }
 
-async function syncItem(item, options = {}) {
-    if (syncPromises.has(item.itemId)) return syncPromises.get(item.itemId);
-    const promise = performItemSync(item, options).finally(() => syncPromises.delete(item.itemId));
-    syncPromises.set(item.itemId, promise);
-    return promise;
+function syncItem(item, options = {}, ensureFresh = false) {
+    return itemSyncCoordinator.sync(item, options, ensureFresh);
+}
+
+async function enqueueImmediateReconciliation(db, itemId) {
+    return db.withTransaction(async () => {
+        const queued = await db.get(`SELECT id FROM plaid_webhook_events WHERE itemId = ?
+            AND webhookType = 'LOCAL' AND webhookCode = 'RECONCILE' AND status IN ('pending','retry') ORDER BY id LIMIT 1`, [itemId]);
+        const now = new Date().toISOString();
+        if (queued) {
+            await db.run("UPDATE plaid_webhook_events SET status = 'pending', nextAttemptAt = ?, updatedAt = ? WHERE id = ?", [now,now,queued.id]);
+            return queued.id;
+        }
+        const payload = { item_id: itemId, webhook_type: 'LOCAL', webhook_code: 'RECONCILE' };
+        const result = await db.run(`INSERT INTO plaid_webhook_events
+            (eventKey,itemId,webhookType,webhookCode,payloadJson,status,attempts,receivedAt,nextAttemptAt,updatedAt)
+            VALUES (?,?,'LOCAL','RECONCILE',?,'pending',0,?,?,?)`,
+            ['local:' + crypto.randomUUID(),itemId,JSON.stringify(payload),now,now,now]);
+        return result.lastID;
+    });
+}
+
+async function requestImmediateReconciliation(userId, itemId = null) {
+    const db = await dbService.getDb();
+    const items = await db.all('SELECT * FROM plaid_items WHERE userId = ? AND (? IS NULL OR itemId = ?)', [userId,itemId,itemId]);
+    if (itemId && !items.length) { const error = new Error('Bank connection not found'); error.statusCode = 404; throw error; }
+    if (!isConfigured()) return { configured: false, results: [] };
+    const events = [];
+    // Persist before doing network work; the existing worker retries failures and crash interruption.
+    for (const item of items) events.push({ id: await enqueueImmediateReconciliation(db,item.itemId), itemId: item.itemId });
+    const ids = events.map(event => event.id);
+    if (ids.length) {
+        // If another batch is already running, join it, then drain these requests.
+        await processPendingPlaidWebhooks({ eventIds: ids });
+        await processPendingPlaidWebhooks({ eventIds: ids });
+    }
+    const results = [];
+    for (const event of events) {
+        const row = await db.get('SELECT status,lastError,payloadJson FROM plaid_webhook_events WHERE id = ?', [event.id]);
+        results.push({ itemId: event.itemId, ok: row.status === 'processed', queued: row.status !== 'processed',
+            ...(JSON.parse(row.payloadJson).reconciliationResult || {}),
+            ...(row.lastError ? { error: row.lastError } : {}) });
+    }
+    kickPlaidWebhookWorker();
+    return { configured: true, results };
 }
 
 async function syncUserItems(userId, { force = false, forceHoldings = force, backfillSources = force } = {}) {
@@ -1620,7 +1714,8 @@ const webhookSyncOptions = ({ webhook_type: type, webhook_code: code } = {}) => 
     if (type === 'INVESTMENTS_TRANSACTIONS' && ['DEFAULT_UPDATE', 'HISTORICAL_UPDATE'].includes(code)) {
         return { forceHoldings: true };
     }
-    if (type === 'ITEM' && code === 'LOGIN_REPAIRED') return { forceHoldings: true };
+    if (type === 'ITEM' && code === 'LOGIN_REPAIRED') return { forceHoldings: true, backfillSources: true };
+    if (type === 'LOCAL' && code === 'RECONCILE') return { forceHoldings: true, backfillSources: true };
     return null;
 };
 
@@ -1651,7 +1746,7 @@ async function processPlaidWebhook(payload = {}) {
 
     const syncOptions = webhookSyncOptions(payload);
     if (!syncOptions) return { handled: true, action: 'acknowledged' };
-    return { handled: true, action: 'synced', ...(await syncItem(item, syncOptions)) };
+    return { handled: true, action: 'synced', ...(await syncItem(item, syncOptions, true)) };
 }
 
 async function enqueuePlaidWebhook(rawBody, signedJwt) {
@@ -1681,7 +1776,7 @@ const webhookRetryDelayMs = (attempt) => Math.min(
     WEBHOOK_MAX_RETRY_MS
 );
 
-async function processPendingPlaidWebhooks({ limit = 25, processor = processPlaidWebhook } = {}) {
+async function processPendingPlaidWebhooks({ limit = 25, processor = processPlaidWebhook, eventIds = null } = {}) {
     if (webhookProcessingPromise) return webhookProcessingPromise;
     webhookProcessingPromise = (async () => {
         const db = await dbService.getDb();
@@ -1693,11 +1788,13 @@ async function processPendingPlaidWebhooks({ limit = 25, processor = processPlai
              WHERE status = 'processing' AND lastAttemptAt < ?`,
             [nowIso, nowIso, staleIso]
         );
+        if (eventIds && !eventIds.length) return { selected: 0, processed: 0, retried: 0 };
         const events = await db.all(
             `SELECT * FROM plaid_webhook_events
              WHERE status IN ('pending', 'retry') AND nextAttemptAt <= ?
+             ${eventIds ? `AND id IN (${eventIds.map(() => '?').join(',')})` : ''}
              ORDER BY id LIMIT ?`,
-            [nowIso, Math.max(1, Math.min(100, Number(limit) || 25))]
+            [nowIso, ...(eventIds || []), Math.max(1, Math.min(100, eventIds?.length || Number(limit) || 25))]
         );
         const summary = { selected: events.length, processed: 0, retried: 0 };
         for (const event of events) {
@@ -1712,6 +1809,10 @@ async function processPendingPlaidWebhooks({ limit = 25, processor = processPlai
             try {
                 const result = await processor(JSON.parse(event.payloadJson));
                 if (result?.reason === 'unknown_item') throw new Error('Plaid Item is not available locally yet');
+                if (event.webhookType === 'LOCAL') {
+                    await db.run('UPDATE plaid_webhook_events SET payloadJson = ? WHERE id = ?',
+                        [JSON.stringify({ ...JSON.parse(event.payloadJson), reconciliationResult: result }), event.id]);
+                }
                 const processedAt = new Date().toISOString();
                 await db.run(
                     `UPDATE plaid_webhook_events
@@ -1767,7 +1868,7 @@ function stopPlaidWorkers() {
 registerWorker('plaid', {
     pause: async () => {
         stopPlaidWorkers();
-        await Promise.allSettled([...syncPromises.values(), reconciliationPromise,
+        await Promise.allSettled([...syncPromises.values(), ...[...itemSyncCoordinator.trailing.values()].map(request => request.promise), reconciliationPromise,
             webhookProcessingPromise, marketPriceRefreshPromise].filter(Boolean));
     },
     resume: async () => {
@@ -1933,6 +2034,8 @@ module.exports = {
     createLinkToken,
     exchangePublicToken,
     syncUserItems,
+    requestImmediateReconciliation,
+    plaidCanonicalUpdates,
     reconciliationIntervalMs,
     reconcileAllPlaidItems,
     startAutomaticReconciliation,
