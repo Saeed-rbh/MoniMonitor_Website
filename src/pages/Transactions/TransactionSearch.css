@@ -1,0 +1,32 @@
+.transaction-search { display: flex; flex-direction: column; min-height: 0; height: 100%; padding: 16px; box-sizing: border-box; color: var(--Ac-1); text-align: left; overflow-y: auto; }
+.transaction-search h1 { font-size: 1.35rem; margin: 0 0 6px; }
+.transaction-search header p, .transaction-search-count { color: var(--Ac-2); font-size: .85rem; margin: 0 0 16px; }
+.transaction-search label { font-size: .8rem; margin-bottom: 8px; }
+.transaction-search-field { display: flex; align-items: center; gap: 10px; border: 1px solid var(--Bc-2); border-radius: 14px; padding: 0 12px; background: var(--Ac-4); color: var(--Bc-1); }
+.transaction-search-field input { min-width: 0; width: 100%; min-height: 48px; border: 0; background: transparent; color: var(--Ac-1); font: inherit; font-size: 16px; outline: none; }
+.transaction-search-field input::placeholder { color: var(--Ac-2); }
+.transaction-search-field input::-webkit-search-cancel-button { display: none; }
+.transaction-search-field:focus-within { outline: 2px solid var(--Bc-1); outline-offset: 2px; }
+.transaction-search button { cursor: pointer; font: inherit; color: var(--Ac-1); min-height: 44px; border: 1px solid var(--Bc-3); border-radius: 12px; background: var(--Ac-4); padding: 8px 12px; }
+.transaction-search button:focus-visible, .transaction-search summary:focus-visible { outline: 2px solid var(--Bc-1); outline-offset: 2px; }
+.transaction-search button:hover { background: var(--Bc-4); }
+.transaction-search-field button { display: grid; place-items: center; min-width: 44px; border: 0; padding: 0; background: transparent; }
+.transaction-search-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0; }
+.transaction-search-filters button { font-size: .75rem; }
+.transaction-search-filters button[aria-pressed="true"] { background: var(--Bc-1); color: var(--Ec-1); border-color: var(--Bc-1); }
+.transaction-search-count { margin-bottom: 8px; }
+.transaction-search-result { border-bottom: 1px solid var(--Ac-4); }
+.transaction-search-result summary { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 16px 2px; cursor: pointer; list-style: none; }
+.transaction-search-result summary::-webkit-details-marker { display: none; }
+.transaction-search-description { min-width: 0; display: grid; gap: 6px; overflow-wrap: anywhere; }
+.transaction-search-description strong { font-size: .9rem; font-weight: 500; }
+.transaction-search-description span { color: var(--Ac-2); font-size: .75rem; }
+.transaction-search-amount { flex-shrink: 0; font-size: .9rem; font-variant-numeric: tabular-nums; }
+.transaction-search-result dl { margin: 0 0 14px; padding: 12px; border-radius: 12px; background: var(--Ac-4); font-size: .8rem; }
+.transaction-search-result dl div { display: flex; justify-content: space-between; gap: 16px; padding: 5px 0; }
+.transaction-search-result dt { color: var(--Ac-2); }
+.transaction-search-result dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.transaction-search-empty { text-align: center; padding: 30px 12px; }
+.transaction-search-empty h2 { font-size: 1rem; }
+.transaction-search-empty p { color: var(--Ac-2); font-size: .85rem; line-height: 1.6; }
+.transaction-search-more { width: 100%; margin: 16px 0; }

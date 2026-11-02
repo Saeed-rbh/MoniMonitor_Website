@@ -1,7 +1,7 @@
 // import React from "react";
 // import { useSpring, animated } from "@react-spring/web";
 // import { TbHomeStats } from "react-icons/tb";
-// import { HiOutlinePlusSm } from "react-icons/hi";
+// import { HiOutlineSearch } from "react-icons/hi";
 // import { LuLayoutList } from "react-icons/lu";
 // import { IoWalletOutline } from "react-icons/io5";
 // import { RiDonutChartFill } from "react-icons/ri";
@@ -159,7 +159,7 @@
 //                   padding={9}
 //                   curser="pointer"
 //                 >
-//                   <HiOutlinePlusSm />
+//                   <HiOutlineSearch aria-hidden="true" />
 //                 </ShineBorder>
 //               </div>
 //             </ScalableElement>
@@ -231,7 +231,7 @@
 import React from "react";
 import { useSpring, animated, easings } from "@react-spring/web";
 import { TbHomeStats } from "react-icons/tb";
-import { HiOutlinePlusSm } from "react-icons/hi";
+import { HiOutlineSearch } from "react-icons/hi";
 import { LuPiggyBank } from "react-icons/lu";
 import { IoWalletOutline } from "react-icons/io5";
 import { RiDonutChartFill } from "react-icons/ri";
@@ -392,7 +392,13 @@ const MainMenu = () => {
             </ScalableElement>
           ))}
 
-          <ScalableElement as="p" onClick={() => navigate("/AddTransaction")}>
+          <button
+            type="button"
+            aria-label="Search transactions"
+            aria-current={location === "/Search" ? "page" : undefined}
+            onClick={() => navigate("/Search")}
+            style={{ ...styles.mainMenuItem, opacity: 1, border: 0, background: "transparent", padding: "4px 8px", minWidth: 48, minHeight: 48, fontFamily: "inherit" }}
+          >
             <div
               style={{
                 ...styles.mainMenuIcon,
@@ -409,10 +415,11 @@ const MainMenu = () => {
                 padding={9}
                 cursor="pointer"
               >
-                <HiOutlinePlusSm />
+                <HiOutlineSearch aria-hidden="true" />
               </ShineBorder>
             </div>
-          </ScalableElement>
+            <span style={{ marginTop: 3 }}>Search</span>
+          </button>
 
           {menuItemsR.map((item, index) => (
             <ScalableElement

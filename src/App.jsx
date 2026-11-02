@@ -19,6 +19,8 @@ const Finance = lazy(() => import("./pages/Finance/Finance"));
 const SaveInvestAccounts = lazy(() => import("./pages/SaveInvest/SaveInvest"));
 const SaveInvestInsights = lazy(() => import("./pages/SaveInvest/SaveInvestInsights"));
 
+const TransactionSearch = lazy(() => import("./pages/Transactions/TransactionSearch"));
+
 // Private Route Component
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -44,6 +46,7 @@ const AuthenticatedLayout = () => {
         <Routes>
           <Route path="/" element={<Telegram />} />
           <Route path="/Transactions" element={<><Telegram /><Transactions /></>} />
+          <Route path="/Search" element={<TransactionSearch />} />
           <Route path="/AddTransaction" element={<AddTransaction />} />
           <Route path="/Insight" element={<Insight />} />
           <Route path="/Account" element={<Account />} />
