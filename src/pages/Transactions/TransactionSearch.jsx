@@ -1,6 +1,6 @@
 import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
-import { Search, X, CalendarDays } from "lucide-react";
+import { Search, X, CalendarDays, Check, ArrowDownLeft, ArrowUpRight, Landmark, Layers } from "lucide-react";
 import { useTransactions } from "../../context/TransactionContext";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import { getTransactionIcon } from "../../components/Categories";
@@ -10,6 +10,8 @@ import "../../components/TransactionRow.css";
 import "./TransactionSearch.css";
 
 const categories = ["All", "Expense", "Income", "Save & invest"];
+const categoryIcons = { All: Layers, Expense: ArrowUpRight, Income: ArrowDownLeft, "Save & invest": Landmark };
+const shortDate = value => parseTransactionCalendarDate(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 const pageSize = 30;
 const savedSearches = new Map();
 const dateInputValue = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -137,16 +139,22 @@ export default function TransactionSearch() {
         {query && <button type="button" aria-label="Clear search" onClick={() => {
           setQuery(""); setLimit(pageSize); inputRef.current?.focus();
         }}><X size={18} aria-hidden="true" /></button>}
-        <button type="button" aria-label="Date filters" aria-haspopup="dialog" aria-expanded={datesOpen} aria-controls="transaction-date-filters"
+        <button type="button" className={startDate || endDate ? "has-date-filter" : undefined} aria-label="Date filters" aria-haspopup="dialog" aria-expanded={datesOpen} aria-controls="transaction-date-filters"
           onClick={() => setDatesOpen(value => !value)}><CalendarDays size={20} aria-hidden="true" /></button>
       </form>
       <div className="transaction-search-filters" role="group" aria-label="Transaction category">
-        {categories.map(item => <button key={item} type="button" aria-pressed={category === item}
-          onClick={() => { setCategory(item); setLimit(pageSize); }}>{item}</button>)}
+        {categories.map(item => {
+          const Icon = categoryIcons[item];
+          return <button key={item} type="button" aria-pressed={category === item}
+            onClick={() => { setCategory(item); setLimit(pageSize); }}>
+            <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
+            <span>{item}</span>
+          </button>;
+        })}
       </div>
       <div className="transaction-search-active-filters">
         {(startDate || endDate) && <button type="button" className="transaction-search-range-chip" onClick={clearDates}
-          aria-label="Remove date range">{startDate || "Any date"} – {endDate || "Any date"}<X size={14} aria-hidden="true" /></button>}
+          aria-label="Remove date range"><CalendarDays size={15} aria-hidden="true" /><span>{startDate || "Any date"} – {endDate || "Any date"}</span><X size={14} aria-hidden="true" /></button>}
         {hasFilters && <button type="button" className="transaction-search-clear-all" onClick={clear}>Clear all</button>}
       </div>
       <MoreOpen
@@ -166,7 +174,10 @@ export default function TransactionSearch() {
                 <button key={range.label} type="button"
                   aria-pressed={startDate === range.start && endDate === range.end}
                   onClick={() => { setStartDate(range.start); setEndDate(range.end); setLimit(pageSize); setDatesOpen(false); }}>
-                  {range.label}
+                  <span className="transaction-date-shortcut-top"><CalendarDays size={17} aria-hidden="true" /><span>{range.label}</span>
+                    <Check className="transaction-date-shortcut-check" size={16} aria-hidden="true" />
+                  </span>
+                  <span className="transaction-date-shortcut-caption" aria-hidden="true">{shortDate(range.start)}{range.start !== range.end ? ` – ${shortDate(range.end)}` : ""}</span>
                 </button>
               ))}
             </div>
