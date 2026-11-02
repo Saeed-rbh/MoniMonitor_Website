@@ -1,5 +1,11 @@
 const MIGRATIONS = [
     {
+        version: 18, name: 'separate_verified_cash_settlement_date',
+        async up(db) {
+            await db.exec('ALTER TABLE transactions ADD COLUMN CashDate TEXT');
+        }
+    },
+    {
         version: 17, name: 'verified_history_controls',
         async up(db) {
             await db.exec(`CREATE TABLE verified_history_entries (

@@ -149,6 +149,7 @@ function validatePostingStatus(value) {
 async function addTransaction(transaction) {
     validatePostingStatus(transaction.PostingStatus);
     if (!parseTimestamp(transaction.Timestamp)) throw new Error('Invalid transaction timestamp');
+    normalizeTransactionUpdate({CashDate:transaction.CashDate});
     const db = await getDb();
     const result = await db.run(
         `INSERT INTO transactions
@@ -156,8 +157,8 @@ async function addTransaction(transaction) {
              Type, Account, BankName, ReferenceNumber, Frequency, TelegramMessageId, PortfolioAction,
              PortfolioAccountId, PortfolioConfidence, PortfolioSymbol, PortfolioQuantity, PortfolioPrice,
              BalanceAccountConfidence, PortfolioAccountNumber, PortfolioToSymbol, PortfolioToQuantity, AccountFlow,
-             SourceEmailKey, PostingStatus)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             SourceEmailKey, PostingStatus, CashDate)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             transaction.userId,
             (Number.isSafeInteger(transaction.AmountMinor) ? transaction.AmountMinor : toMinorUnits(transaction.Amount)) / 100,
@@ -187,6 +188,7 @@ async function addTransaction(transaction) {
             transaction.AccountFlow || null,
             transaction.SourceEmailKey || null,
             transaction.PostingStatus || 'posted',
+            transaction.CashDate || null,
         ]
     );
     if (transaction.BalanceAccountId !== undefined && transaction.BalanceAccountId !== null) {
@@ -295,6 +297,9 @@ async function getTransactionById(id, userId) {
 function normalizeTransactionUpdate(updates) {
     validatePostingStatus(updates.PostingStatus);
     if (updates.Timestamp !== undefined && !parseTimestamp(updates.Timestamp)) throw new Error('Invalid transaction timestamp');
+    if (updates.CashDate !== undefined && updates.CashDate !== null &&
+        (!/^\d{4}-\d{2}-\d{2}$/.test(updates.CashDate) || !parseTimestamp(updates.CashDate) ||
+         new Date(updates.CashDate).toISOString().slice(0,10)!==updates.CashDate)) throw new Error('Invalid cash settlement date');
     const normalized = { ...updates };
     if (normalized.Amount !== undefined) {
         const amountMinor = toMinorUnits(normalized.Amount);
@@ -343,13 +348,13 @@ async function updateTransactionForUser(id, userId, updates, { reviewed = false 
             'SELECT userId, Timestamp FROM transactions WHERE id = ? AND userId = ?',
             [id, userId]
         );
-        await refreshTransactionMonths(db, [previous, current]);
+        if (!keys.every(key=>key==='CashDate')) await refreshTransactionMonths(db, [previous, current]);
         if (reviewed && (normalized.Category || normalized.Label)) {
             const learned = await db.get('SELECT * FROM transactions WHERE id=? AND userId=?',[id,userId]);
             await require('../services/automaticLearning').rememberMerchantPreference(userId, learned);
         }
         if (previous.TelegramMessageId && Object.entries(normalized).some(([key,value]) =>
-            !['TelegramMessageId','SourceEmailKey','ReceivedAt'].includes(key) && String(previous[key]) !== String(value))) {
+            !['TelegramMessageId','SourceEmailKey','ReceivedAt','CashDate'].includes(key) && String(previous[key]) !== String(value))) {
             await enqueueTelegramOutbox('editMessage', { messageId: previous.TelegramMessageId }, { transactionId: id });
         }
     }
@@ -739,9 +744,10 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             return { status: 'portfolio_posting', accountId: best.account.id };
         }
         const deltaMinor = transactionBalanceDelta(transaction, best.account, amountMinor);
+        const cashOccurredAt=transaction.CashDate || transaction.Timestamp;
         const statementCovered = best.account.balanceSource === 'bank_ui' &&
-            Number.isFinite(Date.parse(transaction.Timestamp)) && Number.isFinite(Date.parse(best.account.balanceAsOf)) &&
-            Date.parse(transaction.Timestamp) <= Date.parse(best.account.balanceAsOf);
+            Number.isFinite(Date.parse(cashOccurredAt)) && Number.isFinite(Date.parse(best.account.balanceAsOf)) &&
+            Date.parse(cashOccurredAt) <= Date.parse(best.account.balanceAsOf);
         if (best.account.balanceSource === 'plaid' || statementCovered || (existing &&
             Number(existing.balanceRevision) !== Number(accounts.find((account) => Number(account.id) === Number(existing.accountId))?.balanceRevision))) {
             if (existing && Number(existing.accountId) !== Number(best.account.id)) {
@@ -750,7 +756,7 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             if (!existing && deltaMinor !== null) {
                 await db.run(`INSERT INTO account_balance_events
                     (userId, accountId, sourceTransactionId, deltaMinor, occurredAt, balanceRevision) VALUES (?, ?, ?, ?, ?, ?)`,
-                    [userId, best.account.id, transactionId, deltaMinor, transaction.Timestamp, Number(best.account.balanceRevision) - 1]);
+                    [userId, best.account.id, transactionId, deltaMinor, cashOccurredAt, Number(best.account.balanceRevision) - 1]);
             }
             return { status: 'snapshot_preserved', accountId: best.account.id, cashMinor: best.account.cashMinor };
         }
@@ -800,7 +806,7 @@ async function syncTransactionAccountBalance(userId, transactionId, preferred = 
             return { status: 'review_required', code: 'balance_limit_exceeded', reason: 'Transaction would exceed supported balance limits' };
         }
 
-        const occurredAt = transaction.Timestamp || new Date().toISOString();
+        const occurredAt = cashOccurredAt || new Date().toISOString();
         if (existing && Number(existing.accountId) !== Number(best.account.id)) {
             await db.run(
                 'UPDATE investment_accounts SET cashMinor = ?, updatedAt = ? WHERE id = ? AND userId = ?',
@@ -1198,7 +1204,7 @@ async function applyEmailPortfolioActivity(userId, transactionId, activity = {})
         }
 
         const cashCovered = account.balanceSource === 'plaid' || account.balanceSource === 'bank_ui' &&
-            Date.parse(source.Timestamp) <= Date.parse(account.balanceAsOf);
+            Date.parse(source.CashDate || source.Timestamp) <= Date.parse(account.balanceAsOf);
         // Absorb legacy general-balance postings without removing their history.
         const legacyEvent = await db.get('SELECT * FROM account_balance_events WHERE userId=? AND sourceTransactionId=? AND accountId=?',
             [userId,transactionId,account.id]);
@@ -2043,7 +2049,8 @@ function isTemporaryInternalTransfer(tx) {
  * or an unpaired temporary internal transfer.
  */
 function isEmailSourcedInternalTransfer(tx) {
-    if (!tx.ReceivedAt && !tx.Timestamp) return false;
+    // A bank payment date is not proof of an internal-transfer email.
+    if (!tx.ReceivedAt && !tx.SourceEmailKey) return false;
     if (tx.ReferenceNumber && /^XFER-/i.test(tx.ReferenceNumber)) return false;
     if (/^Internal transfer:/i.test(String(tx.Reason || ''))) {
         return isTemporaryInternalTransfer(tx);
@@ -2154,6 +2161,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
         [transactionId, userId]
     );
     if (!tx) return [];
+    if(tx.PostingStatus==='unposted') return [];
     if (!tx.ReceivedAt && !tx.Timestamp) return [];
 
     const txTime = new Date(tx.Timestamp || tx.ReceivedAt).getTime();
@@ -2170,7 +2178,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     const siblings = await db.all(
         `SELECT * FROM transactions
          WHERE userId = ? AND AmountMinor = ? AND Currency = ?
-           AND id != ?
+           AND id != ? AND PostingStatus <> 'unposted'
            AND ABS(JULIANDAY(Timestamp) - JULIANDAY(?)) * 24 <= ?`,
         [userId, tx.AmountMinor, tx.Currency || 'CAD', transactionId, tx.Timestamp, windowHours]
     );
@@ -2206,7 +2214,7 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
         const tempSiblings = await db.all(
             `SELECT * FROM transactions
              WHERE userId = ? AND AmountMinor = ? AND Currency = ?
-               AND id != ?
+               AND id != ? AND PostingStatus <> 'unposted'
                AND Category = 'Internal'
                AND (ReferenceNumber IS NULL OR ReferenceNumber NOT LIKE 'XFER-%')
                AND (Reason LIKE '%Temporary%' OR Account = 'Temporary')
@@ -2351,6 +2359,14 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
     const transferEvidence = leg => /transfer|interac|payment.*(?:card|visa)|(?:card|visa).*payment/i.test(
         `${leg.Reason || ''} ${leg.Type || ''} ${leg.Label || ''}`);
     if (!transferEvidence(pairIN) || !transferEvidence(pairOUT)) return [];
+    if(!interac){
+        const owner=await db.get('SELECT username FROM users WHERE id=?',[userId]);
+        const {isExplicitSelfTransferDescription}=require('../services/selfTransfer');
+        const sharedReference=pairIN.ReferenceNumber&&pairIN.ReferenceNumber===pairOUT.ReferenceNumber&&
+            !/^(XFER|REFUND)-/i.test(pairIN.ReferenceNumber);
+        if(!sharedReference&&!isExplicitSelfTransferDescription(pairIN.Reason,owner?.username)&&
+            !isExplicitSelfTransferDescription(pairOUT.Reason,owner?.username))return [];
+    }
     if (!pairIN.BalanceAccountId || !pairOUT.BalanceAccountId ||
         Number(pairIN.BalanceAccountId) === Number(pairOUT.BalanceAccountId)) return [];
 

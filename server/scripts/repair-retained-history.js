@@ -9,8 +9,9 @@ async function applyPlan(db,userId,plan){
   await db.run('INSERT OR IGNORE INTO verified_history_entries VALUES(?,?,?,?,?,?)',[userId,t.id,entry.accountId,JSON.stringify(t),JSON.stringify({...plan.basis,retainedSources:entry.sources||[]}),now]);
  }
  for(const c of plan.controls){
+  if(!Number.isSafeInteger(c.cashMinor)||!/^\d{4}-\d{2}-\d{2}$/.test(c.cutoffDate||plan.cutoffDate||''))throw Error('Invalid bank closing control');
   if(!await db.get('SELECT id FROM investment_accounts WHERE id=? AND userId=?',[c.accountId,userId]))throw Error('Control account not found');
-  await db.run('INSERT OR IGNORE INTO verified_ledger_controls VALUES(?,?,?,?,?)',[userId,c.accountId,plan.cutoffDate,c.cashMinor,JSON.stringify(plan.basis)]);
+  await db.run('INSERT OR IGNORE INTO verified_ledger_controls VALUES(?,?,?,?,?)',[userId,c.accountId,c.cutoffDate||plan.cutoffDate,c.cashMinor,JSON.stringify({...plan.basis,...c.basis})]);
  }
  const restored=await restoreVerifiedHistory(userId);
  for(const change of plan.updates||[]){
@@ -19,7 +20,24 @@ async function applyPlan(db,userId,plan){
   for(const[k,v]of Object.entries(change.expected))if(row[k]!==v&&row[k]!==change.fields[k])throw Error(`Financial facts changed: ${change.id} ${k}`);
   if(Object.keys(change.fields).some(k=>!protectedFields.includes(k)))throw Error('Unsupported reviewed field');
   await service.updateTransactionForUser(change.id,userId,change.fields,{reviewed:true});
-  await service.writeAgentAudit(userId,'verified_history_correction','success',{before:row,fields:change.fields,basis:plan.basis});updated++;
+  const postingHistory={};
+  if(change.fields.Timestamp||change.fields.CashDate){
+   postingHistory.balance=await db.all('SELECT * FROM account_balance_events WHERE userId=? AND sourceTransactionId=?',[userId,change.id]);
+   postingHistory.portfolio=await db.all('SELECT * FROM portfolio_transactions WHERE userId=? AND sourceTransactionId=?',[userId,change.id]);
+   const current=await db.get('SELECT Timestamp,CashDate FROM transactions WHERE id=? AND userId=?',[change.id,userId]);
+   await db.run('UPDATE account_balance_events SET occurredAt=? WHERE userId=? AND sourceTransactionId=?',[current.CashDate||current.Timestamp,userId,change.id]);
+   if(change.fields.Timestamp)await db.run('UPDATE portfolio_transactions SET occurredAt=? WHERE userId=? AND sourceTransactionId=?',[current.Timestamp,userId,change.id]);
+  }
+  if(change.source){
+   if(change.source.provider!=='bank_csv'||!change.source.externalId||!change.source.rawPayload)throw Error('Invalid reviewed bank source');
+   const existing=await db.get('SELECT userId,transactionId FROM transaction_sources WHERE provider=? AND externalId=?',[change.source.provider,change.source.externalId]);
+   if(existing&&(existing.userId!==userId||existing.transactionId!==change.id))throw Error('Bank evidence already belongs to another transaction');
+   await service.upsertTransactionSource({...change.source,userId,transactionId:change.id,ownsTransaction:false,contextPayload:{...change.source.contextPayload,reviewed:true}});
+  }
+  const verified=await db.get('SELECT * FROM verified_history_entries WHERE userId=? AND transactionId=?',[userId,change.id]);
+  if(verified)await db.run('UPDATE verified_history_entries SET factsJson=?,verifiedAt=? WHERE userId=? AND transactionId=?',
+   [JSON.stringify({...JSON.parse(verified.factsJson),...change.fields}),now,userId,change.id]);
+  await service.writeAgentAudit(userId,'verified_history_correction','success',{before:row,fields:change.fields,basis:plan.basis,evidence:change.evidence,previousVerifiedFacts:verified?.factsJson,postingHistory});updated++;
  }
  for(const correction of plan.snapshots||[]){
   const a=await db.get('SELECT * FROM investment_accounts WHERE id=? AND userId=?',[correction.accountId,userId]);
@@ -28,6 +46,11 @@ async function applyPlan(db,userId,plan){
   await db.run('UPDATE investment_accounts SET cashMinor=?,updatedAt=? WHERE id=? AND userId=?',[correction.cashMinor,now,a.id,userId]);
   await db.run('INSERT INTO balance_snapshots(userId,accountId,cashMinor,currency,source,asOf,createdAt) VALUES(?,?,?,?,?,?,?)',[userId,a.id,correction.cashMinor,a.currency,'bank_evidence_repair',a.balanceAsOf,now]);
   await service.writeAgentAudit(userId,'verified_snapshot_correction','success',{before:a,afterMinor:correction.cashMinor,basis:plan.basis});
+ }
+ if(plan.requireControlAgreement){
+  const checks=await require('../src/services/verifiedHistory').checkVerifiedLedgers(userId);
+  const conflicts=checks.filter(c=>c.status!=='agrees');
+  if(conflicts.length)throw Error(`Bank closing controls do not reconcile: ${conflicts.map(c=>`${c.accountId}:${c.cutoffDate}`).join(',')}`);
  }
  return {restored,updated};
 }

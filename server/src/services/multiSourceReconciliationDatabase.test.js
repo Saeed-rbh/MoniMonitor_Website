@@ -41,7 +41,7 @@ test('keeps one transaction and all email/Plaid payloads in either arrival order
     }
 });
 
-test('reconciles delayed transfer legs and exposes the sources of both accounts', async () => {
+test('reconciles delayed transfer legs with a shared bank reference and exposes both sources', async () => {
     const db = await service.getDb();
     const userId = 'transfer-sources';
     await service.createUser(userId, userId, 'unused');
@@ -56,7 +56,7 @@ test('reconciles delayed transfer legs and exposes the sources of both accounts'
     for (const [index, flow] of ['OUT', 'IN'].entries()) {
         const id = await service.addTransaction({ userId, Amount: 50, Currency: 'CAD',
             Category: flow === 'IN' ? 'Income' : 'Expense', Label: 'Personal Transfers',
-            Reason: 'Funds transfer', AccountFlow: flow, Account: index ? '5678' : '1234', BankName: 'RBC',
+            Reason: 'Funds transfer', ReferenceNumber:'BANK-TRANSFER-778899', AccountFlow: flow, Account: index ? '5678' : '1234', BankName: 'RBC',
             BalanceAccountId: accounts[index], Timestamp: `2026-09-${20 + index}T12:00:00Z` });
         ids.push(id);
         await service.upsertTransactionSource({ userId, transactionId: id, provider: 'plaid',

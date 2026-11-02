@@ -503,3 +503,12 @@ A reviewed private reconciliation plan can be previewed with
 The command creates a consistent database backup before applying corrections. It adds missing
 verified rows and locks evidenced financial corrections; it does not delete history or replace
 an active database with a checkpoint. Keep financial plans, checkpoint facts, and reports private.
+
+Historical monthly reconciliation keeps `Timestamp` (execution/transaction date) separate from
+`CashDate` (posted/settlement date). Bank ingestion retains the explicit posted date; investment
+settlement dates are used only when supplied by evidence. Verified closing controls select their
+date basis, so month-end settlement cannot be mistaken for a missing or duplicate trade.
+Reviewed date repairs retain the bank source, original transaction and posting metadata in the
+audit trail, and update the recoverable verified facts. A repair plan with
+`requireControlAgreement: true` rolls back completely if any installed bank closing control fails.
+Generic transfer wording and equal amounts alone do not establish an internal transfer.

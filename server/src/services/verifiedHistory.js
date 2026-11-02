@@ -1,5 +1,5 @@
 const parse=v=>JSON.parse(v||'{}');
-const protectedFields=['Amount','AmountMinor','Currency','Category','Label','Reason','AccountFlow','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','PostingStatus','BalanceAccountId','BalanceAccountConfidence','PortfolioAccountId','PortfolioAccountNumber','PortfolioConfidence','Account','Type','BankName'];
+const protectedFields=['Amount','AmountMinor','Currency','Category','Label','Reason','AccountFlow','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','PostingStatus','BalanceAccountId','BalanceAccountConfidence','PortfolioAccountId','PortfolioAccountNumber','PortfolioConfidence','Account','Type','BankName','Timestamp','CashDate','ReferenceNumber'];
 async function restoreVerifiedHistory(userId){
  const service=require('../database/dbService'),db=await service.getDb();let restored=0;
  const rows=await db.all(`SELECT v.* FROM verified_history_entries v LEFT JOIN transactions t ON t.id=v.transactionId
@@ -28,15 +28,17 @@ async function restoreVerifiedHistory(userId){
 async function checkVerifiedLedgers(userId){
  const db=await require('../database/dbService').getDb(),out=[];
  for(const control of await db.all('SELECT c.*,a.accountType,a.cashMinor currentCash,a.balanceAsOf,a.balanceSource FROM verified_ledger_controls c JOIN investment_accounts a ON a.id=c.accountId AND a.userId=c.userId WHERE c.userId=?',[userId])){
+  const dateBasis=parse(control.basisJson).dateBasis==='settlement'?'settlement':'transaction';
+  const dateColumn=dateBasis==='settlement'?"COALESCE(t.CashDate,substr(t.Timestamp,1,10))":"substr(t.Timestamp,1,10)";
   const row=await db.get(`SELECT COALESCE(SUM(CASE COALESCE(t.AccountFlow,CASE t.Category WHEN 'Income' THEN 'IN' WHEN 'Expense' THEN 'OUT' ELSE 'NONE' END)
    WHEN 'IN' THEN t.AmountMinor WHEN 'OUT' THEN -t.AmountMinor ELSE 0 END),0) amount
    FROM transactions t LEFT JOIN verified_history_entries v ON v.transactionId=t.id AND v.userId=t.userId
    JOIN investment_accounts a ON a.id=? AND a.userId=t.userId
    WHERE t.userId=? AND COALESCE(t.BalanceAccountId,t.PortfolioAccountId,v.accountId)=a.id
-   AND t.Currency=a.currency AND t.PostingStatus='posted' AND substr(t.Timestamp,1,10)<=?`,[control.accountId,userId,control.cutoffDate]);
+   AND t.Currency=a.currency AND t.PostingStatus='posted' AND ${dateColumn}<=?`,[control.accountId,userId,control.cutoffDate]);
   const actualMinor=row.amount*(control.accountType==='Credit Card'?-1:1);
   out.push({key:`verified-ledger:${control.accountId}:${control.cutoffDate}`,kind:'verified_ledger',accountId:control.accountId,
-   cutoffDate:control.cutoffDate,expectedMinor:control.cashMinor,actualMinor,differenceMinor:actualMinor-control.cashMinor,status:actualMinor===control.cashMinor?'agrees':'conflict'});
+   cutoffDate:control.cutoffDate,dateBasis,expectedMinor:control.cashMinor,actualMinor,differenceMinor:actualMinor-control.cashMinor,status:actualMinor===control.cashMinor?'agrees':'conflict'});
  }
  return out;
 }

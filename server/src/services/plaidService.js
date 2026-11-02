@@ -406,6 +406,7 @@ function toAppTransaction(transaction, account, institutionName, options = {}) {
         ...classification,
         Reason: plaidTransactionReason(transaction, account, institutionName),
         Timestamp: plaidTimestamp(transaction),
+        ...(!transaction.pending && /^\d{4}-\d{2}-\d{2}$/.test(transaction.date||'')?{CashDate:transaction.date}:{}),
         Type: accountTypeLabel(account),
         Account: account?.mask || account?.name || null,
         BankName: institutionName || null,
@@ -443,7 +444,7 @@ function plaidCanonicalUpdates(existing, plaidTransaction) {
         Amount: plaidTransaction.Amount, AmountMinor: plaidTransaction.AmountMinor, Currency: plaidTransaction.Currency,
     };
     // Signed bank cash flow, account identity and trade facts supersede model guesses.
-    for (const column of ['AccountFlow', 'BalanceAccountId', 'BalanceAccountConfidence', 'Type', 'Account', 'BankName']) {
+    for (const column of ['AccountFlow', 'BalanceAccountId', 'BalanceAccountConfidence', 'Type', 'Account', 'BankName','CashDate']) {
         if (plaidTransaction[column] !== null && plaidTransaction[column] !== undefined) updates[column] = plaidTransaction[column];
     }
     if (plaidTransaction.ReferenceNumber && !existing.ReferenceNumber) updates.ReferenceNumber = plaidTransaction.ReferenceNumber;
@@ -1169,6 +1170,7 @@ function toAppInvestmentTransaction(transaction, account = {}, security = {}, in
         Label,
         Reason: String(reason).slice(0, 500),
         Timestamp: transactionDate,
+        ...(/^\d{4}-\d{2}-\d{2}$/.test(transaction.settlement_date||'')?{CashDate:transaction.settlement_date}:{}),
         Type: accountTypeLabel(account),
         Account: account.mask || account.name || null,
         BankName: institutionName,
