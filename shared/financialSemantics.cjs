@@ -45,8 +45,24 @@ function isInvestmentCashIncome(transaction = {}) {
         normalize(transaction.AccountFlow) === 'in' && amountMinorOf(transaction) > 0;
 }
 
+function isInvestmentActivity(transaction = {}) {
+    if (!isPosted(transaction) || isInternalTransfer(transaction) || isIncome(transaction)) return false;
+    const category = normalize(transaction.Category), action = normalize(transaction.PortfolioAction);
+    // Funding idle account cash is a principal movement, not stock/crypto activity.
+    if (['deposit','contribution','withdrawal','interest','dividend'].includes(action)) return false;
+    if (action === 'transfer' && normalize(transaction.AccountFlow) !== 'none') return false;
+    if (category === 'investment') return true;
+    // Preserve access to older explicitly labelled asset purchases without including cash savings.
+    return ['saving','save&invest'].includes(category) &&
+        ['stocks','etfs','crypto','cryptocurrency','etf & stock purchase','etf & stock sale','crypto purchase','crypto sale','crypto swap','crypto staking'].includes(normalize(transaction.Label));
+}
+
+function investmentActivityMinor(transaction = {}) {
+    return isInvestmentActivity(transaction) ? amountMinorOf(transaction) : 0;
+}
+
 function matchesReportingCategory(transaction = {}, category) {
-    return category === 'Income' ? isIncome(transaction) : transaction.Category === category;
+    return category === 'Income' ? isIncome(transaction) : ['Invest','Save&Invest'].includes(category) ? isInvestmentActivity(transaction) : transaction.Category === category;
 }
 
 function isIncome(transaction = {}) {
@@ -111,4 +127,4 @@ function getSavingEffectMinor(transaction) {
     return 0;
 }
 
-module.exports = { isInvestmentCashIncome, matchesReportingCategory, isPosted, getSavingEffectMinor, parseInternalTransfer, toMinorUnits, amountMinorOf, isIncome, isExpense, isInternalTransfer };
+module.exports = { isInvestmentActivity, investmentActivityMinor, isInvestmentCashIncome, matchesReportingCategory, isPosted, getSavingEffectMinor, parseInternalTransfer, toMinorUnits, amountMinorOf, isIncome, isExpense, isInternalTransfer };

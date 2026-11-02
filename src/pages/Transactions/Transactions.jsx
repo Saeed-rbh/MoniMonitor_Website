@@ -26,7 +26,8 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
 
   const [modify, setModify] = useState(false);
   const [standaloneOpen, setStandaloneOpen] = useState(Boolean(categoryOverride));
-  const activeCategory = categoryOverride || isMoreClicked;
+  const requestedCategory = categoryOverride || isMoreClicked;
+  const activeCategory = requestedCategory === "Save&Invest" ? "Invest" : requestedCategory;
   const setActiveCategory = useCallback((value) => {
     if (categoryOverride) {
       setStandaloneOpen(Boolean(value));
@@ -84,7 +85,7 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
         onTransactionClick={(tx) => setViewingTx(tx)}
         isDetailOpen={viewingTx !== null}
         onManageAccounts={
-          activeCategory === "Save&Invest" ? handleManageAccounts : null
+          activeCategory === "Invest" ? handleManageAccounts : null
         }
       />
     );

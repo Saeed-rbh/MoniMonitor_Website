@@ -12,10 +12,10 @@ const TransactionFilter = ({
 }) => {
   const sortItems = useMemo(() => {
     let items;
-    if (["Income", "Expense", "Save&Invest", "Internal"].includes(isMoreClicked)) {
+    if (["Income", "Expense", "Invest", "Internal"].includes(isMoreClicked)) {
       items = ["All", "Daily", "Monthly"];
     } else {
-      items = ["All", "Income", "Expense", "Save&Invest", "Internal"];
+      items = ["All", "Income", "Expense", "Invest", "Internal"];
     }
     return onManageAccounts ? ["Accounts", ...items] : items;
   }, [isMoreClicked, onManageAccounts]);

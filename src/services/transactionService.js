@@ -40,11 +40,11 @@ export const getInternalTransferKey = (transaction) => {
 };
 
 export const getSavingEffect = (transaction) => semantics.getSavingEffectMinor(transaction) / 100;
-export const getSaveInvestActivity = (transaction) => !semantics.isPosted(transaction) || semantics.isIncome(transaction) ? 0 : transaction?.Category === 'Investment'
-  ? semantics.amountMinorOf(transaction) / 100 : Math.abs(getSavingEffect(transaction));
-
-export const isSaveInvestTransaction = (transaction) =>
-  getSaveInvestActivity(transaction) > 0;
+export const getInvestActivity = (transaction) => semantics.investmentActivityMinor(transaction) / 100;
+export const isInvestTransaction = semantics.isInvestmentActivity;
+// Compatibility exports for older callers; both now mean investment activity only.
+export const getSaveInvestActivity = getInvestActivity;
+export const isSaveInvestTransaction = isInvestTransaction;
 
 export const uniqueInternalTransfers = (transactions) => {
   const seen = new Set();
@@ -218,6 +218,7 @@ export const groupTransactionsByMonth = (transactions) => {
       labelExpense
     );
 
+    groupedTransactions[key].totalInvest = groupedTransactions[key].totalSaveInvest;
     const incomeAmount = groupedTransactions[key].totalIncome;
     const labelIncome = groupedTransactions[key].labelDistributionIncome;
     groupedTransactions[key].labelDistributionIncome = LabelDistribution(
@@ -360,6 +361,7 @@ export const getNetAmounts = (Transactions) => {
       Expense: expenseTotal,
       expense: expenseTotal,
       saving: savingTotal,
+      invest: Number(Transactions[month]?.totalInvest ?? Transactions[month]?.totalSaveInvest ?? 0),
       net: netTotal,
       month: monthsNames[Number(month.split("-")[1]) - 1],
     };
@@ -410,7 +412,8 @@ export const buildDashboardBootstrapData = (payload) => {
         totalExpense,
         totalIncome,
         totalSaving,
-        totalSaveInvest: Math.abs(totalSaving),
+        totalSaveInvest: Number(summary.investments || 0),
+        totalInvest: Number(summary.investments || 0),
         totalInternal: 0,
         netTotal: totalIncome - totalExpense - totalSaving,
         month: monthsNames[monthNumber - 1],

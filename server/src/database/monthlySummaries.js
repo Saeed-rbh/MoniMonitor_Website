@@ -1,4 +1,4 @@
-const { getSavingEffectMinor, amountMinorOf, isIncome, isExpense } = require('../services/transactionClassification');
+const { investmentActivityMinor, getSavingEffectMinor, amountMinorOf, isIncome, isExpense } = require('../services/transactionClassification');
 const { validMonth } = require('../../../shared/calendar.cjs');
 
 
@@ -27,8 +27,9 @@ async function refreshMonthlySummary(db, userId, month, expectedRevision = null)
         if (isIncome(transaction)) summary.incomeMinor += amountMinor;
         if (isExpense(transaction)) summary.expensesMinor += amountMinor;
         summary.savingsMinor += getSavingEffectMinor(transaction);
+        summary.investmentActivityMinor += investmentActivityMinor(transaction);
         return summary;
-    }, { incomeMinor: 0, expensesMinor: 0, savingsMinor: 0 });
+    }, { incomeMinor: 0, expensesMinor: 0, savingsMinor: 0, investmentActivityMinor: 0 });
 
     if (transactions.length === 0) {
         await db.run(
@@ -38,16 +39,17 @@ async function refreshMonthlySummary(db, userId, month, expectedRevision = null)
     } else {
         await db.run(
             `INSERT INTO monthly_transaction_summaries
-                (userId, month, incomeMinor, expensesMinor, savingsMinor, transactionCount, updatedAt)
-             VALUES (?, ?, ?, ?, ?, ?, ?)
+                (userId, month, incomeMinor, expensesMinor, savingsMinor, investmentActivityMinor, transactionCount, updatedAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
              ON CONFLICT(userId, month) DO UPDATE SET
                 incomeMinor = excluded.incomeMinor,
                 expensesMinor = excluded.expensesMinor,
                 savingsMinor = excluded.savingsMinor,
+                investmentActivityMinor = excluded.investmentActivityMinor,
                 transactionCount = excluded.transactionCount,
                 updatedAt = excluded.updatedAt`,
             [userId, normalizedMonth, totals.incomeMinor, totals.expensesMinor,
-                totals.savingsMinor, transactions.length, new Date().toISOString()]
+                totals.savingsMinor, totals.investmentActivityMinor, transactions.length, new Date().toISOString()]
         );
     }
 
@@ -104,7 +106,7 @@ async function getStoredMonthlySummaries(db, userId) {
         if (refreshed === 0) break;
     }
     const rows = await db.all(
-        `SELECT month, incomeMinor, expensesMinor, savingsMinor, transactionCount, updatedAt
+        `SELECT month, incomeMinor, expensesMinor, savingsMinor, investmentActivityMinor, transactionCount, updatedAt
          FROM monthly_transaction_summaries
          WHERE userId = ?
          ORDER BY month DESC`,
@@ -115,6 +117,7 @@ async function getStoredMonthlySummaries(db, userId) {
         income: Number(row.incomeMinor || 0) / 100,
         expenses: Number(row.expensesMinor || 0) / 100,
         savings: Number(row.savingsMinor || 0) / 100,
+        investments: Number(row.investmentActivityMinor || 0) / 100,
         count: Number(row.transactionCount || 0),
         updatedAt: row.updatedAt,
     }));

@@ -79,3 +79,13 @@ test('posted investment interest and cash dividends are income while principal m
  }
  assert.equal(interest.Category,'Investment');
 });
+
+test('Invest contains asset activity, excluding cash savings, idle funding, transfers and earned income',()=>{
+ const {isInvestmentActivity,investmentActivityMinor,matchesReportingCategory}=require('./transactionClassification');
+ const stock={Category:'Investment',PortfolioAction:'BUY',Label:'ETF & Stock Purchase',AmountMinor:12500,AccountFlow:'OUT',PostingStatus:'posted'};
+ for(const fields of [{},{PortfolioAction:'SELL',AccountFlow:'IN'},{PortfolioAction:'SWAP',AccountFlow:'NONE'},{PortfolioAction:'TRANSFER',AccountFlow:'NONE'}]){
+  const tx={...stock,...fields};assert.equal(isInvestmentActivity(tx),true);assert.equal(investmentActivityMinor(tx),12500);assert.equal(matchesReportingCategory(tx,'Invest'),true);
+ }
+ for(const fields of [{Category:'Saving',Label:'Savings Contributions'},{Category:'Saving',Label:'Crypto Funding'},{PortfolioAction:'DEPOSIT'},{PortfolioAction:'CONTRIBUTION'},{PortfolioAction:'WITHDRAWAL'},{PortfolioAction:'TRANSFER',AccountFlow:'IN'},{PortfolioAction:'INTEREST',AccountFlow:'IN'},{PortfolioAction:'DIVIDEND',AccountFlow:'IN'},{PostingStatus:'pending'},{Category:'Internal'}])assert.equal(isInvestmentActivity({...stock,...fields}),false,JSON.stringify(fields));
+ assert.equal(isInvestmentActivity({...stock,Category:'Saving',Label:'Stocks',PortfolioAction:null}),true);
+});

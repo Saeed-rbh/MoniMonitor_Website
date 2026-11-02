@@ -19,7 +19,7 @@ const calculatePercentage = (value, max) =>
 const hasMonthData = (month) =>
   Math.abs(toFiniteNumber(month?.income)) +
     Math.abs(toFiniteNumber(month?.Expense)) +
-    Math.abs(toFiniteNumber(month?.saving)) >
+    Math.abs(toFiniteNumber(month?.invest)) >
   0;
 
 const MainStatistics = ({
@@ -48,7 +48,7 @@ const MainStatistics = ({
       (acc, d) => ({
         maxIncome: Math.max(acc.maxIncome, Math.abs(toFiniteNumber(d.income))),
         maxNet: Math.max(acc.maxNet, Math.abs(toFiniteNumber(d.net))),
-        maxSaving: Math.max(acc.maxSaving, Math.abs(toFiniteNumber(d.saving))),
+        maxSaving: Math.max(acc.maxSaving, Math.abs(toFiniteNumber(d.invest))),
         maxExpense: Math.max(acc.maxExpense, Math.abs(toFiniteNumber(d.Expense))),
       }),
       { maxIncome: 0, maxNet: 0, maxSaving: 0, maxExpense: 0 }
@@ -70,7 +70,7 @@ const MainStatistics = ({
         ...d,
         incomePercentage: calculatePercentage(d.income, maxValues.maxOfAll),
         netPercentage: calculatePercentage(d.net, maxValues.maxOfAll),
-        savingPercentage: calculatePercentage(d.saving, maxValues.maxOfAll),
+        savingPercentage: calculatePercentage(d.invest, maxValues.maxOfAll),
         ExpensePercentage: calculatePercentage(d.Expense, maxValues.maxOfAll),
         year: MonthsData[index],
       })),
@@ -309,7 +309,7 @@ const MainStatistics = ({
             ></animated.span>
           </p>
           <p>
-            Saving
+            Invest
             <animated.span
               style={{
                 width: springGuid[2].width,

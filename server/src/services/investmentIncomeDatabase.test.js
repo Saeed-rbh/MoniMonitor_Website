@@ -39,3 +39,19 @@ test('income summaries, detail filters, AI facts and widget include 101.35 inter
  assert.equal((await service.getTransactionById(interest,user)).Category,'Investment');
  assert.equal((await service.getTransactionById(dividend,user)).PortfolioAction,'DIVIDEND');
 });
+
+test('cached Invest totals and paginated filters include only investments, preserving savings and original history',async()=>{
+ const base={userId:user,Timestamp:'2026-09-01',Currency:'CAD',Category:'Investment',PostingStatus:'posted',AccountFlow:'OUT'};
+ const stock=await service.addTransaction({...base,Amount:125,PortfolioAction:'BUY',Label:'ETF & Stock Purchase'});
+ const crypto=await service.addTransaction({...base,Amount:75,PortfolioAction:'SELL',Label:'Crypto Sale',AccountFlow:'IN'});
+ for(const fields of [{Amount:1000,Category:'Saving',Label:'Savings Contributions'},{Amount:500,Category:'Saving',Label:'Crypto Funding'},{Amount:1200,PortfolioAction:'DEPOSIT',AccountFlow:'IN'},{Amount:80,PortfolioAction:'INTEREST',AccountFlow:'IN'},{Amount:50,PortfolioAction:'BUY',Currency:'USD'},{Amount:999,PortfolioAction:'BUY',PostingStatus:'unposted'}])await service.addTransaction({...base,...fields});
+ const before=await db.all('SELECT * FROM transactions ORDER BY id');
+ const summary=await service.getSummaryForUser(user),month=summary.byMonth.find(m=>m.month==='2026-09');
+ assert.equal(month.investments,200);assert.equal(month.income,80);assert.equal(month.savings,1500);
+ const rows=await service.getAllTransactionsForUser(user,{category:'Invest',from:'2026-09-01',to:'2026-09-30'});
+ assert.deepEqual(rows.filter(r=>r.Currency==='CAD').map(r=>r.id).sort((a,b)=>a-b),[stock,crypto]);
+ assert.equal((await service.getAllTransactionsForUser(user,{category:'Invest',from:'2026-09-01',to:'2026-09-30',limit:1,page:2})).length,1);
+ const cached=await db.get("SELECT investmentActivityMinor FROM monthly_transaction_summaries WHERE userId=? AND month='2026-09'",[user]);
+ assert.equal(cached.investmentActivityMinor,20000);
+ assert.deepEqual(await db.all('SELECT * FROM transactions ORDER BY id'),before);
+});

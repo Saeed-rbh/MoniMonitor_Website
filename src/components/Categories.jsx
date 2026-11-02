@@ -115,6 +115,7 @@ export const CATEGORY_GROUPS = {
   Income: Income_categories,
   Internal: Internal_categories,
   Investment: Investment_categories,
+  Invest: Investment_categories.filter(([label]) => !['Investment Interest','Dividends'].includes(label)),
   Saving: Saving_categories,
   "Save&Invest": SaveInvest_categories,
 };
@@ -148,7 +149,7 @@ export const getCategoryList = (category) => CATEGORY_GROUPS[category] || [];
 export const getCategoryForLabel = (label, fallback = "Saving") => {
   const normalized = String(label || "").toLowerCase();
   for (const [category, items] of Object.entries(CATEGORY_GROUPS)) {
-    if (category === "Save&Invest") continue;
+    if (["Save&Invest", "Invest"].includes(category)) continue;
     if (items.some(([name]) => name.toLowerCase() === normalized)) return category;
   }
   return fallback;

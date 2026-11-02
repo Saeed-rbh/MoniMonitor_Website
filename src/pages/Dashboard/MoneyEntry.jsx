@@ -59,7 +59,7 @@ const MoneyEntry = ({ Transactions, setIsMoreClicked }) => {
           </div>
           <div className="MoneyEntry_AmountBase">
             <MoneyEntryAmount
-              type="Save&Invest"
+              type="Invest"
               setIsMoreClicked={setIsMoreClicked}
               transaction={Transactions}
               redirectClick={redirectClick}

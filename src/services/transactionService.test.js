@@ -234,3 +234,14 @@ it('counts the November interest as income while retaining its investment record
   expect(getAccountTransactions({id:21,currency:'CAD'},grouped)).toContainEqual(interest);
   expect(JSON.stringify(rows)).toBe(original);
 });
+
+it('Invest filters and cached older months use asset activity without falling back to cash savings',()=>{
+ const stamp='2026-08-01',asset={Category:'Investment',Amount:125,PortfolioAction:'BUY',AccountFlow:'OUT',Timestamp:stamp};
+ const grouped=groupTransactionsByMonth([asset,{...asset,Amount:75,PortfolioAction:'SELL',AccountFlow:'IN'},
+  {...asset,Amount:1000,Category:'Saving',Label:'Savings Contributions'}, {...asset,Amount:500,PortfolioAction:'DEPOSIT'}, {...asset,Amount:10,PortfolioAction:'DIVIDEND',AccountFlow:'IN'}]);
+ expect(grouped['2026-08'].totalInvest).toBe(200);expect(grouped['2026-08'].totalIncome).toBe(10);
+ expect(grouped['2026-08'].transactions.filter(t=>matchesReportingCategory(t,'Invest'))).toHaveLength(2);
+ const bootstrap=buildDashboardBootstrapData({currentMonth:'2026-11',transactions:[],byMonth:[{month:'2026-08',income:10,expenses:0,savings:1000,investments:200},{month:'2026-09',income:0,expenses:0,savings:500}]});
+ expect(bootstrap.totalTransactions['2026-08'].totalInvest).toBe(200);
+ expect(bootstrap.totalTransactions['2026-09'].totalInvest).toBe(0);
+});

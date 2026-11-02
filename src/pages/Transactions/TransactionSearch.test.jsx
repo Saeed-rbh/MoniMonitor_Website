@@ -323,3 +323,15 @@ test('Income search includes bank interest and cash dividends while excluding tr
   expect(screen.getByRole('button',{name:/Cash dividend/})).toBeInTheDocument();
   for(const reason of ['Sale proceeds','Moved between accounts','Pending interest'])expect(screen.queryByRole('button',{name:new RegExp(reason)})).not.toBeInTheDocument();
 });
+
+test('Invest replaces the combined saving category and lists assets without savings or earned income',()=>{
+ const base={Category:'Investment',Amount:50,Timestamp:'2026-10-01',PostingStatus:'posted',AccountFlow:'OUT',PortfolioAction:'BUY'};
+ testData.extra=[{...base,id:1001,Reason:'Bought stocks'},{...base,id:1002,Reason:'Bought bitcoin',Label:'Crypto Purchase'},
+  {...base,id:1003,Reason:'Cash savings',Category:'Saving',Label:'Savings Contributions'}, {...base,id:1004,Reason:'Broker cash funding',PortfolioAction:'DEPOSIT',AccountFlow:'IN'},
+  {...base,id:1005,Reason:'Cash interest',PortfolioAction:'INTEREST',AccountFlow:'IN'}];
+ render(<TransactionSearch />);
+ expect(screen.queryByRole('button',{name:'Save & invest',exact:true})).not.toBeInTheDocument();
+ fireEvent.click(screen.getByRole('button',{name:'Invest',exact:true}));
+ for(const name of ['Bought stocks','Bought bitcoin'])expect(screen.getByRole('button',{name:new RegExp(name)})).toBeInTheDocument();
+ for(const name of ['Cash savings','Broker cash funding','Cash interest'])expect(screen.queryByRole('button',{name:new RegExp(name)})).not.toBeInTheDocument();
+});

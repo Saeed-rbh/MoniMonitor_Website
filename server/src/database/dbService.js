@@ -45,7 +45,7 @@ const securityTradeLabels = new Set([
     'Investment Activity',
 ]);
 
-const { toMinorUnits, amountMinorOf, isExpense, isIncome } = require('../../../shared/financialSemantics.cjs');
+const { toMinorUnits, amountMinorOf, isExpense, isIncome, isInvestmentActivity } = require('../../../shared/financialSemantics.cjs');
 
 function withDisplayAmount(transaction) {
     if (!transaction) return transaction;
@@ -113,7 +113,9 @@ async function getAllTransactionsForUser(userId, filters = {}) {
     let query = 'SELECT * FROM transactions WHERE userId = ?';
     const params = [userId];
 
-    if (filters.category === 'Income') {
+    if (filters.category === 'Invest') {
+        query += " AND Category IN ('Investment','Saving','Save&Invest')";
+    } else if (filters.category === 'Income') {
         // Reporting income includes earned investment cash without changing its stored activity category.
         query += ` AND PostingStatus='posted'
             AND LOWER(TRIM(COALESCE(Label,'')))<>'internal transfer'
@@ -136,7 +138,7 @@ async function getAllTransactionsForUser(userId, filters = {}) {
     query += ' ORDER BY Timestamp DESC';
 
     // Backend Pagination Option
-    if (filters.limit) {
+    if (filters.limit && filters.category !== 'Invest') {
         query += ' LIMIT ?';
         params.push(parseInt(filters.limit));
         if (filters.page) {
@@ -146,7 +148,16 @@ async function getAllTransactionsForUser(userId, filters = {}) {
         }
     }
 
-    return withDisplayAmounts(await db.all(query, params));
+    let rows = await db.all(query, params);
+    if (filters.category === 'Invest') {
+        rows = rows.filter(isInvestmentActivity);
+        if (filters.limit) {
+            const limit = Math.max(1, parseInt(filters.limit, 10) || 50);
+            const offset = Math.max(0, (parseInt(filters.page, 10) || 1) - 1) * limit;
+            rows = rows.slice(offset, offset + limit);
+        }
+    }
+    return withDisplayAmounts(rows);
 }
 
 function validatePostingStatus(value) {
@@ -1542,12 +1553,14 @@ async function getSummaryForUser(userId) {
         totalIncome: result.totalIncome + month.income,
         totalExpenses: result.totalExpenses + month.expenses,
         totalSavings: result.totalSavings + month.savings,
-    }), { totalIncome: 0, totalExpenses: 0, totalSavings: 0 });
+        totalInvestments: result.totalInvestments + month.investments,
+    }), { totalIncome: 0, totalExpenses: 0, totalSavings: 0, totalInvestments: 0 });
 
     return {
         totalIncome: totals.totalIncome,
         totalExpenses: totals.totalExpenses,
         totalSavings: totals.totalSavings,
+        totalInvestments: totals.totalInvestments,
         balance: totals.totalIncome - totals.totalExpenses - totals.totalSavings,
         byLabel: labelTotals,
         byMonth,

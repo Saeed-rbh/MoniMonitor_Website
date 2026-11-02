@@ -173,8 +173,8 @@ function AddTransactionFeed({
       Label: selectedCategory[0],
       Timestamp: `${selectedDate.year}-${selectedDate.month}-${selectedDate.day} ${selectedDate.hours}:${selectedDate.minutes}`,
       Type: whichType ? "Daily" : "Monthly",
-      Category: isAddClicked === "Save&Invest"
-        ? getCategoryForLabel(selectedCategory[0])
+      Category: isAddClicked === "Invest"
+        ? getCategoryForLabel(selectedCategory[0], "Investment")
         : isAddClicked,
     };
   }, [
@@ -246,8 +246,8 @@ function AddTransactionFeed({
               <input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Add a description" />
             </label>
             <label>Transaction type
-              <select value={isAddClicked} onChange={(event) => setIsClicked(event.target.value)}>
-                <option value="Expense">Expense</option><option value="Income">Income</option><option value="Save&Invest">Save &amp; invest</option>
+              <select value={isAddClicked === "Investment" ? "Invest" : isAddClicked} onChange={(event) => setIsClicked(event.target.value)}>
+                <option value="Expense">Expense</option><option value="Income">Income</option><option value="Invest">Invest</option>
               </select>
             </label>
             <label>Category

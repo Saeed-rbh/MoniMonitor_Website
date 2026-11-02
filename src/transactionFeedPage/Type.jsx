@@ -7,7 +7,7 @@ import { MdModeEditOutline } from "react-icons/md";
 const transactionTypes = [
   { label: "Income", icon: <GoArrowDownLeft color="var(--Fc-2)" /> },
   { label: "Expense", icon: <GoArrowUpRight color="var(--Gc-2)" /> },
-  { label: "Save&Invest", icon: <GoPlus color="var(--Ac-2)" /> },
+  { label: "Invest", icon: <GoPlus color="var(--Ac-2)" /> },
 ];
 
 const getTransactionSpringConfig = (

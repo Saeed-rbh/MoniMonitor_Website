@@ -1,5 +1,14 @@
 const MIGRATIONS = [
     {
+        version: 21, name: 'separate_investment_activity_from_cash_savings',
+        async up(db) {
+            await db.exec(`ALTER TABLE monthly_transaction_summaries ADD COLUMN investmentActivityMinor INTEGER NOT NULL DEFAULT 0;
+                INSERT INTO monthly_summary_dirty(userId,month,revision,changedAt)
+                SELECT userId,month,1,CURRENT_TIMESTAMP FROM monthly_transaction_summaries WHERE 1
+                ON CONFLICT(userId,month) DO UPDATE SET revision=monthly_summary_dirty.revision+1,changedAt=excluded.changedAt`);
+        }
+    },
+    {
         version: 20, name: 'report_earned_investment_cash_as_income',
         async up(db) {
             // Rebuild derived reports for retained history; never rewrite transactions or financial effects.

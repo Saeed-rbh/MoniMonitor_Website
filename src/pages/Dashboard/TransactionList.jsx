@@ -202,7 +202,7 @@ const TransactionList = ({
         ? "var(--Fc-2)"
         : isMoreClicked === "Expense"
           ? "var(--Gc-2)"
-          : isMoreClicked === "Save&Invest"
+          : isMoreClicked === "Invest"
             ? "var(--Bc-2)"
             : selectedData.netTotal > 0
               ? "var(--Fc-2)"

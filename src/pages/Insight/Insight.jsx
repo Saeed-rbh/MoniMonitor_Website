@@ -901,7 +901,7 @@ const Insight = () => {
                 const shortMonthName = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][moIndex];
                 const label = `${shortMonthName} '${String(d.getFullYear()).slice(-2)}`;
                 if (md && md.totalIncome > 0) {
-                    const saving = Number(md.totalSaveInvest || md.totalSaving || 0);
+                    const saving = Number(md.totalInvest ?? md.totalSaveInvest ?? 0);
                     savingsRateTrend.push({ key, label, rate: Math.max(0, (saving / md.totalIncome) * 100) });
                 } else {
                     savingsRateTrend.push({ key, label, rate: null });
@@ -1806,7 +1806,7 @@ const Insight = () => {
                                 <div className="Insight_BentoIconBadge savings-rate">
                                     <TrendingUp size={13} strokeWidth={2.2} />
                                 </div>
-                                <span className="Insight_BentoEyebrow">Savings Discipline</span>
+                                <span className="Insight_BentoEyebrow">Investment Activity</span>
                             </div>
                             <span className="Insight_BentoBadge savings-rate">
                                 12-Month Trend
@@ -1814,7 +1814,7 @@ const Insight = () => {
                         </div>
 
                         <div className="Insight_BentoMain">
-                            <span className="Insight_BentoTitle">12-Month Savings &amp; Investment Rate</span>
+                            <span className="Insight_BentoTitle">12-Month Investment Activity / Income</span>
                         </div>
 
                         <div className="Insight_SavingsSparkVisual">
@@ -1840,7 +1840,7 @@ const Insight = () => {
                         </div>
 
                         <div className="Insight_BentoFooter split">
-                            <span>Current Rate: <strong style={{ color: 'var(--Fc-1)' }}>{extraStats.savingsRateTrend.findLast(s => s.rate !== null)?.rate.toFixed(1) ?? '—'}%</strong> saved/invested</span>
+                            <span>Current Rate: <strong style={{ color: 'var(--Fc-1)' }}>{extraStats.savingsRateTrend.findLast(s => s.rate !== null)?.rate.toFixed(1) ?? '—'}%</strong> activity / income</span>
                             <span>12-month historical overview</span>
                         </div>
                     </div>

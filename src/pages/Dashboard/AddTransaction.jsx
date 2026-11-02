@@ -16,7 +16,7 @@ const AddTransaction = ({ setIsAddClicked }) => {
     redirect("/AddTransaction");
   };
   const handleSaveInvestClick = () => {
-    setIsAddClicked("Save&Invest");
+    setIsAddClicked("Invest");
     redirect("/AddTransaction");
   };
 
@@ -48,7 +48,7 @@ const AddTransaction = ({ setIsAddClicked }) => {
           style={{ opacity: 0.4 }}
           className="CirleColor"
         ></animated.div>
-        <span>Save & Invest</span>
+        <span>Invest</span>
       </ScalableElement>
     </nav>
   );

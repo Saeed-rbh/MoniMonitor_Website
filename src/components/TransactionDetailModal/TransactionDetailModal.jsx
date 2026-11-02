@@ -47,7 +47,7 @@ const formatFullDate = (timestamp) => {
   });
 };
 
-const GROUP_TABS = ["Expense", "Income", "Save&Invest", "Internal"];
+const GROUP_TABS = ["Expense", "Income", "Invest", "Internal"];
 
 const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransactionUpdated = null }) => {
   const { monthData } = useTransactions();
@@ -65,7 +65,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
   useEffect(() => {
     setCurrentTx(transaction);
     const cat = transaction?.Category || "Expense";
-    const normalized = cat === "Saving" || cat === "Investment" ? "Save&Invest" : cat;
+    const normalized = cat === "Saving" || cat === "Investment" ? "Invest" : cat;
     setSelectedCategory(cat);
     setSelectedLabel(transaction?.Label || transaction?.Category || "");
     setActiveGroupTab(normalized);
@@ -198,7 +198,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
     if (!currentTx?.id || !selectedLabel) return;
     
     let targetCategory = selectedCategory;
-    if (!targetCategory || targetCategory === "Save&Invest") {
+    if (!targetCategory || targetCategory === "Invest") {
       targetCategory = getCategoryForLabel(selectedLabel, currentTx.Category || "Expense");
     }
 
@@ -320,7 +320,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
               onClick={() => setActiveGroupTab(tab)}
               disabled={isSaving}
             >
-              {tab === "Save&Invest" ? "Save & Invest" : tab}
+              {tab === "Invest" ? "Invest" : tab}
             </button>
           ))}
         </div>
@@ -335,7 +335,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
                 className={`TxDetail_ReasonPill ${activeGroupTab.toLowerCase().replace(/[^a-z0-9]/g, '')} ${isSubActive ? "active" : ""}`}
                 onClick={() => {
                   setSelectedLabel(subName);
-                  setSelectedCategory(activeGroupTab === "Save&Invest" ? getCategoryForLabel(subName, "Saving") : activeGroupTab);
+                  setSelectedCategory(activeGroupTab === "Invest" ? getCategoryForLabel(subName, "Investment") : activeGroupTab);
                   setSaveStatus(null);
                 }}
                 disabled={isSaving}

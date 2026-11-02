@@ -77,6 +77,7 @@ async function createTestDb() {
         );
 
         CREATE TABLE IF NOT EXISTS monthly_transaction_summaries (
+            investmentActivityMinor INTEGER NOT NULL DEFAULT 0,
             userId TEXT NOT NULL,
             month TEXT NOT NULL,
             incomeMinor INTEGER NOT NULL DEFAULT 0,

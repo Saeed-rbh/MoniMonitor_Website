@@ -34,7 +34,7 @@ const TransactionList = ({
 }) => {
   const filteredTransactions = React.useMemo(() => {
     if (isMoreClicked === "Internal") return uniqueInternalTransfers(Transactions);
-    if (isMoreClicked === "Save&Invest") return Transactions.filter(isSaveInvestTransaction);
+    if (isMoreClicked === "Invest") return Transactions.filter(isSaveInvestTransaction);
     return Transactions.filter((transaction) => matchesReportingCategory(transaction, isMoreClicked));
   }, [Transactions, isMoreClicked]);
 
@@ -66,7 +66,7 @@ const TransactionList = ({
       if (!transaction || !transaction.Timestamp) return false;
       if (sortby === "All") return true;
       if (["Income", "Expense"].includes(sortby)) return matchesReportingCategory(transaction, sortby);
-      if (sortby === "Save&Invest") return isSaveInvestTransaction(transaction);
+      if (sortby === "Invest") return isSaveInvestTransaction(transaction);
       if (sortby === "Internal") return isInternalTransfer(transaction);
 
       const txDate = parseTransactionDate(transaction.Timestamp);
@@ -148,7 +148,7 @@ const TransactionList = ({
             ? selectedData.totalIncome
             : isMoreClicked === "Expense"
               ? selectedData.totalExpense
-              : selectedData.totalSaveInvest ?? selectedData.totalSaving;
+              : selectedData.totalInvest ?? selectedData.totalSaveInvest ?? 0;
 
       const rawDistribution =
         isMoreClicked === "Internal"
@@ -157,7 +157,7 @@ const TransactionList = ({
             ? selectedData.labelDistributionIncome
             : isMoreClicked === "Expense"
               ? selectedData.labelDistributionExpense
-              : selectedData.labelDistributionSaveInvest ?? selectedData.labelDistributionSaving;
+              : selectedData.labelDistributionSaveInvest ?? {};
       let sortedData = [];
       if (rawDistribution) {
         if (Array.isArray(rawDistribution)) {
@@ -285,7 +285,7 @@ const TransactionList = ({
         ? "var(--Fc-2)"
         : isMoreClicked === "Expense"
           ? "var(--Gc-2)"
-          : isMoreClicked === "Save&Invest"
+          : isMoreClicked === "Invest"
             ? "var(--Bc-2)"
             : selectedData.netTotal > 0
               ? "var(--Fc-2)"
@@ -350,7 +350,7 @@ const TransactionList = ({
             ? selectedData.totalIncome
             : isMoreClicked === "Expense"
               ? selectedData.totalExpense
-              : selectedData.totalSaveInvest ?? selectedData.totalSaving
+              : selectedData.totalInvest ?? selectedData.totalSaveInvest ?? 0
       ).toFixed(2).length *
       8 +
       5,

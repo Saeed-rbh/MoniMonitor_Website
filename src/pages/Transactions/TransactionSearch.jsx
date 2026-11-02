@@ -1,4 +1,4 @@
-import { matchesReportingCategory, isIncome } from "../../services/transactionService";
+import { matchesReportingCategory, isInvestTransaction } from "../../services/transactionService";
 import TransactionRow from "../../components/TransactionRow";
 import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -13,8 +13,8 @@ import { parseTransactionDate, parseTransactionCalendarDate, isDateOnlyTransacti
 import "../../components/TransactionRow.css";
 import "./TransactionSearch.css";
 
-const categories = ["All", "Expense", "Income", "Save & invest"];
-const categoryIcons = { All: Layers, Expense: ArrowUpRight, Income: ArrowDownLeft, "Save & invest": Landmark };
+const categories = ["All", "Expense", "Income", "Invest"];
+const categoryIcons = { All: Layers, Expense: ArrowUpRight, Income: ArrowDownLeft, "Invest": Landmark };
 const shortDate = value => parseTransactionCalendarDate(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 const compactRange = range => range.start === range.end ? shortDate(range.start)
   : `${shortDate(range.start)}–${range.start.slice(0, 7) === range.end.slice(0, 7) ? Number(range.end.slice(-2)) : shortDate(range.end)}`;
@@ -110,8 +110,8 @@ export default function TransactionSearch() {
         const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
         if ((startDate && day < startDate) || (endDate && day > endDate)) return false;
       }
-      const matchesCategory = category === "All" || (category === "Save & invest"
-        ? ["Saving", "Save&Invest", "Investment"].includes(transaction.Category) && !isIncome(transaction)
+      const matchesCategory = category === "All" || (category === "Invest"
+        ? isInvestTransaction(transaction)
         : matchesReportingCategory(transaction, category));
       const text = [transaction.Reason, transaction.Label, transaction.Amount,
         transaction.BankName, transaction.Category, transaction.Type, transaction.Timestamp]

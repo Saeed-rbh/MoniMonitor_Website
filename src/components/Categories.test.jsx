@@ -61,3 +61,11 @@ describe("transaction category registry", () => {
     expect(getTransactionIcon("Expense", "Food & Dining").props.strokeWidth).toBe(1.8);
   });
 });
+
+it('offers only investment activity labels under Invest while preserving legacy source categories',()=>{
+ const labels=CATEGORY_GROUPS.Invest.map(([label])=>label);
+ expect(labels).toContain('ETF & Stock Purchase');expect(labels).toContain('Crypto Purchase');
+ for(const label of ['Savings Contributions','Crypto Funding','Dividends','Investment Interest'])expect(labels).not.toContain(label);
+ expect(getCategoryForLabel('ETF & Stock Purchase')).toBe('Investment');
+ expect(getCategoryForLabel('Savings Contributions')).toBe('Saving');
+});

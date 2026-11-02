@@ -22,8 +22,8 @@ const MoneyEntryAmount = ({
       ? transaction.totalIncome
       : type === "Expense"
         ? transaction.totalExpense
-        : type === "Save&Invest"
-          ? (transaction.totalSaveInvest ?? transaction.totalSaving ?? 0)
+        : type === "Invest"
+          ? (transaction.totalInvest ?? transaction.totalSaveInvest ?? 0)
           : (transaction.totalInternal ?? 0);
 
   const amountStyle = {
@@ -33,7 +33,7 @@ const MoneyEntryAmount = ({
         ? "linear-gradient(165deg, var(--Ec-4) 30%, var(--Fc-4) 100%)"
         : type === "Expense"
           ? "linear-gradient(165deg, var(--Ec-4) 30%, var(--Gc-4) 100%)"
-          : type === "Save&Invest"
+          : type === "Invest"
             ? "linear-gradient(165deg, var(--Ec-4) 30%, var(--Ac-4) 100%)"
             : "linear-gradient(165deg, var(--Ec-4) 30%, var(--Gc-4) 100%)",
 
@@ -42,7 +42,7 @@ const MoneyEntryAmount = ({
         ? `2px solid color-mix(in srgb, var(--Fc-3), transparent 50%)`
         : type === "Expense"
           ? `2px solid color-mix(in srgb, var(--Gc-3), transparent 50%)`
-          : type === "Save&Invest"
+          : type === "Invest"
             ? `2px solid color-mix(in srgb, var(--Ac-3), transparent 50%)`
             : `2px solid color-mix(in srgb, var(--Bc-3), transparent 50%)`,
   };
@@ -55,7 +55,7 @@ const MoneyEntryAmount = ({
         ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Fc-3) 100%)"
         : type === "Expense"
           ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Gc-3) 100%)"
-          : type === "Save&Invest"
+          : type === "Invest"
             ? "linear-gradient(165deg, var(--Ec-1) 30%, var(--Ac-3) 100%)"
             : "linear-gradient(165deg, var(--Ec-1) 30%, var(--Bc-3) 100%)",
   };
@@ -66,7 +66,7 @@ const MoneyEntryAmount = ({
         ? "var(--Fc-2)"
         : type === "Expense"
           ? "var(--Gc-2)"
-          : type === "Save&Invest"
+          : type === "Invest"
             ? "var(--Ac-2)"
             : formatNetTotal(transaction.netTotal) > 0
               ? "var(--Fc-2)"
@@ -86,7 +86,7 @@ const MoneyEntryAmount = ({
   const height = useWindowHeight(0);
 
   const widthFactor =
-    type === "Save&Invest" ? 1.12 : type === "Internal" ? 0.88 : 1;
+    type === "Invest" ? 1.12 : type === "Internal" ? 0.88 : 1;
   const heightFactor = Math.min(height / 660, 1);
 
   const scaleStyle = useSpring({
@@ -126,7 +126,7 @@ const MoneyEntryAmount = ({
             <GoArrowDownLeft />
           ) : type === "Expense" ? (
             <GoArrowUpRight />
-          ) : type === "Save&Invest" ? (
+          ) : type === "Invest" ? (
             <GoPlus />
           ) : (
             <GoPulse />
@@ -134,8 +134,8 @@ const MoneyEntryAmount = ({
         </div>
         <div className="MoneyEntry_Balance">
           <h2>
-            {type === 'Save&Invest'
-              ? 'This month'
+            {type === 'Invest'
+              ? 'Monthly activity'
               : type === 'Internal'
                 ? 'This month moved'
               : "Total Amount"}
