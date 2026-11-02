@@ -3,14 +3,19 @@ const {decryptString}=require('./encryptionService');
 const service=()=>require('../database/dbService');
 const parse=value=>{try{return JSON.parse(value||'{}');}catch{return {};}};
 function bankName(raw,transaction) {
+    const description=names.bankDescription(raw);
+    if(description){
+        const name=names.counterpartyFromReason(description,{...transaction,Reason:description});
+        if(name)return name;
+    }
     const meta=raw.payment_meta||{};
     const explicit=transaction.AccountFlow==='IN' ? meta.payer||meta.by_order_of : transaction.AccountFlow==='OUT'?meta.payee:null;
-    const people=(raw.counterparties||[]).filter(c=>['person','merchant'].includes(c.type)&&c.name);
+    const people=(raw.counterparties||[]).filter(c=>c.type==='person'&&c.name);
     return names.normalizeName(explicit) || (people.length===1?names.normalizeName(people[0].name):null);
 }
 async function enrichCounterpartyNames(userId) {
     const db=await service().getDb();
-    const rows=(await db.all('SELECT id,userId,Reason,Label,Type,AccountFlow,CounterpartyName FROM transactions WHERE userId=?',[userId])).filter(names.isETransfer);
+    const rows=(await db.all('SELECT id,userId,Reason,Label,Type,Category,AccountFlow,CounterpartyName FROM transactions WHERE userId=?',[userId])).filter(names.isETransfer);
     const byId=new Map(rows.map(t=>[t.id,{transaction:t,candidates:[]} ]));
     for(const entry of byId.values()){
         const name=names.counterpartyFromReason(entry.transaction.Reason,entry.transaction);

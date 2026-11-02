@@ -17,21 +17,38 @@ function normalizeName(value) {
     return name;
 }
 function isETransfer(transaction={}) {
-    return /\b(?:interac|e[ -]?transfer)\b/i.test([transaction.Reason,transaction.Type].filter(Boolean).join(' ')) ||
-        /^personal transfers?(?: received)?$/i.test(String(transaction.Label||''));
+    const reason=cleanText(transaction.Reason);
+    // Interac also operates debit terminals. Personal Transfers includes other
+    // payment rails; neither is sufficient evidence of an e-transfer.
+    if(transaction.Category==='Internal' || /\binternal transfer\b/i.test(reason) ||
+        /\b(?:reclaim fee|expired interac e[ -]?transfer credit|retail purchase|point of sale|contactless|misc payment|online banking transfer|deposit online transfer|money transfer into the account)\b/i.test(reason) ||
+        /^(?:transfer in|transfer out)$/i.test(reason))return false;
+    if(/\be[ -]?transfer\b/i.test(reason))return true;
+    if(/\be[ -]?transfer\b/i.test(String(transaction.Type||'')))return true;
+    // Retain support for legacy rows containing just a person's name.
+    return /^personal transfers?(?: received)?$/i.test(String(transaction.Label||'')) &&
+        !!normalizeName(reason) && !/\b(?:payment|transfer|deposit|withdrawal|interac)\b/i.test(reason);
 }
 function counterpartyFromReason(reason, transaction={}) {
     const text=cleanText(reason);
     if(!isETransfer({...transaction,Reason:text}))return null;
     const patterns=[
+        /^(?:internet banking\s+)?(?:interac\s+)?e[ -]?transfer(?:®)?\s+\d{6,32}\s+(.+)$/i,
+        /^(?:interac\s+)?e[ -]?transfer(?:®)?\s*(?:[-:–—]\s*)?(?:sent|received|autodeposit|cancel(?:led)?)\s+(.+?)(?:\s+(?=[A-Z0-9]{6,32}$)(?=[A-Z0-9]*\d)[A-Z0-9]+)?$/i,
         /^(?:.*?\b)?(?:interac\s+)?e[ -]?transfer\s*[-:–—]\s*(.+)$/i,
         /^(.+?)\s*[-–—]\s*(?:interac\s+)?e[ -]?transfer(?:®|\s.*)?$/i,
         /\b(?:e[ -]?transfer\s+)?(?:received from|sent to|from|to)\s+(.+?)(?=\s+(?:has been|was|and it|received in|sent from)\b|$)/i,
-        /^e[ -]?transfer\s+(?:sent|received|autodeposit)\s+(.+?)(?:\s+(?=[A-Z0-9]{6,12}$)(?=[A-Z0-9]*\d)[A-Z0-9]+)?$/i,
     ];
     for(const pattern of patterns){const m=text.match(pattern);if(m){const name=normalizeName(m[1]);if(name)return name;}}
     if(!/\b(?:interac|e[ -]?transfer|sent|received|deposit|withdrawal)\b/i.test(text))return normalizeName(text);
     return null;
+}
+function bankDescription(raw) {
+    if(Array.isArray(raw))return typeof raw[1]==='string'?cleanText(raw[1]):null; // CIBC native CSV
+    if(!raw || typeof raw!=='object')return null;
+    if(typeof raw['Description 1']==='string')return cleanText([raw['Description 1'],raw['Description 2']].filter(Boolean).join(' '));
+    const description=raw.description||raw.original_description;
+    return typeof description==='string'?cleanText(description):null;
 }
 function counterpartyFromEmail(body, transaction={}) {
     const subject=String(body||'').match(/^Subject:\s*(.+)$/im)?.[1];
@@ -61,4 +78,4 @@ function displayReason(transaction={}) {
     }
     return reason;
 }
-module.exports={cleanText,nameKey,normalizeName,isETransfer,counterpartyFromReason,counterpartyFromEmail,displayReason};
+module.exports={cleanText,nameKey,normalizeName,isETransfer,counterpartyFromReason,counterpartyFromEmail,displayReason,bankDescription};

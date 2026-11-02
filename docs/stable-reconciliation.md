@@ -45,6 +45,25 @@ A full-history download is unnecessary unless a specific missing/corrupt source,
 new account, or demonstrated historical discrepancy requires additional evidence.
 Request only the evidence needed to close that gap.
 
+## Bank descriptions and counterparty names
+
+Use the original CSV description before declaring a counterparty unavailable.
+RBC may put names after `AUTODEPOSIT` and before a confirmation reference;
+CIBC may put a numeric reference before the name. Interac debit purchases,
+reclaim fees, expired-transfer credits, internal transfers and generic bank
+transfers must keep their activity descriptions instead of a person's title.
+An unnamed transfer cannot acquire a full name from a date/amount match alone.
+
+For a reviewed description-only repair, prepare a private plan with the original
+bank row, file hash and row index, plus the complete expected transaction identity.
+Run `node server/scripts/repair-bank-descriptions.js DB PLAN USER` to preview;
+add `--apply` to create a SQLite backup and apply it. The operation adds bank
+evidence, audits the previous wording, locks the corrected reason against provider
+replay and updates recovery facts. It cannot modify amounts, account assignments,
+categories, dates or posting status. Rerunning the same plan makes no changes.
+The automatic counterparty enrichment then extracts names from that retained
+evidence; financial history and all existing source identities remain intact.
+
 ## Recovery
 
 Use the pinned encrypted database and the existing server backup/data encryption

@@ -36,3 +36,11 @@ test('extracts the actual transfer role and never uses forwarding headers or inv
  assert.equal(names.counterpartyFromReason('E-Transfer - J. Winters',{Type:'e-Transfer'}),'J. Winters');
  assert.equal(names.counterpartyFromReason('E-TRANSFER SENT JORDAN WINTERS',{Type:'e-Transfer'}),'Jordan Winters');
 });
+test('reads counterparty names from native CSV and provider descriptions without treating debit merchants as people',()=>{
+ const {bankName}=require('./transactionNames');
+ const transaction={Reason:'E-Transfer',Label:'Personal Transfers',AccountFlow:'OUT'};
+ assert.equal(bankName(['2026-10-01','Internet Banking E-TRANSFER 123456789012 MARA TAYLOR','','42.00'],transaction),'Mara Taylor');
+ assert.equal(bankName({'Description 1':'E-TRANSFER - AUTODEPOSIT','Description 2':'MARA TAYLOR C1AKFKNECQJU'},transaction),'Mara Taylor');
+ assert.equal(bankName({description:'Interac e-Transfer® Out'},transaction),null);
+ assert.equal(bankName({name:'RETAIL PURCHASE',counterparties:[{type:'merchant',name:'Mara Fuel'}]},transaction),null);
+});
