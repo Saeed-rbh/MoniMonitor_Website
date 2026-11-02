@@ -1,11 +1,26 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Search, X, ChevronRight, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { useTransactions } from "../../context/TransactionContext";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
+import { getTransactionIcon } from "../../components/Categories";
+import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
+import { parseTransactionDate, isDateOnlyTransactionTimestamp } from "../../utils/transactionDate";
+import "../../components/TransactionRow.css";
 import "./TransactionSearch.css";
 
 const categories = ["All", "Expense", "Income", "Save & invest"];
 const pageSize = 30;
+const transactionDate = value => {
+  const date = parseTransactionDate(value);
+  return Number.isNaN(date.getTime()) ? "Unknown date" : date.toLocaleString(undefined, {
+    month: "short", day: "numeric", year: "numeric",
+    ...(isDateOnlyTransactionTimestamp(value) ? {} : { hour: "numeric", minute: "2-digit" }),
+  });
+};
+const money = transaction => new Intl.NumberFormat("en-CA", {
+  style: "currency", currency: transaction.Currency || "CAD", maximumFractionDigits: 2,
+}).format(Math.abs(Number.isFinite(Number(transaction.AmountMinor))
+  ? Number(transaction.AmountMinor) / 100 : Number(transaction.Amount || 0)));
 
 export default function TransactionSearch() {
   const { allTransactions } = useTransactions();
@@ -62,22 +77,29 @@ export default function TransactionSearch() {
         {query.trim() ? " found" : " · Newest first"}
       </p>
       <div className="transaction-search-results">
-        {results.slice(0, limit).map((transaction, index) => (
-          <button type="button" className="transaction-search-result" key={transaction.id || `${transaction.Timestamp}-${index}`}
-            onClick={() => setViewingTransaction(transaction)} aria-haspopup="dialog">
-              <span className={`transaction-search-category ${transaction.Category === "Income" ? "is-income" : ""}`} aria-hidden="true">
-                {transaction.Category === "Income" ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+        {results.slice(0, limit).map((transaction, index) => {
+          const flow = String(transaction.AccountFlow || "").toUpperCase();
+          const isIncome = transaction.Category === "Income" || ["income", "credit"].includes(String(transaction.Type || "").toLowerCase());
+          const direction = transaction.Category === "Internal" ? "neutral"
+            : flow === "IN" ? "in" : flow === "OUT" ? "out" : isIncome ? "in" : "out";
+          return (
+            <button type="button" className="transaction-search-result AccountTransactions_Row"
+              key={transaction.id || `${transaction.Timestamp}-${index}`}
+              onClick={() => setViewingTransaction(transaction)} aria-haspopup="dialog">
+              <span className="AccountTransactions_Icon" aria-hidden="true">
+                {getTransactionIcon(transaction.Category, transaction.Label)}
               </span>
-              <span className="transaction-search-description">
-                <strong>{transaction.Reason || transaction.Label || "Transaction"}</strong>
-                <span>{String(transaction.Timestamp || "").slice(0, 10)} · {transaction.Label || transaction.Category}</span>
+              <span className="AccountTransactions_Reason">
+                <strong>{getTransactionDisplayReason(transaction.Reason, transaction.Label)}</strong>
+                <span>{transactionDate(transaction.Timestamp)}</span>
               </span>
-              <strong className="transaction-search-amount">
-                {transaction.Category === "Income" ? "+" : "−"}${Math.abs(Number(transaction.Amount) || 0).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </strong>
-              <ChevronRight className="transaction-search-chevron" size={16} aria-hidden="true" />
-          </button>
-        ))}
+              <span className={`AccountTransactions_Amount ${direction}`}>
+                <strong>{direction === "neutral" ? "" : direction === "in" ? "+" : "−"}{money(transaction)}</strong>
+                <span>{direction === "neutral" ? "transfer" : direction === "in" ? "in" : "out"}</span>
+              </span>
+            </button>
+          );
+        })}
         {!results.length && <div className="transaction-search-empty">
           <Search size={28} aria-hidden="true" />
           <h2>{transactions.length ? "No matching transactions" : "No transactions yet"}</h2>

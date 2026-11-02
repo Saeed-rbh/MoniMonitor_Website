@@ -15,16 +15,6 @@
 .transaction-search-filters button { font-size: .75rem; }
 .transaction-search-filters button[aria-pressed="true"] { background: var(--Bc-1); color: var(--Ec-1); border-color: var(--Bc-1); }
 .transaction-search-count { margin-bottom: 8px; }
-.transaction-search-result { border-bottom: 1px solid var(--Ac-4); }
-.transaction-search button.transaction-search-result { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 16px 2px; cursor: pointer; list-style: none; }
-.transaction-search-description { min-width: 0; display: grid; gap: 6px; overflow-wrap: anywhere; }
-.transaction-search-description strong { font-size: .9rem; font-weight: 500; }
-.transaction-search-description span { color: var(--Ac-2); font-size: .75rem; }
-.transaction-search-amount { flex-shrink: 0; font-size: .9rem; font-variant-numeric: tabular-nums; }
-.transaction-search-result dl { margin: 0 0 14px; padding: 12px; border-radius: 12px; background: var(--Ac-4); font-size: .8rem; }
-.transaction-search-result dl div { display: flex; justify-content: space-between; gap: 16px; padding: 5px 0; }
-.transaction-search-result dt { color: var(--Ac-2); }
-.transaction-search-result dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
 .transaction-search-empty { text-align: center; padding: 30px 12px; }
 .transaction-search-empty h2 { font-size: 1rem; }
 .transaction-search-empty p { color: var(--Ac-2); font-size: .85rem; line-height: 1.6; }
@@ -40,22 +30,16 @@
 .transaction-search-filters { flex-shrink: 0; gap: 6px; margin: 16px 0; }
 .transaction-search-filters button { flex: 1 0 auto; border-radius: 100px; padding: 8px 10px; }
 .transaction-search-count { flex-shrink: 0; padding: 0 2px 10px; margin: 0; border-bottom: 1px solid var(--Ac-4); font-size: .75rem; }
-.transaction-search-results { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 3px 20px; scrollbar-width: thin; scrollbar-color: var(--Bc-3) transparent; }
-.transaction-search button.transaction-search-result { gap: 10px; min-height: 44px; padding: 16px 0; }
-.transaction-search-description { flex: 1; }
-.transaction-search-category { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 12px; background: var(--Bc-4); color: var(--Bc-1); }
-.transaction-search-category.is-income { color: var(--Fc-1); background: var(--Fc-4); }
-.transaction-search-chevron { flex-shrink: 0; color: var(--Ac-2); transition: transform .15s ease; }
-.transaction-search-result[open] .transaction-search-chevron { transform: rotate(180deg); }
-.transaction-search-result[open] summary { padding-bottom: 12px; }
-.transaction-search button.transaction-search-result:hover { background: var(--Ac-5); }
 .transaction-search button:active { opacity: .75; }
 @media (max-width: 360px) {
   .transaction-search { padding-inline: 12px; }
-  .transaction-search-category { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .transaction-search-field, .transaction-search-chevron { transition: none; }
+  .transaction-search-field { transition: none; }
 }
 
-.transaction-search button.transaction-search-result { display: flex; width: 100%; border: 0; border-bottom: 1px solid var(--Ac-4); border-radius: 0; background: transparent; text-align: left; font: inherit; color: inherit; }
+.transaction-search button.transaction-search-result { width: 100%; border: 0; border-top: 1px solid var(--Ac-4); border-radius: 0; background: transparent; padding: 8px 4px; text-align: left; min-height: 62px; }
+.transaction-search button.transaction-search-result:hover { background: var(--Ac-5); }
+.transaction-search-result:first-child { border-top: 0; }
+
+.transaction-search-results { min-height: 0; flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 3px 20px; scrollbar-width: thin; scrollbar-color: var(--Bc-3) transparent; }
