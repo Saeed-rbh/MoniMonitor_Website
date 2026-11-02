@@ -67,7 +67,7 @@ const MoneyEntryAmount = ({
         : type === "Expense"
           ? "var(--Gc-2)"
           : type === "Invest"
-            ? "var(--Ac-2)"
+            ? "var(--invest-amount-color)"
             : formatNetTotal(transaction.netTotal) > 0
               ? "var(--Fc-2)"
               : "var(--Gc-2)",

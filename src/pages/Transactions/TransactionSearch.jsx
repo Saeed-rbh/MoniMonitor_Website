@@ -219,7 +219,7 @@ export default function TransactionSearch() {
               onClick={() => setViewingTransaction(transaction)} aria-haspopup="dialog"
               icon={getTransactionIcon(transaction.Category, transaction.Label)}
               reason={highlight(getTransactionDisplayReason(transaction.Reason, transaction.Label), query)}
-              date={transactionDate(transaction.Timestamp)} direction={direction} amount={money(transaction)}
+              date={transactionDate(transaction.Timestamp)} direction={direction} investment={isInvestTransaction(transaction)} amount={money(transaction)}
             />
             </Fragment>
           );

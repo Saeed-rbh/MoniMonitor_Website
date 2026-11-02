@@ -1,3 +1,4 @@
+import { isInvestTransaction } from "../../services/transactionService";
 import React, { useMemo, useCallback, useEffect, useRef } from "react";
 import TransactionListItem from "./TransactionListItem";
 import { parseTransactionCalendarDate } from "../../utils/transactionDate";
@@ -216,6 +217,7 @@ const TransactionListMonthly = ({
                   amount={transaction.Amount}
                   category={transaction.Category}
                   accountFlow={transaction.AccountFlow}
+                  investment={isInvestTransaction(transaction)}
                   label={transaction.Label}
                   isSwiped={
                     swipedIndex &&

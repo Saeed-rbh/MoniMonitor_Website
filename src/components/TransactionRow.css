@@ -92,6 +92,10 @@
   color: var(--Fc-1);
 }
 
+.AccountTransactions_Amount.investment strong {
+  color: var(--invest-amount-color, #fff);
+}
+
 .AccountTransactions_Amount.neutral strong {
   color: var(--Ac-1);
 }

@@ -1,3 +1,4 @@
+import { isInvestTransaction } from "../../services/transactionService";
 import React, { useState, useEffect, useCallback } from "react";
 import { FiCalendar, FiCreditCard, FiTag, FiRepeat, FiCheckCircle, FiCheck, FiRefreshCw, FiDatabase } from "react-icons/fi";
 import { getTransactionIcon, CATEGORY_GROUPS, getCategoryForLabel } from "../Categories";
@@ -251,6 +252,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
   if (!transaction || !currentTx) return null;
 
   const direction = getTxDirection(currentTx);
+  const investment = isInvestTransaction(currentTx);
   const reason = getTransactionDisplayReason(currentTx.Reason, selectedLabel || currentTx.Label);
   const category = currentTx.Category || "Expense";
   const displayLabel = selectedLabel || currentTx.Label || category;
@@ -272,8 +274,8 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
           )}
         </div>
         <h2 className="TxDetail_Reason">{reason || "Transaction"}</h2>
-        <div className={`TxDetail_Amount ${direction}`}>
-          <span>{direction === "in" ? "+" : "−"}{money(currentTx)}</span>
+        <div className={`TxDetail_Amount ${investment ? "investment" : direction}`}>
+          <span>{investment ? "" : direction === "in" ? "+" : "−"}{money(currentTx)}</span>
         </div>
       </div>
 

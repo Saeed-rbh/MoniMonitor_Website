@@ -1,6 +1,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap");
 
 :root {
+  --invest-amount-color: #fff;
   --Ac-1: rgba(255, 245, 240, 1);
   --Ac-2: rgba(255, 245, 240, 0.6);
   --Ac-3: rgba(255, 245, 240, 0.35);

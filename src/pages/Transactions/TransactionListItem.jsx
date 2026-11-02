@@ -41,6 +41,7 @@ const TransactionListItem = ({
   onClick,
   category,
   accountFlow,
+  investment = false,
   label,
   type,
   isAddClicked,
@@ -208,7 +209,7 @@ const TransactionListItem = ({
           tabIndex={0}
           onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick?.(); } }}
           icon={ModifyLabel} reason={displayReason} date={formatTransactionDate(time)}
-          direction={direction} amount={formatMoney(amount)}
+          direction={direction} investment={investment} amount={formatMoney(amount)}
           {...bind()}
           className="TransactionList_ItemRow"
           style={swipeStyle}

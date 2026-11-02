@@ -1,3 +1,4 @@
+import { isInvestTransaction } from "../../services/transactionService";
 import TransactionRow from "../../components/TransactionRow";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -124,7 +125,7 @@ const AccountTransactions = () => {
               aria-haspopup="dialog"
               icon={getTransactionIcon(transaction.Category, transaction.Label)}
               reason={reason} date={transactionDate(transaction.Timestamp)}
-              direction={direction} amount={money(transaction, account.currency)}
+              direction={direction} investment={isInvestTransaction(transaction)} amount={money(transaction, account.currency)}
             />
                   );
                 })}

@@ -557,3 +557,7 @@
 .TxDetail_EditBtn:active {
   transform: scale(0.97);
 }
+
+.TxDetail_Amount.investment span {
+  color: var(--invest-amount-color, #fff);
+}
