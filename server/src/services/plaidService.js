@@ -1560,7 +1560,9 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
             totals.holdingsStatus = 'active';
         } else if (investmentResult.error?.code === 'ADDITIONAL_CONSENT_REQUIRED') {
             totals.holdingsStatus = 'consent_required';
-        } else if (['NO_INVESTMENT_ACCOUNTS', 'PRODUCT_NOT_READY', 'PRODUCTS_NOT_SUPPORTED'].includes(investmentResult.error?.code)) {
+        } else if (investmentResult.error?.code === 'PRODUCT_NOT_READY') {
+            totals.holdingsStatus = 'pending';
+        } else if (['NO_INVESTMENT_ACCOUNTS', 'PRODUCTS_NOT_SUPPORTED'].includes(investmentResult.error?.code)) {
             totals.holdingsStatus = 'unavailable';
         } else if (investmentResult.error) {
             totals.holdingsStatus = 'error';
@@ -1591,7 +1593,7 @@ async function performItemSync(item, { forceHoldings = false, backfillSources = 
                 investmentTransactionsResult.skipped ? item.investmentTransactionsLastError : investmentTransactionsError,
                 investmentTransactionsResult.history ? now : null, now, item.itemId, item.userId]
         );
-        await dbService.writeAgentAudit(item.userId, 'plaid_auto_reconciliation', 'success', { itemId: item.itemId, ...totals });
+        await dbService.writeAgentAudit(item.userId, 'plaid_auto_reconciliation', needsInvestmentRetry(totals) ? 'partial' : 'success', { itemId: item.itemId, ...totals });
         return totals;
     } catch (error) {
         const status = plaidFailureStatus(error, item.status);
@@ -1776,6 +1778,11 @@ const webhookRetryDelayMs = (attempt) => Math.min(
     WEBHOOK_MAX_RETRY_MS
 );
 
+function needsInvestmentRetry(result = {}) {
+    return ['pending','error'].includes(result.holdingsStatus) ||
+        ['pending','error'].includes(result.investmentTransactionsStatus);
+}
+
 async function processPendingPlaidWebhooks({ limit = 25, processor = processPlaidWebhook, eventIds = null } = {}) {
     if (webhookProcessingPromise) return webhookProcessingPromise;
     webhookProcessingPromise = (async () => {
@@ -1812,6 +1819,9 @@ async function processPendingPlaidWebhooks({ limit = 25, processor = processPlai
                 if (event.webhookType === 'LOCAL') {
                     await db.run('UPDATE plaid_webhook_events SET payloadJson = ? WHERE id = ?',
                         [JSON.stringify({ ...JSON.parse(event.payloadJson), reconciliationResult: result }), event.id]);
+                }
+                if (needsInvestmentRetry(result)) {
+                    throw new Error(`Bank transactions synced; automatic investment retry scheduled (holdings: ${result.holdingsStatus}, history: ${result.investmentTransactionsStatus})`);
                 }
                 const processedAt = new Date().toISOString();
                 await db.run(
@@ -2045,6 +2055,7 @@ module.exports = {
     processPlaidWebhook,
     enqueuePlaidWebhook,
     webhookRetryDelayMs,
+    needsInvestmentRetry,
     processPendingPlaidWebhooks,
     kickPlaidWebhookWorker,
     startPlaidWebhookWorker,

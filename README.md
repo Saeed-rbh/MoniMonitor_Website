@@ -408,3 +408,10 @@ coalesce into a subsequent pass using the latest committed cursor; a stronger
 reconnection request also forces investment snapshots in that pass. Reconnection
 starts processing immediately, but Plaid/bank data readiness still determines when
 individual corrections can complete. Ambiguous matches remain review items.
+
+
+A bank sync with pending investment history or a temporary holdings error remains
+queued for automatic retry, even if its bank-transaction portion succeeded. The
+worker uses its existing retry backoff and continues until the investment products
+are ready; unsupported products and missing consent do not retry indefinitely.
+Audit runs distinguish partial investment results from successful completion.

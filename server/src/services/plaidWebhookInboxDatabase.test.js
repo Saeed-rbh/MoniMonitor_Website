@@ -99,3 +99,30 @@ test('Item webhooks distinguish bank verification from temporary sync failures',
         assert.equal(item.status, 'attention_required');
     }
 });
+
+
+test('partial investment results remain queued until holdings and history become available', async () => {
+    const db = await dbService.getDb();
+    const raw = Buffer.from(JSON.stringify({webhook_type:'HOLDINGS',webhook_code:'DEFAULT_UPDATE',item_id:'investment-item'}));
+    const job = await enqueuePlaidWebhook(raw,'partial-investment-delivery');
+    const partial = await processPendingPlaidWebhooks({eventIds:[job.id], processor: async () => ({
+        handled:true,action:'synced',holdingsStatus:'error',investmentTransactionsStatus:'pending',balancesUpdated:1,
+    })});
+    assert.equal(partial.retried,1);assert.equal(partial.processed,0);
+    let stored=await db.get('SELECT * FROM plaid_webhook_events WHERE id=?',[job.id]);
+    assert.equal(stored.status,'retry');assert.match(stored.lastError,/automatic investment retry scheduled/);
+    await db.run('UPDATE plaid_webhook_events SET nextAttemptAt=? WHERE id=?',['2000-01-01T00:00:00Z',job.id]);
+    const ready=await processPendingPlaidWebhooks({eventIds:[job.id],processor:async()=>({
+        handled:true,action:'synced',holdingsStatus:'active',investmentTransactionsStatus:'active',
+    })});
+    assert.equal(ready.processed,1);
+    stored=await db.get('SELECT * FROM plaid_webhook_events WHERE id=?',[job.id]);
+    assert.equal(stored.status,'processed');assert.equal(stored.attempts,2);assert.equal(stored.lastError,null);
+});
+
+test('unsupported or consent-required products do not cause endless automatic retries', () => {
+    const {needsInvestmentRetry}=require('./plaidService');
+    assert.equal(needsInvestmentRetry({holdingsStatus:'consent_required',investmentTransactionsStatus:'unavailable'}),false);
+    assert.equal(needsInvestmentRetry({holdingsStatus:'pending',investmentTransactionsStatus:'active'}),true);
+    assert.equal(needsInvestmentRetry({holdingsStatus:'active',investmentTransactionsStatus:'error'}),true);
+});
