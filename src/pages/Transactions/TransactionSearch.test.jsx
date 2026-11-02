@@ -218,3 +218,37 @@ test.each([
     expect(screen.getByRole("button", { name: "Last month", exact: true })).toHaveAttribute("aria-pressed", "false");
   } finally { vi.useRealTimers(); }
 });
+
+test("selects a range across months directly in the embedded calendar", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 9, 10, 12));
+  try {
+    render(<TransactionSearch />);
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "October 30, 2026", exact: true }));
+    expect(screen.getByLabelText("From")).toHaveValue("2026-10-30");
+    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+    fireEvent.click(screen.getByRole("button", { name: "November 2, 2026", exact: true }));
+    expect(screen.getByLabelText("To")).toHaveValue("2026-11-02");
+    expect(screen.getByRole("button", { name: "November 1, 2026", exact: true })).toHaveClass("in-range");
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent("2026-10-30 – 2026-11-02");
+  } finally { vi.useRealTimers(); }
+});
+
+test("normalizes a range selected backwards and rejects invalid typed dates", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2028, 1, 10, 12));
+  try {
+    render(<TransactionSearch />);
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "February 29, 2028", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "February 27, 2028", exact: true }));
+    expect(screen.getByLabelText("From")).toHaveValue("2028-02-27");
+    expect(screen.getByLabelText("To")).toHaveValue("2028-02-29");
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2028-02-30" } });
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid date");
+  } finally { vi.useRealTimers(); }
+});

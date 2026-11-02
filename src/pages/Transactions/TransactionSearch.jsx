@@ -1,5 +1,6 @@
 import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import DateRangeCalendar, { validCalendarDate } from "./DateRangeCalendar";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import { Search, X, CalendarDays, Check, ArrowDownLeft, ArrowUpRight, Landmark, Layers } from "lucide-react";
 import { useTransactions } from "../../context/TransactionContext";
@@ -65,7 +66,9 @@ export default function TransactionSearch() {
   const [category, setCategory] = useState(initial.category || "All");
   const [startDate, setStartDate] = useState(initial.startDate || "");
   const [endDate, setEndDate] = useState(initial.endDate || "");
-  const invalidRange = Boolean(startDate && endDate && startDate > endDate);
+  const invalidDate = Boolean((startDate && !validCalendarDate(startDate)) || (endDate && !validCalendarDate(endDate)));
+  const invalidRange = invalidDate || Boolean(startDate && endDate && startDate > endDate);
+  const dateError = invalidDate ? "Enter a valid date as YYYY-MM-DD, or select a day below." : "Choose an end date on or after the start date.";
   const [limit, setLimit] = useState(initial.limit || pageSize);
   const [datesOpen, setDatesOpen] = useState(false);
   const inputRef = useRef(null);
@@ -186,28 +189,16 @@ export default function TransactionSearch() {
                 </button>
               ))}
             </div>
-      <fieldset className="transaction-search-dates">
-        <legend className="transaction-search-label">Date range</legend>
-        <label htmlFor="transaction-start-date"><span className="transaction-search-label">From</span>
-          <input id="transaction-start-date" type="date" value={startDate} max={endDate || undefined}
-            aria-invalid={invalidRange} aria-describedby={invalidRange ? "transaction-date-error" : undefined}
-            onChange={event => { setStartDate(event.target.value); setLimit(pageSize); }} />
-        </label>
-        <label htmlFor="transaction-end-date"><span className="transaction-search-label">To</span>
-          <input id="transaction-end-date" type="date" value={endDate} min={startDate || undefined}
-            aria-invalid={invalidRange} aria-describedby={invalidRange ? "transaction-date-error" : undefined}
-            onChange={event => { setEndDate(event.target.value); setLimit(pageSize); }} />
-        </label>
-        {(startDate || endDate) && <button type="button" className="transaction-search-date-reset"
-          onClick={() => { setStartDate(""); setEndDate(""); setLimit(pageSize); }}>Clear dates</button>}
-      </fieldset>
-      {invalidRange && <p id="transaction-date-error" className="transaction-search-date-error" role="alert">Choose an end date on or after the start date.</p>}
+            <DateRangeCalendar start={startDate} end={endDate} invalid={invalidRange} errorId="transaction-date-error"
+              onChange={(start, end) => { setStartDate(start); setEndDate(end); setLimit(pageSize); }} />
+            {(startDate || endDate) && <button type="button" className="transaction-search-date-reset" onClick={clearDates}>Clear dates</button>}
+      {invalidRange && <p id="transaction-date-error" className="transaction-search-date-error" role="alert">{dateError}</p>}
             <button type="button" className="transaction-date-done" disabled={invalidRange}
               onClick={() => setDatesOpen(false)}>Done</button>
           </div>
         )}
       />
-      {!datesOpen && invalidRange && <p className="transaction-search-date-error" role="alert">Choose an end date on or after the start date.</p>}
+      {!datesOpen && invalidRange && <p className="transaction-search-date-error" role="alert">{dateError}</p>}
       <div className="transaction-search-results">
         {results.slice(0, limit).map((transaction, index) => {
           const flow = String(transaction.AccountFlow || "").toUpperCase();
