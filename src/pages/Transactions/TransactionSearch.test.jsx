@@ -230,10 +230,12 @@ test("selects a range across months directly in the embedded calendar", () => {
     expect(screen.getByLabelText("From")).toHaveValue("2026-10-30");
     fireEvent.click(screen.getByRole("button", { name: "Next month" }));
     fireEvent.click(screen.getByRole("button", { name: "November 2, 2026", exact: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent("2026-10-30 – 2026-11-02");
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
     expect(screen.getByLabelText("To")).toHaveValue("2026-11-02");
     expect(screen.getByRole("button", { name: "November 1, 2026", exact: true })).toHaveClass("in-range");
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent("2026-10-30 – 2026-11-02");
   } finally { vi.useRealTimers(); }
 });
 
@@ -245,6 +247,8 @@ test("normalizes a range selected backwards and rejects invalid typed dates", ()
     fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
     fireEvent.click(screen.getByRole("button", { name: "February 29, 2028", exact: true }));
     fireEvent.click(screen.getByRole("button", { name: "February 27, 2028", exact: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
     expect(screen.getByLabelText("From")).toHaveValue("2028-02-27");
     expect(screen.getByLabelText("To")).toHaveValue("2028-02-29");
     fireEvent.change(screen.getByLabelText("To"), { target: { value: "2028-02-30" } });

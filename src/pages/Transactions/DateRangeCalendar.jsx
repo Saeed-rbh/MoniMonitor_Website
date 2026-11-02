@@ -9,7 +9,7 @@ export const validCalendarDate = value => {
   return !Number.isNaN(date.getTime()) && valueOf(date) === value;
 };
 
-export default function DateRangeCalendar({ start, end, onChange, invalid, errorId }) {
+export default function DateRangeCalendar({ start, end, onChange, onComplete, invalid, errorId }) {
   const initial = validCalendarDate(start) ? parseTransactionCalendarDate(start) : new Date();
   const [month, setMonth] = useState(new Date(initial.getFullYear(), initial.getMonth(), 1));
   const [endpoint, setEndpoint] = useState(start && !end ? "end" : "start");
@@ -21,9 +21,10 @@ export default function DateRangeCalendar({ start, end, onChange, invalid, error
       onChange(value, end && value > end ? "" : end);
       setEndpoint("end");
     } else {
-      if (start && value < start) onChange(value, start);
-      else onChange(start || value, value);
+      if (validCalendarDate(start) && value < start) onChange(value, start);
+      else onChange(validCalendarDate(start) ? start : value, value);
       setEndpoint("start");
+      onComplete?.();
     }
   };
   const moveFocus = (event, day) => {

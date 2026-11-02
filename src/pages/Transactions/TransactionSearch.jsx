@@ -189,7 +189,7 @@ export default function TransactionSearch() {
                 </button>
               ))}
             </div>
-            <DateRangeCalendar start={startDate} end={endDate} invalid={invalidRange} errorId="transaction-date-error"
+            <DateRangeCalendar onComplete={() => setDatesOpen(false)} start={startDate} end={endDate} invalid={invalidRange} errorId="transaction-date-error"
               onChange={(start, end) => { setStartDate(start); setEndDate(end); setLimit(pageSize); }} />
             {(startDate || endDate) && <button type="button" className="transaction-search-date-reset" onClick={clearDates}>Clear dates</button>}
       {invalidRange && <p id="transaction-date-error" className="transaction-search-date-error" role="alert">{dateError}</p>}
