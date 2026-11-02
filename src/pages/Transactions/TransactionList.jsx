@@ -3,7 +3,7 @@ import TransactionListMonthly from "./TransactionListMonthly";
 import TransactionModification from "./TransactionModification";
 import { useSpring, animated, easings } from "@react-spring/web";
 import TransactionFilter from "./transactionFilter";
-import { useCustomSpring, useWindowHeight } from "../../utils/tools";
+import { useCustomSpring } from "../../utils/tools";
 import ChooseTransactionMonth from "./ChooseTransactionMonth";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import "./Transactions.css";
@@ -37,7 +37,6 @@ const TransactionList = ({
     return Transactions.filter((transaction) => transaction.Category === isMoreClicked);
   }, [Transactions, isMoreClicked]);
 
-  const WindowHeight = useWindowHeight(100);
 
   const [sortby, setSortby] = useState("All");
   const [isCalendarClicked, setIsCalendarClicked] = useState(false);
@@ -309,30 +308,6 @@ const TransactionList = ({
     }
   }, [whichMonth, isMoreClicked, sortby, searchQuery]);
 
-  const dataAvailabilityLength = Object.entries(dataAvailability).length;
-
-  const [elementLength, setElementLength] = useState(0);
-
-  useEffect(() => {
-    let totalElementLength = 0;
-
-    if (Array.isArray(dataAvailability)) {
-      dataAvailability.forEach((entry) => {
-        // entry is [year, monthData]
-        if (entry && entry[1]) {
-          totalElementLength += Object.keys(entry[1]).length;
-        }
-      });
-    }
-
-    setElementLength(totalElementLength);
-  }, [dataAvailability]);
-
-  const MoreOpenHeight =
-    WindowHeight - 80 * Math.ceil(elementLength / 6) > 100
-      ? WindowHeight - 80 * Math.ceil(elementLength / 6)
-      : 100;
-
   const calendarFeed = () => {
     return (
       <ChooseTransactionMonth
@@ -391,7 +366,6 @@ const TransactionList = ({
         isClicked={isCalendarClicked}
         setIsClicked={setIsCalendarClicked}
         feed={calendarFeed}
-        MoreOpenHeight={MoreOpenHeight}
       />
       {
         <div

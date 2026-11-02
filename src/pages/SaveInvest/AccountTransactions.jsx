@@ -157,7 +157,7 @@ const AccountTransactions = () => {
         isClicked={open}
         setIsClicked={setOpen}
         feed={accountFeed}
-        MoreOpenHeight={75}
+        fillAvailable
         toRedirect="/Accounts"
         overflow="hidden"
       />

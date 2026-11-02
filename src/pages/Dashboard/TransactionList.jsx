@@ -229,31 +229,6 @@ const TransactionList = ({
     }
   }, [whichMonth]);
 
-  const dataAvailabilityLength = Object.entries(dataAvailability).length;
-
-  const [elementLength, setElementLength] = useState(0);
-
-  useEffect(() => {
-    let totalElementLength = 0;
-
-    for (let index = 0; index < dataAvailabilityLength; index++) {
-      const entries = Object.entries(dataAvailability);
-      if (entries[index]) {
-        const innerEntries = Object.entries(entries[index][1]);
-        if (innerEntries[1]) {
-          totalElementLength += Object.entries(innerEntries[1][1]).length;
-        }
-      }
-    }
-
-    setElementLength(totalElementLength);
-  }, [dataAvailability, dataAvailabilityLength]);
-
-  const MoreOpenHeight =
-    WindowHeight - 80 * Math.ceil(elementLength / 6) > 100
-      ? WindowHeight - 80 * Math.ceil(elementLength / 6)
-      : 100;
-
   const calendarFeed = () => {
     return (
       <ChooseTransactionMonth
@@ -278,7 +253,6 @@ const TransactionList = ({
         isClicked={isCalendarClicked}
         setIsClicked={setIsCalendarClicked}
         feed={calendarFeed}
-        MoreOpenHeight={MoreOpenHeight}
       />
       {isAnimationEnds && (
         <animated.div

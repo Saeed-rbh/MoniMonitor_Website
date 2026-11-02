@@ -2,7 +2,7 @@ import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState 
 import { motion, useReducedMotion } from "framer-motion";
 import DateRangeCalendar, { validCalendarDate } from "./DateRangeCalendar";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
-import { Search, X, CalendarDays, Check, ArrowDownLeft, ArrowUpRight, Landmark, Layers } from "lucide-react";
+import { Search, X, CalendarDays, CalendarCheck, CalendarRange, History, ArrowDownLeft, ArrowUpRight, Landmark, Layers } from "lucide-react";
 import { useTransactions } from "../../context/TransactionContext";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import { getTransactionIcon } from "../../components/Categories";
@@ -14,6 +14,8 @@ import "./TransactionSearch.css";
 const categories = ["All", "Expense", "Income", "Save & invest"];
 const categoryIcons = { All: Layers, Expense: ArrowUpRight, Income: ArrowDownLeft, "Save & invest": Landmark };
 const shortDate = value => parseTransactionCalendarDate(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+const compactRange = range => range.start === range.end ? shortDate(range.start)
+  : `${shortDate(range.start)}–${range.start.slice(0, 7) === range.end.slice(0, 7) ? Number(range.end.slice(-2)) : shortDate(range.end)}`;
 const pageSize = 30;
 const savedSearches = new Map();
 const dateInputValue = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -24,7 +26,7 @@ const quickDateRanges = () => {
   return [
     { label: "Today", from: today, to: today },
     { label: "Last 7 days", from: new Date(year, month, today.getDate() - 6), to: today },
-    { label: "This month", from: new Date(year, month, 1), to: new Date(year, month + 1, 0) },
+    { label: "This month", from: new Date(year, month, 1), to: today },
     { label: "Last month", from: new Date(year, month - 1, 1), to: new Date(year, month, 0) },
   ].map(range => ({ label: range.label, start: dateInputValue(range.from), end: dateInputValue(range.to) }));
 };
@@ -124,7 +126,6 @@ export default function TransactionSearch() {
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
   }, [limit, results.length]);
-  const hasFilters = Boolean(query || category !== "All" || startDate || endDate);
   const clearDates = () => { setStartDate(""); setEndDate(""); setLimit(pageSize); };
 
   const clear = () => {
@@ -157,7 +158,7 @@ export default function TransactionSearch() {
       <div className="transaction-search-filters" role="group" aria-label="Transaction category">
         {categories.map(item => {
           const Icon = categoryIcons[item];
-          return <button key={item} type="button" aria-pressed={category === item}
+          return <button key={item} type="button" data-category={item} aria-pressed={category === item}
             onClick={() => { setCategory(item); setLimit(pageSize); }}>
             <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
             <span>{item}</span>
@@ -167,7 +168,7 @@ export default function TransactionSearch() {
       <div className="transaction-search-active-filters">
         {(startDate || endDate) && <button type="button" className="transaction-search-range-chip" onClick={clearDates}
           aria-label="Remove date range"><CalendarDays size={15} aria-hidden="true" /><span>{startDate && startDate === endDate ? startDate : `${startDate || "Any date"} – ${endDate || "Any date"}`}</span><X size={14} aria-hidden="true" /></button>}
-        {hasFilters && <button type="button" className="transaction-search-clear-all" onClick={clear}>Clear all</button>}
+        {Boolean(query || startDate || endDate) && <button type="button" className="transaction-search-clear-all" onClick={clear}>Clear all</button>}
       </div>
       <MoreOpen
         isClicked={datesOpen}
@@ -182,18 +183,19 @@ export default function TransactionSearch() {
               <h2>Date filters</h2>
             </div>
             <div className="transaction-date-shortcuts" role="group" aria-label="Quick date ranges">
-              {quickDateRanges().map(range => (
-                <button key={range.label} type="button"
+              {quickDateRanges().map((range, index) => {
+                const Icon = [CalendarCheck, History, CalendarDays, CalendarRange][index];
+                return (
+                <button key={range.label} type="button" aria-label={range.label} title={range.label}
                   aria-pressed={startDate === range.start && endDate === range.end}
                   onClick={() => { setStartDate(range.start); setEndDate(range.end); setLimit(pageSize); setDatesOpen(false); }}>
-                  <span className="transaction-date-shortcut-top"><CalendarDays size={17} aria-hidden="true" /><span>{range.label}</span>
-                    <Check className="transaction-date-shortcut-check" size={16} aria-hidden="true" />
+                  <span className="transaction-date-shortcut-top"><Icon size={16} aria-hidden="true" /><span>{compactRange(range)}</span>
                   </span>
-                  <span className="transaction-date-shortcut-caption" aria-hidden="true">{shortDate(range.start)}{range.start !== range.end ? ` – ${shortDate(range.end)}` : ""}</span>
                 </button>
-              ))}
+              );
+              })}
             </div>
-            <DateRangeCalendar availableDates={availableDates} onComplete={() => setDatesOpen(false)} start={startDate} end={endDate} invalid={invalidRange} errorId="transaction-date-error"
+            <DateRangeCalendar availableDates={availableDates} onComplete={() => setDatesOpen(false)} start={startDate} end={endDate}
               onChange={(start, end) => { setStartDate(start); setEndDate(end); setLimit(pageSize); }} />
             {(startDate || endDate) && <button type="button" className="transaction-search-date-reset" onClick={clearDates}>Clear dates</button>}
       {invalidRange && <p id="transaction-date-error" className="transaction-search-date-error" role="alert">{dateError}</p>}

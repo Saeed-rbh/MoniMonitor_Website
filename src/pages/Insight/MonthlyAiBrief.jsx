@@ -440,7 +440,7 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
         isClicked={selectedInsight}
         setIsClicked={handleCloseInsight}
         feed={evidenceFeed}
-        MoreOpenHeight={75}
+        fillAvailable
         overflow="hidden"
       />
 

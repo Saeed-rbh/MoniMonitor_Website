@@ -118,7 +118,7 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
         isClicked={categoryOverride ? standaloneOpen : isMoreClicked}
         setIsClicked={categoryOverride ? setStandaloneOpen : setIsMoreClicked}
         feed={TransactionFeed}
-        MoreOpenHeight={75}
+        fillAvailable
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
         blur={isAddClicked !== null || isDateClicked || viewingTx !== null}
@@ -129,11 +129,9 @@ const Transactions = ({ categoryOverride = null, onManageAccounts = null }) => {
           isClicked={isAddClicked}
           setIsClicked={setIsAddClicked}
           feed={AddFeed}
-          MoreOpenHeight={75}
           handleCloseAddTransaction={handleCloseAddTransaction}
           height={height}
           zIndex={110}
-          overflow={"hidden"}
         />
       )}
       <TransactionDetailModal

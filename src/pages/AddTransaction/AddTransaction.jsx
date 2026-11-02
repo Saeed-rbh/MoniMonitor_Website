@@ -56,12 +56,10 @@ const AddTransaction = () => {
         isClicked={isAddClicked}
         setIsClicked={setIsAddClicked}
         feed={AddFeed}
-        MoreOpenHeight={75}
         handleCloseAddTransaction={handleCloseAddTransaction}
         height={height}
         zIndex={110}
         toRedirect={"/"}
-        overflow="hidden"
       />
       {/* <Notif
         addTransaction={addTransaction}
