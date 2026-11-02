@@ -1,4 +1,5 @@
 import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import { Search, X, CalendarDays, Check, ArrowDownLeft, ArrowUpRight, Landmark, Layers } from "lucide-react";
 import { useTransactions } from "../../context/TransactionContext";
@@ -55,6 +56,7 @@ const money = transaction => new Intl.NumberFormat("en-CA", {
   ? Number(transaction.AmountMinor) / 100 : Number(transaction.Amount || 0)));
 
 export default function TransactionSearch() {
+  const reducedMotion = useReducedMotion();
   const { allTransactions, userData } = useTransactions();
   const cacheKey = userData?.userId || "current";
   const initial = useRef(savedSearches.get(cacheKey) || {}).current;
@@ -128,7 +130,10 @@ export default function TransactionSearch() {
   };
 
   return (
-    <section ref={pageRef} className="transaction-search" aria-label="Transaction search"
+    <motion.section ref={pageRef} className="transaction-search" aria-label="Transaction search"
+      initial={reducedMotion ? false : { opacity: 0, y: 10, filter: "blur(6px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={{ duration: reducedMotion ? 0 : 0.3, ease: "easeOut" }}
       onScroll={event => { snapshot.current.scrollTop = event.currentTarget.scrollTop; }}>
       <label className="transaction-search-label" htmlFor="transaction-query">Merchant, category, bank or amount</label>
       <form className="transaction-search-field" role="search" onSubmit={event => { event.preventDefault(); inputRef.current?.blur(); }}>
@@ -245,6 +250,6 @@ export default function TransactionSearch() {
         onClose={() => setViewingTransaction(null)}
         onTransactionUpdated={setViewingTransaction}
       />
-    </section>
+    </motion.section>
   );
 }
