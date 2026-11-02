@@ -238,7 +238,7 @@ test('collapses exact duplicate TFSA rows before pairing a Transfer out expense'
     const firstIncomingId = await dbService.addTransaction(incoming);
     const duplicateIncomingId = await dbService.addTransaction(incoming);
 
-    const result = await reconcileHistoricalInternalTransfers(db, userId);
+    const result = await reconcileHistoricalInternalTransfers(db, userId, { allowMerges: true });
     assert.equal(result.matched, 1);
     assert.equal((await dbService.getTransactionById(outgoingId, userId)).Category, 'Internal');
     assert.equal((await dbService.getTransactionById(firstIncomingId, userId)).Category, 'Internal');
@@ -264,7 +264,7 @@ test('collapses exact duplicate TFSA rows before pairing a Transfer out expense'
     const firstIncomingId = await dbService.addTransaction(incoming);
     const duplicateIncomingId = await dbService.addTransaction(incoming);
 
-    const result = await reconcileHistoricalInternalTransfers(db, userId);
+    const result = await reconcileHistoricalInternalTransfers(db, userId, { allowMerges: true });
     assert.equal(result.matched, 1);
     assert.equal((await dbService.getTransactionById(outgoingId, userId)).Category, 'Internal');
     assert.equal((await dbService.getTransactionById(firstIncomingId, userId)).Category, 'Internal');
@@ -328,4 +328,15 @@ test('links an owner-named incoming transfer to its opposite account leg and use
     assert.equal(outgoing.Reason, 'Internal transfer: RBC Chequing -> Future');
     assert.equal(incoming.Reason, outgoing.Reason);
     assert.equal(incoming.ReferenceNumber, outgoing.ReferenceNumber);
+});
+
+test('automatic transfer reconciliation preserves ambiguous duplicate rows',async()=>{
+ const db=await dbService.getDb();const userId=process.env.USER_ID;
+ const outgoing=await dbService.addTransaction({userId,Amount:13.46,Currency:'CAD',Category:'Expense',Label:'Personal Transfers',Reason:'Transfer out',Timestamp:'2026-09-01',Type:'Chequing',Account:'1234',BankName:'Wealthsimple',AccountFlow:'OUT'});
+ const row={userId,Amount:13.46,Currency:'CAD',Category:'Investment',Label:'Asset Distribution',Reason:'Transfer in',Timestamp:'2026-09-01',Type:'tfsa',Account:'S0K7',BankName:'Wealthsimple',PortfolioAction:'TRANSFER',PortfolioAccountId:10,AccountFlow:'NONE'};
+ const first=await dbService.addTransaction(row);const second=await dbService.addTransaction(row);
+ await reconcileHistoricalInternalTransfers(db,userId);
+ assert.ok(await dbService.getTransactionById(outgoing,userId));
+ assert.ok(await dbService.getTransactionById(first,userId));
+ assert.ok(await dbService.getTransactionById(second,userId));
 });

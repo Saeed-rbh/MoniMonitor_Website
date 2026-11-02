@@ -107,3 +107,36 @@ test('provider removals retain posted portfolio evidence for review without abor
  assert.ok(await service.getTransactionById(source.transactionId,'u'));
  assert.equal((await db.get('SELECT reason FROM transaction_ingestion_reviews WHERE transactionId=?',[source.transactionId])).reason,'provider_removed_linked_activity');
 });
+
+
+test('a removed provider-only event remains stored as unposted, with source evidence retained',async()=>{
+ const removalAccount=await service.createInvestmentAccount('u',{name:'Unanchored card',institution:'RBC',accountType:'Credit Card',currency:'CAD',accountRef:'5555',cashMinor:1000});
+ const id=await service.addTransaction({userId:'u',Amount:5,Currency:'CAD',Category:'Expense',Label:'Shopping',Reason:'Cancelled authorization',
+  Timestamp:new Date(Date.now()+60000).toISOString(),Type:'Credit Card',Account:'5555',BankName:'RBC',AccountFlow:'OUT',BalanceAccountId:removalAccount.id});
+ await service.upsertTransactionSource({provider:'plaid',externalId:'cancelled',userId:'u',transactionId:id,itemId:'item',ownsTransaction:true,
+  rawPayload:{transaction_id:'cancelled',amount:5},contextPayload:{account:{appAccountId:removalAccount.id}}});
+ await service.syncTransactionAccountBalance('u',id,{accountId:removalAccount.id,confidence:'HIGH'});
+ const before=(await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[removalAccount.id])).cashMinor;
+ await plaid.applyRemovedTransaction('u',{transaction_id:'cancelled'});
+ const retained=await service.getTransactionById(id,'u');
+ assert.ok(retained);assert.equal(retained.PostingStatus,'unposted');assert.equal(retained.AmountMinor,500);
+ assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[removalAccount.id])).cashMinor,before-500);
+ assert.ok(await db.get("SELECT rawPayloadJson FROM transaction_sources WHERE provider='plaid' AND externalId='cancelled'"));
+ await plaid.applyRemovedTransaction('u',{transaction_id:'cancelled'});
+ assert.equal((await db.get('SELECT cashMinor FROM investment_accounts WHERE id=?',[removalAccount.id])).cashMinor,before-500);
+});
+test('pending-source removal cannot unpost its replacement or remove email-backed history',async()=>{
+ await service.upsertTransactionSource({provider:'plaid',externalId:'old-auth',userId:'u',transactionId:emailId,itemId:'item',ownsTransaction:true,
+  rawPayload:{transaction_id:'old-auth',pending:true},contextPayload:{}});
+ await plaid.applyRemovedTransaction('u',{transaction_id:'old-auth'});
+ assert.equal((await service.getTransactionById(emailId,'u')).PostingStatus,'posted');
+ assert.ok(await db.get("SELECT transactionId FROM transaction_sources WHERE externalId='old-auth' AND provider='plaid'"));
+});
+test('missing investment transactions are retained even without portfolio postings',async()=>{
+ const id=await service.addTransaction({userId:'u',Amount:2,Currency:'CAD',Category:'Investment',Label:'Dividends',Reason:'Dividend',Timestamp:'2026-10-24',AccountFlow:'IN'});
+ await service.upsertTransactionSource({provider:'plaid_investments',externalId:'withdrawn-dividend',userId:'u',transactionId:id,itemId:'item',ownsTransaction:true,
+  rawPayload:{investment_transaction_id:'withdrawn-dividend'},contextPayload:{}});
+ await plaid.removeMissingInvestmentTransactions('u','item','2026-10-01',new Set());
+ assert.equal((await service.getTransactionById(id,'u')).PostingStatus,'unposted');
+ assert.ok(await db.get("SELECT transactionId FROM transaction_sources WHERE externalId='withdrawn-dividend' AND provider='plaid_investments'"));
+});

@@ -230,7 +230,7 @@ async function reconcileExplicitSelfTransfers(db, userId) {
  * Only the explicit pattern is considered: a "Transfer out" expense and a
  * same-day, same-amount TFSA "Transfer in" on different accounts.
  */
-async function reconcileHistoricalInternalTransfers(db, userId) {
+async function reconcileHistoricalInternalTransfers(db, userId, { allowMerges = false } = {}) {
     if (!db || !userId) return { matched: 0, skipped: 0, alreadyApplied: false };
 
     const migrationId = `${MIGRATION_PREFIX}:${userId}`;
@@ -309,7 +309,7 @@ async function reconcileHistoricalInternalTransfers(db, userId) {
             // Portfolio imports can contain the exact same destination row
             // twice. Treat only byte-for-byte equivalent transfer-in rows as
             // duplicates; distinct same-day transfers remain ambiguous.
-            if (outs.length === 1 && ins.length > 1) {
+            if (allowMerges && outs.length === 1 && ins.length > 1) {
                 const duplicateKey = (row) => [
                     row.AmountMinor, row.Currency || 'CAD', row.Category, row.Label,
                     row.Reason, row.Type, row.BankName, row.Account, row.AccountFlow,

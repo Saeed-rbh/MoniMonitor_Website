@@ -144,3 +144,17 @@ test('keeps provider holdings separate from email trade estimates and retains ma
         ]
     );
 });
+
+test('a holdings snapshot updates stable IDs and retains missing positions at zero quantity',async()=>{
+ const db=await dbService.getDb();const userId='holding-retention';
+ await dbService.createUser(userId,userId,'unused');
+ const account=await dbService.createInvestmentAccount(userId,{name:'Brokerage',institution:'Test Bank',accountType:'Brokerage',currency:'CAD',cashMinor:0});
+ for(const symbol of ['ABC','GONE'])await dbService.upsertInvestmentHolding(userId,account.id,{symbol,quantity:1,averageCostMinor:100,averageCostMicros:1000000,priceMinor:100,priceMicros:1000000,currency:'CAD'});
+ const before=await db.all('SELECT id,symbol FROM investment_holdings WHERE accountId=?',[account.id]);
+ const bankAccount={account_id:'broker',type:'investment',subtype:'brokerage',appAccountId:account.id,balances:{current:22,available:0,iso_currency_code:'CAD'}};
+ await applyInvestmentSnapshot(userId,new Map([['broker',bankAccount]]),{accounts:[bankAccount],securities:[{security_id:'abc',ticker_symbol:'ABC',close_price:10,iso_currency_code:'CAD'},{security_id:'def',ticker_symbol:'DEF',close_price:2,iso_currency_code:'CAD'}],holdings:[{account_id:'broker',security_id:'abc',quantity:2,institution_price:10,institution_value:20,cost_basis:20,iso_currency_code:'CAD'},{account_id:'broker',security_id:'def',quantity:1,institution_price:2,institution_value:2,cost_basis:2,iso_currency_code:'CAD'}]});
+ const after=await db.all('SELECT id,symbol,quantity FROM investment_holdings WHERE accountId=?',[account.id]);
+ assert.equal(after.length,3);
+ for(const original of before)assert.equal(after.find(h=>h.symbol===original.symbol).id,original.id);
+ assert.equal(after.find(h=>h.symbol==='ABC').quantity,2);assert.equal(after.find(h=>h.symbol==='GONE').quantity,0);assert.equal(after.find(h=>h.symbol==='DEF').quantity,1);
+});

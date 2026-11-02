@@ -421,3 +421,19 @@ If Plaid removes an investment source that already has posted portfolio activity
 retain the source/transaction for review instead of deleting its evidence or
 aborting the rest of the sync. Such removed sources are excluded from correction
 replays; resolving their financial effects requires explicit reversal evidence.
+
+
+Plaid auto-correction never deletes transaction history or source evidence. Added
+and modified data update matched rows or add missing rows. Provider removal notices
+mark the retained source inactive. A standalone, unreviewed provider-only event can
+be marked unposted and its cash effect reversed; reviewed, email-backed, replaced,
+or portfolio-linked history is retained. Active replacement sources protect pending
+transactions that have settled. Manual user deletion is a separate action.
+
+
+The same retention policy covers automatic startup/transfer reconciliation and
+investment snapshots: startup no longer runs destructive duplicate merges, transfer
+pairing skips ambiguous duplicates, and snapshots upsert existing holding IDs.
+Positions absent from a complete snapshot are retained with zero quantity. Duplicate
+connection cleanup reassigns source evidence to the retained connection. Explicit
+manual deletion/merge commands remain separate from automatic correction.

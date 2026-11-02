@@ -829,7 +829,7 @@ async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
             const stored = await db.get('SELECT * FROM investment_accounts WHERE id = ? AND userId = ?', [account.appAccountId, userId]);
             if (!stored) throw new Error('Bank snapshot account does not belong to the user');
             if(stored.holdingsSource === 'bank_ui' || stored.balanceSource === 'bank_ui') {
-                const previous=await db.all('SELECT symbol,quantity,currency FROM investment_holdings WHERE accountId=? AND userId=?',[stored.id,userId]);
+                const previous=await db.all('SELECT symbol,quantity,currency FROM investment_holdings WHERE accountId=? AND userId=? AND quantity > 0',[stored.id,userId]);
                 const positionsMatch=previous.length===entry.holdings.length && previous.every(h=>entry.holdings.some(n=>n.symbol===h.symbol && n.currency===h.currency && Math.abs(n.quantity-h.quantity)<1e-8));
                 if(!positionsMatch || entry.cashReviewRequired || entry.cashMinor!==stored.cashMinor) {
                     const reason='Provider snapshot differs from verified bank cash or positions; review before replacing it';
@@ -837,13 +837,20 @@ async function applyInvestmentSnapshot(userId, accountMap, snapshot) {
                     continue;
                 }
             }
-            await db.run('DELETE FROM investment_holdings WHERE accountId = ? AND userId = ?', [account.appAccountId, userId]);
+            const previousHoldings = await db.all('SELECT id,symbol FROM investment_holdings WHERE accountId = ? AND userId = ?', [account.appAccountId,userId]);
+            const currentSymbols = new Set(entry.holdings.map(holding => holding.symbol));
+            for (const previous of previousHoldings) {
+                if (!currentSymbols.has(previous.symbol)) await db.run('UPDATE investment_holdings SET quantity = 0, updatedAt = ? WHERE id = ? AND userId = ?', [new Date().toISOString(),previous.id,userId]);
+            }
             for (const holding of entry.holdings) {
                 await db.run(
                     `INSERT INTO investment_holdings
                         (userId, accountId, symbol, name, quantity, averageCostMinor, averageCostMicros,
                          priceMinor, priceMicros, currency, updatedAt)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     ON CONFLICT(accountId,symbol) DO UPDATE SET name=excluded.name,quantity=excluded.quantity,
+                         averageCostMinor=excluded.averageCostMinor,averageCostMicros=excluded.averageCostMicros,
+                         priceMinor=excluded.priceMinor,priceMicros=excluded.priceMicros,currency=excluded.currency,updatedAt=excluded.updatedAt`,
                     [userId, account.appAccountId, holding.symbol, holding.name, holding.quantity,
                         Math.round(holding.averageCostMicros / 10000), holding.averageCostMicros,
                         Math.round(holding.priceMicros / 10000), holding.priceMicros,
@@ -1006,10 +1013,10 @@ async function applyModifiedTransaction(userId, item, transaction, accountMap, o
     return { status: 'updated' };
 }
 
-async function retainReviewedRemoval(db, source, userId) {
+async function retainProviderRemoval(db, source, userId) {
     const reviewed = await db.get('SELECT transactionId FROM transaction_overrides WHERE transactionId=? AND userId=?', [source.transactionId,userId]);
     const postedPortfolio = await db.get('SELECT id FROM portfolio_transactions WHERE sourceTransactionId=? AND userId=? AND reversedAt IS NULL', [source.transactionId,userId]);
-    if (!reviewed && !postedPortfolio) return false;
+
     if (postedPortfolio && !reviewed) {
         await db.run(`INSERT INTO transaction_ingestion_reviews(transactionId,reason,createdAt)
             VALUES (?,'provider_removed_linked_activity',?) ON CONFLICT(transactionId) DO UPDATE
@@ -1019,6 +1026,16 @@ async function retainReviewedRemoval(db, source, userId) {
     const context = parseStoredSourcePayload(source.contextPayloadJson) || {};
     await db.run('UPDATE transaction_sources SET contextPayloadJson=?, ownsTransaction=0 WHERE provider=? AND externalId=? AND userId=?',
         [JSON.stringify({ ...context, providerRemoved: true }), source.provider, source.externalId, userId]);
+    const otherSources = await db.all(`SELECT provider,contextPayloadJson FROM transaction_sources
+        WHERE transactionId = ? AND userId = ? AND NOT (provider = ? AND externalId = ?)`,
+        [source.transactionId,userId,source.provider,source.externalId]);
+    const hasActiveSource = otherSources.some(row => !parseStoredSourcePayload(row.contextPayloadJson)?.providerRemoved);
+    if (!reviewed && !postedPortfolio && !source.SourceEmailKey && !hasActiveSource) {
+        // A removed provider-only event may be a cancelled authorization. Keep
+        // its identity and evidence, but stop counting it as posted money.
+        await dbService.updateTransactionForUser(source.transactionId,userId,{PostingStatus:'unposted'});
+        await dbService.syncTransactionAccountBalance(userId,source.transactionId);
+    }
     return true;
 }
 
@@ -1032,15 +1049,7 @@ async function applyRemovedTransaction(userId, removed) {
         [removed.transaction_id, userId]
     );
     if (!source) return;
-    if (await retainReviewedRemoval(db, source, userId)) return;
-    await db.run(
-        `DELETE FROM transaction_sources WHERE provider = 'plaid' AND externalId = ? AND userId = ?`,
-        [removed.transaction_id, userId]
-    );
-    const remaining = await db.get('SELECT COUNT(*) AS count FROM transaction_sources WHERE transactionId = ?', [source.transactionId]);
-    if (source.ownsTransaction && !source.SourceEmailKey && !remaining.count) {
-        await dbService.deleteTransaction(source.transactionId, userId);
-    }
+    await db.withTransaction(() => retainProviderRemoval(db,source,userId));
 }
 
 async function fetchSyncPages(accessToken, startingCursor) {
@@ -1369,15 +1378,7 @@ async function removeMissingInvestmentTransactions(userId, itemId, startDate, cu
     let removed = 0;
     for (const source of sources) {
         if (currentIds.has(source.externalId)) continue;
-        if (await retainReviewedRemoval(db, source, userId)) continue;
-        await db.run(
-            `DELETE FROM transaction_sources WHERE provider = 'plaid_investments' AND externalId = ? AND userId = ?`,
-            [source.externalId, userId]
-        );
-        const remaining = await db.get('SELECT COUNT(*) AS count FROM transaction_sources WHERE transactionId = ?', [source.transactionId]);
-        if (source.ownsTransaction && !source.SourceEmailKey && !remaining.count) {
-            await dbService.deleteTransaction(source.transactionId, userId);
-        }
+        await db.withTransaction(() => retainProviderRemoval(db,source,userId));
         removed += 1;
     }
     return removed;
@@ -2011,8 +2012,8 @@ async function removeExactDuplicateItems(db, userId) {
     await db.withTransaction(async () => {
         for (const duplicate of duplicates) {
             await db.run(
-                `DELETE FROM transaction_sources WHERE itemId = ? AND userId = ?`,
-                [duplicate.itemId, userId]
+                `UPDATE transaction_sources SET itemId = ?, updatedAt = ? WHERE itemId = ? AND userId = ?`,
+                [kept.get(fingerprint(duplicate)).itemId,new Date().toISOString(),duplicate.itemId,userId]
             );
             await db.run('DELETE FROM plaid_accounts WHERE itemId = ? AND userId = ?', [duplicate.itemId, userId]);
             await db.run('DELETE FROM plaid_items WHERE itemId = ? AND userId = ?', [duplicate.itemId, userId]);
@@ -2043,6 +2044,7 @@ async function disconnectItem(userId, itemId) {
 
 module.exports = {
     importAddedTransaction,
+    applyRemovedTransaction,
     applyModifiedTransaction,
     importInvestmentTransaction,
     removeMissingInvestmentTransactions,
