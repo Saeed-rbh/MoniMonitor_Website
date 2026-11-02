@@ -29,9 +29,9 @@ function AddTransactionFeed({
   /**
    * State Management
    */
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(addTransaction.Amount > 0 ? String(addTransaction.Amount) : "");
   const [valueError, setValueError] = useState(true);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState(addTransaction.Reason || "");
   const [whichType, setWhichType] = useState(addTransaction.Type !== "Monthly");
   const [isLongPress, setIsLongPress] = useState([false, null]);
 
@@ -162,12 +162,12 @@ function AddTransactionFeed({
    * Handlers
    */
   const newTransactionMemo = useMemo(() => {
-    const selectedReason = reason.length !== 0 ? reason : addTransaction.Reason;
+    const selectedReason = reason;
     return {
       id: addTransaction.id,
       Amount:
-        Number(value.replace(/[^0-9]/g, "")) !== 0
-          ? Number(value.replace(/[^0-9]/g, ""))
+        Number(value.replace(/[^0-9.]/g, "")) !== 0
+          ? Number(value.replace(/[^0-9.]/g, ""))
           : addTransaction.Amount,
       Reason: selectedReason,
       Label: selectedCategory[0],
@@ -227,6 +227,57 @@ function AddTransactionFeed({
   /**
    * Render Component
    */
+  if (Modify) {
+    return (
+      <section className="transaction-details" aria-labelledby="transaction-details-title">
+        <header className="transaction-details__header">
+          <p>TRANSACTION</p>
+          <h2 id="transaction-details-title">Transaction details</h2>
+        </header>
+        <form onSubmit={(event) => { event.preventDefault(); handleAddClick(); }}>
+          <div className="transaction-details__amount">
+            <label htmlFor="detail-amount">Amount</label>
+            <div><span aria-hidden="true">$</span><input id="detail-amount" type="number" min="0.01" step="0.01" inputMode="decimal" required
+              value={value}
+              onChange={(event) => setValue(event.target.value)} aria-label="Amount" /></div>
+          </div>
+          <div className="transaction-details__fields">
+            <label className="transaction-details__wide">Description
+              <input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Add a description" />
+            </label>
+            <label>Transaction type
+              <select value={isAddClicked} onChange={(event) => setIsClicked(event.target.value)}>
+                <option value="Expense">Expense</option><option value="Income">Income</option><option value="Save&Invest">Save &amp; invest</option>
+              </select>
+            </label>
+            <label>Category
+              <select value={selectedCategory[0]} onChange={(event) => setSelectedCategory(List.find((item) => item[0] === event.target.value))}>
+                {List.map(([name]) => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </label>
+            <label>Date
+              <input type="date" required value={`${selectedDate.year}-${selectedDate.month}-${selectedDate.day}`}
+                onChange={(event) => { const [year, month, day] = event.target.value.split("-"); setSelectedDate((date) => ({ ...date, year, month, day })); }} />
+            </label>
+            <label>Time
+              <input type="time" required value={`${selectedDate.hours}:${selectedDate.minutes}`}
+                onChange={(event) => { const [hours, minutes] = event.target.value.split(":"); setSelectedDate((date) => ({ ...date, hours, minutes })); }} />
+            </label>
+            <label className="transaction-details__wide">Frequency
+              <select value={whichType ? "Daily" : "Monthly"} onChange={(event) => setWhichType(event.target.value === "Daily")}>
+                <option value="Daily">One-time</option><option value="Monthly">Monthly</option>
+              </select>
+            </label>
+          </div>
+          <footer className="transaction-details__actions">
+            <button type="button" onClick={() => setIsClicked(null)}>Cancel</button>
+            <button type="submit"><FaCheck aria-hidden="true" />Save changes</button>
+          </footer>
+        </form>
+      </section>
+    );
+  }
+
   return (
     <animated.div className="AddTransactionFeed" style={fade}>
       <h3>

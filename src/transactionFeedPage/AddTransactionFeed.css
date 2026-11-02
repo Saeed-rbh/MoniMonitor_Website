@@ -1127,3 +1127,36 @@
   opacity: 0.5;
   z-index: -1;
 }
+
+/* Existing transactions use a calm, single-page detail form. */
+.transaction-details {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 22px 20px max(20px, env(safe-area-inset-bottom));
+  color: var(--Ac-1);
+  font-family: "Noto Sans", sans-serif;
+}
+.transaction-details__header { padding-right: 52px; margin-bottom: 24px; }
+.transaction-details__header p { margin: 0 0 6px; font-size: 0.7rem; letter-spacing: 0.12em; color: var(--Ac-2); }
+.transaction-details__header h2 { margin: 0; font-size: 1.3rem; font-weight: 600; }
+.transaction-details__amount { padding: 20px; margin-bottom: 24px; background: var(--Ec-4); border-radius: 20px; }
+.transaction-details label { display: flex; flex-direction: column; gap: 8px; font-size: 0.8rem; font-weight: 500; }
+.transaction-details__amount > div { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 2rem; }
+.transaction-details__amount input { width: 100%; min-width: 0; background: transparent; border: 0; color: var(--Ac-1); font: inherit; font-weight: 600; font-variant-numeric: tabular-nums; }
+.transaction-details__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 16px; }
+.transaction-details__wide { grid-column: 1 / -1; }
+.transaction-details__fields input, .transaction-details__fields select {
+  width: 100%; min-width: 0; box-sizing: border-box; min-height: 46px; padding: 10px 12px;
+  border: 1px solid var(--Ac-3); border-radius: 12px; background: var(--Ec-4); color: var(--Ac-1); font: inherit; font-size: 0.9rem;
+}
+.transaction-details input:focus-visible, .transaction-details select:focus-visible, .transaction-details button:focus-visible {
+  outline: 2px solid var(--Bc-1); outline-offset: 3px;
+}
+.transaction-details__actions { display: flex; gap: 12px; margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--Ac-3); }
+.transaction-details__actions button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border: 1px solid var(--Ac-3); border-radius: 14px; padding: 12px 18px; background: var(--Ec-4); color: var(--Ac-1); font: inherit; font-size: 0.9rem; cursor: pointer; }
+.transaction-details__actions button[type="submit"] { flex: 1; background: var(--Bc-4); border-color: var(--Bc-2); font-weight: 600; }
+.transaction-details__actions button:hover { filter: brightness(1.12); }
+@media (max-width: 360px) {
+  .transaction-details { padding-inline: 16px; }
+  .transaction-details__fields { grid-template-columns: minmax(0, 1fr); }
+}
