@@ -43,6 +43,8 @@ const InitialDataGate = ({ children }) => {
   return children;
 };
 
+const TransactionSearch = lazy(() => import("./pages/Transactions/TransactionSearch"));
+
 // Private Route Component
 const PrivateRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -69,6 +71,7 @@ const AuthenticatedLayout = () => {
           <Routes>
             <Route path="/" element={<Telegram />} />
             <Route path="/Transactions" element={<><Telegram /><Transactions /></>} />
+            <Route path="/Search" element={<TransactionSearch />} />
             <Route path="/AddTransaction" element={<AddTransaction />} />
             <Route path="/Insight" element={<Insight />} />
             <Route path="/Profile" element={<Account />} />
