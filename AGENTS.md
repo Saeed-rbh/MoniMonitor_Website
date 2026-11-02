@@ -17,3 +17,11 @@ Rules:
 - The user has authorized these commits and pushes; do not ask for confirmation each time.
 - Keep unrelated local changes out of the commit. Never force-push or overwrite other people's work.
 - If a check or push is blocked, report the blocker clearly instead of claiming delivery succeeded.
+
+## Stable bank reconciliation baseline
+
+- Before requesting bank exports or changing historical financial data, read
+  `docs/stable-reconciliation.md` and locate the private checkpoint's `LATEST.json`.
+- The saved bank-evidence cutoff is 2026-10-31. Reuse the retained history and
+  collect incremental activity with a short overlap; do not routinely download
+  all history again or restore an older checkpoint over newer live activity.
