@@ -41,3 +41,11 @@
 .transaction-search-dates input:focus-visible { outline: 2px solid var(--Bc-1); outline-offset: 2px; }
 .transaction-search button.transaction-search-date-reset { grid-column: 1 / -1; justify-self: end; padding: 4px 8px; background: transparent; border: 0; font-size: .75rem; color: var(--Bc-1); }
 .transaction-search-date-error { flex-shrink: 0; margin: 0 0 12px; color: var(--Gc-1); font-size: .8rem; }
+.transaction-search-dates[hidden] { display: none; }
+.transaction-search-active-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-shrink: 0; }
+.transaction-search-active-filters:empty { display: none; }
+.transaction-search button.transaction-search-range-chip { display: inline-flex; align-items: center; gap: 8px; border-radius: 100px; font-size: .75rem; background: var(--Bc-4); margin-bottom: 12px; }
+.transaction-search button.transaction-search-clear-all { border: 0; background: transparent; color: var(--Bc-1); font-size: .75rem; margin: 0 0 12px auto; }
+.transaction-search-field button[aria-expanded="true"] { background: var(--Bc-4); color: var(--Bc-1); }
+.transaction-search-date-group { margin: 18px 0 6px; font-size: .75rem; font-weight: 500; color: var(--Ac-2); }
+.transaction-search-result mark { color: var(--Ac-1); background: var(--Bc-3); border-radius: 3px; }

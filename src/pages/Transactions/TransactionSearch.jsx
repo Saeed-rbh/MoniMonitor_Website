@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useState } from "react";
-import { Search, X } from "lucide-react";
+import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Search, X, CalendarDays } from "lucide-react";
 import { useTransactions } from "../../context/TransactionContext";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import { getTransactionIcon } from "../../components/Categories";
@@ -10,6 +10,23 @@ import "./TransactionSearch.css";
 
 const categories = ["All", "Expense", "Income", "Save & invest"];
 const pageSize = 30;
+const savedSearches = new Map();
+const dateGroup = value => {
+  const date = parseTransactionCalendarDate(value);
+  if (Number.isNaN(date.getTime())) return "Unknown date";
+  const today = new Date();
+  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return "Today";
+  if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+};
+const highlight = (text, query) => {
+  const terms = [...new Set(query.trim().split(/\s+/).filter(Boolean))].sort((a, b) => b.length - a.length);
+  if (!terms.length) return text;
+  const escaped = terms.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return text.split(new RegExp(`(${escaped.join("|")})`, "gi")).map((part, index) =>
+    index % 2 ? <mark key={index}>{part}</mark> : part);
+};
 const transactionDate = value => {
   const date = parseTransactionDate(value);
   return Number.isNaN(date.getTime()) ? "Unknown date" : date.toLocaleString(undefined, {
@@ -23,15 +40,35 @@ const money = transaction => new Intl.NumberFormat("en-CA", {
   ? Number(transaction.AmountMinor) / 100 : Number(transaction.Amount || 0)));
 
 export default function TransactionSearch() {
-  const { allTransactions } = useTransactions();
+  const { allTransactions, userData } = useTransactions();
+  const cacheKey = userData?.userId || "current";
+  const initial = useRef(savedSearches.get(cacheKey) || {}).current;
   const [viewingTransaction, setViewingTransaction] = useState(null);
-  const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("All");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  const [query, setQuery] = useState(initial.query || "");
+  const [category, setCategory] = useState(initial.category || "All");
+  const [startDate, setStartDate] = useState(initial.startDate || "");
+  const [endDate, setEndDate] = useState(initial.endDate || "");
   const invalidRange = Boolean(startDate && endDate && startDate > endDate);
-  const [limit, setLimit] = useState(pageSize);
+  const [limit, setLimit] = useState(initial.limit || pageSize);
+  const [datesOpen, setDatesOpen] = useState(initial.datesOpen || false);
   const inputRef = useRef(null);
+  const pageRef = useRef(null);
+  const sentinelRef = useRef(null);
+  const snapshot = useRef(initial);
+  const previousFilters = useRef(JSON.stringify([query, category, startDate, endDate]));
+  useEffect(() => {
+    const next = JSON.stringify([query, category, startDate, endDate]);
+    if (previousFilters.current !== next) {
+      pageRef.current.scrollTop = 0;
+      previousFilters.current = next;
+    }
+  }, [query, category, startDate, endDate]);
+  useLayoutEffect(() => { pageRef.current.scrollTop = initial.scrollTop || 0; }, [initial]);
+  useEffect(() => {
+    snapshot.current = { query, category, startDate, endDate, limit, datesOpen,
+      scrollTop: pageRef.current?.scrollTop || 0 };
+  }, [query, category, startDate, endDate, limit, datesOpen]);
+  useEffect(() => () => { savedSearches.set(cacheKey, snapshot.current); }, [cacheKey]);
   const transactions = useMemo(() => Object.values(allTransactions || {})
     .flatMap(month => month.transactions || [])
     .sort((a, b) => String(b.Timestamp).localeCompare(String(a.Timestamp))), [allTransactions]);
@@ -55,6 +92,17 @@ export default function TransactionSearch() {
     });
   }, [transactions, query, category, startDate, endDate, invalidRange]);
 
+  useEffect(() => {
+    if (!sentinelRef.current || limit >= results.length || !window.IntersectionObserver) return;
+    const observer = new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) setLimit(value => Math.min(value + pageSize, results.length));
+    }, { root: pageRef.current, rootMargin: "180px" });
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [limit, results.length]);
+  const hasFilters = Boolean(query || category !== "All" || startDate || endDate);
+  const clearDates = () => { setStartDate(""); setEndDate(""); setLimit(pageSize); };
+
   const clear = () => {
     setQuery("");
     setCategory("All");
@@ -65,7 +113,8 @@ export default function TransactionSearch() {
   };
 
   return (
-    <section className="transaction-search" aria-label="Transaction search">
+    <section ref={pageRef} className="transaction-search" aria-label="Transaction search"
+      onScroll={event => { snapshot.current.scrollTop = event.currentTarget.scrollTop; }}>
       <label className="transaction-search-label" htmlFor="transaction-query">Merchant, category, bank or amount</label>
       <form className="transaction-search-field" role="search" onSubmit={event => { event.preventDefault(); inputRef.current?.blur(); }}>
         <Search size={20} aria-hidden="true" />
@@ -75,12 +124,19 @@ export default function TransactionSearch() {
         {query && <button type="button" aria-label="Clear search" onClick={() => {
           setQuery(""); setLimit(pageSize); inputRef.current?.focus();
         }}><X size={18} aria-hidden="true" /></button>}
+        <button type="button" aria-label="Date filters" aria-expanded={datesOpen} aria-controls="transaction-date-filters"
+          onClick={() => setDatesOpen(value => !value)}><CalendarDays size={20} aria-hidden="true" /></button>
       </form>
       <div className="transaction-search-filters" role="group" aria-label="Transaction category">
         {categories.map(item => <button key={item} type="button" aria-pressed={category === item}
           onClick={() => { setCategory(item); setLimit(pageSize); }}>{item}</button>)}
       </div>
-      <fieldset className="transaction-search-dates">
+      <div className="transaction-search-active-filters">
+        {(startDate || endDate) && <button type="button" className="transaction-search-range-chip" onClick={clearDates}
+          aria-label="Remove date range">{startDate || "Any date"} – {endDate || "Any date"}<X size={14} aria-hidden="true" /></button>}
+        {hasFilters && <button type="button" className="transaction-search-clear-all" onClick={clear}>Clear all</button>}
+      </div>
+      <fieldset id="transaction-date-filters" hidden={!datesOpen} className="transaction-search-dates">
         <legend className="transaction-search-label">Date range</legend>
         <label htmlFor="transaction-start-date"><span className="transaction-search-label">From</span>
           <input id="transaction-start-date" type="date" value={startDate} max={endDate || undefined}
@@ -102,7 +158,10 @@ export default function TransactionSearch() {
           const isIncome = transaction.Category === "Income" || ["income", "credit"].includes(String(transaction.Type || "").toLowerCase());
           const direction = transaction.Category === "Internal" ? "neutral"
             : flow === "IN" ? "in" : flow === "OUT" ? "out" : isIncome ? "in" : "out";
+          const group = dateGroup(transaction.Timestamp);
           return (
+            <Fragment key={transaction.id || `${transaction.Timestamp}-${index}`}>
+            {(index === 0 || group !== dateGroup(results[index - 1].Timestamp)) && <h2 className="transaction-search-date-group">{group}</h2>}
             <button type="button" className="transaction-search-result AccountTransactions_Row"
               key={transaction.id || `${transaction.Timestamp}-${index}`}
               onClick={() => setViewingTransaction(transaction)} aria-haspopup="dialog">
@@ -110,7 +169,7 @@ export default function TransactionSearch() {
                 {getTransactionIcon(transaction.Category, transaction.Label)}
               </span>
               <span className="AccountTransactions_Reason">
-                <strong>{getTransactionDisplayReason(transaction.Reason, transaction.Label)}</strong>
+                <strong>{highlight(getTransactionDisplayReason(transaction.Reason, transaction.Label), query)}</strong>
                 <span>{transactionDate(transaction.Timestamp)}</span>
               </span>
               <span className={`AccountTransactions_Amount ${direction}`}>
@@ -118,6 +177,7 @@ export default function TransactionSearch() {
                 <span>{direction === "neutral" ? "transfer" : direction === "in" ? "in" : "out"}</span>
               </span>
             </button>
+            </Fragment>
           );
         })}
         {!results.length && !invalidRange && <div className="transaction-search-empty">
@@ -126,8 +186,8 @@ export default function TransactionSearch() {
           <p>{transactions.length ? "Try a different merchant, a shorter phrase, or another category, or a wider date range." : "Your transactions will appear here once they’re added."}</p>
           {(query || category !== "All" || startDate || endDate) && <button type="button" onClick={clear}>Clear search and filters</button>}
         </div>}
-        {results.length > limit && <button className="transaction-search-more" type="button"
-          onClick={() => setLimit(value => value + pageSize)}>Show more transactions</button>}
+        {results.length > limit && <div ref={sentinelRef}><button className="transaction-search-more" type="button"
+          onClick={() => setLimit(value => value + pageSize)}>Show more transactions</button></div>}
       </div>
       <TransactionDetailModal
         transaction={viewingTransaction}
