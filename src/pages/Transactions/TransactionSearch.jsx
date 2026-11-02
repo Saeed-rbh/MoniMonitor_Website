@@ -92,6 +92,10 @@ export default function TransactionSearch() {
   const transactions = useMemo(() => Object.values(allTransactions || {})
     .flatMap(month => month.transactions || [])
     .sort((a, b) => String(b.Timestamp).localeCompare(String(a.Timestamp))), [allTransactions]);
+  const availableDates = useMemo(() => new Set(transactions.flatMap(transaction => {
+    const date = parseTransactionCalendarDate(transaction.Timestamp);
+    return Number.isNaN(date.getTime()) ? [] : [dateInputValue(date)];
+  })), [transactions]);
   const results = useMemo(() => {
     if (invalidRange) return [];
     const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
@@ -162,7 +166,7 @@ export default function TransactionSearch() {
       </div>
       <div className="transaction-search-active-filters">
         {(startDate || endDate) && <button type="button" className="transaction-search-range-chip" onClick={clearDates}
-          aria-label="Remove date range"><CalendarDays size={15} aria-hidden="true" /><span>{startDate || "Any date"} – {endDate || "Any date"}</span><X size={14} aria-hidden="true" /></button>}
+          aria-label="Remove date range"><CalendarDays size={15} aria-hidden="true" /><span>{startDate && startDate === endDate ? startDate : `${startDate || "Any date"} – ${endDate || "Any date"}`}</span><X size={14} aria-hidden="true" /></button>}
         {hasFilters && <button type="button" className="transaction-search-clear-all" onClick={clear}>Clear all</button>}
       </div>
       <MoreOpen
@@ -189,7 +193,7 @@ export default function TransactionSearch() {
                 </button>
               ))}
             </div>
-            <DateRangeCalendar onComplete={() => setDatesOpen(false)} start={startDate} end={endDate} invalid={invalidRange} errorId="transaction-date-error"
+            <DateRangeCalendar availableDates={availableDates} onComplete={() => setDatesOpen(false)} start={startDate} end={endDate} invalid={invalidRange} errorId="transaction-date-error"
               onChange={(start, end) => { setStartDate(start); setEndDate(end); setLimit(pageSize); }} />
             {(startDate || endDate) && <button type="button" className="transaction-search-date-reset" onClick={clearDates}>Clear dates</button>}
       {invalidRange && <p id="transaction-date-error" className="transaction-search-date-error" role="alert">{dateError}</p>}

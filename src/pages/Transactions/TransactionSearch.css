@@ -96,7 +96,5 @@
 .transaction-date-popup .date-range-calendar-grid button:hover { border-color: var(--Bc-1); }
 .transaction-date-popup > .transaction-search-date-reset { display: block; margin: 0 0 10px auto; }
 
-.date-range-mode { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; margin-bottom: 14px; border-radius: 14px; background: var(--Ac-4); }
-.transaction-date-popup .date-range-mode button { border: 1px solid transparent; background: transparent; font-size: .8rem; }
-.transaction-date-popup .date-range-mode button[aria-pressed="true"] { border-color: var(--Bc-3); background: var(--Bc-4); color: var(--Bc-1); }
-.date-range-calendar .transaction-search-dates.single-day { grid-template-columns: 1fr; }
+.transaction-date-popup .date-range-calendar-grid button:disabled { opacity: .25; cursor: default; }
+.transaction-date-popup .date-range-calendar-grid button:disabled:hover { border-color: transparent; }
