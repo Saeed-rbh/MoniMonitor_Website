@@ -3,6 +3,15 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { vi } from "vitest";
 import TransactionSearch from "./TransactionSearch";
 
+vi.mock("../../components/TransactionDetailModal/TransactionDetailModal", () => ({
+  default: ({ transaction, onClose }) => transaction ? (
+    <div role="dialog" aria-label="Transaction details">
+      <p>{transaction.BankName}</p>
+      <button onClick={onClose}>Close details</button>
+    </div>
+  ) : null,
+}));
+
 vi.mock("../../context/TransactionContext", () => ({
   useTransactions: () => ({ allTransactions: {
     "2026-10": { transactions: [{ Reason: "Weekly groceries", Amount: 25, Category: "Expense", BankName: "Example Bank", Timestamp: "2026-10-10" }] },
@@ -25,4 +34,15 @@ test("searches across months and fields, filters categories, and recovers from n
   fireEvent.click(screen.getByRole("button", { name: "Income", exact: true }));
   expect(screen.queryByText("Weekly groceries")).not.toBeInTheDocument();
   expect(screen.getByText("Salary")).toBeInTheDocument();
+});
+
+test("opens the shared details popup and preserves the search when closed", () => {
+  render(<TransactionSearch />);
+  fireEvent.change(screen.getByRole("searchbox"), { target: { value: "groceries" } });
+  fireEvent.click(screen.getByRole("button", { name: /Weekly groceries/ }));
+  expect(screen.getByRole("dialog", { name: "Transaction details" })).toBeInTheDocument();
+  expect(screen.getByText("Example Bank")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Close details" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(screen.getByRole("searchbox")).toHaveValue("groceries");
 });

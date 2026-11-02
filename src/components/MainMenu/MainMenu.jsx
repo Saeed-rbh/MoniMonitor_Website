@@ -420,7 +420,7 @@ const MainMenu = () => {
                 <HiOutlineSearch aria-hidden="true" />
               </ShineBorder>
             </div>
-            
+
           </button>
 
           {menuItemsR.map((item, index) => (

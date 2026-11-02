@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Search, X, ChevronDown, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { Search, X, ChevronRight, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { useTransactions } from "../../context/TransactionContext";
+import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import "./TransactionSearch.css";
 
 const categories = ["All", "Expense", "Income", "Save & invest"];
@@ -8,6 +9,7 @@ const pageSize = 30;
 
 export default function TransactionSearch() {
   const { allTransactions } = useTransactions();
+  const [viewingTransaction, setViewingTransaction] = useState(null);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
   const [limit, setLimit] = useState(pageSize);
@@ -61,8 +63,8 @@ export default function TransactionSearch() {
       </p>
       <div className="transaction-search-results">
         {results.slice(0, limit).map((transaction, index) => (
-          <details className="transaction-search-result" key={transaction.id || `${transaction.Timestamp}-${index}`}>
-            <summary>
+          <button type="button" className="transaction-search-result" key={transaction.id || `${transaction.Timestamp}-${index}`}
+            onClick={() => setViewingTransaction(transaction)} aria-haspopup="dialog">
               <span className={`transaction-search-category ${transaction.Category === "Income" ? "is-income" : ""}`} aria-hidden="true">
                 {transaction.Category === "Income" ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
               </span>
@@ -73,15 +75,8 @@ export default function TransactionSearch() {
               <strong className="transaction-search-amount">
                 {transaction.Category === "Income" ? "+" : "−"}${Math.abs(Number(transaction.Amount) || 0).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </strong>
-              <ChevronDown className="transaction-search-chevron" size={16} aria-hidden="true" />
-            </summary>
-            <dl>
-              <div><dt>Category</dt><dd>{transaction.Category || "Uncategorized"}</dd></div>
-              <div><dt>Bank</dt><dd>{transaction.BankName || "Not specified"}</dd></div>
-              <div><dt>Date</dt><dd>{transaction.Timestamp || "Not specified"}</dd></div>
-              {transaction.Type && <div><dt>Type</dt><dd>{transaction.Type}</dd></div>}
-            </dl>
-          </details>
+              <ChevronRight className="transaction-search-chevron" size={16} aria-hidden="true" />
+          </button>
         ))}
         {!results.length && <div className="transaction-search-empty">
           <Search size={28} aria-hidden="true" />
@@ -92,6 +87,11 @@ export default function TransactionSearch() {
         {results.length > limit && <button className="transaction-search-more" type="button"
           onClick={() => setLimit(value => value + pageSize)}>Show more transactions</button>}
       </div>
+      <TransactionDetailModal
+        transaction={viewingTransaction}
+        onClose={() => setViewingTransaction(null)}
+        onTransactionUpdated={setViewingTransaction}
+      />
     </section>
   );
 }
