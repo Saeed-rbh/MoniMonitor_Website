@@ -15,14 +15,16 @@
 .transaction-search-filters button { font-size: .75rem; }
 .transaction-search-filters button[aria-pressed="true"] { background: var(--Bc-1); color: var(--Ec-1); border-color: var(--Bc-1); }
 .transaction-search-count { margin-bottom: 8px; }
-.transaction-search-result { border-bottom: 1px solid var(--Ac-4); }
-.transaction-search-result summary { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 16px 2px; cursor: pointer; list-style: none; }
+.transaction-search-results { display: flex; flex-direction: column; gap: 12px; }
+.transaction-search-result { background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .1); border-radius: 18px; box-shadow: 0 2px 8px rgba(0, 0, 0, .06); }
+.transaction-search-result summary { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 16px; border-radius: 18px; cursor: pointer; list-style: none; }
+.transaction-search-result summary:hover { background: rgba(255, 255, 255, .04); }
 .transaction-search-result summary::-webkit-details-marker { display: none; }
 .transaction-search-description { min-width: 0; display: grid; gap: 6px; overflow-wrap: anywhere; }
 .transaction-search-description strong { font-size: .9rem; font-weight: 500; }
 .transaction-search-description span { color: var(--Ac-2); font-size: .75rem; }
 .transaction-search-amount { flex-shrink: 0; font-size: .9rem; font-variant-numeric: tabular-nums; }
-.transaction-search-result dl { margin: 0 0 14px; padding: 12px; border-radius: 12px; background: var(--Ac-4); font-size: .8rem; }
+.transaction-search-result dl { margin: 0 16px 16px; padding: 12px; border-radius: 12px; background: var(--Ac-4); font-size: .8rem; }
 .transaction-search-result dl div { display: flex; justify-content: space-between; gap: 16px; padding: 5px 0; }
 .transaction-search-result dt { color: var(--Ac-2); }
 .transaction-search-result dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
