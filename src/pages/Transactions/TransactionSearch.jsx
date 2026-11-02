@@ -1,4 +1,6 @@
 import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { useModalFocus } from "../../utils/modalFocus";
 import { Search, X, CalendarDays } from "lucide-react";
 import { useTransactions } from "../../context/TransactionContext";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
@@ -50,7 +52,9 @@ export default function TransactionSearch() {
   const [endDate, setEndDate] = useState(initial.endDate || "");
   const invalidRange = Boolean(startDate && endDate && startDate > endDate);
   const [limit, setLimit] = useState(initial.limit || pageSize);
-  const [datesOpen, setDatesOpen] = useState(initial.datesOpen || false);
+  const [datesOpen, setDatesOpen] = useState(false);
+  const datePopupRef = useRef(null);
+  useModalFocus(datesOpen, datePopupRef, () => setDatesOpen(false));
   const inputRef = useRef(null);
   const pageRef = useRef(null);
   const sentinelRef = useRef(null);
@@ -65,9 +69,9 @@ export default function TransactionSearch() {
   }, [query, category, startDate, endDate]);
   useLayoutEffect(() => { pageRef.current.scrollTop = initial.scrollTop || 0; }, [initial]);
   useEffect(() => {
-    snapshot.current = { query, category, startDate, endDate, limit, datesOpen,
+    snapshot.current = { query, category, startDate, endDate, limit,
       scrollTop: pageRef.current?.scrollTop || 0 };
-  }, [query, category, startDate, endDate, limit, datesOpen]);
+  }, [query, category, startDate, endDate, limit]);
   useEffect(() => () => { savedSearches.set(cacheKey, snapshot.current); }, [cacheKey]);
   const transactions = useMemo(() => Object.values(allTransactions || {})
     .flatMap(month => month.transactions || [])
@@ -124,7 +128,7 @@ export default function TransactionSearch() {
         {query && <button type="button" aria-label="Clear search" onClick={() => {
           setQuery(""); setLimit(pageSize); inputRef.current?.focus();
         }}><X size={18} aria-hidden="true" /></button>}
-        <button type="button" aria-label="Date filters" aria-expanded={datesOpen} aria-controls="transaction-date-filters"
+        <button type="button" aria-label="Date filters" aria-haspopup="dialog" aria-expanded={datesOpen} aria-controls="transaction-date-filters"
           onClick={() => setDatesOpen(value => !value)}><CalendarDays size={20} aria-hidden="true" /></button>
       </form>
       <div className="transaction-search-filters" role="group" aria-label="Transaction category">
@@ -136,7 +140,17 @@ export default function TransactionSearch() {
           aria-label="Remove date range">{startDate || "Any date"} – {endDate || "Any date"}<X size={14} aria-hidden="true" /></button>}
         {hasFilters && <button type="button" className="transaction-search-clear-all" onClick={clear}>Clear all</button>}
       </div>
-      <fieldset id="transaction-date-filters" hidden={!datesOpen} className="transaction-search-dates">
+      {datesOpen && createPortal(
+        <div className="transaction-date-overlay" onClick={event => {
+          if (event.target === event.currentTarget) setDatesOpen(false);
+        }}>
+          <div ref={datePopupRef} id="transaction-date-filters" className="transaction-date-popup"
+            role="dialog" aria-modal="true" aria-labelledby="transaction-date-popup-title" tabIndex={-1}>
+            <div className="transaction-date-popup-header">
+              <h2 id="transaction-date-popup-title">Date filters</h2>
+              <button type="button" aria-label="Close date filters" onClick={() => setDatesOpen(false)}><X size={20} aria-hidden="true" /></button>
+            </div>
+      <fieldset  className="transaction-search-dates">
         <legend className="transaction-search-label">Date range</legend>
         <label htmlFor="transaction-start-date"><span className="transaction-search-label">From</span>
           <input id="transaction-start-date" type="date" value={startDate} max={endDate || undefined}
@@ -152,6 +166,11 @@ export default function TransactionSearch() {
           onClick={() => { setStartDate(""); setEndDate(""); setLimit(pageSize); }}>Clear dates</button>}
       </fieldset>
       {invalidRange && <p id="transaction-date-error" className="transaction-search-date-error" role="alert">Choose an end date on or after the start date.</p>}
+            <button type="button" className="transaction-date-done" disabled={invalidRange}
+              onClick={() => setDatesOpen(false)}>Done</button>
+          </div>
+        </div>, document.body)}
+      {!datesOpen && invalidRange && <p className="transaction-search-date-error" role="alert">Choose an end date on or after the start date.</p>}
       <div className="transaction-search-results">
         {results.slice(0, limit).map((transaction, index) => {
           const flow = String(transaction.AccountFlow || "").toUpperCase();

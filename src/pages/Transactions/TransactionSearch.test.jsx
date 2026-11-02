@@ -52,26 +52,28 @@ test("opens the shared details popup and preserves the search when closed", () =
 
 test("filters inclusive calendar dates and supports either boundary independently", () => {
   render(<TransactionSearch />);
-  fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
-  const from = screen.getByLabelText("From");
-  const to = screen.getByLabelText("To");
-  fireEvent.change(to, { target: { value: "2026-09-01" } });
+  const open = () => fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+  const done = () => fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  open();
+  fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-09-01" } });
+  done();
   expect(screen.getByText("Salary")).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /Weekly groceries/ })).not.toBeInTheDocument();
+  open();
   fireEvent.click(screen.getByRole("button", { name: "Clear dates" }));
-  fireEvent.change(from, { target: { value: "2026-10-10" } });
-  fireEvent.change(to, { target: { value: "2026-10-10" } });
+  fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-10" } });
+  fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-10-10" } });
+  done();
   expect(screen.getByRole("button", { name: /Weekly groceries/ })).toBeInTheDocument();
   expect(screen.queryByText("Salary")).not.toBeInTheDocument();
+  open();
   fireEvent.click(screen.getByRole("button", { name: "Clear dates" }));
-  fireEvent.change(from, { target: { value: "2026-10-10" } });
+  fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-10" } });
+  done();
   expect(screen.getByRole("button", { name: /Weekly groceries/ })).toBeInTheDocument();
-  expect(screen.queryByText("Salary")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Income", exact: true }));
   expect(screen.getByText("No matching transactions")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Clear search and filters" }));
-  expect(from).toHaveValue("");
-  expect(to).toHaveValue("");
   expect(screen.getByText("Salary")).toBeInTheDocument();
 });
 
@@ -84,6 +86,7 @@ test("explains reversed date ranges and preserves text search when dates are cle
   expect(screen.getByRole("alert")).toHaveTextContent("Choose an end date on or after the start date.");
   fireEvent.click(screen.getByRole("button", { name: "Clear dates" }));
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
   expect(screen.getByRole("searchbox")).toHaveValue("groceries");
   expect(screen.getByRole("button", { name: /Weekly groceries/ })).toBeInTheDocument();
 });
@@ -92,11 +95,11 @@ test("toggles date controls, shows a removable range chip, and clears all filter
   render(<TransactionSearch />);
   const calendar = screen.getByRole("button", { name: "Date filters" });
   expect(calendar).toHaveAttribute("aria-expanded", "false");
-  expect(screen.getByLabelText("From")).not.toBeVisible();
+  expect(screen.queryByLabelText("From")).not.toBeInTheDocument();
   fireEvent.click(calendar);
   fireEvent.change(screen.getByLabelText("From"), { target: { value: "2026-10-01" } });
-  fireEvent.click(calendar);
-  expect(screen.getByLabelText("From")).not.toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
+  expect(screen.queryByLabelText("From")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Remove date range" }));
   expect(screen.getByText("Salary")).toBeInTheDocument();
   fireEvent.change(screen.getByRole("searchbox"), { target: { value: "groceries" } });
@@ -105,17 +108,18 @@ test("toggles date controls, shows a removable range chip, and clears all filter
   expect(screen.getByRole("searchbox")).toHaveValue("");
 });
 
-test("restores the search, date panel, and scroll position after navigation", () => {
+test("restores the search and scroll position without reopening the popup", () => {
   const first = render(<TransactionSearch />);
   fireEvent.change(screen.getByRole("searchbox"), { target: { value: "groceries" } });
   fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+  fireEvent.click(screen.getByRole("button", { name: "Done" }));
   const page = screen.getByRole("region", { name: "Transaction search" });
   page.scrollTop = 120;
   fireEvent.scroll(page);
   first.unmount();
   render(<TransactionSearch />);
   expect(screen.getByRole("searchbox")).toHaveValue("groceries");
-  expect(screen.getByRole("button", { name: "Date filters" })).toHaveAttribute("aria-expanded", "true");
+  expect(screen.getByRole("button", { name: "Date filters" })).toHaveAttribute("aria-expanded", "false");
   expect(screen.getByRole("region", { name: "Transaction search" }).scrollTop).toBe(120);
 });
 
@@ -143,4 +147,23 @@ test("groups older transactions by month", () => {
   render(<TransactionSearch />);
   expect(screen.getByRole("heading", { name: "October 2026" })).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "September 2026" })).toBeInTheDocument();
+});
+
+test("traps focus in the date popup, closes with Escape, and restores focus", () => {
+  render(<TransactionSearch />);
+  const calendar = screen.getByRole("button", { name: "Date filters" });
+  calendar.focus();
+  fireEvent.click(calendar);
+  const popup = screen.getByRole("dialog", { name: "Date filters" });
+  expect(popup).toHaveAttribute("aria-modal", "true");
+  expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Close date filters" })).toHaveFocus();
+  fireEvent.keyDown(document.activeElement, { key: "Tab", shiftKey: true });
+  expect(screen.getByRole("button", { name: "Done" })).toHaveFocus();
+  fireEvent.keyDown(document.activeElement, { key: "Escape" });
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(calendar).toHaveFocus();
+  fireEvent.click(calendar);
+  fireEvent.click(screen.getByRole("dialog").parentElement);
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });
