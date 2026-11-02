@@ -1,7 +1,13 @@
 import React from "react";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render as testingRender, screen } from "@testing-library/react";
 import { beforeEach, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import TransactionSearch from "./TransactionSearch";
+
+const render = ui => testingRender(<MemoryRouter>{ui}</MemoryRouter>);
+vi.mock("framer-motion", async importOriginal => ({
+  ...await importOriginal(), AnimatePresence: ({ children }) => children,
+}));
 
 const testData = vi.hoisted(() => ({ userId: 0, extra: [] }));
 beforeEach(() => { testData.userId += 1; testData.extra = []; });
@@ -157,13 +163,112 @@ test("traps focus in the date popup, closes with Escape, and restores focus", ()
   const popup = screen.getByRole("dialog", { name: "Date filters" });
   expect(popup).toHaveAttribute("aria-modal", "true");
   expect(screen.queryByRole("searchbox")).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Close date filters" })).toHaveFocus();
+  expect(screen.getByRole("button", { name: "Close dialog" })).toHaveFocus();
   fireEvent.keyDown(document.activeElement, { key: "Tab", shiftKey: true });
   expect(screen.getByRole("button", { name: "Done" })).toHaveFocus();
   fireEvent.keyDown(document.activeElement, { key: "Escape" });
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(calendar).toHaveFocus();
   fireEvent.click(calendar);
-  fireEvent.click(screen.getByRole("dialog").parentElement);
+  fireEvent.click(document.querySelector(".MoreOpen_Backdrop"));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+});
+
+test.each([
+  ["Today", "2026-11-01", "2026-11-01"],
+  ["Last 7 days", "2026-10-26", "2026-11-01"],
+  ["This month", "2026-11-01", "2026-11-30"],
+  ["Last month", "2026-10-01", "2026-10-31"],
+])("selects %s, closes the popup, and preserves the range on reopening", (label, start, end) => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 10, 1, 12));
+  try {
+    render(<TransactionSearch />);
+    const opener = screen.getByRole("button", { name: "Date filters" });
+    opener.focus();
+    fireEvent.click(opener);
+    fireEvent.click(screen.getByRole("button", { name: label, exact: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(opener).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent(`${start} – ${end}`);
+    fireEvent.click(opener);
+    expect(screen.getByLabelText("From")).toHaveValue(start);
+    expect(screen.getByLabelText("To")).toHaveValue(end);
+    expect(screen.getByRole("button", { name: label, exact: true })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent(`${start} – ${end}`);
+  } finally { vi.useRealTimers(); }
+});
+
+test.each([
+  [new Date(2027, 0, 5, 12), "2026-12-01", "2026-12-31"],
+  [new Date(2028, 2, 1, 12), "2028-02-01", "2028-02-29"],
+])("handles previous-month year and leap-day boundaries", (today, start, end) => {
+  vi.useFakeTimers();
+  vi.setSystemTime(today);
+  try {
+    render(<TransactionSearch />);
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Last month", exact: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    expect(screen.getByLabelText("From")).toHaveValue(start);
+    expect(screen.getByLabelText("To")).toHaveValue(end);
+    fireEvent.change(screen.getByLabelText("From"), { target: { value: end } });
+    expect(screen.getByRole("button", { name: "Last month", exact: true })).toHaveAttribute("aria-pressed", "false");
+  } finally { vi.useRealTimers(); }
+});
+
+test("selects a range across months directly in the embedded calendar", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 9, 10, 12));
+  try {
+    render(<TransactionSearch />);
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    expect(document.querySelector('input[type="date"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "October 30, 2026", exact: true }));
+    expect(screen.getByLabelText("From")).toHaveValue("2026-10-30");
+    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+    fireEvent.click(screen.getByRole("button", { name: "November 2, 2026", exact: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent("2026-10-30 – 2026-11-02");
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Next month" }));
+    expect(screen.getByLabelText("To")).toHaveValue("2026-11-02");
+    expect(screen.getByRole("button", { name: "November 1, 2026", exact: true })).toHaveClass("in-range");
+  } finally { vi.useRealTimers(); }
+});
+
+test("normalizes a range selected backwards and rejects invalid typed dates", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2028, 1, 10, 12));
+  try {
+    render(<TransactionSearch />);
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "February 29, 2028", exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "February 27, 2028", exact: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    expect(screen.getByLabelText("From")).toHaveValue("2028-02-27");
+    expect(screen.getByLabelText("To")).toHaveValue("2028-02-29");
+    fireEvent.change(screen.getByLabelText("To"), { target: { value: "2028-02-30" } });
+    expect(screen.getByRole("button", { name: "Done" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a valid date");
+  } finally { vi.useRealTimers(); }
+});
+
+test("selects a single day with one calendar click and closes the popup", () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date(2026, 9, 10, 12));
+  try {
+    render(<TransactionSearch />);
+    fireEvent.click(screen.getByRole("button", { name: "Date filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Single day" }));
+    expect(screen.getByRole("button", { name: "Single day" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(screen.getByRole("button", { name: "October 10, 2026", exact: true }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove date range" })).toHaveTextContent("2026-10-10 – 2026-10-10");
+    expect(screen.getByRole("button", { name: /Weekly groceries/ })).toBeInTheDocument();
+    expect(screen.queryByText("Salary")).not.toBeInTheDocument();
+  } finally { vi.useRealTimers(); }
 });

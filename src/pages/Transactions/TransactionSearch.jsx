@@ -1,7 +1,8 @@
 import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { useModalFocus } from "../../utils/modalFocus";
-import { Search, X, CalendarDays } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
+import DateRangeCalendar, { validCalendarDate } from "./DateRangeCalendar";
+import MoreOpen from "../../components/MoreOpen/MoreOpen";
+import { Search, X, CalendarDays, Check, ArrowDownLeft, ArrowUpRight, Landmark, Layers } from "lucide-react";
 import { useTransactions } from "../../context/TransactionContext";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import { getTransactionIcon } from "../../components/Categories";
@@ -11,8 +12,22 @@ import "../../components/TransactionRow.css";
 import "./TransactionSearch.css";
 
 const categories = ["All", "Expense", "Income", "Save & invest"];
+const categoryIcons = { All: Layers, Expense: ArrowUpRight, Income: ArrowDownLeft, "Save & invest": Landmark };
+const shortDate = value => parseTransactionCalendarDate(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 const pageSize = 30;
 const savedSearches = new Map();
+const dateInputValue = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const quickDateRanges = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  return [
+    { label: "Today", from: today, to: today },
+    { label: "Last 7 days", from: new Date(year, month, today.getDate() - 6), to: today },
+    { label: "This month", from: new Date(year, month, 1), to: new Date(year, month + 1, 0) },
+    { label: "Last month", from: new Date(year, month - 1, 1), to: new Date(year, month, 0) },
+  ].map(range => ({ label: range.label, start: dateInputValue(range.from), end: dateInputValue(range.to) }));
+};
 const dateGroup = value => {
   const date = parseTransactionCalendarDate(value);
   if (Number.isNaN(date.getTime())) return "Unknown date";
@@ -42,6 +57,7 @@ const money = transaction => new Intl.NumberFormat("en-CA", {
   ? Number(transaction.AmountMinor) / 100 : Number(transaction.Amount || 0)));
 
 export default function TransactionSearch() {
+  const reducedMotion = useReducedMotion();
   const { allTransactions, userData } = useTransactions();
   const cacheKey = userData?.userId || "current";
   const initial = useRef(savedSearches.get(cacheKey) || {}).current;
@@ -50,11 +66,11 @@ export default function TransactionSearch() {
   const [category, setCategory] = useState(initial.category || "All");
   const [startDate, setStartDate] = useState(initial.startDate || "");
   const [endDate, setEndDate] = useState(initial.endDate || "");
-  const invalidRange = Boolean(startDate && endDate && startDate > endDate);
+  const invalidDate = Boolean((startDate && !validCalendarDate(startDate)) || (endDate && !validCalendarDate(endDate)));
+  const invalidRange = invalidDate || Boolean(startDate && endDate && startDate > endDate);
+  const dateError = invalidDate ? "Enter a valid date as YYYY-MM-DD, or select a day below." : "Choose an end date on or after the start date.";
   const [limit, setLimit] = useState(initial.limit || pageSize);
   const [datesOpen, setDatesOpen] = useState(false);
-  const datePopupRef = useRef(null);
-  useModalFocus(datesOpen, datePopupRef, () => setDatesOpen(false));
   const inputRef = useRef(null);
   const pageRef = useRef(null);
   const sentinelRef = useRef(null);
@@ -117,7 +133,10 @@ export default function TransactionSearch() {
   };
 
   return (
-    <section ref={pageRef} className="transaction-search" aria-label="Transaction search"
+    <motion.section ref={pageRef} className="transaction-search" aria-label="Transaction search"
+      initial={reducedMotion ? false : { opacity: 0, y: 10, filter: "blur(6px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={{ duration: reducedMotion ? 0 : 0.3, ease: "easeOut" }}
       onScroll={event => { snapshot.current.scrollTop = event.currentTarget.scrollTop; }}>
       <label className="transaction-search-label" htmlFor="transaction-query">Merchant, category, bank or amount</label>
       <form className="transaction-search-field" role="search" onSubmit={event => { event.preventDefault(); inputRef.current?.blur(); }}>
@@ -128,49 +147,58 @@ export default function TransactionSearch() {
         {query && <button type="button" aria-label="Clear search" onClick={() => {
           setQuery(""); setLimit(pageSize); inputRef.current?.focus();
         }}><X size={18} aria-hidden="true" /></button>}
-        <button type="button" aria-label="Date filters" aria-haspopup="dialog" aria-expanded={datesOpen} aria-controls="transaction-date-filters"
+        <button type="button" className={startDate || endDate ? "has-date-filter" : undefined} aria-label="Date filters" aria-haspopup="dialog" aria-expanded={datesOpen} aria-controls="transaction-date-filters"
           onClick={() => setDatesOpen(value => !value)}><CalendarDays size={20} aria-hidden="true" /></button>
       </form>
       <div className="transaction-search-filters" role="group" aria-label="Transaction category">
-        {categories.map(item => <button key={item} type="button" aria-pressed={category === item}
-          onClick={() => { setCategory(item); setLimit(pageSize); }}>{item}</button>)}
+        {categories.map(item => {
+          const Icon = categoryIcons[item];
+          return <button key={item} type="button" aria-pressed={category === item}
+            onClick={() => { setCategory(item); setLimit(pageSize); }}>
+            <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
+            <span>{item}</span>
+          </button>;
+        })}
       </div>
       <div className="transaction-search-active-filters">
         {(startDate || endDate) && <button type="button" className="transaction-search-range-chip" onClick={clearDates}
-          aria-label="Remove date range">{startDate || "Any date"} – {endDate || "Any date"}<X size={14} aria-hidden="true" /></button>}
+          aria-label="Remove date range"><CalendarDays size={15} aria-hidden="true" /><span>{startDate || "Any date"} – {endDate || "Any date"}</span><X size={14} aria-hidden="true" /></button>}
         {hasFilters && <button type="button" className="transaction-search-clear-all" onClick={clear}>Clear all</button>}
       </div>
-      {datesOpen && createPortal(
-        <div className="transaction-date-overlay" onClick={event => {
-          if (event.target === event.currentTarget) setDatesOpen(false);
-        }}>
-          <div ref={datePopupRef} id="transaction-date-filters" className="transaction-date-popup"
-            role="dialog" aria-modal="true" aria-labelledby="transaction-date-popup-title" tabIndex={-1}>
+      <MoreOpen
+        isClicked={datesOpen}
+        setIsClicked={() => setDatesOpen(false)}
+        dialogLabel="Date filters"
+        sheetHeight="auto"
+        zIndex={125}
+        overflow="auto"
+        feed={() => (
+          <div id="transaction-date-filters" className="transaction-date-popup">
             <div className="transaction-date-popup-header">
-              <h2 id="transaction-date-popup-title">Date filters</h2>
-              <button type="button" aria-label="Close date filters" onClick={() => setDatesOpen(false)}><X size={20} aria-hidden="true" /></button>
+              <h2>Date filters</h2>
             </div>
-      <fieldset  className="transaction-search-dates">
-        <legend className="transaction-search-label">Date range</legend>
-        <label htmlFor="transaction-start-date"><span className="transaction-search-label">From</span>
-          <input id="transaction-start-date" type="date" value={startDate} max={endDate || undefined}
-            aria-invalid={invalidRange} aria-describedby={invalidRange ? "transaction-date-error" : undefined}
-            onChange={event => { setStartDate(event.target.value); setLimit(pageSize); }} />
-        </label>
-        <label htmlFor="transaction-end-date"><span className="transaction-search-label">To</span>
-          <input id="transaction-end-date" type="date" value={endDate} min={startDate || undefined}
-            aria-invalid={invalidRange} aria-describedby={invalidRange ? "transaction-date-error" : undefined}
-            onChange={event => { setEndDate(event.target.value); setLimit(pageSize); }} />
-        </label>
-        {(startDate || endDate) && <button type="button" className="transaction-search-date-reset"
-          onClick={() => { setStartDate(""); setEndDate(""); setLimit(pageSize); }}>Clear dates</button>}
-      </fieldset>
-      {invalidRange && <p id="transaction-date-error" className="transaction-search-date-error" role="alert">Choose an end date on or after the start date.</p>}
+            <div className="transaction-date-shortcuts" role="group" aria-label="Quick date ranges">
+              {quickDateRanges().map(range => (
+                <button key={range.label} type="button"
+                  aria-pressed={startDate === range.start && endDate === range.end}
+                  onClick={() => { setStartDate(range.start); setEndDate(range.end); setLimit(pageSize); setDatesOpen(false); }}>
+                  <span className="transaction-date-shortcut-top"><CalendarDays size={17} aria-hidden="true" /><span>{range.label}</span>
+                    <Check className="transaction-date-shortcut-check" size={16} aria-hidden="true" />
+                  </span>
+                  <span className="transaction-date-shortcut-caption" aria-hidden="true">{shortDate(range.start)}{range.start !== range.end ? ` – ${shortDate(range.end)}` : ""}</span>
+                </button>
+              ))}
+            </div>
+            <DateRangeCalendar onComplete={() => setDatesOpen(false)} start={startDate} end={endDate} invalid={invalidRange} errorId="transaction-date-error"
+              onChange={(start, end) => { setStartDate(start); setEndDate(end); setLimit(pageSize); }} />
+            {(startDate || endDate) && <button type="button" className="transaction-search-date-reset" onClick={clearDates}>Clear dates</button>}
+      {invalidRange && <p id="transaction-date-error" className="transaction-search-date-error" role="alert">{dateError}</p>}
             <button type="button" className="transaction-date-done" disabled={invalidRange}
               onClick={() => setDatesOpen(false)}>Done</button>
           </div>
-        </div>, document.body)}
-      {!datesOpen && invalidRange && <p className="transaction-search-date-error" role="alert">Choose an end date on or after the start date.</p>}
+        )}
+      />
+      {!datesOpen && invalidRange && <p className="transaction-search-date-error" role="alert">{dateError}</p>}
       <div className="transaction-search-results">
         {results.slice(0, limit).map((transaction, index) => {
           const flow = String(transaction.AccountFlow || "").toUpperCase();
@@ -213,6 +241,6 @@ export default function TransactionSearch() {
         onClose={() => setViewingTransaction(null)}
         onTransactionUpdated={setViewingTransaction}
       />
-    </section>
+    </motion.section>
   );
 }
