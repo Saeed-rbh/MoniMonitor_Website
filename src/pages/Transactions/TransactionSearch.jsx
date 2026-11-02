@@ -126,7 +126,6 @@ export default function TransactionSearch() {
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
   }, [limit, results.length]);
-  const hasFilters = Boolean(query || category !== "All" || startDate || endDate);
   const clearDates = () => { setStartDate(""); setEndDate(""); setLimit(pageSize); };
 
   const clear = () => {
@@ -159,7 +158,7 @@ export default function TransactionSearch() {
       <div className="transaction-search-filters" role="group" aria-label="Transaction category">
         {categories.map(item => {
           const Icon = categoryIcons[item];
-          return <button key={item} type="button" aria-pressed={category === item}
+          return <button key={item} type="button" data-category={item} aria-pressed={category === item}
             onClick={() => { setCategory(item); setLimit(pageSize); }}>
             <Icon size={17} strokeWidth={1.8} aria-hidden="true" />
             <span>{item}</span>
@@ -169,7 +168,7 @@ export default function TransactionSearch() {
       <div className="transaction-search-active-filters">
         {(startDate || endDate) && <button type="button" className="transaction-search-range-chip" onClick={clearDates}
           aria-label="Remove date range"><CalendarDays size={15} aria-hidden="true" /><span>{startDate && startDate === endDate ? startDate : `${startDate || "Any date"} – ${endDate || "Any date"}`}</span><X size={14} aria-hidden="true" /></button>}
-        {hasFilters && <button type="button" className="transaction-search-clear-all" onClick={clear}>Clear all</button>}
+        {Boolean(query || startDate || endDate) && <button type="button" className="transaction-search-clear-all" onClick={clear}>Clear all</button>}
       </div>
       <MoreOpen
         isClicked={datesOpen}

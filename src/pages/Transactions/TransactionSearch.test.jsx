@@ -278,3 +278,14 @@ test("allows empty days as range boundaries and marks days with transactions", (
     expect(screen.queryByRole("button", { name: /Weekly groceries/ })).not.toBeInTheDocument();
   } finally { vi.useRealTimers(); }
 });
+
+test("category selection does not show Clear all until a search or date filter is active", () => {
+  render(<TransactionSearch />);
+  fireEvent.click(screen.getByRole("button", { name: "Income", exact: true }));
+  expect(screen.getByRole("button", { name: "Income", exact: true })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.queryByRole("button", { name: "Clear all" })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole("searchbox"), { target: { value: "salary" } });
+  expect(screen.getByRole("button", { name: "Clear all" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+  expect(screen.queryByRole("button", { name: "Clear all" })).not.toBeInTheDocument();
+});
