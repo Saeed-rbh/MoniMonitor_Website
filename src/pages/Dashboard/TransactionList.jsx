@@ -1,3 +1,4 @@
+import { matchesReportingCategory } from "../../services/transactionService";
 import React, { useEffect, useRef, useState } from "react";
 import TransactionListMonthly from "./TransactionListMonthly";
 import TransactionModification from "../Transactions/TransactionModification";
@@ -23,7 +24,7 @@ const TransactionList = ({
       ? Transactions
       : Transactions &&
       Transactions.filter(
-        (transaction) => transaction.Category === isMoreClicked
+        (transaction) => matchesReportingCategory(transaction, isMoreClicked)
       );
 
   const WindowHeight = useWindowHeight(100);

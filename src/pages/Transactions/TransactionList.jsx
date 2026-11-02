@@ -8,6 +8,7 @@ import ChooseTransactionMonth from "./ChooseTransactionMonth";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import "./Transactions.css";
 import {
+  matchesReportingCategory,
   isInternalTransfer,
   isSaveInvestTransaction,
   uniqueInternalTransfers,
@@ -34,7 +35,7 @@ const TransactionList = ({
   const filteredTransactions = React.useMemo(() => {
     if (isMoreClicked === "Internal") return uniqueInternalTransfers(Transactions);
     if (isMoreClicked === "Save&Invest") return Transactions.filter(isSaveInvestTransaction);
-    return Transactions.filter((transaction) => transaction.Category === isMoreClicked);
+    return Transactions.filter((transaction) => matchesReportingCategory(transaction, isMoreClicked));
   }, [Transactions, isMoreClicked]);
 
 
@@ -64,7 +65,7 @@ const TransactionList = ({
     .filter((transaction) => {
       if (!transaction || !transaction.Timestamp) return false;
       if (sortby === "All") return true;
-      if (["Income", "Expense"].includes(sortby)) return transaction.Category === sortby;
+      if (["Income", "Expense"].includes(sortby)) return matchesReportingCategory(transaction, sortby);
       if (sortby === "Save&Invest") return isSaveInvestTransaction(transaction);
       if (sortby === "Internal") return isInternalTransfer(transaction);
 

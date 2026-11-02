@@ -38,11 +38,22 @@ function isPosted(transaction = {}) {
     return !transaction.PostingStatus || transaction.PostingStatus === 'posted';
 }
 
+function isInvestmentCashIncome(transaction = {}) {
+    return isPosted(transaction) && !isInternalTransfer(transaction) &&
+        normalize(transaction.Category) === 'investment' &&
+        ['interest', 'dividend'].includes(normalize(transaction.PortfolioAction)) &&
+        normalize(transaction.AccountFlow) === 'in' && amountMinorOf(transaction) > 0;
+}
+
+function matchesReportingCategory(transaction = {}, category) {
+    return category === 'Income' ? isIncome(transaction) : transaction.Category === category;
+}
+
 function isIncome(transaction = {}) {
     if (!isPosted(transaction)) return false;
     if (isInternalTransfer(transaction)) return false;
     const category = normalize(transaction.Category);
-    if (category) return category === 'income';
+    if (category) return category === 'income' || isInvestmentCashIncome(transaction);
     return ['income', 'credit'].includes(normalize(transaction.Type)) || transaction.AccountFlow === 'IN';
 }
 
@@ -100,4 +111,4 @@ function getSavingEffectMinor(transaction) {
     return 0;
 }
 
-module.exports = { isPosted, getSavingEffectMinor, parseInternalTransfer, toMinorUnits, amountMinorOf, isIncome, isExpense, isInternalTransfer };
+module.exports = { isInvestmentCashIncome, matchesReportingCategory, isPosted, getSavingEffectMinor, parseInternalTransfer, toMinorUnits, amountMinorOf, isIncome, isExpense, isInternalTransfer };

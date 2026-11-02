@@ -66,3 +66,16 @@ test('supports the new saving and investment labels', () => {
         Account: 'TFSA',
     }), -20000);
 });
+
+test('posted investment interest and cash dividends are income while principal movements and valuations are excluded',()=>{
+ const {isIncome,isExpense,matchesReportingCategory}=require('./transactionClassification');
+ const interest={AmountMinor:10135,Category:'Investment',Label:'Investment Interest',PortfolioAction:'INTEREST',AccountFlow:'IN',PostingStatus:'posted'};
+ for(const action of ['INTEREST','DIVIDEND']){
+  const tx={...interest,PortfolioAction:action};
+  assert.equal(isIncome(tx),true);assert.equal(isExpense(tx),false);assert.equal(matchesReportingCategory(tx,'Income'),true);
+ }
+ for(const fields of [{PortfolioAction:'SELL'},{PortfolioAction:'TRANSFER'},{PortfolioAction:'DEPOSIT'},{PortfolioAction:'CONTRIBUTION'},{PortfolioAction:'WITHDRAWAL'},{PortfolioAction:'DISTRIBUTION'},{AccountFlow:'NONE'},{AccountFlow:'OUT'},{AmountMinor:0},{PostingStatus:'pending'},{PostingStatus:'unposted'},{Label:'Internal Transfer'},{Category:'Internal'}]){
+  assert.equal(isIncome({...interest,...fields}),false,JSON.stringify(fields));
+ }
+ assert.equal(interest.Category,'Investment');
+});

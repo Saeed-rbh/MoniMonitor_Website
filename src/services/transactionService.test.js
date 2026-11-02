@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getAccountTransactions, buildAccountStatistics } from '../pages/SaveInvest/accountStatistics';
 import {
+  matchesReportingCategory,
   buildDashboardBootstrapData,
   getNetAmounts,
   getSavingEffect,
@@ -218,4 +219,18 @@ it('keeps authorization history visible while excluding it from all financial to
   expect(uniqueInternalTransfers(rows)).toHaveLength(0);
   const [account]=buildAccountStatistics([{id:9,currency:'CAD'}],grouped);
   expect(account.moneyInMinor).toBe(0);expect(account.moneyOutMinor).toBe(1000);
+});
+
+it('counts the November interest as income while retaining its investment record for the account',()=>{
+  const interest={id:101,Amount:101.35,AmountMinor:10135,Currency:'CAD',Category:'Investment',Label:'Investment Interest',PortfolioAction:'INTEREST',AccountFlow:'IN',PostingStatus:'posted',BalanceAccountId:21,PortfolioAccountId:21,Timestamp:'2026-11-01T12:00:00.000Z'};
+  const rows=[{id:1,Amount:32,Category:'Income',Timestamp:interest.Timestamp},{id:2,Amount:0.22,Category:'Income',Timestamp:interest.Timestamp},interest,
+    {...interest,id:102,Amount:1000,AmountMinor:100000,PortfolioAction:'SELL'},
+    {...interest,id:103,Amount:500,AmountMinor:50000,Category:'Internal',PortfolioAction:'TRANSFER'}];
+  const original=JSON.stringify(rows);
+  const grouped=groupTransactionsByMonth(rows),month=grouped['2026-11'];
+  expect(month.totalIncome).toBe(133.57);expect(month.netTotal).toBe(133.57);
+  expect(month.transactions.filter(t=>matchesReportingCategory(t,'Income')).map(t=>t.id)).toEqual([1,2,101]);
+  expect(isSaveInvestTransaction(interest)).toBe(false);
+  expect(getAccountTransactions({id:21,currency:'CAD'},grouped)).toContainEqual(interest);
+  expect(JSON.stringify(rows)).toBe(original);
 });

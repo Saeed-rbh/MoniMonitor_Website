@@ -39,6 +39,7 @@ const TransactionListItem = ({
   isSwiped,
   onClick,
   category,
+  accountFlow,
   label,
   type,
   isAddClicked,
@@ -48,7 +49,8 @@ const TransactionListItem = ({
   const ModifyLabel = getTransactionIcon(category, label);
   const displayReason = getTransactionDisplayReason(description, label);
   const isIncome = category === "Income" || type === "Income" || String(type || "").toLowerCase() === "credit";
-  const direction = category === "Internal" ? "neutral" : isIncome ? "in" : "out";
+  const direction = category === "Internal" || accountFlow === "NONE" ? "neutral"
+    : accountFlow === "IN" ? "in" : accountFlow === "OUT" ? "out" : isIncome ? "in" : "out";
 
   const [visibleButton, setVisibleButton] = useState("M");
   const [showLeftActions, setLeftShowActions] = useState(false);

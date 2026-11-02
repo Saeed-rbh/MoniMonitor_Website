@@ -215,6 +215,7 @@ const TransactionListMonthly = ({
                   time={transaction.Timestamp}
                   amount={transaction.Amount}
                   category={transaction.Category}
+                  accountFlow={transaction.AccountFlow}
                   label={transaction.Label}
                   isSwiped={
                     swipedIndex &&

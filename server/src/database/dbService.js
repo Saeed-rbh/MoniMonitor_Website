@@ -113,7 +113,14 @@ async function getAllTransactionsForUser(userId, filters = {}) {
     let query = 'SELECT * FROM transactions WHERE userId = ?';
     const params = [userId];
 
-    if (filters.category) { query += ' AND Category = ?'; params.push(filters.category); }
+    if (filters.category === 'Income') {
+        // Reporting income includes earned investment cash without changing its stored activity category.
+        query += ` AND PostingStatus='posted'
+            AND LOWER(TRIM(COALESCE(Label,'')))<>'internal transfer'
+            AND LOWER(LTRIM(COALESCE(Reason,''))) NOT LIKE 'internal transfer:%'
+            AND (Category='Income' OR (Category='Investment' AND AccountFlow='IN'
+                AND PortfolioAction IN ('INTEREST','DIVIDEND') AND AmountMinor>0))`;
+    } else if (filters.category) { query += ' AND Category = ?'; params.push(filters.category); }
     if (filters.label)    { query += ' AND Label = ?';    params.push(filters.label); }
     if (filters.account)  { query += ' AND Account = ?';  params.push(filters.account); }
     if (filters.from)     { query += ' AND Timestamp >= ?'; params.push(filters.from); }
@@ -1516,7 +1523,7 @@ async function getSummaryForUser(userId) {
     const db = await getDb();
     const [byMonth, byLabel] = await Promise.all([
         getStoredMonthlySummaries(db, userId),
-        db.all("SELECT Label, Category, Type, Reason, AccountFlow, AmountMinor, PostingStatus FROM transactions WHERE userId = ? AND COALESCE(Currency, 'CAD') = 'CAD'", [userId]),
+        db.all("SELECT Label, Category, Type, Reason, PortfolioAction, AccountFlow, AmountMinor, PostingStatus FROM transactions WHERE userId = ? AND COALESCE(Currency, 'CAD') = 'CAD'", [userId]),
     ]);
     const labels = new Map();
     for (const transaction of byLabel) {

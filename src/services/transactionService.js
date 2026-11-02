@@ -19,6 +19,9 @@ const monthsNames = [
   "Dec",
 ];
 
+export const isIncome = semantics.isIncome;
+export const matchesReportingCategory = semantics.matchesReportingCategory;
+
 export const isInternalTransfer = semantics.isInternalTransfer;
 
 export const getInternalTransferKey = (transaction) => {
@@ -37,7 +40,7 @@ export const getInternalTransferKey = (transaction) => {
 };
 
 export const getSavingEffect = (transaction) => semantics.getSavingEffectMinor(transaction) / 100;
-export const getSaveInvestActivity = (transaction) => !semantics.isPosted(transaction) ? 0 : transaction?.Category === 'Investment'
+export const getSaveInvestActivity = (transaction) => !semantics.isPosted(transaction) || semantics.isIncome(transaction) ? 0 : transaction?.Category === 'Investment'
   ? semantics.amountMinorOf(transaction) / 100 : Math.abs(getSavingEffect(transaction));
 
 export const isSaveInvestTransaction = (transaction) =>

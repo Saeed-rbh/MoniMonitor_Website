@@ -1,5 +1,17 @@
 const MIGRATIONS = [
     {
+        version: 20, name: 'report_earned_investment_cash_as_income',
+        async up(db) {
+            // Rebuild derived reports for retained history; never rewrite transactions or financial effects.
+            await db.exec(`INSERT INTO monthly_summary_dirty(userId,month,revision,changedAt)
+                SELECT userId,substr(Timestamp,1,7),1,CURRENT_TIMESTAMP FROM transactions
+                WHERE Category='Investment' AND PortfolioAction IN ('INTEREST','DIVIDEND')
+                AND AccountFlow='IN' AND AmountMinor>0 AND PostingStatus='posted'
+                GROUP BY userId,substr(Timestamp,1,7)
+                ON CONFLICT(userId,month) DO UPDATE SET revision=monthly_summary_dirty.revision+1,changedAt=excluded.changedAt`);
+        }
+    },
+    {
         version: 19, name: 'evidenced_ai_extraction_and_diagnosis',
         async up(db) {
             await db.exec(`CREATE TABLE ai_extractions (

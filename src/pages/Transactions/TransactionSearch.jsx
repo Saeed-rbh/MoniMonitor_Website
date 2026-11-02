@@ -1,3 +1,4 @@
+import { matchesReportingCategory, isIncome } from "../../services/transactionService";
 import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import DateRangeCalendar, { validCalendarDate } from "./DateRangeCalendar";
@@ -109,8 +110,8 @@ export default function TransactionSearch() {
         if ((startDate && day < startDate) || (endDate && day > endDate)) return false;
       }
       const matchesCategory = category === "All" || (category === "Save & invest"
-        ? ["Saving", "Save&Invest", "Investment"].includes(transaction.Category)
-        : transaction.Category === category);
+        ? ["Saving", "Save&Invest", "Investment"].includes(transaction.Category) && !isIncome(transaction)
+        : matchesReportingCategory(transaction, category));
       const text = [transaction.Reason, transaction.Label, transaction.Amount,
         transaction.BankName, transaction.Category, transaction.Type, transaction.Timestamp]
         .filter(value => value != null).join(" ").toLocaleLowerCase();

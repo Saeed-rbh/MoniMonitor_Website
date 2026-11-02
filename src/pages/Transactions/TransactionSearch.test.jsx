@@ -311,3 +311,15 @@ test("disables future dates but keeps past empty dates selectable", () => {
     expect(screen.getByRole("button", { name: "October 12, 2026", exact: true })).toBeEnabled();
   } finally { vi.useRealTimers(); }
 });
+
+test('Income search includes bank interest and cash dividends while excluding transfers and sale proceeds',()=>{
+  const base={Amount:101.35,Category:'Investment',Label:'Investment Interest',PortfolioAction:'INTEREST',AccountFlow:'IN',PostingStatus:'posted',Timestamp:'2026-10-01'};
+  testData.extra=[{...base,id:901,Reason:'Bank interest'},{...base,id:902,Reason:'Cash dividend',Label:'Dividends',PortfolioAction:'DIVIDEND'},
+    {...base,id:903,Reason:'Sale proceeds',PortfolioAction:'SELL'},{...base,id:904,Reason:'Moved between accounts',Category:'Internal',PortfolioAction:'TRANSFER'},
+    {...base,id:905,Reason:'Pending interest',PostingStatus:'pending'}];
+  render(<TransactionSearch />);
+  fireEvent.click(screen.getByRole('button',{name:'Income',exact:true}));
+  expect(screen.getByRole('button',{name:/Bank interest/})).toBeInTheDocument();
+  expect(screen.getByRole('button',{name:/Cash dividend/})).toBeInTheDocument();
+  for(const reason of ['Sale proceeds','Moved between accounts','Pending interest'])expect(screen.queryByRole('button',{name:new RegExp(reason)})).not.toBeInTheDocument();
+});
