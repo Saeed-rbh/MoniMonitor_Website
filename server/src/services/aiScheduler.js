@@ -10,13 +10,13 @@ function boundedInteger(value, fallback, minimum, maximum) {
 async function reserveDailyUsage(db, { day, inputBytes, requestLimit, inputLimit }) {
     return db.withTransaction(async () => {
         const usage = await db.get('SELECT requests, inputBytes FROM ai_usage_daily WHERE day = ?', [day]);
-        if ((usage?.requests || 0) >= requestLimit || (usage?.inputBytes || 0) + inputBytes > inputLimit) {
+        if (Number.isFinite(requestLimit) && requestLimit > 0 && (usage?.requests || 0) >= requestLimit ||
+            Number.isFinite(inputLimit) && inputLimit > 0 && (usage?.inputBytes || 0) + inputBytes > inputLimit) {
             throw new AIProcessingError('AI_DAILY_LIMIT');
         }
         // Charge every attempt before sending. Failed/aborted calls may still be billed by the provider.
         await db.run(`INSERT INTO ai_usage_daily(day, requests, inputBytes) VALUES (?, 1, ?)
             ON CONFLICT(day) DO UPDATE SET requests = requests + 1, inputBytes = ai_usage_daily.inputBytes + excluded.inputBytes`, [day, inputBytes]);
-        await db.run('DELETE FROM ai_usage_daily WHERE day < ?', [new Date(Date.parse(day) - 32 * 86400000).toISOString().slice(0, 10)]);
     });
 }
 

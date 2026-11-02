@@ -68,3 +68,17 @@ test('usage reservations are atomic, count failed attempts, and persist across s
         await assert.rejects(reserveDailyUsage(db, { ...usage, day: '2026-10-01', inputBytes: 51 }), { code: 'AI_DAILY_LIMIT' });
     } finally { await db.close(); }
 });
+
+test('zero daily caps allow continued usage while preserving counters and prior history', async()=>{
+ const db=await open({filename:':memory:',driver:sqlite3.Database});protectConnection(db);
+ try{
+  await db.exec('CREATE TABLE ai_usage_daily(day TEXT PRIMARY KEY,requests INTEGER,inputBytes INTEGER)');
+  await db.run("INSERT INTO ai_usage_daily VALUES('2021-01-01',7,1000)");
+  await db.run("INSERT INTO ai_usage_daily VALUES('2026-11-02',20000,200000000)");
+  for(let i=0;i<3;i++)await reserveDailyUsage(db,{day:'2026-11-02',inputBytes:5000,requestLimit:0,inputLimit:0});
+  assert.deepEqual(await db.get("SELECT requests,inputBytes FROM ai_usage_daily WHERE day='2026-11-02'"),{requests:20003,inputBytes:200015000});
+  assert.equal((await db.get("SELECT requests FROM ai_usage_daily WHERE day='2021-01-01'")).requests,7);
+  await assert.rejects(reserveDailyUsage(db,{day:'2026-11-02',inputBytes:1,requestLimit:10,inputLimit:0}),{code:'AI_DAILY_LIMIT'});
+  await assert.rejects(reserveDailyUsage(db,{day:'2026-11-02',inputBytes:1,requestLimit:0,inputLimit:1000}),{code:'AI_DAILY_LIMIT'});
+ }finally{await db.close();}
+});

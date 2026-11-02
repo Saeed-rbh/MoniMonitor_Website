@@ -79,3 +79,15 @@ model metadata before sending email content, rejects remote model aliases, and
 refuses HTTP redirects. API details: [Ollama structured output](https://docs.ollama.com/capabilities/structured-outputs),
 [local-only configuration](https://docs.ollama.com/faq#how-do-i-disable-ollamas-cloud-features),
 [Gemini structured output](https://ai.google.dev/gemini-api/docs/structured-output).
+
+## Explicit use of an existing metered API
+
+When the owner authorizes use of an existing Gemini API, `AI_PROVIDER=gemini`
+uses `AI_API_KEY` (or `GEMINI_API_KEY`) and the configured model directly.
+It does not claim free-tier status and never falls back to another provider.
+Set both `AI_DAILY_REQUEST_LIMIT=0` and `AI_DAILY_INPUT_BYTES=0` to remove the
+app's daily usage caps. Usage attempts/bytes are still recorded, and prior
+usage history is retained. Timeouts, bounded response size, source checks,
+queue backpressure and provider rate-limit handling remain operational controls.
+Protected diagnostics reports null for each uncapped daily limit. Provider
+billing and provider-enforced rate limits still apply.

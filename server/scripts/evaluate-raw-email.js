@@ -26,7 +26,12 @@ async function evaluate(corpus,snapshot,{model=false}={}){
    const examples=corpus.emails.filter(e=>{
     const v=verified.get(e.transactionId);return v && v.verifiedAt<before && String(e.transactionDate).slice(0,7)<month && e.transactionId!==email.transactionId;
    }).filter(e=>e.payload.rawBody.match(/^Subject:[^\r\n]*/im)?.[0]===raw.match(/^Subject:[^\r\n]*/im)?.[0]).slice(-3).map(e=>({source:e.payload.rawBody.slice(0,8000),expected:JSON.parse(verified.get(e.transactionId).factsJson)}));
-   result=await parseEmailWithGemini(raw,[],accounts,{examples,bypassCache:true});
+   try{result=await parseEmailWithGemini(raw,[],accounts,{examples,bypassCache:true});}
+   catch(error){
+    stats.providerFailures=(stats.providerFailures||0)+1;
+    report.rows.push({externalId:email.externalId,month,status:'provider_unavailable',code:/^AI_[A-Z_]+$/.test(error.code||'')?error.code:'PROVIDER_ERROR'});
+    stats.abstained++;continue;
+   }
   }
   if(!result||result.error){stats.abstained++;report.rows.push({externalId:email.externalId,month,status:'abstained'});continue;}
   result=normalizeEmailEvidence(result,raw,accounts);

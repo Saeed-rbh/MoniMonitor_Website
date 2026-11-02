@@ -17,8 +17,8 @@ const MODEL_NAME = process.env.AI_MODEL_NAME || process.env.GEMINI_MODEL || 'gem
 const { createAIScheduler, reserveDailyUsage, boundedInteger } = require('./aiScheduler');
 const { getDb } = require('../database/db');
 const MAX_RESPONSE_ATTEMPTS = 2;
-const requestLimit = boundedInteger(process.env.AI_DAILY_REQUEST_LIMIT, 500, 1, 10000);
-const inputLimit = boundedInteger(process.env.AI_DAILY_INPUT_BYTES, 8000000, 1000, 100000000);
+const requestLimit = boundedInteger(process.env.AI_DAILY_REQUEST_LIMIT, 500, 0, 10000);
+const inputLimit = boundedInteger(process.env.AI_DAILY_INPUT_BYTES, 8000000, 0, 100000000);
 const scheduler = createAIScheduler({
     generate: provider.generate,
     reserveUsage: async usage => reserveDailyUsage(await getDb(), { ...usage, requestLimit, inputLimit }),
@@ -194,6 +194,10 @@ Return an Evidence object with Amount, Currency, Account, ReferenceNumber, Times
 PortfolioAction, PortfolioSymbol, PortfolioQuantity, PortfolioPrice, PortfolioToSymbol, PortfolioToQuantity,
 AccountFlow, FromAccount and ToAccount. Each value is an EXACT contiguous quote from Email Text,
 maximum 500 characters, or null. Quotes must support the corresponding value, not just appear in the email.
+CRITICAL: Evidence.AccountFlow must quote the SOURCE WORDS describing movement, such as "was debited",
+"purchase", "received" or "Total cost". Do NOT put the output value "OUT", "IN" or "NONE" in the evidence
+unless those exact uppercase words actually appear in Email Text. Evidence.PortfolioAction similarly quotes
+source wording such as "Type: Fractional Buy", not the normalized enum "BUY".
 Unknown values MUST be null. Never quote the examples or supplied account list as email evidence.
 Account ids require a unique explicit reference or canonical account name in the source; otherwise null.
 For an internal transfer include BOTH account endpoint quotes, or an explicit credit card payment.
@@ -296,7 +300,7 @@ ${minimizedEmail}
         try {
             const retryInstruction = attempt === 1
                 ? ''
-                : '\nYour previous response could not be validated. Return every field with the exact types requested; use JSON null for unknown optional values.';
+                : `\nYour previous response failed validation${lastError?.code === 'AI_SOURCE_EVIDENCE' ? ': ' + lastError.message : ''}. Return exact source QUOTES in Evidence; never put normalized output enums in Evidence. Use JSON null for unknown optional values.`;
             const response = await generateContentWithQuotaProtection({
                 model: MODEL_NAME,
                 contents: `${prompt}${retryInstruction}`,
@@ -311,7 +315,7 @@ ${minimizedEmail}
             return require('./extractionEvidence').validateEvidence(parsed,minimizedEmail,investmentAccounts);
         } catch (err) {
             lastError = err;
-            if (err?.code?.startsWith('AI_')) break;
+            if (err?.code?.startsWith('AI_') && err.code !== 'AI_SOURCE_EVIDENCE') break;
             if (attempt < MAX_RESPONSE_ATTEMPTS) {
                 console.warn(
                     `AI response could not be parsed or validated. Retrying ` +
@@ -449,7 +453,7 @@ ${JSON.stringify(richData)}
 
 module.exports = {
     generateContentWithQuotaProtection,
-    providerStatus: () => ({ enabled:provider.enabled, identity:provider.identity }),
+    providerStatus: () => ({ enabled:provider.enabled, identity:provider.identity, dailyRequestLimit:requestLimit || null, dailyInputByteLimit:inputLimit || null }),
     parseEmailWithGemini,
     rankMonthlyInsightCandidates,
     synthesizeMonthlyInsightsWithGemini,

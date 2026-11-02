@@ -3,10 +3,18 @@ const { AIProcessingError } = require('./aiScheduler');
 function createProvider(env = process.env, { fetchImpl = global.fetch, gemini } = {}) {
     const provider = env.AI_PROVIDER || 'local';
     const model = provider === 'local' ? env.OLLAMA_MODEL : env.AI_MODEL_NAME || env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
-    const enabled = provider === 'local' ? Boolean(model) : provider === 'gemini-free' && env.AI_FREE_PROJECT_CONFIRMED === 'true' && Boolean(gemini);
+    const enabled = provider === 'local' ? Boolean(model) : (provider === 'gemini' || provider === 'gemini-free' && env.AI_FREE_PROJECT_CONFIRMED === 'true') && Boolean(gemini);
     async function generate(request) {
         if (!enabled) throw new AIProcessingError('AI_FREE_PROVIDER_NOT_CONFIGURED');
-        if (provider === 'gemini-free') return gemini.models.generateContent({ ...request, model });
+        if (['gemini','gemini-free'].includes(provider)) {
+            try{return await gemini.models.generateContent({ ...request, model });}
+            catch(error){
+                if([401,403,408,429].includes(error?.status)||error?.status>=500){
+                    const unavailable=new AIProcessingError('AI_PROVIDER_UNAVAILABLE');unavailable.retryable=true;unavailable.status=error.status;throw unavailable;
+                }
+                throw error;
+            }
+        }
         const endpoint = new URL(env.OLLAMA_URL || 'http://127.0.0.1:11434');
         if (!['127.0.0.1', 'localhost', '[::1]'].includes(endpoint.hostname) || endpoint.protocol !== 'http:' || endpoint.username || endpoint.password) {
             throw new AIProcessingError('AI_LOCAL_ENDPOINT_REQUIRED');

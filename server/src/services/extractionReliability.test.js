@@ -59,3 +59,23 @@ test('local aliases to cloud models are rejected before financial content is sen
  await assert.rejects(provider.generate({contents:'private financial email'}),{code:'AI_LOCAL_MODEL_REQUIRED'});
  assert.equal(generation,0);
 });
+test('explicit metered Gemini uses the supplied client without free-project attestation or provider fallback',async()=>{
+ let calls=0;
+ const provider=createProvider({AI_PROVIDER:'gemini',GEMINI_MODEL:'configured-model'},{gemini:{models:{generateContent:async request=>{calls++;assert.equal(request.model,'configured-model');return{text:'{}'};}}},fetchImpl:()=>assert.fail('No alternative provider permitted')});
+ assert.equal(provider.enabled,true);
+ assert.equal((await provider.generate({contents:'synthetic test'})).text,'{}');assert.equal(calls,1);
+});
+test('literal credited/deposited wording proves incoming direction while output enum text does not',()=>{
+ for(const wording of ['was credited','was deposited']){
+  const source='Amount: $10.00 CAD\n'+wording;
+  const tx={Amount:'10.00',Currency:'CAD',Category:'Income',AccountFlow:'IN',Evidence:{Amount:'$10.00 CAD',Currency:'CAD',AccountFlow:wording}};
+  assert.equal(validateEvidence(tx,source).AccountFlow,'IN');
+  assert.throws(()=>validateEvidence({...tx,Evidence:{...tx.Evidence,AccountFlow:'IN'}},source));
+ }
+});
+test('Gemini quota and credential outages remain eligible for durable retry',async()=>{
+ for(const status of [401,403,408,429,503]){
+  const provider=createProvider({AI_PROVIDER:'gemini'},{gemini:{models:{generateContent:async()=>{throw{status};}}}});
+  await assert.rejects(provider.generate({}),{code:'AI_PROVIDER_UNAVAILABLE',retryable:true,status});
+ }
+});
