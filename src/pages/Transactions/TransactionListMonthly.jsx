@@ -1,4 +1,5 @@
 import { isInvestTransaction } from "../../services/transactionService";
+import { getTransactionDisplayReason, isETransferTransaction } from "../../utils/transactionDisplay";
 import React, { useMemo, useCallback, useEffect, useRef } from "react";
 import TransactionListItem from "./TransactionListItem";
 import { parseTransactionCalendarDate } from "../../utils/transactionDate";
@@ -212,6 +213,8 @@ const TransactionListMonthly = ({
                   index={currentIndex}
                   icon={transaction.icon}
                   description={transaction.Reason}
+                  displayTitle={getTransactionDisplayReason(transaction.Reason,transaction.Label,transaction)}
+                  counterparty={isETransferTransaction(transaction)}
                   type={transaction.Type}
                   time={transaction.Timestamp}
                   amount={transaction.Amount}

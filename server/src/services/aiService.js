@@ -64,6 +64,7 @@ const ExpenseSchema = z.object({
     Category: z.enum(['Expense', 'Income', 'Internal', 'Investment', 'Saving']),
     Label: z.enum(ALL_LABELS),
     Reason: z.string(),
+    CounterpartyName: z.string().trim().min(1).max(160).nullable().optional(),
     Timestamp: z.string().nullable().optional(),
     CashDate: z.string().nullable().optional(),
     Evidence: z.record(z.string(), z.string().nullable()).optional(),
@@ -114,44 +115,20 @@ function minimizeEmailForAI(emailBody) {
 }
 
 function formatETransferReason(reason, label, type) {
-    if (!reason) return reason;
-    const cleanReason = String(reason).trim();
-    const isETransfer =
-        (label && /personal transfers/i.test(label)) ||
-        (type && /e-transfer/i.test(type)) ||
-        /interac|e-transfer/i.test(cleanReason);
-
-    if (!isETransfer) return cleanReason;
-
-    const alreadyFormatted = cleanReason.match(/^e-transfer\s*-\s*(.+)$/i);
-    if (alreadyFormatted) {
-        return `E-Transfer - ${alreadyFormatted[1].trim()}`;
-    }
-
-    let name = '';
-    const match = cleanReason.match(/(?:from|to|sent to|received from|into [^from]+ from)\s+([A-Za-z0-9\s\.\'\-]+?)(?:\s*\[|\s*\(|\s*\.|$)/i);
-    if (match && match[1]) {
-        name = match[1].trim();
-        if (/sender unavailable|unknown/i.test(name)) name = '';
-    } else {
-        const directMatch = cleanReason.match(/(?:interac\s+)?e-transfer\s*[:-]\s*([A-Za-z0-9\s\.\'\-]+)/i);
-        if (directMatch && directMatch[1]) {
-            name = directMatch[1].trim();
-            if (/sender unavailable|unknown/i.test(name)) name = '';
-        }
-    }
-
-    if (name) {
-        return `E-Transfer - ${name}`;
-    }
-    return 'E-Transfer';
+    if(!reason)return reason;
+    const names=require('../../../shared/transactionNames.cjs');
+    const transaction={Reason:reason,Label:label,Type:type};
+    if(!names.isETransfer(transaction))return String(reason).trim();
+    const name=names.counterpartyFromReason(reason,transaction);
+    return name?`E-Transfer - ${name}`:'E-Transfer';
 }
 
 function parseAIResponseText(responseText) {
     const parsedJson = JSON.parse(responseText);
     if (parsedJson.error) return ErrorSchema.parse(parsedJson);
     const validated = ExpenseSchema.parse(parsedJson);
-    validated.Reason = formatETransferReason(validated.Reason, validated.Label, validated.Type);
+    if(validated.CounterpartyName)validated.CounterpartyName=require('../../../shared/transactionNames.cjs').normalizeName(validated.CounterpartyName);
+    validated.Reason = formatETransferReason(validated.CounterpartyName || validated.Reason, validated.Label, validated.Type);
     return validated;
 }
 
@@ -192,7 +169,7 @@ Return ONLY a valid JSON object with NO markdown or backticks.
 Evidence contract:
 Return an Evidence object with Amount, Currency, Account, ReferenceNumber, Timestamp, CashDate,
 PortfolioAction, PortfolioSymbol, PortfolioQuantity, PortfolioPrice, PortfolioToSymbol, PortfolioToQuantity,
-AccountFlow, FromAccount and ToAccount. Each value is an EXACT contiguous quote from Email Text,
+AccountFlow, FromAccount, ToAccount and CounterpartyName. Each value is an EXACT contiguous quote from Email Text,
 maximum 500 characters, or null. Quotes must support the corresponding value, not just appear in the email.
 CRITICAL: Evidence.AccountFlow must quote the SOURCE WORDS describing movement, such as "was debited",
 "purchase", "received" or "Total cost". Do NOT put the output value "OUT", "IN" or "NONE" in the evidence
@@ -240,7 +217,8 @@ Fields to extract:
   - Bank fees, NSF, or interest charges → "Financial Charges"
 
 - "Reason": Short merchant name or description (e.g. "Tim Hortons").
-  - FOR ALL e-Transfers (both sent and received, from or to): MUST ALWAYS be formatted as "E-Transfer - [Name]" (e.g. "E-Transfer - BEHNAM NAYEBI", "E-Transfer - John Doe"). If the person/merchant name is unavailable, use "E-Transfer".
+  - For e-Transfers extract "CounterpartyName": the full sender name for an incoming transfer or full recipient name for an outgoing transfer. Use the actual person or business name exactly supported by the email, without "E-Transfer", Interac, amounts, status phrases or reference numbers. Never use the forwarding mailbox owner as the counterparty. Do not expand initials or invent missing names. Return null if unavailable. Evidence.CounterpartyName must be an exact source quote supporting the name.
+  - For e-Transfers, Reason should be the same counterparty name alone when known, otherwise "E-Transfer". Other transaction reasons keep their actual merchant or activity description.
 - "Timestamp": Transaction date and time in ISO 8601 (e.g. "2024-10-01T16:09:00.000Z") ONLY if explicitly stated in the email body; otherwise null. If the email gives only a calendar date without a time, return null—never invent a midnight timestamp.
 - "Type": Payment method (e.g. "Credit Card", "Checking Account", "e-Transfer", "Savings Account").
 - "Account": Masked account/card number if shown (e.g. "************2379"). Return null if not found.
@@ -311,6 +289,7 @@ ${minimizedEmail}
             if(parsed.error && /^From:[^\n]*(?:wealthsimple\.com|alerts\.rbc\.com|interac\.ca)/im.test(String(emailBody))) {
                 throw Object.assign(new Error('A financial sender cannot be discarded by AI alone'), {code:'AI_UNCONFIRMED_REJECTION'});
             }
+            if(require('../../../shared/transactionNames.cjs').isETransfer(parsed) && !parsed.CounterpartyName)parsed.Reason='E-Transfer';
             parsed.ExtractionVersion = require('./extractionEvidence').VERSION;
             return require('./extractionEvidence').validateEvidence(parsed,minimizedEmail,investmentAccounts);
         } catch (err) {

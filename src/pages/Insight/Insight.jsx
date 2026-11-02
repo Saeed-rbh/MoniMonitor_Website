@@ -1396,7 +1396,7 @@ const Insight = () => {
                             >
                                 <div className="Insight_AnomalyItemLeft">
                                     <span className="Insight_AnomalyReason">
-                                        {getTransactionDisplayReason(t.Reason, t.Label)}
+                                        {getTransactionDisplayReason(t.Reason, t.Label, t)}
                                     </span>
                                     <div className="Insight_AnomalyMeta">
                                         {t.Label && <span className="Insight_AnomalyTag label">{t.Label}</span>}

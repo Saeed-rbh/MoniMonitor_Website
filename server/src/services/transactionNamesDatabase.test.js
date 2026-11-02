@@ -1,0 +1,38 @@
+const test=require('node:test'),assert=require('node:assert/strict');
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'moni-counterparty-'));
+process.env.MONIMONITOR_DB_PATH=path.join(directory,'test.sqlite');
+process.env.EMAIL_SOURCE_ENCRYPTION_KEY=Buffer.alloc(32,5).toString('base64');
+const service=require('../database/dbService'),{enrichCounterpartyNames}=require('./transactionNames');
+const names=require('../../../shared/transactionNames.cjs');
+let db;const user='name-owner';
+test.before(async()=>{db=await service.getDb();await service.createUser(user,user,'unused');await service.createUser('other-owner','other-owner','unused');});
+test.after(async()=>{await db.close();fs.rmSync(directory,{recursive:true,force:true});});
+test('backfills full names from exact retained sources and matching spelling, without changing bank history or cash',async()=>{
+ const base={userId:user,Amount:42,Currency:'CAD',Category:'Income',Label:'Personal Transfers Received',Type:'e-Transfer',AccountFlow:'IN',Timestamp:'2026-10-01'};
+ const a=await service.addTransaction({...base,Reason:'MARATAYLOR - INTERAC e-Transfer®'});
+ await service.addTransaction({...base,Reason:'E-Transfer - Mara Taylor'});
+ const outgoing=await service.addTransaction({...base,Category:'Expense',Label:'Personal Transfers',AccountFlow:'OUT',Reason:'E-Transfer'});
+ await service.upsertTransactionSource({userId:user,transactionId:outgoing,provider:'email',externalId:'full-name-email',rawPayload:{rawBody:"From: Interac <bank@example.invalid>\nTo: Forwarding Owner <owner@example.invalid>\nSubject: Fw: Interac e-Transfer: Élodie D’Angelo has accepted your transfer of $42.00\n\nBank confirmation"}});
+ const other=await service.addTransaction({...base,userId:'other-owner',Reason:'E-Transfer - Private Owner'});
+ const before=await db.all('SELECT id,userId,AmountMinor,Currency,Category,Reason,Timestamp,AccountFlow,PostingStatus FROM transactions ORDER BY id');
+ const sources=await db.all('SELECT provider,externalId,transactionId FROM transaction_sources ORDER BY provider,externalId');
+ const first=await enrichCounterpartyNames(user);assert.ok(first.updated>=2);
+ assert.equal((await service.getTransactionById(a,user)).DisplayReason,'Mara Taylor');
+ assert.equal((await service.getTransactionById(outgoing,user)).CounterpartyName,'Élodie D’Angelo');
+ assert.equal((await service.getTransactionById(outgoing,user)).DisplayReason,'Élodie D’Angelo');
+ const audits=(await db.get("SELECT COUNT(*) n FROM agent_audit_log WHERE action='counterparty_display_name'")).n;
+ assert.equal((await enrichCounterpartyNames(user)).updated,0);
+ assert.equal((await db.get("SELECT COUNT(*) n FROM agent_audit_log WHERE action='counterparty_display_name'")).n,audits);
+ assert.equal((await service.getTransactionById(other,'other-owner')).CounterpartyName,'Private Owner');
+ assert.deepEqual(await db.all('SELECT id,userId,AmountMinor,Currency,Category,Reason,Timestamp,AccountFlow,PostingStatus FROM transactions ORDER BY id'),before);
+ assert.deepEqual(await db.all('SELECT provider,externalId,transactionId FROM transaction_sources ORDER BY provider,externalId'),sources);
+ assert.equal((await db.get('SELECT COUNT(*) n FROM account_balance_events')).n,0);
+});
+test('extracts the actual transfer role and never uses forwarding headers or invents a missing full name',()=>{
+ const body='From: Forwarding Owner <owner@example.invalid>\nSubject: Interac e-Transfer: Funds deposited\n\nFrom: Jordan Winters\nAmount: $42.00';
+ assert.equal(names.counterpartyFromEmail(body,{AccountFlow:'IN'}).name,'Jordan Winters');
+ assert.equal(names.counterpartyFromEmail('From: Owner <owner@example.invalid>\nSubject: Interac e-Transfer: Funds deposited\n\nNo person supplied',{AccountFlow:'IN'}),null);
+ assert.equal(names.counterpartyFromReason('E-Transfer - J. Winters',{Type:'e-Transfer'}),'J. Winters');
+ assert.equal(names.counterpartyFromReason('E-TRANSFER SENT JORDAN WINTERS',{Type:'e-Transfer'}),'Jordan Winters');
+});

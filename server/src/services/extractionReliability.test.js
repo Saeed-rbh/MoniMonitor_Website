@@ -79,3 +79,9 @@ test('Gemini quota and credential outages remain eligible for durable retry',asy
   await assert.rejects(provider.generate({}),{code:'AI_PROVIDER_UNAVAILABLE',retryable:true,status});
  }
 });
+test('AI counterparty names require literal source evidence and cannot expand initials into invented names',()=>{
+ const text='From: Bank\nInterac e-Transfer received from J. Winters\nAmount: $10.00 CAD';
+ const tx={Amount:'10.00',Currency:'CAD',Category:'Income',Label:'Personal Transfers Received',Type:'e-Transfer',AccountFlow:'IN',CounterpartyName:'J. Winters',Evidence:{Amount:'$10.00 CAD',Currency:'CAD',AccountFlow:'received from',CounterpartyName:'J. Winters'}};
+ assert.equal(validateEvidence(tx,text).CounterpartyName,'J. Winters');
+ assert.throws(()=>validateEvidence({...tx,CounterpartyName:'Jordan Winters'},text),{code:'AI_SOURCE_EVIDENCE'});
+});

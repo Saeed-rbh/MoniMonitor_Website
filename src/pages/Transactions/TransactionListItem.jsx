@@ -35,6 +35,8 @@ const formatTransactionDate = (value) => {
 
 const TransactionListItem = ({
   description,
+  displayTitle,
+  counterparty = false,
   time,
   amount,
   isSwiped,
@@ -49,7 +51,7 @@ const TransactionListItem = ({
   setShowTransaction,
 }) => {
   const ModifyLabel = getTransactionIcon(category, label);
-  const displayReason = getTransactionDisplayReason(description, label);
+  const displayReason = displayTitle || getTransactionDisplayReason(description, label);
   const isIncome = category === "Income" || type === "Income" || String(type || "").toLowerCase() === "credit";
   const direction = category === "Internal" || accountFlow === "NONE" ? "neutral"
     : accountFlow === "IN" ? "in" : accountFlow === "OUT" ? "out" : isIncome ? "in" : "out";
@@ -209,7 +211,7 @@ const TransactionListItem = ({
           tabIndex={0}
           onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onClick?.(); } }}
           icon={ModifyLabel} reason={displayReason} date={formatTransactionDate(time)}
-          direction={direction} investment={investment} amount={formatMoney(amount)}
+          direction={direction} investment={investment} counterparty={counterparty} amount={formatMoney(amount)}
           {...bind()}
           className="TransactionList_ItemRow"
           style={swipeStyle}

@@ -1,5 +1,9 @@
 const MIGRATIONS = [
     {
+        version: 22, name: 'e_transfer_counterparty_display_names',
+        async up(db) { await db.exec('ALTER TABLE transactions ADD COLUMN CounterpartyName TEXT'); }
+    },
+    {
         version: 21, name: 'separate_investment_activity_from_cash_savings',
         async up(db) {
             await db.exec(`ALTER TABLE monthly_transaction_summaries ADD COLUMN investmentActivityMinor INTEGER NOT NULL DEFAULT 0;

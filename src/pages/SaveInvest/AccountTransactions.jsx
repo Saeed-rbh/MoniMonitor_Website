@@ -6,7 +6,7 @@ import { getTransactionIcon } from "../../components/Categories";
 import MoreOpen from "../../components/MoreOpen/MoreOpen";
 import { useTransactions } from "../../context/TransactionContext";
 import { getPortfolioAPI } from "../../services/apiService";
-import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
+import { getTransactionDisplayReason, isETransferTransaction } from "../../utils/transactionDisplay";
 import { getAccountTransactionFlow, getAccountTransactions } from "./accountStatistics";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import "./SaveInvestInsights.css";
@@ -117,7 +117,7 @@ const AccountTransactions = () => {
               <div className="AccountTransactions_List">
                 {visibleTransactions.map((transaction, index) => {
                   const direction = transactionDirection(transaction);
-                  const reason = getTransactionDisplayReason(transaction.Reason, transaction.Label);
+                  const reason = getTransactionDisplayReason(transaction.Reason, transaction.Label, transaction);
                   return (
                     <TransactionRow
               key={transaction.id ?? `${transaction.Timestamp}-${index}`}
@@ -125,7 +125,7 @@ const AccountTransactions = () => {
               aria-haspopup="dialog"
               icon={getTransactionIcon(transaction.Category, transaction.Label)}
               reason={reason} date={transactionDate(transaction.Timestamp)}
-              direction={direction} investment={isInvestTransaction(transaction)} amount={money(transaction, account.currency)}
+              counterparty={isETransferTransaction(transaction)} direction={direction} investment={isInvestTransaction(transaction)} amount={money(transaction, account.currency)}
             />
                   );
                 })}

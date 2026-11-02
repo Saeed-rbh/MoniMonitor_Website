@@ -112,3 +112,9 @@
 .TransactionCard.AccountTransactions_Row:hover { background: rgba(255, 255, 255, .11); }
 .TransactionCard.AccountTransactions_Row:focus-visible { outline: 2px solid var(--Bc-1); outline-offset: 2px; }
 .TransactionCard mark { color: var(--Ac-1); background: var(--Bc-3); border-radius: 3px; }
+
+.TransactionCard--counterparty .AccountTransactions_Reason strong {
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+}

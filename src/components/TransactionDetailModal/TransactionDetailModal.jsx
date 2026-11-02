@@ -253,7 +253,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
 
   const direction = getTxDirection(currentTx);
   const investment = isInvestTransaction(currentTx);
-  const reason = getTransactionDisplayReason(currentTx.Reason, selectedLabel || currentTx.Label);
+  const reason = getTransactionDisplayReason(currentTx.Reason, selectedLabel || currentTx.Label, currentTx);
   const category = currentTx.Category || "Expense";
   const displayLabel = selectedLabel || currentTx.Label || category;
   const account = currentTx.Account || currentTx.BankName || currentTx.AccountName || "Personal Account";

@@ -52,7 +52,7 @@ function withDisplayAmount(transaction) {
     const amountMinor = Number.isSafeInteger(transaction.AmountMinor)
         ? transaction.AmountMinor
         : toMinorUnits(transaction.Amount);
-    return { ...transaction, AmountMinor: amountMinor, Amount: amountMinor / 100 };
+    return { ...transaction, AmountMinor: amountMinor, Amount: amountMinor / 100, DisplayReason: require('../../../shared/transactionNames.cjs').displayReason(transaction) };
 }
 
 function withDisplayAmounts(transactions) {
@@ -175,8 +175,8 @@ async function addTransaction(transaction) {
              Type, Account, BankName, ReferenceNumber, Frequency, TelegramMessageId, PortfolioAction,
              PortfolioAccountId, PortfolioConfidence, PortfolioSymbol, PortfolioQuantity, PortfolioPrice,
              BalanceAccountConfidence, PortfolioAccountNumber, PortfolioToSymbol, PortfolioToQuantity, AccountFlow,
-             SourceEmailKey, PostingStatus, CashDate)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             SourceEmailKey, PostingStatus, CashDate, CounterpartyName)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
             transaction.userId,
             (Number.isSafeInteger(transaction.AmountMinor) ? transaction.AmountMinor : toMinorUnits(transaction.Amount)) / 100,
@@ -207,6 +207,7 @@ async function addTransaction(transaction) {
             transaction.SourceEmailKey || null,
             transaction.PostingStatus || 'posted',
             transaction.CashDate || null,
+            transaction.CounterpartyName || require('../../../shared/transactionNames.cjs').counterpartyFromReason(transaction.Reason,transaction),
         ]
     );
     if (transaction.BalanceAccountId !== undefined && transaction.BalanceAccountId !== null) {

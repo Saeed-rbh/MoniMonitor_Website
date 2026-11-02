@@ -1,18 +1,18 @@
 const { ALL_LABELS } = require('./transactionCategories');
-const VERSION = 'source-evidence-v2';
+const VERSION = 'source-evidence-v3';
 const text = { type: ['string', 'null'] };
 const numeric = { type: ['number', 'null'] };
 const fields = {
     Currency: text, Amount: { type:'string', pattern:'^[0-9]+(?:\\.[0-9]+)?$' },
     Category: { type:'string', enum:['Expense','Income','Internal','Investment','Saving'] },
-    Label: { type:'string', enum:ALL_LABELS }, Reason: { type:'string' }, Timestamp:text, CashDate:text,
+    Label: { type:'string', enum:ALL_LABELS }, Reason: { type:'string' }, CounterpartyName:{...text,description:'For e-Transfers only: full sender (incoming) or recipient (outgoing) person/business name supported by the email; no transaction prefix or references, no guessed expansion of initials. Otherwise null.'}, Timestamp:text, CashDate:text,
     Type:text, Account:text, BankName:text, ReferenceNumber:text,
     BalanceAccountId:numeric, BalanceAccountConfidence:text, PortfolioAction:text, PortfolioAccountId:numeric, PortfolioConfidence:text,
     PortfolioSymbol:text, PortfolioQuantity:numeric,
     PortfolioPrice:{...numeric,description:'Execution unit price stated in a filled BUY or SELL order only. Return null for TRANSFER, DIVIDEND and every non-trade action. Never calculate a unit price from asset valuation or quantity.'}, PortfolioAccountNumber:text,
     PortfolioToSymbol:text, PortfolioToQuantity:numeric, AccountFlow:{type:['string','null'],enum:['IN','OUT','NONE',null]},
 };
-const EVIDENCE_FIELDS = ['Amount','Currency','Account','ReferenceNumber','Timestamp','CashDate','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','PortfolioToSymbol','PortfolioToQuantity','AccountFlow','FromAccount','ToAccount'];
+const EVIDENCE_FIELDS = ['CounterpartyName','Amount','Currency','Account','ReferenceNumber','Timestamp','CashDate','PortfolioAction','PortfolioSymbol','PortfolioQuantity','PortfolioPrice','PortfolioToSymbol','PortfolioToQuantity','AccountFlow','FromAccount','ToAccount'];
 const evidenceDescription={
     AccountFlow:'Exact SOURCE WORDS establishing direction, e.g. "was debited", "purchase", "received" or "Total cost". Never the output enum IN, OUT or NONE unless those exact words occur in the email.',
     PortfolioAction:'Exact source wording establishing the action, e.g. "Type: Fractional Buy". Preserve the source capitalization; do not replace the wording with the normalized action.',
@@ -35,6 +35,11 @@ function validateEvidence(transaction, body, accounts = []) {
     if (!evidence || !/^\d+(?:\.\d+)?$/.test(transaction.Amount) || !Number.isFinite(Number(transaction.Amount)) || Number(transaction.Amount)<0) fail('Amount');
     for (const [field,quote] of Object.entries(evidence)) {
         if (!EVIDENCE_FIELDS.includes(field) || quote!==null && (typeof quote!=='string' || !quote.trim() || quote.length>500 || !body.includes(quote))) fail(field);
+    }
+    if(transaction.CounterpartyName){
+        const names=require('../../../shared/transactionNames.cjs');
+        if(!evidence.CounterpartyName || !names.nameKey(evidence.CounterpartyName).includes(names.nameKey(transaction.CounterpartyName)) ||
+            !names.isETransfer(transaction) || !names.normalizeName(transaction.CounterpartyName))fail('CounterpartyName');
     }
     for (const field of ['Amount','PortfolioQuantity','PortfolioPrice','PortfolioToQuantity']) {
         if (transaction[field]!=null && (!evidence[field] || !numbers(evidence[field]).some(n=>Math.abs(n-Number(transaction[field]))<1e-10))) fail(field);

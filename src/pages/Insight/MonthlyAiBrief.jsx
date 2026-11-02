@@ -293,7 +293,7 @@ const MonthlyAiBrief = ({ month, transactions = [], allTransactions = null }) =>
       <div className="AiEvidence_List">
         {evidenceTransactions.map((transaction, index) => {
           const direction = getTxDirection(transaction);
-          const reason = getTransactionDisplayReason(transaction.Reason, transaction.Label);
+          const reason = getTransactionDisplayReason(transaction.Reason, transaction.Label, transaction);
           const txAmtMinor = Number.isFinite(Number(transaction.AmountMinor))
             ? Number(transaction.AmountMinor)
             : Math.round(Number(transaction.Amount || 0) * 100);

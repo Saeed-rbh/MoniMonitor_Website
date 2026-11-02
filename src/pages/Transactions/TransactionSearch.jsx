@@ -8,7 +8,7 @@ import { Search, X, CalendarDays, CalendarCheck, CalendarRange, History, ArrowDo
 import { useTransactions } from "../../context/TransactionContext";
 import TransactionDetailModal from "../../components/TransactionDetailModal/TransactionDetailModal";
 import { getTransactionIcon } from "../../components/Categories";
-import { getTransactionDisplayReason } from "../../utils/transactionDisplay";
+import { getTransactionDisplayReason, isETransferTransaction } from "../../utils/transactionDisplay";
 import { parseTransactionDate, parseTransactionCalendarDate, isDateOnlyTransactionTimestamp } from "../../utils/transactionDate";
 import "../../components/TransactionRow.css";
 import "./TransactionSearch.css";
@@ -113,7 +113,7 @@ export default function TransactionSearch() {
       const matchesCategory = category === "All" || (category === "Invest"
         ? isInvestTransaction(transaction)
         : matchesReportingCategory(transaction, category));
-      const text = [transaction.Reason, transaction.Label, transaction.Amount,
+      const text = [getTransactionDisplayReason(transaction.Reason,transaction.Label,transaction), transaction.Reason, transaction.Label, transaction.Amount,
         transaction.BankName, transaction.Category, transaction.Type, transaction.Timestamp]
         .filter(value => value != null).join(" ").toLocaleLowerCase();
       return matchesCategory && terms.every(term => text.includes(term));
@@ -218,8 +218,8 @@ export default function TransactionSearch() {
             <TransactionRow className="transaction-search-result"
               onClick={() => setViewingTransaction(transaction)} aria-haspopup="dialog"
               icon={getTransactionIcon(transaction.Category, transaction.Label)}
-              reason={highlight(getTransactionDisplayReason(transaction.Reason, transaction.Label), query)}
-              date={transactionDate(transaction.Timestamp)} direction={direction} investment={isInvestTransaction(transaction)} amount={money(transaction)}
+              reason={highlight(getTransactionDisplayReason(transaction.Reason, transaction.Label, transaction), query)}
+              date={transactionDate(transaction.Timestamp)} counterparty={isETransferTransaction(transaction)} direction={direction} investment={isInvestTransaction(transaction)} amount={money(transaction)}
             />
             </Fragment>
           );

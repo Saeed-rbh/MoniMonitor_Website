@@ -1,21 +1,6 @@
-export const getTransactionDisplayReason = (reason, label) => {
-  const cleanReason = String(reason || "").trim();
-  const cleanLabel = String(label || "").trim();
+import names from '../../shared/transactionNames.cjs';
 
-  if (!cleanReason) return "No reason provided";
-  if (!cleanLabel) return cleanReason;
+export const getTransactionDisplayReason = (reason, label, transaction = {}) =>
+  names.displayReason({ ...transaction, Reason: reason, Label: label });
 
-  const separators = [" - ", " – ", " — ", ": "];
-  const lowerReason = cleanReason.toLocaleLowerCase();
-  const lowerLabel = cleanLabel.toLocaleLowerCase();
-
-  for (const separator of separators) {
-    const prefix = `${lowerLabel}${separator}`;
-    if (lowerReason.startsWith(prefix)) {
-      const remainder = cleanReason.slice(cleanLabel.length + separator.length).trim();
-      return remainder || cleanReason;
-    }
-  }
-
-  return cleanReason;
-};
+export const isETransferTransaction = names.isETransfer;
