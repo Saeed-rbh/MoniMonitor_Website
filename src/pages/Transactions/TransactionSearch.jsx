@@ -14,6 +14,8 @@ import "./TransactionSearch.css";
 const categories = ["All", "Expense", "Income", "Save & invest"];
 const categoryIcons = { All: Layers, Expense: ArrowUpRight, Income: ArrowDownLeft, "Save & invest": Landmark };
 const shortDate = value => parseTransactionCalendarDate(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+const compactRange = range => range.start === range.end ? shortDate(range.start)
+  : `${shortDate(range.start)}–${range.start.slice(0, 7) === range.end.slice(0, 7) ? Number(range.end.slice(-2)) : shortDate(range.end)}`;
 const pageSize = 30;
 const savedSearches = new Map();
 const dateInputValue = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -183,13 +185,12 @@ export default function TransactionSearch() {
             </div>
             <div className="transaction-date-shortcuts" role="group" aria-label="Quick date ranges">
               {quickDateRanges().map(range => (
-                <button key={range.label} type="button"
+                <button key={range.label} type="button" aria-label={range.label} title={range.label}
                   aria-pressed={startDate === range.start && endDate === range.end}
                   onClick={() => { setStartDate(range.start); setEndDate(range.end); setLimit(pageSize); setDatesOpen(false); }}>
-                  <span className="transaction-date-shortcut-top"><CalendarDays size={17} aria-hidden="true" /><span>{range.label}</span>
+                  <span className="transaction-date-shortcut-top"><span>{compactRange(range)}</span>
                     <Check className="transaction-date-shortcut-check" size={16} aria-hidden="true" />
                   </span>
-                  <span className="transaction-date-shortcut-caption" aria-hidden="true">{shortDate(range.start)}{range.start !== range.end ? ` – ${shortDate(range.end)}` : ""}</span>
                 </button>
               ))}
             </div>
