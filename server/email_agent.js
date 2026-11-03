@@ -7,7 +7,7 @@ const { isDepositNotice, isInteracDeposit } = require('./src/services/transactio
 const { buildTransactionCsv } = require('../shared/transactionCsv.cjs');
 const { SNAPSHOT_CAPTURED_AT } = require('./src/database/financialSnapshot');
 const { normalizeTransactionSemantics } = require('./src/services/transactionSemantics');
-const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, answerTelegramCallbackQuery, e } = require('./src/services/telegramService');
+const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, answerTelegramCallbackQuery, e, isInvestmentNotification } = require('./src/services/telegramService');
 const { startTelegramOutboxWorker } = require('./src/services/telegramOutboxWorker');
 
 const IMAP_HOST = 'imap.gmail.com';
@@ -113,7 +113,7 @@ function resolveEmailTimestamp(timestamp, receivedAt) {
 }
 
 async function notifyAndSave(tx, { forceSilent = false } = {}) {
-    const silent = forceSilent || isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0;
+    const silent = forceSilent || isInvestmentNotification(tx) || isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0;
     return dbService.enqueueTelegramOutbox('sendMessage', {
         text: formatTransactionMessage(tx),
         replyMarkup: transactionActionKeyboard(tx),
@@ -218,7 +218,7 @@ function buildTransactionNotification(transaction, suppressNotifications) {
             return {
                 text: formatTransactionMessage(tx),
                 replyMarkup: transactionActionKeyboard(tx),
-                silent: isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0,
+                silent: isInvestmentNotification(tx) || isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0,
                 protectContent: true,
             };
         },

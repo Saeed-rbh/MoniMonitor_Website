@@ -5,6 +5,14 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const TELEGRAM_REQUEST_TIMEOUT_MS = Number(process.env.TELEGRAM_REQUEST_TIMEOUT_MS || 15_000);
 
+// Keep investment activity visible in chat without buzzing for routine trades.
+function isInvestmentNotification(tx) {
+    return String(tx.Category || '').trim().toLowerCase() === 'investment' ||
+        String(tx.Label || '').trim().toLowerCase() === 'investment' ||
+        ['BUY', 'SELL', 'CONTRIBUTION', 'DIVIDEND', 'ASSET_TRANSFER_IN', 'ASSET_TRANSFER_OUT']
+            .includes(tx.PortfolioAction);
+}
+
 function telegramJsonRequest(method, payload) {
     if (!TELEGRAM_BOT_TOKEN) return Promise.resolve(null);
     if (process.env.TELEGRAM_DISABLE_NETWORK === 'true') return Promise.resolve({ ok: true, result: {} });
@@ -333,4 +341,4 @@ async function answerTelegramCallbackQuery(callbackQueryId, text = null) {
     });
 }
 
-module.exports = { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, answerTelegramCallbackQuery, telegramJsonRequest, e };
+module.exports = { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, answerTelegramCallbackQuery, telegramJsonRequest, e, isInvestmentNotification };
