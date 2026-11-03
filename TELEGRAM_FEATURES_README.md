@@ -49,7 +49,7 @@ Stores the required credentials securely:
 
 3. **Financial Privacy & Spam Reduction**
    - **Protected Content**: All alerts use `protect_content: true`. Telegram will strictly block attempts to copy or forward the alert, securing your bank details.
-   - **Silent Notifications**: Minor transactions (< $5) or generic placeholders are delivered silently using `disable_notification: true` so they don't buzz your phone.
+   - **Silent Notifications**: Investment messages (including trades, contributions, dividends, and asset transfers), minor transactions (< $5), and generic placeholders are delivered silently using `disable_notification: true` so they don't buzz your phone. Messages and their interactive buttons remain available in chat.
 
 4. **Web App (Mini App) Integration**
    The bot provides smart fallback buttons to launch your React Dashboard. The `email_agent.js` detects whether you are running locally (`http://localhost`) or in production (`https://`) and formats the Telegram button as an integrated WebApp or a standard external browser link accordingly.

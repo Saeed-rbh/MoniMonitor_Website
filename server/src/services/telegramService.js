@@ -3,6 +3,13 @@ const https = require('https');
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
+// Keep investment activity visible in chat without buzzing for routine trades.
+function isInvestmentNotification(tx) {
+    return String(tx.Label || '').trim().toLowerCase() === 'investment' ||
+        ['BUY', 'SELL', 'CONTRIBUTION', 'DIVIDEND', 'ASSET_TRANSFER_IN', 'ASSET_TRANSFER_OUT']
+            .includes(tx.PortfolioAction);
+}
+
 /**
  * Sends a message to the configured Telegram chat using MarkdownV2.
  */
@@ -293,4 +300,4 @@ async function answerTelegramInlineQuery(inlineQueryId, results) {
     });
 }
 
-module.exports = { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery };
+module.exports = { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, isInvestmentNotification };

@@ -2,7 +2,7 @@ require('dotenv').config();
 const { ImapService } = require('./src/services/imapService');
 const { parseEmailWithGemini } = require('./src/services/aiService');
 const dbService = require('./src/database/dbService');
-const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery } = require('./src/services/telegramService');
+const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, isInvestmentNotification } = require('./src/services/telegramService');
 
 const IMAP_HOST = 'imap.gmail.com';
 const IMAP_PORT = 993;
@@ -70,7 +70,8 @@ async function notifyAndSave(tx) {
         replyMarkup.inline_keyboard.push([{ text: "📊 Open Dashboard", web_app: { url: webAppUrl } }]);
     }
 
-    const silent = isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0;
+    const silent = isInvestmentNotification(tx) ||
+        isGeneric(tx.Label, tx.Reason) || parseFloat(tx.Amount) < 5.0;
 
     const result = await sendTelegramMessage(formatTransactionMessage(tx), replyMarkup, silent, true);
     const msgId = result?.result?.message_id || null;
