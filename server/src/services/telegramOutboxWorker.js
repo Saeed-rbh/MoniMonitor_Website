@@ -27,6 +27,8 @@ async function deliver(job) {
         }
         payload.text = telegram.formatTransactionMessage(tx, job.action === 'editMessage' ? 'updated' : 'new');
         payload.replyMarkup = telegram.transactionActionKeyboard(tx);
+        // Apply the preference at delivery too, covering every producer and older queued jobs.
+        payload.silent = Boolean(payload.silent) || telegram.isInvestmentNotification(tx);
     }
     switch (job.action) {
         case 'sendMessage':

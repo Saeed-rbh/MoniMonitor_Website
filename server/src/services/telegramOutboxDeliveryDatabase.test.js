@@ -13,6 +13,22 @@ const worker=require('./telegramOutboxWorker');
 let db;
 test.before(async()=>{db=await service.getDb();await service.createUser('u','delivery-owner','unused');});
 test.after(async()=>{await db.close();fs.rmSync(directory,{recursive:true,force:true});});
+test('delivery mutes recurring investments even when the stored job requests an audible alert',async t=>{
+    const sent=[];
+    t.mock.method(telegram,'sendTelegramMessage',async(...args)=>{sent.push(args);return {ok:true,result:{message_id:500}};});
+    for(const [Category,Label,PortfolioAction,Frequency,silent,expected] of [
+        ['Investment','ETF & Stock Purchase','BUY','Daily',false,true],
+        ['Investment','ETF & Stock Purchase',null,'Weekly',false,true],
+        ['Saving','Investment','CONTRIBUTION','Monthly',false,true],
+        ['Expense','Food',null,'OneTime',false,false],
+        ['Expense','Food',null,'OneTime',true,true],
+    ]){
+        const transactionId=await service.addTransaction({userId:'u',Amount:100,Category,Label,PortfolioAction,Frequency,Reason:'Delivery preference test',Timestamp:'2026-11-04'});
+        await worker.deliver({action:'sendMessage',transactionId,payload:{text:'old queued content',silent}});
+        const [text,markup,muted,protectedContent]=sent.at(-1);
+        assert.equal(muted,expected);assert.ok(text);assert.ok(markup);assert.equal(protectedContent,true);
+    }
+});
 test('the durable worker records unchanged content as completed and preserves the message id',async t=>{
     t.mock.method(https,'request',(_options,callback)=>{
         const req=new EventEmitter();req.write=()=>{};req.end=()=>{const res=new EventEmitter();res.statusCode=400;callback(res);queueMicrotask(()=>{res.emit('data',JSON.stringify({ok:false,error_code:400,description:'Bad Request: message is not modified: content and markup already match'}));res.emit('end');});};return req;
