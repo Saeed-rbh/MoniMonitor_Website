@@ -103,15 +103,19 @@ const Notification = ({
           Label: Label,
           Reason: addTransaction.Reason,
           Timestamp: addTransaction.Timestamp,
-          Type: addTransaction.Type
+          Type: addTransaction.Type,
+          Currency: addTransaction.Currency,
+          ...(addTransaction.BalanceAccountId ? { BalanceAccountId: addTransaction.BalanceAccountId } : {})
         };
 
         if (addTransaction.id) {
           console.log("Updating transaction:", addTransaction.id, record);
-          await updateTransactionAPI(addTransaction.id, record);
+          const result = await updateTransactionAPI(addTransaction.id, record);
+          if (result?.status === 'error') throw new Error(result.message);
         } else {
           console.log("Creating transaction:", record);
-          await sendDataToDB({ record_entry: record, record_type: addTransaction.Type });
+          const result = await sendDataToDB({ record_entry: record, record_type: addTransaction.Type });
+          if (result?.status === 'error') throw new Error(result.message);
         }
       }
       
@@ -119,6 +123,8 @@ const Notification = ({
       window.location.reload();
     } catch (e) {
       console.error("Failed to process transaction API call:", e);
+      window.alert(e.message || "Could not save the transaction. Please retry.");
+      return;
     }
 
     setAddTransaction({

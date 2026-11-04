@@ -1,7 +1,10 @@
+const { recordAgentState } = require('./src/services/operationalStatus');
 require('dotenv').config();
 const { ImapService } = require('./src/services/imapService');
 const { parseEmailWithGemini } = require('./src/services/aiService');
 const dbService = require('./src/database/dbService');
+const { normalizeEmailEvidence, parseStructuredEmail } = require('./src/services/emailEvidence');
+const { withDatabaseTransaction } = require('./src/database/db');
 const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, isInvestmentNotification } = require('./src/services/telegramService');
 
 const IMAP_HOST = 'imap.gmail.com';
@@ -92,15 +95,41 @@ async function replaceNotification(tx) {
     await notifyAndSave(tx);
 }
 
+async function queueNotification(transactionId) {
+    const db = await dbService.getDb();
+    await db.run('INSERT OR IGNORE INTO email_notifications (transactionId, updatedAt) VALUES (?, ?)',
+        [transactionId, new Date().toISOString()]);
+}
+
+let drainingNotifications = false;
+async function drainNotifications() {
+    if (drainingNotifications) return;
+    drainingNotifications = true;
+    try {
+        const db = await dbService.getDb();
+        const jobs = await db.all('SELECT transactionId FROM email_notifications');
+        for (const job of jobs) {
+            const tx = await dbService.getTransactionById(job.transactionId, USER_ID);
+            if (!tx || tx.TelegramMessageId || await notifyAndSave(tx)) {
+                await db.run('DELETE FROM email_notifications WHERE transactionId = ?', [job.transactionId]);
+            }
+        }
+    } catch (error) { console.error('[Notifications] Retry pending:', error.message); }
+    finally { drainingNotifications = false; }
+}
+
 async function syncPortfolioFromEmail(transactionId, data, idInfo) {
     if (!transactionId) return { status: 'ignored' };
     const result = await dbService.applyEmailPortfolioActivity(USER_ID, transactionId, {
+        fromAccountId: data.TransferFromAccountId,
+        toAccountId: data.TransferToAccountId,
+        transferConfidence: data.TransferConfidence,
         accountId: data.PortfolioAccountId || data.BalanceAccountId,
         action: data.PortfolioAction,
         symbol: data.PortfolioSymbol,
         quantity: data.PortfolioQuantity,
         price: data.PortfolioPrice,
-        confidence: data.PortfolioConfidence === 'HIGH' || data.BalanceAccountConfidence === 'HIGH' ? 'HIGH' : data.PortfolioConfidence,
+        confidence: data.PortfolioAccountId ? data.PortfolioConfidence : data.BalanceAccountConfidence,
     });
     if (result.status === 'applied') {
         console.log(
@@ -123,6 +152,9 @@ async function syncPortfolioFromEmail(transactionId, data, idInfo) {
 
 async function onNewEmail(emailBody, idInfo, receivedAt) {
     try {
+        const initialDb = await dbService.getDb();
+        const initialJob = await initialDb.get('SELECT status FROM email_ingestion WHERE sourceKey = ?', [idInfo]);
+        if (initialJob && initialJob.status !== 'pending') return true;
         console.log(`[${idInfo}] Sending to Gemini for analysis...`);
 
         // Bank accounts help classification; portfolio accounts allow a safe, explicit destination match.
@@ -130,7 +162,11 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
             dbService.getAccountsForUser(USER_ID),
             dbService.getInvestmentAccounts(USER_ID),
         ]);
-        const expenseData = await parseEmailWithGemini(emailBody, knownAccounts, investmentAccounts);
+        const aliases = await initialDb.all('SELECT * FROM email_account_aliases WHERE userId = ?', [USER_ID]);
+        const structuredData = parseStructuredEmail(emailBody, investmentAccounts, aliases, receivedAt);
+        const parsedData = structuredData || await parseEmailWithGemini(emailBody, knownAccounts, investmentAccounts);
+        let expenseData = !structuredData && parsedData && !parsedData.error
+            ? normalizeEmailEvidence(parsedData, emailBody, investmentAccounts, aliases) : parsedData;
 
         if (!expenseData) {
             console.log(`[${idInfo}] Parsing failed due to error or hallucination. Retrying later.`);
@@ -139,18 +175,27 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
 
         if (expenseData.error) {
             console.log(`[${idInfo}] AI rejected email: ${expenseData.error}`);
+            await initialDb.run("UPDATE email_ingestion SET status = 'ignored', lastError = ? WHERE sourceKey = ?", [expenseData.error, idInfo]);
             return true;
         }
 
+        expenseData = await require('./src/services/reviewedEmailRoutes').routeEmailForUser(
+            initialDb, USER_ID, expenseData, emailBody, investmentAccounts);
+
+        return await withDatabaseTransaction(async () => {
+        const jobDb = await dbService.getDb();
+        const job = await jobDb.get('SELECT * FROM email_ingestion WHERE sourceKey = ?', [idInfo]);
+        if (job && job.status !== 'pending') return true;
         // Apply learned merchant rules (user category/label overrides)
         const rule = await dbService.getMerchantRuleForReason(USER_ID, expenseData.Reason);
-        if (rule) {
+        if (rule && !expenseData.PortfolioAction) {
             console.log(`[${idInfo}] Override matched: setting Category (${expenseData.Category} -> ${rule.category}) and Label (${expenseData.Label} -> ${rule.label})`);
             expenseData.Category = rule.category;
             expenseData.Label = rule.label;
         }
 
         console.log(`[${idInfo}] Successfully extracted expense:`, expenseData);
+        expenseData.PostingStatus = 'posted';
         expenseData.userId = USER_ID;
         expenseData.ReceivedAt = receivedAt || new Date().toISOString();
 
@@ -159,12 +204,47 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
         }
 
         // 1. Exact duplicate check
-        const datePrefix = expenseData.Timestamp.substring(0, 10);
-        const duplicate = await dbService.findDuplicateTransaction(USER_ID, expenseData.Amount, expenseData.Category, datePrefix, expenseData.Reason, expenseData.ReferenceNumber);
-        if (duplicate) {
-            console.log(`[${idInfo}] Duplicate expense detected. Skipping save.`);
-            await syncPortfolioFromEmail(duplicate.id, expenseData, idInfo);
-            return true;
+        // Source replay is definitive. A bank reference is scoped to account/currency;
+        // identical purchases without a reference must remain separate transactions.
+        const transferDuplicate = expenseData.PortfolioAction === 'TRANSFER' && expenseData.ReferenceNumber
+            ? await jobDb.get(`SELECT * FROM transactions WHERE userId = ? AND ReferenceNumber = ?
+                AND PortfolioAction = 'TRANSFER' AND TransferFromAccountId = ? AND TransferToAccountId = ?
+                AND Currency = ? AND AmountMinor = ?`, [USER_ID, expenseData.ReferenceNumber,
+                expenseData.TransferFromAccountId, expenseData.TransferToAccountId,
+                expenseData.Currency || 'USD', Math.round(Number(expenseData.Amount) * 100)]) : null;
+        const duplicate = transferDuplicate || (job?.transactionId
+            ? await dbService.getTransactionById(job.transactionId, USER_ID)
+            : expenseData.ReferenceNumber && expenseData.Account
+                ? await jobDb.get(`SELECT * FROM transactions WHERE userId = ? AND ReferenceNumber = ?
+                    AND Account = ? AND Currency = ? AND AmountMinor = ? AND Category = ?`,
+                    [USER_ID, expenseData.ReferenceNumber, expenseData.Account, expenseData.Currency || 'USD',
+                        Math.round(Number(expenseData.Amount) * 100), expenseData.Category])
+                : null);
+
+        let complementary = null;
+        if (!duplicate && expenseData.NotificationKind) {
+            const candidates = await jobDb.all(`SELECT * FROM transactions WHERE userId = ? AND AmountMinor = ?
+                AND Currency = ? AND Category = ? AND NotificationKind IS NOT NULL`,
+                [USER_ID, Math.round(Number(expenseData.Amount) * 100), expenseData.Currency, expenseData.Category]);
+            const nearby = candidates.filter(t => {
+                const gap = Math.abs(new Date(t.ReceivedAt) - new Date(receivedAt)) / 60000;
+                const sameBank = (t.BankName || '').toLowerCase() === (expenseData.BankName || '').toLowerCase();
+                const left = String(t.Account || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+                const right = String(expenseData.Account || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+                const sameAccount = left.length >= 4 && right.length >= 4 && left.slice(-4) === right.slice(-4);
+                const conflictingRefs = t.ReferenceNumber && expenseData.ReferenceNumber && t.ReferenceNumber !== expenseData.ReferenceNumber;
+                return !conflictingRefs && sameBank && (sameAccount || !expenseData.Account) && gap <= 360;
+            });
+            const pairs = nearby.filter(t => t.NotificationKind !== expenseData.NotificationKind &&
+                (t.NotificationKind === 'interac' || expenseData.NotificationKind === 'interac') &&
+                Math.abs(new Date(t.ReceivedAt) - new Date(receivedAt)) <= 15 * 60000 &&
+                t.Account && expenseData.Account);
+            if (pairs.length === 1 && nearby.length === 1) complementary = pairs[0];
+            else if (nearby.length) {
+                await jobDb.run("UPDATE email_ingestion SET status = 'review_required', lastError = ?, updatedAt = ? WHERE sourceKey = ?",
+                    ['Possible complementary or repeated bank alert; candidate transactions: ' + nearby.map(t => t.id).join(','), new Date().toISOString(), idInfo]);
+                return true;
+            }
         }
 
         const newIsGeneric = isGeneric(expenseData.Label, expenseData.Reason);
@@ -177,6 +257,9 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
 
         const newTime = new Date(expenseData.Timestamp).getTime();
         const allMatches = rawMatches.filter(m => {
+            if (!expenseData.ReferenceNumber || m.ReferenceNumber !== expenseData.ReferenceNumber ||
+                !expenseData.Account || m.Account !== expenseData.Account ||
+                m.Currency !== (expenseData.Currency || 'USD')) return false;
             const existingTime = new Date(m.Timestamp).getTime();
             const diffHours = Math.abs(newTime - existingTime) / (1000 * 60 * 60);
             const isETransfer = (expenseData.Type || '').toLowerCase().includes('transfer') || (expenseData.Label || '').toLowerCase().includes('transfer');
@@ -185,7 +268,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
         });
 
         // 3. Fuzzy duplicate check (e.g. e-Transfer sent vs received)
-        const fuzzyDuplicate = allMatches.find(m => {
+        const fuzzyDuplicate = duplicate || complementary || allMatches.find(m => {
             if (isGeneric(m.Label, m.Reason) || newIsGeneric) return false;
             if (m.ReferenceNumber && expenseData.ReferenceNumber && m.ReferenceNumber !== expenseData.ReferenceNumber) return false;
             const existingReason = m.Reason.toLowerCase();
@@ -205,7 +288,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
             await updateAgentTransaction(fuzzyDuplicate.id, mergedUpdates);
             activeId = fuzzyDuplicate.id;
             // Delete old Telegram message → send fresh complete one
-            await replaceNotification({ ...fuzzyDuplicate, ...expenseData, ...mergedUpdates, id: fuzzyDuplicate.id });
+            await queueNotification(fuzzyDuplicate.id);
         } else {
             // Sort matches by timestamp closeness
             const sortedMatches = [...allMatches].sort((a, b) =>
@@ -229,7 +312,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
                 await updateAgentTransaction(genericMatch.id, specificUpdates);
                 activeId = genericMatch.id;
                 // Delete old generic message → send one clean specific message
-                await replaceNotification({ ...genericMatch, ...expenseData, ...specificUpdates, id: genericMatch.id });
+                await queueNotification(genericMatch.id);
 
             } else if (newIsGeneric) {
                 const existingSpecific = allMatches.find(m => !isGeneric(m.Label, m.Reason));
@@ -246,25 +329,32 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
                     const newId = await dbService.addTransaction(expenseData);
                     activeId = newId;
                     console.log(`[${idInfo}] Saved generic. Sending placeholder notification.`);
-                    await notifyAndSave({ ...expenseData, id: newId });
+                    await queueNotification(newId);
                 }
             } else {
                 // Brand new specific transaction
                 const newId = await dbService.addTransaction(expenseData);
                 activeId = newId;
                 console.log(`[${idInfo}] Saved specific to SQLite successfully!`);
-                await notifyAndSave({ ...expenseData, id: newId });
+                await queueNotification(newId);
             }
         }
 
+        let needsReview = false;
+        const reviewReasons = [];
         // Account tracking
         // Apply an explicit portfolio cash movement once, linked to the source transaction.
         if (activeId) {
-            await syncPortfolioFromEmail(activeId, expenseData, idInfo);
+            const portfolioResult = await syncPortfolioFromEmail(activeId, expenseData, idInfo);
+            needsReview = ['review_required', 'unmatched_account'].includes(portfolioResult.status);
+            if (needsReview) reviewReasons.push(portfolioResult.reason || portfolioResult.status);
             const accountPosting = await dbService.syncTransactionAccountBalance(USER_ID, activeId, {
                 accountId: expenseData.BalanceAccountId,
                 confidence: expenseData.BalanceAccountConfidence,
             });
+            const accountNeedsReview = ['review_required', 'unmatched_account', 'ambiguous_account'].includes(accountPosting.status);
+            if (accountNeedsReview) reviewReasons.push(accountPosting.reason || accountPosting.status);
+            needsReview ||= accountNeedsReview;
             if (accountPosting.status === 'applied') {
                 console.log(
                     `[${idInfo}] Posted transaction to ${accountPosting.accountName}: ${accountPosting.deltaMinor} minor units.`
@@ -294,8 +384,10 @@ async function onNewEmail(emailBody, idInfo, receivedAt) {
             }
         }
 
+        await jobDb.run("UPDATE email_ingestion SET status = ?, lastError = ?, transactionId = ?, updatedAt = ? WHERE sourceKey = ?", [needsReview ? 'review_required' : 'applied', needsReview ? [...new Set(reviewReasons)].join('; ') : null, activeId, new Date().toISOString(), idInfo]);
         await writeAudit('email_processed', 'success', { messageId: idInfo, transactionId: activeId });
         return true;
+        });
     } catch (err) {
         await writeAudit('email_processed', 'error', { messageId: idInfo, error: err.message });
         console.error(`[${idInfo}] Unexpected error processing email:`, err);
@@ -358,7 +450,7 @@ async function onTelegramUpdate(update) {
             
             if (data.startsWith('save:')) {
                 const txId = data.split(':')[1];
-                await updateAgentTransaction(txId, { Category: 'Saving', Label: 'Savings' });
+                await dbService.editTransaction(USER_ID, txId, { Category: 'Saving', Label: 'Savings' });
                 
                 const db = await dbService.getDb();
                 const tx = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [txId, USER_ID]);
@@ -396,7 +488,7 @@ async function onTelegramUpdate(update) {
                 const newCat = parts[2];
                 const newLabel = parts[3];
                 
-                await updateAgentTransaction(txId, { Category: newCat, Label: newLabel });
+                await dbService.editTransaction(USER_ID, txId, { Category: newCat, Label: newLabel });
                 
                 const db = await dbService.getDb();
                 const tx = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [txId, USER_ID]);
@@ -449,12 +541,34 @@ async function onTelegramUpdate(update) {
     }
 }
 
+let reconciling = false;
+async function retryUnpostedBalances() {
+    if (reconciling) return;
+    reconciling = true;
+    try {
+        await dbService.reconcileEmailPortfolioActivities(USER_ID);
+        await dbService.reconcileTransactionAccountBalances(USER_ID);
+        const db = await dbService.getDb();
+        await db.run(`UPDATE email_ingestion SET status = 'applied', lastError = NULL, updatedAt = ?
+            WHERE status = 'review_required' AND transactionId IN (
+                SELECT t.id FROM transactions t WHERE t.userId = ?
+                AND ((t.PortfolioAction IS NULL AND EXISTS (
+                    SELECT 1 FROM account_balance_events e WHERE e.sourceTransactionId = t.id))
+                    OR (t.PortfolioAction IS NOT NULL AND EXISTS (
+                    SELECT 1 FROM portfolio_transactions p WHERE p.sourceTransactionId = t.id))))`,
+            [new Date().toISOString(), USER_ID]);
+    } catch (error) { console.error('[Balances] Reconciliation retry pending:', error.message); }
+    finally { reconciling = false; }
+}
+
 async function startAgent() {
     if (AI_INGESTION_ENABLED) {
-        if (!IMAP_USER || !IMAP_PASSWORD || !TELEGRAM_CHAT_ID) {
-            throw new Error('IMAP_USER, IMAP_PASSWORD, and TELEGRAM_CHAT_ID are required when AI ingestion is enabled');
+        if (!IMAP_USER || !IMAP_PASSWORD) {
+            throw new Error('IMAP_USER and IMAP_PASSWORD are required when AI ingestion is enabled');
         }
 
+        await recordAgentState({ connected: false, lastError: null, lastScanAt: null });
+        setInterval(() => recordAgentState({}).catch(error => console.error('[Agent heartbeat]', error.message)), 30_000).unref();
         const portfolioReconciled = await dbService.reconcileEmailPortfolioActivities(USER_ID);
         const portfolioApplied = portfolioReconciled.filter((result) => result.status === 'applied');
         if (portfolioReconciled.length) {
@@ -472,8 +586,15 @@ async function startAgent() {
                 console.warn(`[Account balances] Transaction ${result.transactionId}: ${result.status}.`);
             }
         }
+        setInterval(retryUnpostedBalances, 60_000).unref();
+        await drainNotifications();
+        setInterval(drainNotifications, 60_000).unref();
         startTelegramPolling(onTelegramUpdate);
-        const emailListener = new ImapService(IMAP_HOST, IMAP_PORT, IMAP_USER, IMAP_PASSWORD, onNewEmail);
+        const emailListener = new ImapService(IMAP_HOST, IMAP_PORT, IMAP_USER, IMAP_PASSWORD, async (...args) => {
+            const result = await onNewEmail(...args);
+            await drainNotifications();
+            return result;
+        });
         await emailListener.start();
     } else {
         console.log('AI ingestion is disabled. Set AI_INGESTION_ENABLED=true after completing account linking.');

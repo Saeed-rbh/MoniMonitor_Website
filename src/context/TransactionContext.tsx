@@ -33,6 +33,9 @@ interface TransactionContextType {
     isAddClicked: string | number | null;
     setIsAddClicked: React.Dispatch<React.SetStateAction<string | number | null>>;
     dataLoaded: boolean;
+    currency: string;
+    currencies: string[];
+    setCurrency: React.Dispatch<React.SetStateAction<string>>;
 }
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
@@ -61,7 +64,9 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
         });
     }, [user]);
 
-    const monthData = useTransactionData(whichMonth, user?.userId);
+    const [requestedCurrency, setCurrency] = useState('');
+    const monthData = useTransactionData(whichMonth, user?.userId, requestedCurrency);
+    const currency = monthData.currency;
     const { selected: mainSelected } = useMemo(
         () => getSelectedMonthData(monthData.allTransactions, mainPageMonth),
         [monthData.allTransactions, mainPageMonth]
@@ -70,6 +75,7 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
     const value = useMemo(() => ({
         userData,
         setUserData,
+        currency, currencies: monthData.currencies, setCurrency,
         amountDetails,
         setAmountDetails,
         whichMonth,
@@ -90,7 +96,7 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
         setIsAddClicked,
         dataLoaded: !monthData.isLoading,
     }), [
-        userData, amountDetails, whichMonth, mainPageMonth, monthData, mainSelected,
+        userData, currency, amountDetails, whichMonth, mainPageMonth, monthData, mainSelected,
         isDateClicked, isMoreClicked, isAddClicked,
     ]);
 

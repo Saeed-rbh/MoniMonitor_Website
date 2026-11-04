@@ -3,16 +3,21 @@ const { open } = require('sqlite');
 const path = require('path');
 const { runStartupMaintenance } = require('./startupMaintenance');
 
-const DB_PATH = path.join(__dirname, '..', '..', 'monimonitor.sqlite');
+const { AsyncLocalStorage } = require('node:async_hooks');
+const transactionContext = new AsyncLocalStorage();
+
+const DB_PATH = process.env.MONIMONITOR_DB_PATH || path.join(__dirname, '..', '..', 'monimonitor.sqlite');
 
 let dbPromise = null;
 
 async function getDb() {
+    if (transactionContext.getStore()) return transactionContext.getStore();
     if (!dbPromise) {
         dbPromise = open({
             filename: DB_PATH,
             driver: sqlite3.Database
         }).then(async (db) => {
+            await db.exec(`PRAGMA busy_timeout = 15000; PRAGMA journal_mode = WAL;`);
             await db.exec(`
                 CREATE TABLE IF NOT EXISTS users (
                     id TEXT PRIMARY KEY,
@@ -93,7 +98,17 @@ async function getDb() {
             if (!hasColumn("PortfolioSymbol")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioSymbol TEXT");
             if (!hasColumn("PortfolioQuantity")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioQuantity REAL");
             if (!hasColumn("PortfolioPrice")) await db.exec("ALTER TABLE transactions ADD COLUMN PortfolioPrice REAL");
+            if (!hasColumn("BalanceAccountId")) await db.exec("ALTER TABLE transactions ADD COLUMN BalanceAccountId INTEGER");
+            if (!hasColumn("BalanceAccountConfidence")) await db.exec("ALTER TABLE transactions ADD COLUMN BalanceAccountConfidence TEXT");
+            for (const field of ['NotificationKind', 'PostingStatus', 'IngestionReviewReason']) {
+                if (!hasColumn(field)) await db.exec(`ALTER TABLE transactions ADD COLUMN ${field} TEXT`);
+            }
+            for (const field of ['TransferFromAccountId', 'TransferToAccountId', 'TransferConfidence']) {
+                if (!hasColumn(field)) await db.exec(`ALTER TABLE transactions ADD COLUMN ${field} ${field === 'TransferConfidence' ? 'TEXT' : 'INTEGER'}`);
+            }
             await db.run("UPDATE transactions SET AmountMinor = ROUND(Amount * 100) WHERE AmountMinor IS NULL");
+            // Email alerts are the posting source; no later settlement confirmation is required.
+            await db.run("UPDATE transactions SET PostingStatus = 'posted' WHERE ReceivedAt IS NOT NULL AND PostingStatus = 'pending'");
 
             await db.exec(`
                 CREATE TABLE IF NOT EXISTS user_settings (
@@ -225,6 +240,12 @@ async function getDb() {
                 await db.exec('ALTER TABLE portfolio_transactions ADD COLUMN priceMicros INTEGER');
             }
 
+            for (const field of ['holdingBefore', 'holdingAfter']) {
+                if (!portfolioTransactionColumns.some(column => column.name === field)) {
+                    await db.exec(`ALTER TABLE portfolio_transactions ADD COLUMN ${field} TEXT`);
+                }
+            }
+
             const holdingColumns = await db.all('PRAGMA table_info(investment_holdings)');
             if (!holdingColumns.some((column) => column.name === 'averageCostMicros')) {
                 await db.exec('ALTER TABLE investment_holdings ADD COLUMN averageCostMicros INTEGER');
@@ -247,6 +268,22 @@ async function getDb() {
                 CREATE INDEX IF NOT EXISTS idx_account_balance_events_user ON account_balance_events(userId, occurredAt DESC);
             `);
 
+            await db.exec(`
+                CREATE TABLE IF NOT EXISTS email_account_aliases (
+                    userId TEXT NOT NULL, institution TEXT NOT NULL, label TEXT NOT NULL,
+                    accountId INTEGER NOT NULL, evidence TEXT NOT NULL,
+                    PRIMARY KEY(userId, institution, label)
+                );
+                CREATE TABLE IF NOT EXISTS email_sync_state (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS email_ingestion (
+                    sourceKey TEXT PRIMARY KEY, body TEXT NOT NULL, receivedAt TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending', attempts INTEGER NOT NULL DEFAULT 0,
+                    lastError TEXT, transactionId INTEGER, updatedAt TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS email_notifications (
+                    transactionId INTEGER PRIMARY KEY, updatedAt TEXT NOT NULL
+                );
+            `);
             await runStartupMaintenance(db);
             return db;
         });
@@ -254,4 +291,32 @@ async function getDb() {
     return dbPromise;
 }
 
-module.exports = { getDb };
+// A dedicated connection isolates the entire unit of work from API requests.
+// Existing posting helpers use BEGIN/COMMIT internally; here they join the outer transaction.
+async function withDatabaseTransaction(work) {
+    if (transactionContext.getStore()) return work();
+    await getDb();
+    const connection = await open({ filename: DB_PATH, driver: sqlite3.Database });
+    await connection.exec('PRAGMA busy_timeout = 15000');
+    const scoped = new Proxy(connection, {
+        get(target, key) {
+            if (key === 'run') return (sql, ...args) => {
+                if (/^(BEGIN(?: IMMEDIATE)?|COMMIT|ROLLBACK)$/i.test(sql.trim())) return Promise.resolve({});
+                return target.run(sql, ...args);
+            };
+            const value = target[key];
+            return typeof value === 'function' ? value.bind(target) : value;
+        },
+    });
+    try {
+        await connection.run('BEGIN IMMEDIATE');
+        const result = await transactionContext.run(scoped, work);
+        await connection.run('COMMIT');
+        return result;
+    } catch (error) {
+        await connection.run('ROLLBACK').catch(() => {});
+        throw error;
+    } finally { await connection.close(); }
+}
+
+module.exports = { getDb, withDatabaseTransaction };

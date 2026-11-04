@@ -4,6 +4,7 @@ const normalizeCategory = (category) => category === "Save&Invest" ? "Saving" : 
 const optionalText = (max) => z.string().trim().max(max).nullable().optional();
 
 const transactionFields = {
+    Currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional(),
     Amount: z.coerce.number().finite().positive().max(1_000_000_000),
     Category: z.preprocess(normalizeCategory, z.enum(["Income", "Expense", "Saving"])),
     Label: optionalText(100),

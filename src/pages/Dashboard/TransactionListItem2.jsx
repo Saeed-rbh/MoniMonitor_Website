@@ -1,3 +1,4 @@
+import { useTransactions } from '../../context/TransactionContext';
 import React, { useState, useEffect, useCallback } from "react";
 import { MdOutlineBrunchDining } from "react-icons/md";
 import { useSpring, animated, config } from "@react-spring/web";
@@ -14,6 +15,7 @@ const TransactionListItem = ({
   onUnSwipe,
   onClick,
 }) => {
+  const { currency = 'USD' } = useTransactions();
   const [showActions, setShowActions] = useState(isSwiped);
   const [showActionsAnim, setShowActionsAnim] = useState(false);
   const [isScaled, setIsScaled] = useState(false);
@@ -102,7 +104,7 @@ const TransactionListItem = ({
           </h3>
         </div>
       </animated.p>
-      <animated.p>${amount}</animated.p>
+      <animated.p>{currency} {amount}</animated.p>
       {showActionsAnim && (
         <animated.div style={swipeAction} className="transaction-actions">
           <ScalableElement as="div" className="modify-button">

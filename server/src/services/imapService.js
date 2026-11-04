@@ -1,3 +1,4 @@
+const { recordAgentState } = require('./operationalStatus');
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
 
@@ -7,8 +8,6 @@ function getDbService() {
     return dbService;
 }
 
-// Fix #6: Process emails in batches of this size concurrently
-const CONCURRENCY = 3;
 const RETRY_UNSEEN_INTERVAL_MS = 60 * 1000;
 
 class ImapService {
@@ -55,6 +54,7 @@ class ImapService {
             console.log('Connecting to IMAP server...');
             await this.client.connect();
             console.log('Connected to email!');
+            await recordAgentState({ connected: true, lastError: null });
 
             this.lock = await this.client.getMailboxLock('INBOX');
             try {
@@ -80,42 +80,61 @@ class ImapService {
                 });
 
             } catch (err) {
+                await recordAgentState({ connected: false, lastError: 'Unable to open the email inbox' }).catch(() => {});
+                this.handleReconnect();
                 console.error("Error setting up inbox:", err);
                 if (this.lock) { try { this.lock.release(); } catch(e) {} }
             }
         } catch (err) {
+            await recordAgentState({ connected: false, lastError: 'Unable to connect to the email mailbox' }).catch(() => {});
             console.error("Failed to connect to IMAP server:", err);
             this.handleReconnect();
         }
     }
 
-    async processOne(seq) {
+    async processOne(uid) {
         const database = getDbService();
-        const message = await this.client.fetchOne(seq, { source: true, uid: true, envelope: true });
-        if (!message || !message.source) return;
-
-        // Skip if already successfully processed in a previous run
-        if (await database.isEmailProcessed(message.uid)) {
-            await this.client.messageFlagsAdd(seq, ['\\Seen']);
-            return;
-        }
-
-        try {
-            const parsedMail = await simpleParser(message.source);
-            const emailBody = parsedMail.text || parsedMail.html || "";
-            // Fix #5: capture when the email was received (from email Date header)
-            const receivedAt = parsedMail.date ? parsedMail.date.toISOString() : new Date().toISOString();
-            
-            const success = await this.onNewEmail(emailBody, `Unread UID ${message.uid}`, receivedAt);
-            
-            if (success) {
-                await database.markEmailProcessed(message.uid);
-                await this.client.messageFlagsAdd(seq, ['\\Seen']);
-            } else {
-                console.warn(`Email ${message.uid} remains unread and will be retried automatically.`);
+        const db = await database.getDb();
+        const sourceKey = JSON.stringify([this.host, this.user, 'INBOX', String(this.client.mailbox.uidValidity), uid]);
+        let job = await db.get('SELECT * FROM email_ingestion WHERE sourceKey = ?', [sourceKey]);
+        if (job && job.status !== 'pending') return;
+        if (!job) {
+            // Upgrade the old single-mailbox UID journal only for its first observed epoch.
+            // Subsequent UIDVALIDITY changes cannot reuse these unscoped legacy IDs.
+            const scope = JSON.stringify([this.host, this.user, 'INBOX', String(this.client.mailbox.uidValidity)]);
+            await db.run("INSERT OR IGNORE INTO email_sync_state (key, value) VALUES ('legacyScope', ?)", [scope]);
+            const legacy = await db.get("SELECT value FROM email_sync_state WHERE key = 'legacyScope'");
+            if (legacy.value === scope && await database.isEmailProcessed(uid)) {
+                await db.run(`INSERT OR IGNORE INTO email_ingestion
+                    (sourceKey, body, receivedAt, status, updatedAt) VALUES (?, '', ?, 'legacy_applied', ?)`,
+                    [sourceKey, new Date().toISOString(), new Date().toISOString()]);
+                return;
             }
-        } catch (err) {
-            console.error(`Error processing email ${message.uid}:`, err);
+            const message = await this.client.fetchOne(uid, { source: true, internalDate: true }, { uid: true });
+            if (!message?.source) return;
+            const mail = await simpleParser(message.source);
+            const receivedAt = new Date(message.internalDate || mail.date || Date.now()).toISOString();
+            await db.run(`INSERT OR IGNORE INTO email_ingestion
+                (sourceKey, body, receivedAt, updatedAt) VALUES (?, ?, ?, ?)`,
+                [sourceKey, `From: ${mail.from?.text || ''}\nSubject: ${(mail.subject || '').replace(/[\r\n]/g, ' ')}\n\n${mail.text || mail.html || ''}`, receivedAt, new Date().toISOString()]);
+            await recordAgentState({ lastMessageAt: new Date().toISOString() });
+        }
+        await this.processJob(sourceKey);
+    }
+
+    async processJob(sourceKey) {
+        const db = await getDbService().getDb();
+        const job = await db.get('SELECT * FROM email_ingestion WHERE sourceKey = ?', [sourceKey]);
+        if (!job || job.status !== 'pending') return;
+        await db.run('UPDATE email_ingestion SET attempts = attempts + 1, updatedAt = ? WHERE sourceKey = ?', [new Date().toISOString(), sourceKey]);
+        try {
+            const success = await this.onNewEmail(job.body, sourceKey, job.receivedAt);
+            await db.run(`UPDATE email_ingestion SET status = ?, lastError = ?, updatedAt = ? WHERE sourceKey = ? AND status = 'pending'`,
+                [success ? 'applied' : 'pending', success ? null : 'Processing failed; retry scheduled',
+                    new Date().toISOString(), sourceKey]);
+        } catch (error) {
+            await db.run(`UPDATE email_ingestion SET lastError = ?,
+                updatedAt = ? WHERE sourceKey = ?`, [error.message, new Date().toISOString(), sourceKey]);
         }
     }
 
@@ -132,17 +151,21 @@ class ImapService {
 
     async processUnseenBatch() {
         try {
-            let messages = await this.client.search({ unseen: true });
-            if (messages.length === 0) return;
-
-            console.log(`Found ${messages.length} unread email(s).`);
-
-            // Fix #6: Process in batches of CONCURRENCY to speed up startup
-            for (let i = 0; i < messages.length; i += CONCURRENCY) {
-                const batch = messages.slice(i, i + CONCURRENCY);
-                await Promise.all(batch.map(seq => this.processOne(seq)));
+            // Scan all UIDs, including read messages. Only fetch bodies not already in our journal.
+            // Persisted jobs survive restarts and messages being deleted or moved out of INBOX.
+            const db = await getDbService().getDb();
+            const pending = await db.all("SELECT sourceKey FROM email_ingestion WHERE status = 'pending'");
+            for (const job of pending) await this.processJob(job.sourceKey);
+            const messages = await this.client.search({ all: true }, { uid: true });
+            const retried = new Set(pending.map(job => job.sourceKey));
+            for (const uid of messages) {
+                const key = JSON.stringify([this.host, this.user, 'INBOX', String(this.client.mailbox.uidValidity), uid]);
+                if (!retried.has(key)) await this.processOne(uid);
             }
+
+            await recordAgentState({ lastScanAt: new Date().toISOString(), lastError: null });
         } catch (err) {
+            await recordAgentState({ lastError: 'Email scan failed; automatic retry scheduled' }).catch(() => {});
             console.error("Error processing unseen messages:", err);
         }
     }
@@ -158,6 +181,7 @@ class ImapService {
     }
 
     handleReconnect() {
+        recordAgentState({ connected: false, lastError: 'Mailbox disconnected; reconnecting automatically' }).catch(() => {});
         if (this.reconnectTimeout) return;
         if (this.retryUnseenInterval) {
             clearInterval(this.retryUnseenInterval);

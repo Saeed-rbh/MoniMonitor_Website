@@ -1,3 +1,6 @@
+import { useRemoteData } from '../../hooks/useRemoteData';
+import DataStatus from '../../components/DataStatus';
+import { isExcludedFromCashFlow, isSavingsContribution } from '../../utils/transactionReporting';
 import React, { useMemo } from "react";
 import { useTransactions } from "../../context/TransactionContext";
 import "./Insight.css"; // Import animation styles
@@ -11,19 +14,10 @@ import { GetSummary } from "../../services/apiService";
 
 const Insight = () => {
     // Access global transaction data from context
-    const { transactionsData: transactions, allTransactions, whichMonth, isDateClicked, isMoreClicked } = useTransactions();
+    const { transactionsData: transactions, allTransactions, whichMonth, isDateClicked, isMoreClicked, currency } = useTransactions();
     const [viewMode, setViewMode] = React.useState('monthly'); // 'monthly' or 'yearly'
-    const [summaryData, setSummaryData] = React.useState(null);
-
-    React.useEffect(() => {
-        let isMounted = true;
-        GetSummary().then(data => {
-            if (isMounted && data) {
-                setSummaryData(data);
-            }
-        });
-        return () => { isMounted = false; };
-    }, [whichMonth]);
+    const summaryRemote = useRemoteData(React.useCallback(() => GetSummary(currency), [currency]), currency);
+    const summaryData = summaryRemote.data;
 
     const scaleStyle = useSpring({
         position: "relative",
@@ -106,6 +100,7 @@ const Insight = () => {
         const investArr = Array(daysInMonth).fill(0);
 
         transactions.forEach(t => {
+            if (isExcludedFromCashFlow(t)) return;
             const date = new Date(t.Timestamp);
             const tYear = date.getFullYear();
             const tMonth = date.getMonth();
@@ -115,7 +110,7 @@ const Insight = () => {
             if (tYear === targetYear && tMonth === targetMonth && day >= 1 && day <= daysInMonth) {
                 const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
                 const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
-                const isInvest = t.Category === "Save&Invest" || t.Type === "Transfer" || t.Type === "Invest";
+                const isInvest = isSavingsContribution(t);
 
                 if (isIncome) incomeArr[day - 1] += amount;
                 else if (isExpense) expenseArr[day - 1] += amount;
@@ -192,6 +187,7 @@ const Insight = () => {
         let prevExpense = 0;
 
         prevMonthData.transactions.forEach(t => {
+            if (isExcludedFromCashFlow(t)) return;
             const d = new Date(t.Timestamp).getDate();
             if (d <= maxDay) {
                 const amt = Number(t.Amount);
@@ -234,6 +230,7 @@ const Insight = () => {
             const pData = allTransactions[pKey];
             if (pData && pData.transactions) {
                 pData.transactions.forEach(t => {
+            if (isExcludedFromCashFlow(t)) return;
                     const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
                     if (isExpense) historicalExpenses.push(Number(t.Amount));
                 });
@@ -254,6 +251,7 @@ const Insight = () => {
 
         // 4. Find Anomalies in Current Month
         const potentialAnomalies = transactions.filter(t => {
+            if (isExcludedFromCashFlow(t)) return false;
             const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
             return isExpense && Number(t.Amount) > threshold;
         });
@@ -328,8 +326,8 @@ const Insight = () => {
                     const delay = ((index * 137.5) % 1.2).toFixed(2);
 
                     const titleText = viewMode === 'yearly'
-                        ? `${new Date(0, index).toLocaleString('default', { month: 'short' })}: $${amount}`
-                        : `Day ${index - paddingDays + 1}: $${amount}`;
+                        ? `${new Date(0, index).toLocaleString('default', { month: 'short' })}: ${currency} ${amount}`
+                        : `Day ${index - paddingDays + 1}: ${currency} ${amount}`;
 
                     return (
                         <div key={index} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "12px", height: "12px" }} title={titleText}>
@@ -359,7 +357,7 @@ const Insight = () => {
                 fontWeight: "300",
                 opacity: 0.9
             }}>
-                ${formatCurrency(totalVal)}
+                {currency} {formatCurrency(totalVal)}
             </div>
 
         </div>
@@ -523,7 +521,7 @@ const Insight = () => {
                             fontWeight: "300",
                             color: totalBalance >= 0 ? "var(--Fc-1)" : "var(--Gc-1)"
                         }}>
-                            ${formatCurrency(totalBalance)}
+                            {currency} {formatCurrency(totalBalance)}
                         </span>
                     </div>
                 </div>
@@ -561,6 +559,7 @@ const Insight = () => {
                 <InsightTrendChart data={chartData} />
             </div>
 
+            <DataStatus {...summaryRemote} />
             {summaryData && summaryData.byMonth && summaryData.byMonth.length > 0 && (
                 <div style={{ width: "100%", flexShrink: 0, marginTop: "10px" }}>
                     <div style={{
@@ -599,7 +598,7 @@ const Insight = () => {
                     {anomalies.map((t, idx) => (
                         <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "var(--Ac-3)", paddingLeft: "28px" }}>
                             <span>{t.Label || "Expense"}</span>
-                            <span style={{ fontWeight: "600", color: "var(--Gc-1)" }}>${Number(t.Amount).toLocaleString()}</span>
+                            <span style={{ fontWeight: "600", color: "var(--Gc-1)" }}>{currency} {Number(t.Amount).toLocaleString()}</span>
                         </div>
                     ))}
                 </div>

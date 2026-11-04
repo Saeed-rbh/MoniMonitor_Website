@@ -1,3 +1,4 @@
+const { getOperationalStatus } = require('./src/services/operationalStatus');
 require("dotenv").config();
 const crypto = require("crypto");
 const express = require("express");
@@ -70,11 +71,21 @@ const credentialsAreValid = (username, password) => (
 
 const sendValidationError = (res, error) => {
     if (error instanceof ZodError) return res.status(400).json({ error: "Invalid request data" });
+    if (error.status === 409) return res.status(409).json({ error: error.message });
     console.error("Request error:", error);
     return res.status(500).json({ error: "Unable to process this request" });
 };
 
-app.get("/health", (_req, res) => res.json({ status: "ok" }));
+// Liveness stays independent of mailbox health so tunnel repair does not react to email failures.
+app.get('/live', (_req, res) => res.json({ status: 'ok' }));
+app.get('/health', async (_req, res) => {
+    try {
+        const health = await getOperationalStatus();
+        const degraded = health.status === 'degraded';
+        // Public health never includes account identity, errors, queue counts or source evidence.
+        return res.status(degraded ? 503 : 200).json({ status: degraded ? 'degraded' : 'ok', database: 'ok', ingestion: health.status });
+    } catch { return res.status(503).json({ status: 'unavailable', database: 'unavailable' }); }
+});
 
 app.post("/register", authRateLimit, async (req, res) => {
     const username = typeof req.body?.username === "string" ? req.body.username.trim().toLowerCase() : "";
@@ -157,6 +168,18 @@ app.post("/telegram-auth", authRateLimit, async (req, res) => {
         return res.status(401).json({ error: "Unable to verify Telegram identity" });
     }
 });
+// No email bodies or credentials are exposed by this health endpoint.
+app.get('/email/status', authenticateToken, async (req, res) => {
+    if (req.user.userId !== process.env.USER_ID) return res.status(403).json({ error: 'Email agent is not linked to this user' });
+    try {
+        const db = await dbService.getDb();
+        const health = await getOperationalStatus();
+        const unresolved = await db.all(`SELECT sourceKey, transactionId, status, attempts, lastError, receivedAt, updatedAt
+            FROM email_ingestion WHERE status IN ('pending', 'review_required') ORDER BY receivedAt LIMIT 100`);
+        return res.json({ ...health, unresolved, unresolvedTotal: health.pending.count + health.reviewCount });
+    } catch (error) { return sendValidationError(res, error); }
+});
+
 app.get("/transactions", authenticateToken, async (req, res) => {
     try {
         const filters = {
@@ -179,12 +202,9 @@ app.post("/transactions", authenticateToken, async (req, res) => {
     try {
         const { BalanceAccountId = null, ...transactionInput } = req.body || {};
         const transaction = parseTransaction(transactionInput);
-        const id = await dbService.addTransaction({ ...transaction, userId: req.user.userId });
-        const accountPosting = await dbService.syncTransactionAccountBalance(req.user.userId, id, {
-            accountId: BalanceAccountId, confidence: BalanceAccountId ? 'HIGH' : null,
-        });
-        await dbService.detectAndMarkRecurring(req.user.userId, id).catch((error) => console.error("Recurrence detection error:", error.message));
-        return res.status(201).json({ message: "Created", data: { ...transaction, id }, accountPosting });
+        const result = await dbService.createManualTransaction(req.user.userId, transaction, BalanceAccountId);
+        await dbService.detectAndMarkRecurring(req.user.userId, result.data.id).catch(error => console.error('Recurrence detection error:', error.message));
+        return res.status(201).json({ message: 'Created', ...result });
     } catch (error) {
         return sendValidationError(res, error);
     }
@@ -200,13 +220,11 @@ app.put("/transactions/:id", authenticateToken, async (req, res) => {
             return res.status(400).json({ error: "No transaction or account changes supplied" });
         }
         const updates = Object.keys(updateInput).length ? transactionUpdateSchema.parse(updateInput) : {};
-        if (Object.keys(updates).length) {
-            await dbService.updateTransactionForUser(req.params.id, req.user.userId, updates);
-        }
-        const finalTx = await dbService.getTransactionById(req.params.id, req.user.userId);
-        const accountPosting = await dbService.syncTransactionAccountBalance(req.user.userId, req.params.id, {
+        const result = await dbService.editTransaction(req.user.userId, req.params.id, updates, {
             accountId: BalanceAccountId, confidence: BalanceAccountId ? 'HIGH' : null,
         });
+        if (!result) return res.status(404).json({ error: 'Transaction not found' });
+        const { data: finalTx, accountPosting } = result;
 
         if (updates.Category || updates.Label) {
             const genericLabels = ["withdrawal", "deposit", "bank withdrawal", "bank deposit", "other"];
@@ -421,7 +439,8 @@ app.delete('/portfolio/accounts/:accountId/holdings/:holdingId', authenticateTok
 });
 app.get("/summary", authenticateToken, async (req, res) => {
     try {
-        return res.json(await dbService.getSummaryForUser(req.user.userId));
+        if (req.query.currency && !/^[A-Z]{3}$/.test(req.query.currency)) return res.status(400).json({ error: 'Invalid currency' });
+        return res.json(await dbService.getSummaryForUser(req.user.userId, req.query.currency));
     } catch (error) {
         return sendValidationError(res, error);
     }
@@ -444,12 +463,9 @@ app.post("/MoniMonitor_ToDB", authenticateToken, async (req, res) => {
 
         const { BalanceAccountId = null, ...recordInput } = record_entry || {};
         const transaction = parseTransaction({ ...recordInput, Type: record_type || recordInput.Type });
-        const id = await dbService.addTransaction({ ...transaction, userId: req.user.userId });
-        const accountPosting = await dbService.syncTransactionAccountBalance(req.user.userId, id, {
-            accountId: BalanceAccountId, confidence: BalanceAccountId ? 'HIGH' : null,
-        });
-        await dbService.detectAndMarkRecurring(req.user.userId, id).catch((error) => console.error("Recurrence detection error:", error.message));
-        return res.status(201).json({ message: "Created", data: { ...transaction, id }, accountPosting });
+        const result = await dbService.createManualTransaction(req.user.userId, transaction, BalanceAccountId);
+        await dbService.detectAndMarkRecurring(req.user.userId, result.data.id).catch(error => console.error('Recurrence detection error:', error.message));
+        return res.status(201).json({ message: 'Created', ...result });
     } catch (error) {
         return sendValidationError(res, error);
     }

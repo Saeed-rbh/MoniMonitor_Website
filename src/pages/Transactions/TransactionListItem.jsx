@@ -1,3 +1,4 @@
+import { useTransactions } from '../../context/TransactionContext';
 import React, { useState, useEffect, useCallback } from "react";
 import { useSpring, animated, config } from "@react-spring/web";
 import { useDrag } from "@use-gesture/react";
@@ -17,6 +18,7 @@ const TransactionListItem = ({
   setOpen,
   setShowTransaction,
 }) => {
+  const { currency = 'USD' } = useTransactions();
   const ModifyLabel = getTransactionIcon(category, label);
 
   const [visibleButton, setVisibleButton] = useState("M");
@@ -229,7 +231,7 @@ const TransactionListItem = ({
               </h3>
             </div>
           </animated.p>
-          <animated.p style={{ color: color }}>${amount}</animated.p>
+          <animated.p style={{ color: color }}>{currency} {amount}</animated.p>
           {showLeftActions && (
             <ScalableElement
               as="div"

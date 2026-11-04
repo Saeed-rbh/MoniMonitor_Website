@@ -1,0 +1,18 @@
+Stable MoniMonitor database stage saved on 2026-11-01
+
+Start here: private-bank-exports/stable-checkpoints/LATEST.json
+Checkpoint: reconciled-2026-10-31-saved-2026-11-01-29669dc7
+Manifest: /Users/saeed/Documents/CodeDevelopement/MoniMonitor/private-bank-exports/stable-checkpoints/reconciled-2026-10-31-saved-2026-11-01-29669dc7/manifest.json
+
+Bank reconciliation is verified through 2026-10-31. The frozen historical
+ledger matches all 17 account cash balances. The current-stage encrypted
+database also retains newer activity and all 85 confirmed Telegram corrections.
+
+Next time, reuse this saved history and bank evidence. Download only newer
+activity, with a seven-day overlap (initial start date 2026-10-24). Do not
+download full history again unless a specific evidence gap requires it.
+Continue from the live database; do not roll back newer activity to this snapshot.
+
+Production code at this stage: 9d2411b34cab13d5dc7fbae5aeb58327922e6810
+The delivery worktree has further guidance in docs/stable-reconciliation.md.
+Bank data, backups and keys must stay out of Git.

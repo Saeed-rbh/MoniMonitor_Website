@@ -68,7 +68,7 @@ export default function TransactionSearch() {
                 <span>{String(transaction.Timestamp || "").slice(0, 10)} · {transaction.Label || transaction.Category}</span>
               </span>
               <strong className="transaction-search-amount">
-                {transaction.Category === "Income" ? "+" : "−"}${Math.abs(Number(transaction.Amount) || 0).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {transaction.Category === "Income" ? "+" : "−"}{transaction.Currency || "USD"} {Math.abs(Number(transaction.Amount) || 0).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </strong>
             </summary>
             <dl>

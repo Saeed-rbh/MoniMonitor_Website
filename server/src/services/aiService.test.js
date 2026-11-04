@@ -59,3 +59,23 @@ test('coerces a valid portfolio account id from a numeric string', () => {
 
     assert.equal(parsed.PortfolioAccountId, 7);
 });
+
+
+test('explicit investment action normalizes inconsistent AI categories and labels', () => {
+    const parsed = parseAIResponseText(JSON.stringify(validTransaction({
+        Category: 'Expense', Label: 'Shopping', PortfolioAction: 'BUY', Currency: 'CAD',
+    })));
+    assert.equal(parsed.Category, 'Saving');
+    assert.equal(parsed.Label, 'Investment');
+    assert.equal(parsed.Currency, 'CAD');
+});
+test('internal transfer preserves explicit endpoints and uses Saving classification', () => {
+    const parsed = parseAIResponseText(JSON.stringify(validTransaction({
+        Category: 'Income', Label: 'Bank Deposit', PortfolioAction: 'TRANSFER',
+        TransferFromAccountId: '1', TransferToAccountId: '2', TransferConfidence: 'HIGH',
+    })));
+    assert.equal(parsed.Category, 'Saving');
+    assert.equal(parsed.Label, 'Savings');
+    assert.equal(parsed.TransferFromAccountId, 1);
+    assert.equal(parsed.TransferToAccountId, 2);
+});

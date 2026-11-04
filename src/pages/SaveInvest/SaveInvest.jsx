@@ -1,5 +1,6 @@
+import { useRemoteData } from '../../hooks/useRemoteData';
+import DataStatus from '../../components/DataStatus';
 import React, { useEffect, useState } from 'react';
-import { useTransactions } from '../../context/TransactionContext';
 import { useNavigate } from 'react-router-dom';
 import {
     createInvestmentAccountAPI,
@@ -149,15 +150,14 @@ const AccountCard = ({ account, onRefresh, setStatus }) => {
 };
 
 const SaveInvest = () => {
-    const { mainSelected } = useTransactions();
     const navigate = useNavigate();
-    const [portfolio, setPortfolio] = useState(null);
+    const remote = useRemoteData(getPortfolioAPI);
+    const portfolio = remote.data;
     const [account, setAccount] = useState(emptyAccount);
     const [showForm, setShowForm] = useState(false);
     const [status, setStatus] = useState('');
 
-    const load = async () => setPortfolio(await getPortfolioAPI());
-    useEffect(() => { load(); }, []);
+    const load = remote.refresh;
 
     const addAccount = async (event) => {
         event.preventDefault();
@@ -171,9 +171,11 @@ const SaveInvest = () => {
         setAccount(emptyAccount); setShowForm(false); setStatus('Account created.'); load();
     };
 
+    if (!portfolio && remote.error) return <main style={styles.page}><DataStatus {...remote} /></main>;
     if (!portfolio) return <main style={styles.page}>Loading portfolio…</main>;
 
     return <main style={styles.page}>
+        <DataStatus {...remote} />
         <div style={{ ...styles.row, alignItems: 'start', flexWrap: 'wrap', marginBottom: '14px' }}>
             <div><h1 style={{ fontSize: '1.35rem', margin: '4px 0' }}>Accounts</h1></div>
             <div style={{ ...styles.row, gap: '6px', marginLeft: 'auto' }}>
@@ -183,32 +185,32 @@ const SaveInvest = () => {
         </div>
         {status && <p role='status' style={{ color: 'var(--Fc-1)' }}>{status}</p>}
 
-        <section style={{ ...styles.card, background: 'linear-gradient(135deg, var(--Bc-4), var(--Ac-4))' }}>
-            <span style={styles.secondary}>Net account value</span>
-            <h2 style={{ fontSize: '2rem', margin: '3px 0 12px' }}>{money(portfolio.totalValueMinor, portfolio.accounts[0]?.currency || 'USD')}</h2>
+        {portfolio.totalsByCurrency.map((totals) => <section key={totals.currency} style={{ ...styles.card, background: 'linear-gradient(135deg, var(--Bc-4), var(--Ac-4))' }}>
+            <span style={styles.secondary}>Net account value · {totals.currency}</span>
+            <h2 style={{ fontSize: '2rem', margin: '3px 0 12px' }}>{money(totals.totalValueMinor, totals.currency)}</h2>
             <div style={styles.grid}>
-                <div><span style={styles.secondary}>Cash</span><strong style={{ display: 'block' }}>{money(portfolio.totalCashMinor)}</strong></div>
-                <div><span style={styles.secondary}>Stocks</span><strong style={{ display: 'block' }}>{money(portfolio.holdingsValueMinor)}</strong></div>
-                <div><span style={styles.secondary}>Credit card debt</span><strong style={{ display: 'block', color: 'var(--Gc-2)' }}>{money(portfolio.totalLiabilitiesMinor)}</strong></div>
-                <div><span style={styles.secondary}>This month contributed</span><strong style={{ display: 'block' }}>{money(Math.round(Number(mainSelected?.totalSaving || 0) * 100))}</strong></div>
+                <div><span style={styles.secondary}>Cash</span><strong style={{ display: 'block' }}>{money(totals.totalCashMinor, totals.currency)}</strong></div>
+                <div><span style={styles.secondary}>Stocks</span><strong style={{ display: 'block' }}>{money(totals.holdingsValueMinor, totals.currency)}</strong></div>
+                <div><span style={styles.secondary}>Credit card debt</span><strong style={{ display: 'block', color: 'var(--Gc-2)' }}>{money(totals.totalLiabilitiesMinor, totals.currency)}</strong></div>
             </div>
-        </section>
+        </section>)}
 
         {portfolio.emailActivities?.length > 0 && <section style={styles.card}>
             <h2 style={{ fontSize: '1rem', marginTop: 0 }}>Recent email activity</h2>
             {portfolio.emailActivities.map((activity) => {
                 const applied = Boolean(activity.kind);
-                const withdrawal = activity.kind === 'EMAIL_WITHDRAWAL';
+                const withdrawal = ['EMAIL_WITHDRAWAL', 'EMAIL_BUY'].includes(activity.kind);
+                const transfer = activity.kind === 'EMAIL_TRANSFER';
                 return <div key={activity.sourceTransactionId} style={{ ...styles.row, borderTop: '1px solid var(--Bc-4)', padding: '11px 0' }}>
                     <div style={{ minWidth: 0 }}>
-                        <strong style={{ fontSize: '.9rem' }}>{activity.reason || activity.label}</strong>
+                        <strong style={{ fontSize: '.9rem' }}>{activity.reason || activity.label}{activity.kind === 'EMAIL_BUY' ? ' · Buy' : activity.kind === 'EMAIL_SELL' ? ' · Sell' : ''}</strong>
                         <div style={styles.secondary}>
                             {applied ? activity.accountName : 'Not applied'}
                         </div>
                         <div style={styles.secondary}>{new Date(activity.occurredAt).toLocaleString()} {activity.referenceNumber ? `· Ref ${activity.referenceNumber}` : ''}</div>
                     </div>
                     <strong style={{ color: applied ? 'var(--Fc-1)' : 'var(--Ac-2)', whiteSpace: 'nowrap' }}>
-                        {applied ? withdrawal ? '-' : '+' : ''}{money(activity.amountMinor, activity.currency || 'USD')}
+                        {applied && !transfer ? withdrawal ? '-' : '+' : ''}{money(activity.amountMinor, activity.currency || 'USD')}
                     </strong>
                 </div>;
             })}

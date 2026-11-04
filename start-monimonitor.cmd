@@ -3,7 +3,7 @@ setlocal
 cd /d "%~dp0"
 
 set "PUBLIC_URL=https://monimonitor.saeedarabha.com"
-set "PUBLIC_HEALTH_URL=%PUBLIC_URL%/api/health"
+set "PUBLIC_HEALTH_URL=%PUBLIC_URL%/api/live"
 set "TAILSCALE_EXE=C:\Program Files\Tailscale\tailscale.exe"
 set "AUTO_UPDATE_RESTART="
 if /I "%~1"=="--auto-update-restart" set "AUTO_UPDATE_RESTART=1"
@@ -50,7 +50,7 @@ echo Ensuring the secure public tunnel is active...
 call :ensure_tunnel
 if errorlevel 1 goto :error
 
-powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/health' -TimeoutSec 2 | Out-Null; exit 0 } catch { exit 1 }"
+powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/live' -TimeoutSec 2 | Out-Null; exit 0 } catch { exit 1 }"
 if not errorlevel 1 (
   powershell -NoProfile -Command "$agent = Get-CimInstance Win32_Process -Filter 'Name = ''node.exe''' | Where-Object { $_.CommandLine -match 'email_agent\.js' }; if ($agent) { exit 0 } else { exit 1 }"
   if errorlevel 1 (
@@ -69,7 +69,7 @@ powershell -NoProfile -Command "$command = 'title MoniMonitor API + Email + Tele
 if errorlevel 1 goto :error
 
 echo Waiting for the backend to become ready...
-powershell -NoProfile -Command "$deadline = (Get-Date).AddSeconds(60); do { try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/health' -TimeoutSec 2 | Out-Null; exit 0 } catch { Start-Sleep -Seconds 1 } } while ((Get-Date) -lt $deadline); exit 1"
+powershell -NoProfile -Command "$deadline = (Get-Date).AddSeconds(60); do { try { Invoke-WebRequest -UseBasicParsing 'http://localhost:3001/live' -TimeoutSec 2 | Out-Null; exit 0 } catch { Start-Sleep -Seconds 1 } } while ((Get-Date) -lt $deadline); exit 1"
 if errorlevel 1 (
   echo The backend did not become healthy within 60 seconds.
   goto :error

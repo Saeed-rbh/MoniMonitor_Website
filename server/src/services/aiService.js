@@ -123,6 +123,10 @@ const NullablePositiveNumber = z.preprocess(
 
 const ExpenseSchema = z.object({
     Amount: z.string(),
+    Currency: z.string().regex(/^[A-Z]{3}$/).nullable().optional().default(null),
+    TransferFromAccountId: NullablePositiveInteger,
+    TransferToAccountId: NullablePositiveInteger,
+    TransferConfidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).nullable().optional().default(null),
     Category: z.enum(['Expense', 'Income', 'Saving']),
     Label: z.enum(ALL_LABELS),
     Reason: z.string(),
@@ -133,7 +137,7 @@ const ExpenseSchema = z.object({
     ReferenceNumber: z.string().nullable().optional(),
     BalanceAccountId: NullablePositiveInteger,
     BalanceAccountConfidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).nullable().optional().default(null),
-    PortfolioAction: z.enum(['DEPOSIT', 'CONTRIBUTION', 'WITHDRAWAL', 'INTEREST', 'DIVIDEND', 'BUY', 'SELL', 'TRANSFER']).nullable().optional().default(null),
+    PortfolioAction: z.enum(['DEPOSIT', 'CONTRIBUTION', 'WITHDRAWAL', 'INTEREST', 'DIVIDEND', 'BUY', 'SELL', 'TRANSFER', 'ASSET_TRANSFER_IN', 'ASSET_TRANSFER_OUT']).nullable().optional().default(null),
     PortfolioAccountId: NullablePositiveInteger,
     PortfolioConfidence: z.enum(['HIGH', 'MEDIUM', 'LOW']).nullable().optional().default(null),
     PortfolioSymbol: z.string().trim().regex(/^[A-Z0-9.\-]{1,15}$/).nullable().optional().default(null),
@@ -153,7 +157,14 @@ function minimizeEmailForAI(emailBody) {
 function parseAIResponseText(responseText) {
     const parsedJson = JSON.parse(responseText);
     if (parsedJson.error) return ErrorSchema.parse(parsedJson);
-    return ExpenseSchema.parse(parsedJson);
+    const transaction = ExpenseSchema.parse(parsedJson);
+    // Explicit financial actions take precedence over inconsistent category/label guesses.
+    if (transaction.PortfolioAction) {
+        transaction.Category = 'Saving';
+        transaction.Label = ['BUY', 'SELL', 'CONTRIBUTION', 'DIVIDEND'].includes(transaction.PortfolioAction)
+            ? 'Investment' : 'Savings';
+    }
+    return transaction;
 }
 
 // ─── AI Parser ─────────────────────────────────────────────────────────────
@@ -167,7 +178,7 @@ async function parseEmailWithGemini(emailBody, knownAccounts = [], investmentAcc
     const portfolioContext = investmentAccounts.length > 0
         ? `\nUser financial accounts (select an id only when the email clearly identifies one):\n` +
           investmentAccounts.map((account) =>
-              `- id ${account.id}: ${account.name} | ${account.institution || 'no institution'} | ${account.accountType} | ${account.accountRef || 'no account reference'}`
+              `- id ${account.id}: ${account.name} | ${account.institution || 'no institution'} | ${account.accountType} | ${account.accountRef || 'no account reference'} | ${account.currency || 'unknown currency'}`
           ).join('\n') + '\n'
         : '';
 
@@ -181,6 +192,15 @@ ${portfolioContext}
 Return ONLY a valid JSON object with NO markdown or backticks.
 
 Fields to extract:
+- "Currency": ISO 4217 currency explicitly shown or unambiguously identified by the account.
+- "TransferFromAccountId" and "TransferToAccountId": For an explicit transfer between two accounts
+  owned by this user, select the debit/source and credit/destination account ids independently.
+  Return null for any endpoint that is not explicitly identified. An e-Transfer to another person
+  is not an internal transfer. Matching amounts, bank name alone, or a shared owner name are insufficient.
+- "TransferConfidence": HIGH only when BOTH owned endpoints and direction are explicit; otherwise LOW.
+  When both endpoints are explicit set PortfolioAction to TRANSFER, Category to Saving, Label to Savings.
+  Transfers into TFSA/RRSP from another owned account are TRANSFER, not a new external CONTRIBUTION.
+  Never infer the source from the only available chequing account.
 - "Amount": Transaction amount as a string without currency symbols (e.g. "45.99").
 - "Category": MUST be exactly one of: "Expense", "Income", "Saving".
   - Expense: money going OUT for purchases, bills, fees, e-Transfers sent.
@@ -233,6 +253,7 @@ Fields to extract:
 - "PortfolioPrice": For a BUY or SELL, return the execution price per share as a number without
   a currency symbol (for example 44.5699). Otherwise return null.
   "Amount" must be the order's total cost for a BUY or total proceeds for a SELL.
+- Reject order placed, pending, cancelled, rejected, and marketing emails. Only completed fills may use BUY/SELL.
 - A filled order confirmation from a brokerage is a valid financial transaction notification.
 
 Portfolio safety rules:

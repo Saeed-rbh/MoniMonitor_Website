@@ -1,3 +1,6 @@
+import { useRemoteData } from '../../hooks/useRemoteData';
+import DataStatus from '../../components/DataStatus';
+import { isInternalTransfer, isInvestmentTrade, isSavingsContribution } from '../../utils/transactionReporting';
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -14,7 +17,7 @@ import { getPortfolioAPI } from "../../services/apiService";
 import "./SaveInvestInsights.css";
 
 const isSaveInvestTransaction = (transaction) =>
-  ["Saving", "Save&Invest", "Investment"].includes(transaction?.Category);
+  isSavingsContribution(transaction);
 
 const money = (value, currency = "USD") =>
   new Intl.NumberFormat(undefined, {
@@ -33,30 +36,32 @@ const unitPrice = (value, currency = "USD") =>
 
 const SaveInvestInsights = () => {
   const navigate = useNavigate();
-  const { allTransactions, monthData, setIsMoreClicked } = useTransactions();
-  const [portfolio, setPortfolio] = useState(null);
+  const { allTransactions, monthData, setIsMoreClicked, currency: reportingCurrency, setCurrency: setReportingCurrency } = useTransactions();
+  const remote = useRemoteData(getPortfolioAPI);
+  const portfolio = remote.data;
   const [range, setRange] = useState(6);
+  const [selectedCurrency, setSelectedCurrency] = useState('');
+  const currencies = [...new Set([
+    ...(portfolio?.totalsByCurrency || []).map(item => item.currency),
+    ...Object.values(allTransactions || {}).flatMap(data => (data.transactions || [])
+      .filter(isSaveInvestTransaction).map(tx => tx.Currency || 'USD')),
+  ])].sort();
+  const currency = reportingCurrency || (currencies.includes(selectedCurrency) ? selectedCurrency : currencies[0] || 'USD');
+  const totals = portfolio?.totalsByCurrency?.find(item => item.currency === currency);
 
-  useEffect(() => {
-    let active = true;
-    getPortfolioAPI().then((data) => {
-      if (active) setPortfolio(data);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
+
 
   const monthlyData = useMemo(
     () =>
       Object.entries(allTransactions || {})
         .map(([month, data]) => ({
           month,
-          savings: Number(data?.totalSaving || 0),
-          transactions: (data?.transactions || []).filter(isSaveInvestTransaction),
+          savings: (data?.transactions || []).filter(tx => isSaveInvestTransaction(tx) && (tx.Currency || 'USD') === currency)
+            .reduce((sum, tx) => sum + Number(tx.Amount || 0), 0),
+          transactions: (data?.transactions || []).filter(tx => isSaveInvestTransaction(tx) && (tx.Currency || 'USD') === currency),
         }))
         .sort((a, b) => a.month.localeCompare(b.month)),
-    [allTransactions]
+    [allTransactions, currency]
   );
 
   const savingTransactions = useMemo(
@@ -67,13 +72,18 @@ const SaveInvestInsights = () => {
     [monthlyData]
   );
 
+  const investmentActivities = useMemo(() => Object.values(allTransactions || {})
+    .flatMap(month => month.transactions || [])
+    .filter(tx => !isInternalTransfer(tx) && (isInvestmentTrade(tx) || isSavingsContribution(tx)) && (tx.Currency || 'USD') === currency)
+    .sort((a, b) => new Date(b.Timestamp) - new Date(a.Timestamp)), [allTransactions, currency]);
+
   const visibleMonthlyData =
     range === 0 ? monthlyData : monthlyData.slice(-range);
   const totalContributed = monthlyData.reduce(
     (sum, entry) => sum + entry.savings,
     0
   );
-  const currentContribution = Number(monthData?.selected?.totalSaving || 0);
+  const currentContribution = (monthData?.transactions || []).filter(tx => isSaveInvestTransaction(tx) && (tx.Currency || 'USD') === currency).reduce((sum, tx) => sum + Number(tx.Amount || 0), 0);
   const previousContribution =
     monthlyData.length > 1 ? monthlyData[monthlyData.length - 2].savings : 0;
   const contributionChange =
@@ -97,16 +107,15 @@ const SaveInvestInsights = () => {
       .slice(0, 4);
   }, [savingTransactions]);
 
-  const currency = portfolio?.accounts?.[0]?.currency || "USD";
-  const portfolioValue = Number(portfolio?.totalValueMinor || 0) / 100;
-  const cashValue = Number(portfolio?.totalCashMinor || 0) / 100;
-  const holdingsValue = Number(portfolio?.holdingsValueMinor || 0) / 100;
-  const gainLoss = Number(portfolio?.gainLossMinor || 0) / 100;
+  const portfolioValue = Number(totals?.totalValueMinor || 0) / 100;
+  const cashValue = Number(totals?.totalCashMinor || 0) / 100;
+  const holdingsValue = Number(totals?.holdingsValueMinor || 0) / 100;
+  const gainLoss = Number(totals?.gainLossMinor || 0) / 100;
   const assetValue = cashValue + holdingsValue;
   const cashPercent = assetValue > 0 ? (cashValue / assetValue) * 100 : 0;
   const holdingsPercent =
     assetValue > 0 ? (holdingsValue / assetValue) * 100 : 0;
-  const holdingsCount = (portfolio?.accounts || []).reduce(
+  const holdingsCount = (portfolio?.accounts || []).filter(account => account.currency === currency).reduce(
     (count, account) => count + (account.holdings?.length || 0),
     0
   );
@@ -116,8 +125,10 @@ const SaveInvestInsights = () => {
     navigate("/Transactions");
   };
 
+  if (!portfolio && remote.error) return <DataStatus {...remote} />;
   return (
     <main className="SaveInvestInsights">
+      <DataStatus {...remote} />
       <header className="SaveInvestInsights_Header">
         <div>
           <span className="SaveInvestInsights_Eyebrow">SAVE & INVEST</span>
@@ -132,8 +143,11 @@ const SaveInvestInsights = () => {
         </div>
       </header>
 
+      <label>Currency <select aria-label="Portfolio currency" value={currency} onChange={event => { setSelectedCurrency(event.target.value); setReportingCurrency?.(event.target.value); }}>
+        {([...new Set([currency, ...currencies])]).map(code => <option key={code}>{code}</option>)}
+      </select></label>
       <section className="SaveInvestInsights_Hero">
-        <span>Net account value</span>
+        <span>Net account value · {currency}</span>
         <h2>{portfolio ? money(portfolioValue, currency) : "Loading…"}</h2>
         <div className="SaveInvestInsights_HeroMeta">
           <span className={gainLoss >= 0 ? "positive" : "negative"}>
@@ -164,7 +178,7 @@ const SaveInvestInsights = () => {
         <article>
           <span>All-time recorded</span>
           <strong>{money(totalContributed, currency)}</strong>
-          <small>{savingTransactions.length} saving/investment entries</small>
+          <small>{savingTransactions.length} contribution entries</small>
         </article>
         <article>
           <span>Cash</span>
@@ -221,7 +235,7 @@ const SaveInvestInsights = () => {
                   fontSize={9}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(value) => "$" + Math.round(value)}
+                  tickFormatter={(value) => currency + " " + Math.round(value)}
                 />
                 <Tooltip
                   cursor={{ fill: "rgba(255,255,255,.03)" }}
@@ -422,16 +436,17 @@ const SaveInvestInsights = () => {
           </button>
         </div>
         <div className="SaveInvestInsights_Rows">
-          {savingTransactions.slice(0, 5).map((transaction) => (
+          {investmentActivities.slice(0, 5).map((transaction) => (
             <div key={transaction.id || transaction.Timestamp + transaction.Reason}>
               <span>
                 {transaction.Reason || transaction.Label || "Save & Invest"}
+                {isInvestmentTrade(transaction) && ` · ${(transaction.PortfolioAction || transaction.PortfolioPostingKind.replace('EMAIL_', '')) === 'BUY' ? 'Buy' : 'Sell'}${transaction.PortfolioSymbol ? ' ' + transaction.PortfolioSymbol : ''}`}
                 <small>{new Date(transaction.Timestamp).toLocaleDateString()}</small>
               </span>
-              <strong>{money(transaction.Amount, currency)}</strong>
+              <strong>{money(transaction.Amount, transaction.Currency || 'USD')}</strong>
             </div>
           ))}
-          {!savingTransactions.length && (
+          {!investmentActivities.length && (
             <div className="SaveInvestInsights_Empty">No saving or investment activity yet.</div>
           )}
         </div>

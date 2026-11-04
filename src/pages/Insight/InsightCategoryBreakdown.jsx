@@ -1,6 +1,9 @@
+import { useTransactions } from '../../context/TransactionContext';
+import { isExcludedFromCashFlow } from '../../utils/transactionReporting';
 import React, { useMemo } from 'react';
 
 const InsightCategoryBreakdown = ({ transactions }) => {
+    const { currency = 'USD' } = useTransactions();
 
     const { incomeStats, expenseStats } = useMemo(() => {
         if (!transactions || transactions.length === 0) return { incomeStats: [], expenseStats: [] };
@@ -11,6 +14,7 @@ const InsightCategoryBreakdown = ({ transactions }) => {
         let totalExpense = 0;
 
         transactions.forEach(t => {
+            if (isExcludedFromCashFlow(t)) return;
             const amt = Number(t.Amount);
             if (isNaN(amt) || amt === 0) return;
 
@@ -80,7 +84,7 @@ const InsightCategoryBreakdown = ({ transactions }) => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
                                 <span style={{ color: 'var(--Ac-1)', fontWeight: 'normal' }}>{item.label}</span>
                                 <span style={{ fontWeight: '300', color: colorVar }}>
-                                    ${formatCurrency(item.amount)} <span style={{ opacity: 0.7, fontSize: '0.7rem', color: '#fff' }}>({Math.round(item.percentage)}%)</span>
+                                    {currency} {formatCurrency(item.amount)} <span style={{ opacity: 0.7, fontSize: '0.7rem', color: '#fff' }}>({Math.round(item.percentage)}%)</span>
                                 </span>
                             </div>
                             {/* Progress Bar */}

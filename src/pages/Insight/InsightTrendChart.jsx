@@ -1,8 +1,10 @@
+import { useTransactions } from '../../context/TransactionContext';
 
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const InsightTrendChart = ({ data }) => {
+    const { currency = 'USD' } = useTransactions();
     // data format: [{ day: 1, income: 100, expense: 50, invest: 20 }, ...]
 
     // Custom Tooltip for better aesthetics matching the app
@@ -21,7 +23,7 @@ const InsightTrendChart = ({ data }) => {
                     <p style={{ margin: 0, fontWeight: 'bold', marginBottom: '5px' }}>{isNaN(label) ? label : `Day ${label}`}</p>
                     {payload.map((entry, index) => (
                         <p key={index} style={{ margin: 0, color: entry.color, fontSize: '0.75rem' }}>
-                            {entry.name}: ${entry.value.toFixed(2)}
+                            {entry.name}: {currency} {entry.value.toFixed(2)}
                         </p>
                     ))}
                 </div>
@@ -49,7 +51,7 @@ const InsightTrendChart = ({ data }) => {
                         fontSize={10}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(val) => `$${Math.round(val)}`}
+                        tickFormatter={(val) => `${currency} ${Math.round(val)}`}
                         domain={[0, (dataMax) => Math.ceil(dataMax / 100) * 100]}
                     />
                     <Tooltip content={<CustomTooltip />} />

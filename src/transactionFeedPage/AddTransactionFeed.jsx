@@ -1,3 +1,7 @@
+import { useTransactions } from '../context/TransactionContext';
+import { useRemoteData } from '../hooks/useRemoteData';
+import { getPortfolioAPI } from '../services/apiService';
+import DataStatus from '../components/DataStatus';
 import React, { useState, useMemo, useCallback, useReducer } from "react";
 import { MdKeyboardArrowLeft, MdKeyboardArrowRight } from "react-icons/md";
 import { FaCheck } from "react-icons/fa";
@@ -30,9 +34,27 @@ function AddTransactionFeed({
   /**
    * State Management
    */
-  const [value, setValue] = useState("");
+  const { currency: reportingCurrency } = useTransactions();
+  const accountsRemote = useRemoteData(getPortfolioAPI);
+  const accounts = accountsRemote.data?.accounts || [];
+  const [selectedAccountId, setSelectedAccountId] = useState(addTransaction.BalanceAccountId || addTransaction.PortfolioAccountId || '');
+  const [currency, setCurrency] = useState(addTransaction.Currency || reportingCurrency || 'USD');
+  const currencyFields = <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', padding: '8px' }}>
+    <DataStatus {...accountsRemote} />
+    <label>Account <select aria-label="Transaction account" value={selectedAccountId} onChange={event => {
+      setSelectedAccountId(event.target.value);
+      const account = accounts.find(item => String(item.id) === event.target.value);
+      if (account) setCurrency(account.currency);
+    }} style={{ minHeight: '44px' }}>
+      <option value="">No account selected</option>
+      {accounts.map(account => <option key={account.id} value={account.id}>{account.name} ({account.currency})</option>)}
+    </select></label>
+    <label>Currency <input aria-label="Transaction currency" value={currency} readOnly={Boolean(selectedAccountId)} maxLength={3} pattern="[A-Z]{3}" required
+      onChange={event => setCurrency(event.target.value.toUpperCase())} style={{ width: '5em', minHeight: '44px' }} /></label>
+  </div>;
+  const [value, setValue] = useState(addTransaction.Amount > 0 ? String(addTransaction.Amount) : "");
   const [valueError, setValueError] = useState(true);
-  const [reason, setReason] = useState("");
+  const [reason, setReason] = useState(addTransaction.Reason || "");
   const [whichType, setWhichType] = useState(addTransaction.Type !== "Monthly");
   const [isLongPress, setIsLongPress] = useState([false, null]);
 
@@ -107,7 +129,7 @@ function AddTransactionFeed({
   const Modify = addTransaction.Amount > 0;
   const [selectedCategory, setSelectedCategory] = useState(
     Modify
-      ? List.find((item) => addTransaction.Label === item[0].toLowerCase())
+      ? List.find((item) => String(addTransaction.Label).toLowerCase() === item[0].toLowerCase()) || List[0]
       : List[0]
   );
 
@@ -168,12 +190,14 @@ function AddTransactionFeed({
    * Handlers
    */
   const newTransactionMemo = useMemo(() => {
-    const selectedReason = reason.length !== 0 ? reason : addTransaction.Reason;
+    const selectedReason = reason;
     return {
       id: addTransaction.id,
+      Currency: currency,
+      ...(selectedAccountId ? { BalanceAccountId: Number(selectedAccountId) } : {}),
       Amount:
-        Number(value.replace(/[^0-9]/g, "")) !== 0
-          ? Number(value.replace(/[^0-9]/g, ""))
+        Number(value.replace(/[^0-9.]/g, "")) !== 0
+          ? Number(value.replace(/[^0-9.]/g, ""))
           : addTransaction.Amount,
       Reason: selectedReason,
       Label: selectedCategory[0],
@@ -182,6 +206,7 @@ function AddTransactionFeed({
       Category: isAddClicked,
     };
   }, [
+    currency, selectedAccountId,
     value,
     reason,
     addTransaction,
@@ -231,12 +256,65 @@ function AddTransactionFeed({
   /**
    * Render Component
    */
+  if (Modify) {
+    return (
+      <section className="transaction-details" aria-labelledby="transaction-details-title">
+        <header className="transaction-details__header">
+          <p>TRANSACTION</p>
+          <h2 id="transaction-details-title">Transaction details</h2>
+        </header>
+        <form onSubmit={(event) => { event.preventDefault(); handleAddClick(); }}>
+          {currencyFields}
+          <div className="transaction-details__amount">
+            <label htmlFor="detail-amount">Amount</label>
+            <div><span aria-hidden="true">$</span><input id="detail-amount" type="number" min="0.01" step="0.01" inputMode="decimal" required
+              value={value}
+              onChange={(event) => setValue(event.target.value)} aria-label="Amount" /></div>
+          </div>
+          <div className="transaction-details__fields">
+            <label className="transaction-details__wide">Description
+              <input value={reason} onChange={(event) => setReason(event.target.value)} placeholder="Add a description" />
+            </label>
+            <label>Transaction type
+              <select value={isAddClicked} onChange={(event) => setIsClicked(event.target.value)}>
+                <option value="Expense">Expense</option><option value="Income">Income</option><option value="Save&Invest">Save &amp; invest</option>
+              </select>
+            </label>
+            <label>Category
+              <select value={selectedCategory[0]} onChange={(event) => setSelectedCategory(List.find((item) => item[0] === event.target.value))}>
+                {List.map(([name]) => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </label>
+            <label>Date
+              <input type="date" required value={`${selectedDate.year}-${selectedDate.month}-${selectedDate.day}`}
+                onChange={(event) => { const [year, month, day] = event.target.value.split("-"); setSelectedDate((date) => ({ ...date, year, month, day })); }} />
+            </label>
+            <label>Time
+              <input type="time" required value={`${selectedDate.hours}:${selectedDate.minutes}`}
+                onChange={(event) => { const [hours, minutes] = event.target.value.split(":"); setSelectedDate((date) => ({ ...date, hours, minutes })); }} />
+            </label>
+            <label className="transaction-details__wide">Frequency
+              <select value={whichType ? "Daily" : "Monthly"} onChange={(event) => setWhichType(event.target.value === "Daily")}>
+                <option value="Daily">One-time</option><option value="Monthly">Monthly</option>
+              </select>
+            </label>
+          </div>
+          <footer className="transaction-details__actions">
+            <button type="button" onClick={() => setIsClicked(null)}>Cancel</button>
+            <button type="submit"><FaCheck aria-hidden="true" />Save changes</button>
+          </footer>
+        </form>
+      </section>
+    );
+  }
+
   return (
     <animated.div className="AddTransactionFeed" style={fade}>
       <h3>
         <span style={DotStyle}>•</span>Add New{" "}
         <span>{isAddClicked?.replace("&", " & ")}</span>
       </h3>
+      {currencyFields}
       {/* Main form elements */}
       <animated.ul style={moreBlurStyle}>
         <Type

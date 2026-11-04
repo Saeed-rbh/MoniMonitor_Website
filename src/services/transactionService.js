@@ -1,3 +1,4 @@
+import { isExcludedFromCashFlow } from '../utils/transactionReporting';
 import { format, parse, addMonths, isBefore } from "date-fns";
 import { GetDataFromDB } from "./apiService";
 
@@ -67,7 +68,7 @@ const LabelDistribution = (amount, labels) => {
   return sortedDistribution;
 };
 
-const groupTransactionsByMonth = (transactions) => {
+const groupTransactionsByMonth = (transactions, currency) => {
   const groupedTransactions = {};
 
   const sortedTransactions = [...(transactions || [])].sort(
@@ -111,7 +112,9 @@ const groupTransactionsByMonth = (transactions) => {
       };
     }
 
+    if (currency && (transaction.Currency || 'USD') !== currency) return;
     groupedTransactions[key].transactions.push(transaction);
+    if (isExcludedFromCashFlow(transaction)) return;
     const label = transaction.Label;
 
     if (transaction.Category === "Expense") {
@@ -172,13 +175,13 @@ const groupTransactionsByMonth = (transactions) => {
 
     groupedTransactions[key].labelDistribution = {
       Expense: Number(
-        ((groupedTransactions[key].totalExpense / netTotal) * 100).toFixed(2)
+        ((groupedTransactions[key].totalExpense / (netTotal || 1)) * 100).toFixed(2)
       ),
       Income: Number(
-        ((groupedTransactions[key].totalIncome / netTotal) * 100).toFixed(2)
+        ((groupedTransactions[key].totalIncome / (netTotal || 1)) * 100).toFixed(2)
       ),
       Saving: Number(
-        ((groupedTransactions[key].totalSaving / netTotal) * 100).toFixed(2)
+        ((groupedTransactions[key].totalSaving / (netTotal || 1)) * 100).toFixed(2)
       ),
     };
   });
@@ -293,22 +296,18 @@ const getNetAmounts = (Transactions) => {
 
 export const fetchAllTransactionData = async () => {
   let allTransactions = await GetDataFromDB();
-  if (!Array.isArray(allTransactions)) allTransactions = [];
+  if (!Array.isArray(allTransactions)) throw new Error('Invalid transaction data');
 
 
-  const totalTransactions = groupTransactionsByMonth(allTransactions);
-
-  const Availability = Object.entries(
-    getMonthDataAvailability(totalTransactions)
-  ).reverse();
-
-  const netAmounts = getNetAmounts(totalTransactions);
-
-  return {
-    totalTransactions,
-    Availability,
-    netAmounts,
-  };
+  const currencies = [...new Set(allTransactions.map(tx => tx.Currency || 'USD'))].sort();
+  const byCurrency = Object.fromEntries(currencies.map(currency => {
+    const totalTransactions = groupTransactionsByMonth(allTransactions, currency);
+    return [currency, { totalTransactions,
+      Availability: Object.entries(getMonthDataAvailability(totalTransactions)).reverse(),
+      netAmounts: getNetAmounts(totalTransactions) }];
+  }));
+  const currency = currencies[0] || 'USD';
+  return { ...(byCurrency[currency] || { totalTransactions: {}, Availability: [], netAmounts: {} }), currency, currencies, byCurrency };
 };
 
 export const getSelectedMonthData = (transactionsByMonth, whichMonth) => {

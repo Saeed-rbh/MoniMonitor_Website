@@ -1630,3 +1630,27 @@
 .Notif_Deleted svg {
   font-size: 1rem;
 }
+
+/* Portfolio amounts retain their own currencies and grow the card as needed. */
+.MoneyEntry_Balance.MoneyEntry_Balance--portfolio {
+  position: relative;
+  bottom: auto;
+  right: auto;
+  height: auto;
+  margin: 48px 14px 12px;
+  align-self: stretch;
+}
+
+.MoneyEntry_CurrencyTotals {
+  display: grid;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.MoneyEntry_CurrencyValue {
+  font-size: clamp(0.85rem, 3.8vw, 1.15rem);
+  font-weight: 400;
+  color: var(--Ac-1);
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}

@@ -33,7 +33,7 @@ const Account = () => {
             if (!active || !settings) return;
             setCurrency(settings.currency || "USD");
             setNotifications(Boolean(settings.notificationsEnabled));
-        });
+        }).catch(() => alert("Could not load account settings. Please reload to retry."));
         return () => { active = false; };
     }, []);
 
@@ -62,9 +62,11 @@ const Account = () => {
     };
 
     const handleExport = async () => {
-        const transactions = await GetDataFromDB();
+        let transactions;
+        try { transactions = await GetDataFromDB(); }
+        catch { alert("Could not load transactions for export. Please try again."); return; }
         if (!transactions.length) return alert("There are no transactions to export yet.");
-        const columns = ["id", "Amount", "Category", "Label", "Reason", "Timestamp", "Type", "Account", "BankName", "ReferenceNumber", "Frequency"];
+        const columns = ["id", "Amount", "Currency", "Category", "Label", "Reason", "Timestamp", "Type", "Account", "BankName", "ReferenceNumber", "Frequency"];
         const quote = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
         const csv = [columns.join(","), ...transactions.map((transaction) => columns.map((column) => quote(transaction[column])).join(","))].join("\r\n");
         const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));

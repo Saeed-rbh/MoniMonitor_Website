@@ -12,19 +12,30 @@ import BlurFade from "@/components/ui/blur-fade";
 
 const MoneyEntryAmount = ({
   type,
+  currency = 'USD',
   transaction,
   setIsMoreClicked,
   redirectClick,
   index,
   portfolio,
+  portfolioLoading = false,
+  portfolioError = false,
 }) => {
+  const isPortfolio = type === 'Save&Invest' && Boolean(portfolio?.accountCount);
+  const currencyTotals = isPortfolio ? portfolio.totalsByCurrency || [] : [];
+  const portfolioPending = type === 'Save&Invest' && !portfolio && portfolioLoading;
+  const portfolioUnavailable = type === 'Save&Invest' && !portfolio && portfolioError;
+  const currencyMoney = (minor, currency) => new Intl.NumberFormat(undefined, {
+    style: 'currency', currency, currencyDisplay: 'code', maximumFractionDigits: 2,
+  }).format(minor / 100);
+
   const BannerAmount =
     type === "Income"
       ? transaction.totalIncome
       : type === "Expense"
         ? transaction.totalExpense
         : type === "Save&Invest"
-          ? (portfolio?.accountCount ? portfolio.totalValueMinor / 100 : transaction.totalSaving)
+          ? transaction.totalSaving
           : transaction.netTotal;
 
   const amountStyle = {
@@ -93,7 +104,7 @@ const MoneyEntryAmount = ({
   const scaleStyle = useSpring({
     scale: isScaled ? 0.9 : 1,
     // width: ((390 - 10) / 2) * widthFactor, // Removed to allow flex
-    height: ((420 - 20) / 2 / 1.8) * heightFactor, // Updated to 1.8 divisor for compactness
+    height: isPortfolio ? Math.max(112, 78 + currencyTotals.length * 32) : ((420 - 20) / 2 / 1.8) * heightFactor, // Updated to 1.8 divisor for compactness
   });
 
   const handleClick = () => {
@@ -115,7 +126,7 @@ const MoneyEntryAmount = ({
         delay={0.3 + 0.05 * index}
         duration={0.4}
         className="MoneyEntry_Amount"
-        style={amountStyle}
+        style={{ ...amountStyle, ...(isPortfolio ? { height: '100%' } : {}) }}
       >
         <div className="MoneyEntry_Amount_Gradient" style={gradientStyle}></div>
         <p>
@@ -133,23 +144,35 @@ const MoneyEntryAmount = ({
             <GoPulse />
           )}
         </div>
-        <div className="MoneyEntry_Balance">
+        <div className={`MoneyEntry_Balance${isPortfolio ? ' MoneyEntry_Balance--portfolio' : ''}`}>
           <h2>
             {type === 'Save&Invest'
-              ? portfolio?.accountCount ? 'Portfolio value' : 'Total contributed'
+              ? isPortfolio || portfolioPending || portfolioUnavailable ? 'Portfolio value' : 'Total contributed'
               : type === 'Balance'
                 ? 'Total'
               : "Total Amount"}
             :
           </h2>
-          <h1>
+          {isPortfolio ? (
+            <div className="MoneyEntry_CurrencyTotals" aria-label="Portfolio values by currency">
+              {currencyTotals.length ? currencyTotals.map(total => (
+                <div key={total.currency} className="MoneyEntry_CurrencyValue">
+                  {Number.isSafeInteger(total.totalValueMinor)
+                    ? currencyMoney(total.totalValueMinor, total.currency)
+                    : `${total.currency} unavailable`}
+                </div>
+              )) : <div>Portfolio value unavailable</div>}
+            </div>
+          ) : portfolioPending || portfolioUnavailable ? (
+            <div role="status">{portfolioPending ? 'Loading…' : 'Unavailable'}</div>
+          ) : <h1>
             {type === "Balance"
               ? formatNetTotal(BannerAmount) > 0
                 ? "+"
                 : "-"
               : ""}
-            ${formatNetTotal(BannerAmount).replace("-", "")}
-          </h1>
+            {currency} {formatNetTotal(BannerAmount).replace("-", "")}
+          </h1>}
         </div>
       </BlurFade>
     </animated.div>

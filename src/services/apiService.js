@@ -17,57 +17,31 @@ const handleExpiredSession = (response) => {
     return true;
 };
 
+export const readFinancialData = async (path, options = {}) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Please sign in to load your financial data.');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+        const response = await fetch(apiUrl(path), {
+            ...options, signal: controller.signal,
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...options.headers },
+        });
+        if (!response.ok) {
+            handleExpiredSession(response);
+            throw Object.assign(new Error(response.status === 401 ? 'Your session expired. Please sign in again.' : 'Could not refresh financial data. Please try again.'), { status: response.status });
+        }
+        return await response.json();
+    } finally { clearTimeout(timer); }
+};
+
 export const GetDataFromDB = async () => {
-    try {
-        const token = localStorage.getItem("token");
-        if (!token) return [];
-
-        const response = await fetch(API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({ status: "read" })
-        });
-
-        if (!response.ok) {
-            handleExpiredSession(response);
-            console.error("Failed to fetch data", response.status);
-            return [];
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error("Error fetching data:", error);
-        return [];
-    }
+    const data = await readFinancialData('/MoniMonitor_ToDB', { method: 'POST', body: JSON.stringify({ status: 'read' }) });
+    if (!Array.isArray(data)) throw new Error('The server returned invalid transaction data. Please retry.');
+    return data;
 };
 
-export const GetSummary = async () => {
-    try {
-        const token = localStorage.getItem("token");
-        if (!token) return null;
-
-        const response = await fetch(apiUrl("/summary"), {
-            method: "GET",
-            headers: {
-                "Authorization": `Bearer ${token}`
-            }
-        });
-
-        if (!response.ok) {
-            handleExpiredSession(response);
-            console.error("Failed to fetch summary data", response.status);
-            return null;
-        }
-
-        return await response.json();
-    } catch (error) {
-        console.error("Error fetching summary:", error);
-        return null;
-    }
-};
+export const GetSummary = (currency) => readFinancialData(`/summary${currency ? '?currency=' + encodeURIComponent(currency) : ''}`);
 
 export const updateTransactionAPI = async (id, updates) => {
     try {
@@ -84,7 +58,8 @@ export const updateTransactionAPI = async (id, updates) => {
         });
 
         if (!response.ok) {
-            return { status: "error", message: "Failed to update transaction" };
+            const error = await response.json().catch(() => ({}));
+            return { status: "error", message: error.error || "Failed to update transaction" };
         }
 
         return await response.json();
@@ -107,7 +82,8 @@ export const deleteTransactionAPI = async (id) => {
         });
 
         if (!response.ok) {
-            return { status: "error", message: "Failed to delete transaction" };
+            const error = await response.json().catch(() => ({}));
+            return { status: "error", message: error.error || "Failed to delete transaction" };
         }
 
         return await response.json();
@@ -136,7 +112,8 @@ export const sendDataToDB = async ({ record_entry, record_type }) => {
         });
 
         if (!response.ok) {
-            return { status: "error", message: "Failed to save" };
+            const error = await response.json().catch(() => ({}));
+            return { status: "error", message: error.error || "Failed to save" };
         }
 
         return await response.json();
@@ -146,12 +123,7 @@ export const sendDataToDB = async ({ record_entry, record_type }) => {
     }
 };
 
-export const getSettingsAPI = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
-    const response = await fetch(apiUrl("/settings"), { headers: { Authorization: `Bearer ${token}` } });
-    return response.ok ? response.json() : null;
-};
+export const getSettingsAPI = () => readFinancialData('/settings');
 
 export const saveSettingsAPI = async (settings) => {
     const token = localStorage.getItem("token");
@@ -164,12 +136,7 @@ export const saveSettingsAPI = async (settings) => {
     return response.ok ? response.json() : null;
 };
 
-export const getBudgetsAPI = async (month) => {
-    const token = localStorage.getItem("token");
-    if (!token) return [];
-    const response = await fetch(apiUrl(`/budgets?month=${encodeURIComponent(month)}`), { headers: { Authorization: `Bearer ${token}` } });
-    return response.ok ? response.json() : [];
-};
+export const getBudgetsAPI = (month) => readFinancialData(`/budgets?month=${encodeURIComponent(month)}`);
 
 export const saveBudgetAPI = async (budget) => {
     const token = localStorage.getItem("token");
@@ -178,12 +145,7 @@ export const saveBudgetAPI = async (budget) => {
     return response.ok ? response.json() : null;
 };
 
-export const getGoalsAPI = async () => {
-    const token = localStorage.getItem("token");
-    if (!token) return [];
-    const response = await fetch(apiUrl("/goals"), { headers: { Authorization: `Bearer ${token}` } });
-    return response.ok ? response.json() : [];
-};
+export const getGoalsAPI = () => readFinancialData('/goals');
 
 export const createGoalAPI = async (goal) => {
     const token = localStorage.getItem("token");
@@ -229,7 +191,11 @@ const portfolioRequest = async (path = '', options = {}) => {
     return response.status === 204 ? true : response.json();
 };
 
-export const getPortfolioAPI = () => portfolioRequest();
+export const getPortfolioAPI = async () => {
+    const data = await readFinancialData('/portfolio');
+    if (!data || !Array.isArray(data.accounts) || !Array.isArray(data.totalsByCurrency)) throw new Error('The server returned invalid account data.');
+    return data;
+};
 
 export const createInvestmentAccountAPI = (account) => portfolioRequest('/accounts', {
     method: 'POST',
@@ -254,3 +220,11 @@ export const deleteInvestmentHoldingAPI = (accountId, holdingId) => portfolioReq
     `/accounts/${accountId}/holdings/${holdingId}`,
     { method: 'DELETE' },
 );
+
+export const getEmailStatusAPI = async () => {
+    try { return await readFinancialData('/email/status'); }
+    catch (error) {
+        if (error.status === 403) return { status: 'not_linked' };
+        throw error;
+    }
+};

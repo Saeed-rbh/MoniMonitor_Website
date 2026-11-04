@@ -1,6 +1,9 @@
+import { useTransactions } from '../../context/TransactionContext';
+import { isExcludedFromCashFlow, isSavingsContribution } from '../../utils/transactionReporting';
 import React, { useMemo } from 'react';
 
 const InsightFacts = ({ transactions, allTransactions, viewMode, currentDate }) => {
+    const { currency = 'USD' } = useTransactions();
 
     const stats = useMemo(() => {
         if (!transactions || transactions.length === 0) return null;
@@ -17,12 +20,13 @@ const InsightFacts = ({ transactions, allTransactions, viewMode, currentDate }) 
 
         // Process transactions
         transactions.forEach(t => {
+            if (isExcludedFromCashFlow(t)) return;
             const amt = Number(t.Amount);
             if (isNaN(amt)) return;
 
             const isIncome = t.Category === "Income" || t.Type === "Income" || t.Type === "Credit";
             const isExpense = t.Category === "Expense" || t.Type === "Expense" || t.Type === "Debit";
-            const isInvest = t.Category === "Save&Invest" || t.Type === "Transfer" || t.Type === "Invest";
+            const isInvest = isSavingsContribution(t);
 
             // 1. Income/Expense/Invest Calc
             if (isIncome) totalIncome += amt;
@@ -116,7 +120,7 @@ const InsightFacts = ({ transactions, allTransactions, viewMode, currentDate }) 
 
     if (!stats) return null;
 
-    const formatCurrency = (val) => Number(val).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    const formatCurrency = (val) => Number(val).toLocaleString('en-US', { style: 'currency', currency, currencyDisplay: 'code' });
 
     // Helper to format date nicely "Mon, Dec 25"
     const formatDate = (dateObj) => {

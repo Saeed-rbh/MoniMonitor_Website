@@ -1,10 +1,19 @@
 import React from 'react';
 
-export function useTransactionData(whichMonth: number, userId: string | number | undefined): {
+export function useTransactionData(whichMonth: number, userId: string | number | undefined, requestedCurrency?: string): {
+    currency: string;
+    currencies: string[];
     selected: any;
     Availability: any[];
     netAmounts: any;
     transactions: any[];
+    allTransactions: Record<string, any>;
+    isLoading: boolean;
+    refreshing: boolean;
+    error: Error | null;
+    lastUpdated: Date | null;
+    refresh: () => Promise<void>;
+    data: any;
 };
 
 export function useMainPageMonth(): {

@@ -1,59 +1,19 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { fetchAllTransactionData, getSelectedMonthData } from "../services/transactionService";
 
-const emptyDisplayData = {
-  selected: {},
-  Availability: [],
-  netAmounts: {},
-  transactions: [],
-  allTransactions: {},
-  isLoading: true,
-  error: null,
-};
+import { useRemoteData } from './useRemoteData';
 
-export const useTransactionData = (whichMonth, userId) => {
-  const [fullData, setFullData] = useState(null);
-  const [displayData, setDisplayData] = useState(emptyDisplayData);
-
-  useEffect(() => {
-    let active = true;
-    const loadAllData = async () => {
-      setDisplayData((current) => ({ ...current, isLoading: true, error: null }));
-      try {
-        const data = await fetchAllTransactionData();
-        if (active) setFullData(data);
-      } catch (error) {
-        if (active) {
-          setFullData(null);
-          setDisplayData({ ...emptyDisplayData, isLoading: false, error });
-        }
-      }
-    };
-
-    if (userId) loadAllData();
-    else {
-      setFullData({ totalTransactions: {}, Availability: [], netAmounts: {} });
-      setDisplayData({ ...emptyDisplayData, isLoading: false });
-    }
-
-    return () => { active = false; };
-  }, [userId]);
-
-  useEffect(() => {
-    if (!fullData) return;
-    const { transactions, selected } = getSelectedMonthData(fullData.totalTransactions, whichMonth);
-    setDisplayData({
-      selected,
-      Availability: fullData.Availability,
-      netAmounts: fullData.netAmounts,
-      transactions,
-      allTransactions: fullData.totalTransactions || {},
-      isLoading: false,
-      error: null,
-    });
-  }, [whichMonth, fullData]);
-
-  return displayData;
+export const useTransactionData = (whichMonth, userId, requestedCurrency) => {
+  const remote = useRemoteData(fetchAllTransactionData, userId);
+  const currency = requestedCurrency || remote.data?.currency || 'USD';
+  const fullData = remote.data?.byCurrency ? remote.data.byCurrency[currency] : remote.data;
+  const { transactions, selected } = getSelectedMonthData(fullData?.totalTransactions || {}, whichMonth);
+  return {
+    ...remote, selected, transactions, currency, currencies: remote.data?.currencies || [],
+    Availability: fullData?.Availability || [],
+    netAmounts: fullData?.netAmounts || {},
+    allTransactions: fullData?.totalTransactions || {},
+  };
 };
 
 export const useMainPageMonth = () => {

@@ -1,7 +1,9 @@
+import { useTransactions } from '../../context/TransactionContext';
 import React from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const InsightMonthlyTrendChart = ({ data }) => {
+    const { currency = 'USD' } = useTransactions();
     // Reverse data so it runs chronologically (left to right)
     const chartData = React.useMemo(() => {
         if (!data || !Array.isArray(data)) return [];
@@ -27,7 +29,7 @@ const InsightMonthlyTrendChart = ({ data }) => {
                     {payload.map((entry, index) => (
                         <p key={index} style={{ margin: '4px 0', color: entry.color, fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
                             <span>{entry.name}:</span>
-                            <span style={{ fontWeight: '600' }}>${entry.value.toFixed(2)}</span>
+                            <span style={{ fontWeight: '600' }}>{currency} {entry.value.toFixed(2)}</span>
                         </p>
                     ))}
                 </div>
@@ -68,7 +70,7 @@ const InsightMonthlyTrendChart = ({ data }) => {
                         fontSize={10}
                         tickLine={false}
                         axisLine={false}
-                        tickFormatter={(val) => `$${Math.round(val)}`}
+                        tickFormatter={(val) => `${currency} ${Math.round(val)}`}
                     />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255, 255, 255, 0.03)' }} />
                     <Legend
