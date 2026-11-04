@@ -1,5 +1,11 @@
 const MIGRATIONS = [
     {
+        version: 23, name: 'preserve_reviewed_email_routes',
+        async up(db) {
+            await require('../services/reviewedEmailRoutes').ensureReviewedEmailRoutes(db);
+        }
+    },
+    {
         version: 22, name: 'e_transfer_counterparty_display_names',
         async up(db) { await db.exec('ALTER TABLE transactions ADD COLUMN CounterpartyName TEXT'); }
     },

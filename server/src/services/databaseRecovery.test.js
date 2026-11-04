@@ -23,6 +23,10 @@ test.before(async () => {
     await service.enqueueDiscoveredEmails('mail', '1', [11, 12]);
     await service.claimPendingEmails('mail', '1', 'old-worker');
     await service.completeEmailQueueItem(11, 'mail', '1', 'old-worker');
+    await db.run(`INSERT INTO reviewed_email_routes
+        (userId,sender,subject,accountLabel,currency,accountId,evidence,reviewedAt)
+        VALUES ('recovery-owner','notifications@o.wealthsimple.com','Your order has been filled',
+        'TFSA','CAD',1,'User-confirmed account mapping','2026-11-02T18:00:00Z')`);
     backup = await createBackup('manual');
 });
 test.after(async () => { await resumeWorkers(); await db?.close(); fs.rmSync(directory, { recursive: true, force: true }); });
@@ -40,6 +44,7 @@ test('restore rebuilds reports, invalidates derived caches, and restores cursor 
     assert.deepEqual(await db.get('SELECT MAX(version) AS version FROM schema_migrations'), version);
     assert.deepEqual(await db.get('SELECT requests, inputBytes FROM ai_usage_daily'), { requests: 7, inputBytes: 1000 });
     assert.equal((await service.getInvestmentAccounts('recovery-owner'))[0].cashMinor, -5000);
+    assert.equal((await db.get('SELECT evidence FROM reviewed_email_routes')).evidence, 'User-confirmed account mapping');
     await resumeWorkers();
     await service.enqueueDiscoveredEmails('mail', '1', [11, 12]);
     const pending = await service.claimPendingEmails('mail', '1', 'new-worker');
@@ -47,6 +52,14 @@ test('restore rebuilds reports, invalidates derived caches, and restores cursor 
     await assert.rejects(service.addTransaction({ userId: 'recovery-owner', AmountMinor: 1234, Category: 'Expense',
         Label: 'Groceries', Timestamp: '2026-08-10T10:00:00Z', SourceEmailKey: 'mail:1:11' }), /UNIQUE/);
     assert.equal((await db.get('SELECT COUNT(*) AS count FROM transactions')).count, 1);
+});
+
+test('registering the deployed routing table preserves existing reviewed mappings', async () => {
+    const migration = require('../database/migrations').MIGRATIONS.find(item => item.version === 23);
+    const before = await db.all('SELECT * FROM reviewed_email_routes');
+    await migration.up(db);
+    await migration.up(db);
+    assert.deepEqual(await db.all('SELECT * FROM reviewed_email_routes'), before);
 });
 
 test('the isolated restore drill exercises recovered accounts and application reports', async () => {

@@ -1,4 +1,7 @@
 node_modules
+
+# Recovery copies stay on their original machine, outside the shared source tree.
+server/*.before-*
 .DS_Store
 dist
 dist-ssr

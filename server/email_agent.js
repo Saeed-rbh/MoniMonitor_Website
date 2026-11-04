@@ -316,6 +316,8 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         expenseData = normalizeEmailEvidence(expenseData, emailBody, investmentAccounts);
         expenseData = await require('./src/services/automaticLearning').applyLearnedAccount(USER_ID,expenseData,emailBody);
         expenseData = await require('./src/services/automaticLearning').personalizeTransaction(USER_ID,expenseData);
+        expenseData = await require('./src/services/reviewedEmailRoutes').routeEmailForUser(
+            await dbService.getDb(), USER_ID, expenseData, emailBody, investmentAccounts);
         if (expenseData.IngestionReviewReason === 'unconfirmed_currency') {
             await writeAudit('email_currency_review', 'review_required', { messageId: idInfo, sourceEmailKey });
             // The durable mailbox queue retains the source for retry/review.

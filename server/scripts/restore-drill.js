@@ -19,7 +19,9 @@ async function run() {
         db = await getDb();
         await restoreDatabase(db, sourcePath);
         const users = await source.all('SELECT id FROM users');
-        for (const table of ['users', 'transactions', 'investment_accounts', 'investment_holdings', 'portfolio_transactions', 'transaction_sources']) {
+        const tables = ['users', 'transactions', 'investment_accounts', 'investment_holdings', 'portfolio_transactions', 'transaction_sources'];
+        if (await source.get("SELECT 1 FROM sqlite_master WHERE type='table' AND name='reviewed_email_routes'")) tables.push('reviewed_email_routes');
+        for (const table of tables) {
             const expected = (await source.get(`SELECT COUNT(*) AS count FROM ${table}`)).count;
             const actual = (await db.get(`SELECT COUNT(*) AS count FROM ${table}`)).count;
             assert.equal(actual, expected, `${table} row count changed during recovery`);
