@@ -15,7 +15,7 @@ test('income summaries, detail filters, AI facts and widget include 101.35 inter
  const small=await service.addTransaction({...base,Amount:0.22,Category:'Income',Label:'Other Income'});
  const interest=await service.addTransaction({...base,Amount:101.35,PortfolioAction:'INTEREST',Label:'Investment Interest'});
  const dividend=await service.addTransaction({...base,Amount:5,Timestamp:'2026-10-01',PortfolioAction:'DIVIDEND',Label:'Dividends'});
- for(const fields of [{Amount:1000,PortfolioAction:'SELL'}, {Amount:500,PortfolioAction:'TRANSFER'}, {Amount:100,PortfolioAction:'INTEREST',AccountFlow:'NONE'}, {Amount:999,PortfolioAction:'DIVIDEND',PostingStatus:'pending'}, {Amount:100,PortfolioAction:'INTEREST',Currency:'USD'}])await service.addTransaction({...base,...fields});
+ for(const fields of [{Amount:1000,PortfolioAction:'SELL'}, {Amount:500,PortfolioAction:'TRANSFER'}, {Amount:100,PortfolioAction:'INTEREST',AccountFlow:'NONE'}, {Amount:999,PortfolioAction:'DIVIDEND',PostingStatus:'unposted'}, {Amount:100,PortfolioAction:'INTEREST',Currency:'USD'}])await service.addTransaction({...base,...fields});
  const before=await db.all('SELECT * FROM transactions ORDER BY id');
  const cashBefore=await db.all('SELECT * FROM account_balance_events');
  const holdingsBefore=await db.all('SELECT * FROM investment_holdings');

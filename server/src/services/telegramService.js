@@ -108,7 +108,7 @@ function formatTransactionMessage(tx, action = 'new') {
     const amount = Number.isSafeInteger(tx.AmountMinor) ? tx.AmountMinor / 100 : Number(tx.Amount);
     const amountStr = `${sign}$${amount.toFixed(2)} ${tx.Currency || 'CAD'}`;
     const headerEmoji = action === 'updated' ? '🔄' : (isTrade ? '📈' : (isInternal ? '🔄' : (isIncome ? '💰' : '💸')));
-    const postingLabel = tx.PostingStatus === 'pending' ? 'Pending Transaction' : tx.PostingStatus === 'unposted' ? 'Unposted Transaction' : null;
+    const postingLabel = tx.PostingStatus === 'unposted' ? 'Unposted Transaction' : null;
     const headerLabel = postingLabel || (action === 'updated'
         ? 'Transaction Updated'
         : (isTrade ? `${portfolioAction} Order Filled` : (isInternal ? 'Internal Transfer' : isInvestment ? 'Investment Activity' : tx.Category === 'Saving' ? 'Savings Activity' : (isIncome ? 'Income Received' : 'Expense Detected'))));
@@ -126,7 +126,7 @@ function formatTransactionMessage(tx, action = 'new') {
         `💳  *Type*        ${e(tx.Type)}`,
     ];
 
-    if (postingLabel) lines.push(`*Status* ${e(tx.PostingStatus === 'pending' ? 'Pending bank settlement' : 'Not posted by the bank')}`);
+    if (postingLabel) lines.push(`*Status* ${e('Not posted by the bank')}`);
 
     if (isTrade) {
         lines.push(divider);

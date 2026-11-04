@@ -36,8 +36,9 @@ backup pruning. Never commit the private files or encryption keys.
    against the bank's new balance. Verify investment quantities separately;
    market value also depends on prices. Correct evidenced transactions rather
    than adding balance plugs. Preserve reviewed source links and overrides.
-5. Keep pending/unposted status internal, as requested by the user; do not add
-   a separate app UI. Verify any corrected Telegram messages through the durable
+5. Record transactions immediately without a pending settlement stage (updated
+   November 4, 2026). Preserve explicitly reconciled unposted exclusions and raw
+   provider evidence for duplicate matching; do not add a separate app UI. Verify any corrected Telegram messages through the durable
    outbox, including Telegram's exact-content-already-matches acknowledgement.
 6. Save a new named checkpoint after a later reconciliation is verified.
 

@@ -1,5 +1,15 @@
 const MIGRATIONS = [
     {
+        version: 24, name: 'record_transactions_without_pending_stage',
+        async up(db) {
+            // Recording is immediate; raw source payloads retain bank authorization facts.
+            // Explicitly excluded/reconciled unposted rows remain excluded.
+            await db.exec(`UPDATE transactions SET PostingStatus='posted' WHERE PostingStatus='pending';
+                DELETE FROM monthly_ai_briefs;
+                DELETE FROM expense_forecast_points;`);
+        }
+    },
+    {
         version: 23, name: 'preserve_reviewed_email_routes',
         async up(db) {
             await require('../services/reviewedEmailRoutes').ensureReviewedEmailRoutes(db);

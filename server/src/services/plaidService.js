@@ -399,7 +399,7 @@ function toAppTransaction(transaction, account, institutionName, options = {}) {
     if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) return null;
     const classification = classifyPlaidTransaction(transaction, { ...options, account });
     return {
-        PostingStatus: transaction.pending ? 'pending' : 'posted',
+        PostingStatus: 'posted',
         AmountMinor: amountMinor,
         Amount: amountMinor / 100,
         Currency: String(transaction.iso_currency_code || transaction.unofficial_currency_code || 'CAD').toUpperCase(),

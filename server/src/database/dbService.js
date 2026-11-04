@@ -166,6 +166,7 @@ function validatePostingStatus(value) {
 
 async function addTransaction(transaction) {
     validatePostingStatus(transaction.PostingStatus);
+    transaction = { ...transaction, PostingStatus: transaction.PostingStatus === 'pending' ? 'posted' : transaction.PostingStatus };
     if (!parseTimestamp(transaction.Timestamp)) throw new Error('Invalid transaction timestamp');
     normalizeTransactionUpdate({CashDate:transaction.CashDate});
     const db = await getDb();
@@ -320,6 +321,7 @@ function normalizeTransactionUpdate(updates) {
         (!/^\d{4}-\d{2}-\d{2}$/.test(updates.CashDate) || !parseTimestamp(updates.CashDate) ||
          new Date(updates.CashDate).toISOString().slice(0,10)!==updates.CashDate)) throw new Error('Invalid cash settlement date');
     const normalized = { ...updates };
+    if (normalized.PostingStatus === 'pending') normalized.PostingStatus = 'posted';
     if (normalized.Amount !== undefined) {
         const amountMinor = toMinorUnits(normalized.Amount);
         normalized.AmountMinor = amountMinor;
