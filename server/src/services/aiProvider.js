@@ -2,6 +2,13 @@
 const { AIProcessingError } = require('./aiScheduler');
 function createProvider(env = process.env, { fetchImpl = global.fetch, gemini } = {}) {
     const provider = env.AI_PROVIDER || 'local';
+    if (provider === 'codex-cli') {
+        const primary = require('./codexCliProvider').createCodexCliProvider(env);
+        if (!env.AI_FALLBACK_PROVIDER) return primary;
+        if (!['gemini', 'gemini-free'].includes(env.AI_FALLBACK_PROVIDER)) throw new Error('Unsupported AI_FALLBACK_PROVIDER');
+        const fallback = createProvider({ ...env, AI_PROVIDER: env.AI_FALLBACK_PROVIDER }, { fetchImpl, gemini });
+        return require('./aiFallbackProvider').withFallback(primary, fallback, require('./aiScheduler').boundedInteger(env.AI_CODEX_TIMEOUT_MS, 45000, 1000, 60000));
+    }
     const model = provider === 'local' ? env.OLLAMA_MODEL : env.AI_MODEL_NAME || env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
     const enabled = provider === 'local' ? Boolean(model) : (provider === 'gemini' || provider === 'gemini-free' && env.AI_FREE_PROJECT_CONFIRMED === 'true') && Boolean(gemini);
     async function generate(request) {

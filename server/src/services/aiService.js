@@ -22,8 +22,8 @@ const inputLimit = boundedInteger(process.env.AI_DAILY_INPUT_BYTES, 8000000, 0, 
 const scheduler = createAIScheduler({
     generate: provider.generate,
     reserveUsage: async usage => reserveDailyUsage(await getDb(), { ...usage, requestLimit, inputLimit }),
-    deadlineMs: boundedInteger(process.env.AI_REQUEST_DEADLINE_MS, 45000, 1000, 120000),
-    callTimeoutMs: boundedInteger(process.env.AI_CALL_TIMEOUT_MS, 15000, 1000, 30000),
+    deadlineMs: boundedInteger(process.env.AI_REQUEST_DEADLINE_MS, provider.provider === 'codex-cli' ? 180000 : 45000, 1000, 180000),
+    callTimeoutMs: boundedInteger(process.env.AI_CALL_TIMEOUT_MS, provider.provider === 'codex-cli' ? 120000 : 15000, 1000, provider.provider === 'codex-cli' ? 120000 : 30000),
     maxQueue: boundedInteger(process.env.AI_MAX_QUEUE, 8, 1, 32),
 });
 const generateContentWithQuotaProtection = request => provider.enabled ? scheduler.run(request) : Promise.reject(new (require('./aiScheduler').AIProcessingError)('AI_FREE_PROVIDER_NOT_CONFIGURED'));
