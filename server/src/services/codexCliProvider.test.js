@@ -64,3 +64,32 @@ for (const scenario of ['api-login', 'exit-failure', 'invalid-json']) {
         assert.equal(fs.existsSync(directory), false);
     });
 }
+
+for (const result of [{ Amount: '10.00', Evidence: { Amount: '$10.00' } }, { error: 'Not a bank email' }, null]) {
+    test(`enforces an output schema and unwraps ${result === null ? 'invalid envelopes safely' : Object.keys(result)[0]}`, async () => {
+        const schema = require('./extractionEvidence').RESPONSE_SCHEMA;
+        let directory;
+        const provider = createCodexCliProvider({}, { spawnImpl(command, args, options) {
+            directory = options.cwd;
+            const child = new EventEmitter();
+            child.stdin = new PassThrough(); child.stdout = new PassThrough(); child.stderr = new PassThrough();
+            process.nextTick(() => {
+                if (args[0] === 'login') child.stdout.end('Logged in using ChatGPT');
+                else {
+                    const outputSchema = JSON.parse(fs.readFileSync(args[args.indexOf('--output-schema') + 1], 'utf8'));
+                    assert.equal(outputSchema.type, 'object');
+                    assert.deepEqual(outputSchema.required, ['result']);
+                    assert.equal(outputSchema.additionalProperties, false);
+                    assert.deepEqual(outputSchema.properties.result, schema);
+                    fs.writeFileSync(args[args.indexOf('-o') + 1], JSON.stringify(result === null ? {} : { result }));
+                }
+                child.emit('close', 0);
+            });
+            return child;
+        } });
+        const request = { contents: 'email', config: { responseJsonSchema: schema } };
+        if (result === null) await assert.rejects(provider.generate(request), { code: 'AI_CODEX_INVALID_OUTPUT' });
+        else assert.deepEqual(JSON.parse((await provider.generate(request)).text), result);
+        assert.equal(fs.existsSync(directory), false);
+    });
+}

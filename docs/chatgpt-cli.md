@@ -10,8 +10,10 @@ Set `AI_CODEX_MODEL=gpt-6-luna` to select Luna; otherwise the CLI uses its defau
 Each request runs in a temporary directory with user configuration ignored,
 read-only sandboxing, shell tools and web search disabled, and ChatGPT login
 forced. API key environment variables are removed from the child process.
-Prompts go through stdin, responses must parse as JSON, and existing application
-schemas still validate financial data. Set `AI_FALLBACK_PROVIDER=gemini` to explicitly enable the existing Gemini API
+Prompts go through stdin. Email extraction uses the CLI `--output-schema` flag
+with the shared transaction/rejection schema inside a required `result` envelope.
+The adapter unwraps that envelope, responses must parse as JSON, and existing
+application schemas and source evidence checks still validate financial data. Set `AI_FALLBACK_PROVIDER=gemini` to explicitly enable the existing Gemini API
 when the CLI fails (including invalid JSON). It requires `AI_API_KEY` or
 `GEMINI_API_KEY`. Without that setting there is no automatic fallback. Aborted
 requests never start a fallback call. The CLI gets 45 seconds (`AI_CODEX_TIMEOUT_MS`) before the API fallback;
