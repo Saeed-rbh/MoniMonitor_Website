@@ -44,8 +44,10 @@ Completeness checks reject omitted explicit tickers and omitted or gross units
 where a crypto transfer states final after-fee units. Unit price remains null
 for non-trade activity.
 
-Recognized bank purchase templates preserve the original financial extraction,
-then ask the configured AI provider to choose an expense merchant label when
-the template supplied Other Expense. The response can change only Label within
-the Expense category. Specific template labels and non-expense activity bypass
-this classification. Existing reviewed merchant preferences still take priority.
+All financial email types use full AI extraction and classification, including
+recognized expense, income, investment, dividend and transfer formats. The
+ingestion parser has no template return or purchase-only classification path.
+Templates remain available for offline source comparisons, not production
+extraction. Validated AI cache entries are versioned; prior mixed-template
+entries are invalidated by source-evidence-v6. Duplicate detection, account
+evidence checks and reviewed merchant preferences remain in force.

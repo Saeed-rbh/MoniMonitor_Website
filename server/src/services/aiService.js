@@ -135,12 +135,6 @@ function parseAIResponseText(responseText) {
 // ─── AI Parser ─────────────────────────────────────────────────────────────
 // knownAccounts: optional array of { Account, BankName, Type }
 async function parseEmailWithGemini(emailBody, knownAccounts = [], investmentAccounts = [], options = {}) {
-    const template = require('./emailTemplates').parseKnownEmail(emailBody);
-    if (template) {
-        const parsed = parseAIResponseText(JSON.stringify(template));
-        if (!provider.enabled) return parsed;
-        return require('./templateMerchantLabel').classifyTemplateMerchant(parsed, generateContentWithQuotaProtection);
-    }
     const memory = require('./aiMemory');
     const db = options.userId ? await getDb() : null;
     const examples = options.examples || (db ? await memory.verifiedExamples(db, options.userId, emailBody, options.receivedAt) : []);
