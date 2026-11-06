@@ -52,7 +52,11 @@ async function attachPendingTrades(db, userId, accounts, now = Date.now()) {
             account.pendingTradeCashDeltaMinor = null;
             continue;
         }
-        const cashDelta = row.PortfolioAction === 'BUY' ? -row.AmountMinor : row.AmountMinor;
+        // Bank cash snapshots can already reserve a buy or include sale proceeds
+        // while the investment transaction feed still lacks the matching trade.
+        // An unmatched email cannot establish an additional cash movement.
+        const bankCash = ['plaid', 'bank_ui'].includes(account.balanceSource);
+        const cashDelta = bankCash ? 0 : row.PortfolioAction === 'BUY' ? -row.AmountMinor : row.AmountMinor;
         const cash = account.pendingTradeCashDeltaMinor === null ? null : account.pendingTradeCashDeltaMinor + cashDelta;
         account.pendingTradeCashDeltaMinor = Number.isSafeInteger(cash) ? cash : null;
         const key = `${account.id}:${symbol}`;

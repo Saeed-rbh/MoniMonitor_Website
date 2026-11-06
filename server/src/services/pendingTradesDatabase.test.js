@@ -43,9 +43,9 @@ async function recorded(f) {
         quantity: (await db.get("SELECT quantity FROM investment_holdings WHERE accountId = ? AND symbol = 'ABC'", [f.account.id])).quantity,
         postings: (await db.get('SELECT COUNT(*) AS count FROM portfolio_transactions WHERE userId = ?', [f.userId])).count };
 }
-async function snapshot(f, quantity = 10) {
+async function snapshot(f, quantity = 10, available = 1000) {
     return applyInvestmentSnapshot(f.userId, new Map([[f.userId, { appAccountId: f.account.id, type: 'investment', currency: 'CAD' }]]), {
-        accounts: [{ account_id: f.userId, balances: { available: 1000, iso_currency_code: 'CAD' } }],
+        accounts: [{ account_id: f.userId, balances: { available, iso_currency_code: 'CAD' } }],
         securities: [{ security_id: 'ABC', ticker_symbol: 'ABC', type: 'etf' }],
         holdings: [{ account_id: f.userId, security_id: 'ABC', quantity, institution_price: 20,
             institution_value: quantity * 20, cost_basis: quantity * 15, iso_currency_code: 'CAD' }],
@@ -66,7 +66,7 @@ test('repeated snapshots and concurrent reads retain provider quantities and rec
     for (const result of await Promise.all(Array.from({ length: 3 }, () => accounts(f)))) {
         assert.equal(result[0].holdings[0].quantity, 10);
         assert.equal(result[0].pendingTradeHoldings[0].estimatedQuantity, 11);
-        assert.equal(result[0].estimatedCashWithTradesMinor, 98000);
+        assert.equal(result[0].estimatedCashWithTradesMinor, 100000);
         assert.equal(result[0].holdingsSource, 'plaid');
     }
     const portfolio = await service.getPortfolioSummary(f.userId);
@@ -85,6 +85,40 @@ test('a snapshot which already includes a trade is never overlaid a second time'
         provider: 'plaid_investments', externalId: 'confirmed-' + f.userId, ownsTransaction: false });
     assert.equal((await accounts(f))[0].pendingTrades.length, 0);
     assert.equal((await recorded(f)).quantity, 11);
+});
+
+test('a bank cash update before trade confirmation cannot subtract the email purchase again', async () => {
+    const f = await fixture({ amount: 119.95 });
+    await snapshot(f, 10, 77.95);
+    for (let attempt = 0; attempt < 2; attempt++) {
+        const state = (await accounts(f))[0];
+        assert.equal(state.cashMinor, 7795);
+        assert.equal(state.estimatedCashWithTradesMinor, 7795);
+        assert.equal(state.pendingTradeCashDeltaMinor, 0);
+        assert.equal(state.pendingTradeReviewRequired, false);
+        assert.equal(state.pendingTrades[0].transactionId, f.id);
+        assert.equal(state.pendingTrades[0].status, 'pending');
+        assert.deepEqual(await recorded(f), { cash: 7795, quantity: 10, postings: 0 });
+        await snapshot(f, 10, 77.95);
+    }
+    await service.upsertTransactionSource({ userId: f.userId, transactionId: f.id,
+        provider: 'plaid_investments', externalId: 'confirmed-cash-' + f.userId, ownsTransaction: false });
+    const confirmed = (await accounts(f))[0];
+    assert.equal(confirmed.pendingTrades.length, 0);
+    assert.equal(confirmed.estimatedCashWithTradesMinor, 7795);
+    assert.deepEqual(await recorded(f), { cash: 7795, quantity: 10, postings: 0 });
+});
+
+test('bank sale proceeds and verified bank balances receive no extra email cash adjustment', async () => {
+    const f = await fixture({ action: 'SELL' });
+    await snapshot(f, 9, 1020);
+    let state = (await accounts(f))[0];
+    assert.equal(state.pendingTradeCashDeltaMinor, 0);
+    assert.equal(state.estimatedCashWithTradesMinor, 102000);
+    await db.run("UPDATE investment_accounts SET balanceSource = 'bank_ui' WHERE id = ?", [f.account.id]);
+    state = (await accounts(f))[0];
+    assert.equal(state.pendingTradeCashDeltaMinor, 0);
+    assert.equal(state.estimatedCashWithTradesMinor, 102000);
 });
 
 test('edits, deletion, and expiration recompute estimates without moving provider balances', async () => {
@@ -139,7 +173,7 @@ test('currency mismatches, uncertain accounts, invalid details, and legacy overl
     assert.equal((await accounts(f))[0].estimatedCashWithTradesMinor, null);
     await snapshot(f);
     assert.equal((await accounts(f))[0].holdingsReviewReason, null);
-    assert.equal((await accounts(f))[0].estimatedCashWithTradesMinor, 98000);
+    assert.equal((await accounts(f))[0].estimatedCashWithTradesMinor, 100000);
 });
 
 test('account ownership and missing accounts produce review items without leaking another user holdings', async () => {
