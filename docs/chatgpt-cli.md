@@ -28,3 +28,10 @@ Restart the backend after changing its environment. Check `/diagnostics` for
 Tailscale is used for Windows administration; the CLI runs locally on Windows.
 
 Official reference: https://learn.chatgpt.com/docs/non-interactive-mode
+
+Email prompts require literal account-name/reference evidence for account IDs;
+institution or account-type similarity alone is insufficient. Generic source
+labels remain source evidence, not invented account numbers. Wallet receipts
+are described as transfers unless the source explicitly describes a deposit.
+The application continues to reject unsupported model values without rewriting
+them to make validation pass.

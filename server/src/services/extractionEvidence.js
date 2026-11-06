@@ -1,5 +1,5 @@
 const { ALL_LABELS } = require('./transactionCategories');
-const VERSION = 'source-evidence-v3';
+const VERSION = 'source-evidence-v4';
 const text = { type: ['string', 'null'] };
 const numeric = { type: ['number', 'null'] };
 const fields = {

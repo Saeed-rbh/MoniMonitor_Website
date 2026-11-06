@@ -85,3 +85,16 @@ test('AI counterparty names require literal source evidence and cannot expand in
  assert.equal(validateEvidence(tx,text).CounterpartyName,'J. Winters');
  assert.throws(()=>validateEvidence({...tx,CounterpartyName:'Jordan Winters'},text),{code:'AI_SOURCE_EVIDENCE'});
 });
+
+test('crypto wallet receipt needs literal action evidence and cannot route on account type alone',()=>{
+ const source='Account: Crypto\nAmount: $10.00 CAD\nYou’ve received crypto from another wallet!';
+ const tx={Amount:'10.00',Currency:'CAD',Category:'Investment',Label:'Asset Distribution',
+  Account:null,BalanceAccountId:null,PortfolioAccountId:null,PortfolioAction:'TRANSFER',AccountFlow:'IN',
+  Evidence:{Amount:'$10.00 CAD',Currency:'CAD',Account:'Account: Crypto',
+   PortfolioAction:'You’ve received crypto from another wallet!',AccountFlow:'received crypto'}};
+ const supplied=[{id:13,name:'Wealthsimple Crypto',accountRef:'C123'}];
+ assert.equal(validateEvidence(tx,source,supplied),tx);
+ assert.throws(()=>validateEvidence({...tx,BalanceAccountId:13},source,supplied),{code:'AI_SOURCE_EVIDENCE'});
+ assert.throws(()=>validateEvidence({...tx,PortfolioAction:'DEPOSIT'},source,supplied),{code:'AI_SOURCE_EVIDENCE'});
+ assert.throws(()=>validateEvidence({...tx,Evidence:{...tx.Evidence,Account:'Wealthsimple Crypto'}},source,supplied),{code:'AI_SOURCE_EVIDENCE'});
+});

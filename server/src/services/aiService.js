@@ -176,7 +176,16 @@ CRITICAL: Evidence.AccountFlow must quote the SOURCE WORDS describing movement, 
 unless those exact uppercase words actually appear in Email Text. Evidence.PortfolioAction similarly quotes
 source wording such as "Type: Fractional Buy", not the normalized enum "BUY".
 Unknown values MUST be null. Never quote the examples or supplied account list as email evidence.
+Account evidence examples (illustrative, never copy into the actual result):
+- Email says "Account: Crypto", supplied account says "Wealthsimple Crypto" with reference "C123":
+  Evidence.Account="Account: Crypto", Account=null, BalanceAccountId=null, PortfolioAccountId=null.
+  The source gives an account TYPE but no account number or full supplied name.
+- Email says "Account: C123" and exactly one supplied account has reference C123:
+  Evidence.Account="Account: C123", Account="C123"; its supplied id may be selected.
+Never add words from the supplied account list to an evidence quote. Do not select a merely plausible id.
 Account ids require a unique explicit reference or canonical account name in the source; otherwise null.
+A generic account type such as "Crypto", "TFSA", "Personal" or "Chequing" alone does not identify an account.
+A generic type alone must not become an account number or an account id. Do not use institution/type similarity to route an account.
 For an internal transfer include BOTH account endpoint quotes, or an explicit credit card payment.
 CashDate is a YYYY-MM-DD settlement date ONLY when explicitly stated; never calculate it from trade date.
 The following bank-verified PRIOR examples illustrate interpretation, NEVER values to copy into the new email:
@@ -224,8 +233,9 @@ Fields to extract:
 - "Account": Masked account/card number if shown (e.g. "************2379"). Return null if not found.
 - "BankName": Bank name if shown (e.g. "RBC Royal Bank"). Return null if not found.
 - "ReferenceNumber": Transaction reference or confirmation number if shown. Return null if not found.
-- "BalanceAccountId": Select an id from the User financial accounts list when the institution,
-  account type, account name, or masked account/card digits make the match unambiguous. Otherwise return null.
+- "BalanceAccountId": Select an id ONLY when Evidence.Account quotes that supplied account's complete
+  canonical name or account reference, or masked trailing digits that uniquely match its reference.
+  Institution plus account type is NOT sufficient. Otherwise return null, even if there is only one candidate.
 - "BalanceAccountConfidence": Return "HIGH" only when the email clearly identifies that account,
   "MEDIUM" for a likely but incomplete match, "LOW" for a guess, or null when no account is selected.
 - "PortfolioAction": For Saving, Internal, or Investment activity, use the exact action: "DEPOSIT", "CONTRIBUTION", "WITHDRAWAL",
@@ -235,9 +245,12 @@ Fields to extract:
   - WITHDRAWAL: cash explicitly removed from a savings or investment account.
   - INTEREST or DIVIDEND: cash explicitly credited to the account.
   - BUY or SELL: an email explicitly confirms a security trade.
-  - TRANSFER: movement between two accounts owned by the user when the destination is not clearly a new deposit.
-- "PortfolioAccountId": Select an id from the User portfolio accounts list only when the institution,
-  account name/type, or masked reference in the email makes the match unambiguous. Otherwise return null.
+  - TRANSFER: movement between accounts or wallets. Use Category Internal only when BOTH endpoints are proved owned by the user.
+  - Crypto received from another wallet is a TRANSFER, supported by the exact "received crypto" source words.
+    Do not call it DEPOSIT unless the email explicitly describes a deposit; do not assume the sending wallet is owned.
+    Use Category Investment and Label "Asset Distribution" for received crypto assets; a wallet transfer is not proof of a new cash contribution.
+- "PortfolioAccountId": Apply the same exact-source account-name/reference proof as BalanceAccountId.
+  A generic type such as Crypto or TFSA is insufficient when the supplied name is longer. Otherwise return null.
 - "PortfolioConfidence": Return "HIGH" only when both the action and destination portfolio account are explicit.
   Return "MEDIUM" for a likely but incomplete match, "LOW" for a guess, or null when not applicable.
 
