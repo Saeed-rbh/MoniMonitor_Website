@@ -43,3 +43,9 @@ is retained without inferring a quantity from the existing holding balance.
 Completeness checks reject omitted explicit tickers and omitted or gross units
 where a crypto transfer states final after-fee units. Unit price remains null
 for non-trade activity.
+
+Recognized bank purchase templates preserve the original financial extraction,
+then ask the configured AI provider to choose an expense merchant label when
+the template supplied Other Expense. The response can change only Label within
+the Expense category. Specific template labels and non-expense activity bypass
+this classification. Existing reviewed merchant preferences still take priority.
