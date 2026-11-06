@@ -85,14 +85,13 @@ function Repair-PublicTunnel {
         return
     }
 
-    Write-UpdateLog 'Public API health check failed; resetting and repairing Tailscale Funnel.'
+    Write-UpdateLog 'Public API health check failed; repairing the MoniMonitor HTTPS route on port 443.'
     for ($attempt = 1; $attempt -le 3; $attempt++) {
         if ($attempt -gt 1) {
             & $tailscaleExecutable funnel --https=443 off 2>$null | Out-Null
-            & $tailscaleExecutable serve reset 2>$null | Out-Null
             Start-Sleep -Seconds 2
         }
-        & $tailscaleExecutable funnel --bg 3001 2>$null | Out-Null
+        & $tailscaleExecutable funnel --bg --https=443 3001 2>$null | Out-Null
         Start-Sleep -Seconds 5
         if (Test-MoniMonitorHealth -Url $publicHealthUrl) {
             Write-UpdateLog "Public API connectivity restored on attempt $attempt."
