@@ -226,7 +226,7 @@ Fields to extract:
 - "Reason": Short merchant name or description (e.g. "Tim Hortons").
   - For e-Transfers extract "CounterpartyName": the full sender name for an incoming transfer or full recipient name for an outgoing transfer. Use the actual person or business name exactly supported by the email, without "E-Transfer", Interac, amounts, status phrases or reference numbers. Never use the forwarding mailbox owner as the counterparty. Do not expand initials or invent missing names. Return null if unavailable. Evidence.CounterpartyName must be an exact source quote supporting the name.
   - For e-Transfers, Reason should be the same counterparty name alone when known, otherwise "E-Transfer". Other transaction reasons keep their actual merchant or activity description.
-- "Timestamp": Transaction date and time in ISO 8601 (e.g. "2024-10-01T16:09:00.000Z") ONLY if explicitly stated in the email body; otherwise null. If the email gives only a calendar date without a time, return null—never invent a midnight timestamp.
+- "Timestamp": Transaction date and time in ISO 8601 (e.g. "2024-10-01T16:09:00.000Z") ONLY if explicitly stated in the email body; otherwise null. If the email gives only a calendar date without a time, return that date as YYYY-MM-DD with no invented time. Return null only when no transaction date is stated.
 - "Type": Payment method (e.g. "Credit Card", "Checking Account", "e-Transfer", "Savings Account").
 - "Account": Masked account/card number if shown (e.g. "************2379"). Return null if not found.
 - "BankName": Bank name if shown (e.g. "RBC Royal Bank"). Return null if not found.

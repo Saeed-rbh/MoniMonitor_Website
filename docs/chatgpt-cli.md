@@ -49,5 +49,8 @@ recognized expense, income, investment, dividend and transfer formats. The
 ingestion parser has no template return or purchase-only classification path.
 Templates remain available for offline source comparisons, not production
 extraction. Validated AI cache entries are versioned; prior mixed-template
-entries are invalidated by source-evidence-v6. Duplicate detection, account
+entries are invalidated by source-evidence-v7. Duplicate detection, account
 evidence checks and reviewed merchant preferences remain in force.
+
+When the source states a transaction date without a time, AI extraction returns
+YYYY-MM-DD rather than inventing a clock time or replacing it with receipt time.

@@ -21,12 +21,13 @@ for (const [index, source] of fixtures.entries()) {
     output = parseKnownEmail(source);
     assert.ok(output, 'fixture must be a recognized template');
     delete output.Evidence.Reason;
-    if (index === 0) output.Label = 'Groceries';
+    if (index === 0) { output.Label = 'Groceries'; output.Timestamp = '2026-11-05'; }
     calls = [];
     const parsed = await parseEmailWithGemini(source, [], [], { bypassCache: true, examples: [] });
     assert.equal(calls.length, 1);
     assert.ok(calls[0].config.responseJsonSchema);
     assert.equal(parsed.Label, output.Label);
+    if (index === 0) assert.equal(parsed.Timestamp, '2026-11-05');
     assert.equal(parsed.ExtractionVersion, require('./extractionEvidence').VERSION);
  });
 }
