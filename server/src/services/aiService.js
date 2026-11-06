@@ -254,10 +254,16 @@ Fields to extract:
 - "PortfolioConfidence": Return "HIGH" only when both the action and destination portfolio account are explicit.
   Return "MEDIUM" for a likely but incomplete match, "LOW" for a guess, or null when not applicable.
 
-- "PortfolioSymbol": For a BUY or SELL, return the uppercase ticker symbol exactly as shown
-  (for example "XEQT"). Otherwise return null.
-- "PortfolioQuantity": For a BUY or SELL, return the exact number of shares filled, including
-  fractional shares (for example 0.2243). Otherwise return null.
+- "PortfolioSymbol": Return the asset ticker explicitly shown for ANY asset activity, including
+  BUY, SELL, TRANSFER, DIVIDEND, staking, distributions and swaps. "Cryptocurrency: ETH" and
+  "Symbol: VFV" explicitly identify the symbol. Never discard it merely because the action is not a trade.
+  Return null only when no asset symbol is stated. Evidence.PortfolioSymbol must quote the source.
+- "PortfolioQuantity": Return the explicit asset units for ANY asset movement, including crypto
+  transfers and fractional shares. For transfers with gross and final after-fee units, use the final
+  delivered "Amount after fee" quantity, quoting that exact line in Evidence.PortfolioQuantity.
+  For example, a gross 0.5 ETH and final after-fee 0.499 ETH transfer has quantity 0.499.
+  Never calculate quantity from money, price or a saved holding balance. Never add decimal precision
+  that the email does not state. Return null only when no transaction asset quantity is provided.
 - "PortfolioPrice": For a BUY or SELL, return the execution price per share as a number without
   a currency symbol (for example 44.5699). Otherwise return null.
   "Amount" must be the order's total cost for a BUY or total proceeds for a SELL.

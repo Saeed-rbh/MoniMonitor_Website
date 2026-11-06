@@ -35,3 +35,11 @@ labels remain source evidence, not invented account numbers. Wallet receipts
 are described as transfers unless the source explicitly describes a deposit.
 The application continues to reject unsupported model values without rewriting
 them to make validation pass.
+
+Asset symbols and explicit transaction quantities are extracted for non-trade
+activity as well as BUY/SELL. Crypto transfers use stated final after-fee units
+when present, preserving the email's precision. A dividend's explicit ticker
+is retained without inferring a quantity from the existing holding balance.
+Completeness checks reject omitted explicit tickers and omitted or gross units
+where a crypto transfer states final after-fee units. Unit price remains null
+for non-trade activity.

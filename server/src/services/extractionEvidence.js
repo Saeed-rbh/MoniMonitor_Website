@@ -1,5 +1,5 @@
 const { ALL_LABELS } = require('./transactionCategories');
-const VERSION = 'source-evidence-v4';
+const VERSION = 'source-evidence-v5';
 const text = { type: ['string', 'null'] };
 const numeric = { type: ['number', 'null'] };
 const fields = {
@@ -8,7 +8,7 @@ const fields = {
     Label: { type:'string', enum:ALL_LABELS }, Reason: { type:'string' }, CounterpartyName:{...text,description:'For e-Transfers only: full sender (incoming) or recipient (outgoing) person/business name supported by the email; no transaction prefix or references, no guessed expansion of initials. Otherwise null.'}, Timestamp:text, CashDate:text,
     Type:text, Account:text, BankName:text, ReferenceNumber:text,
     BalanceAccountId:numeric, BalanceAccountConfidence:text, PortfolioAction:text, PortfolioAccountId:numeric, PortfolioConfidence:text,
-    PortfolioSymbol:text, PortfolioQuantity:numeric,
+    PortfolioSymbol:{...text,description:'Explicit source asset ticker for trades, transfers, dividends and other asset activity; null only when absent.'}, PortfolioQuantity:{...numeric,description:'Explicit transaction asset units, including non-trade transfers. Prefer stated final after-fee delivered units over gross units. Never infer from money or existing holdings.'},
     PortfolioPrice:{...numeric,description:'Execution unit price stated in a filled BUY or SELL order only. Return null for TRANSFER, DIVIDEND and every non-trade action. Never calculate a unit price from asset valuation or quantity.'}, PortfolioAccountNumber:text,
     PortfolioToSymbol:text, PortfolioToQuantity:numeric, AccountFlow:{type:['string','null'],enum:['IN','OUT','NONE',null]},
 };
@@ -67,6 +67,14 @@ function validateEvidence(transaction, body, accounts = []) {
     }
     const expectedFlow={BUY:'OUT',SELL:'IN',DIVIDEND:'IN',INTEREST:'IN',FEE:'OUT',TAX:'OUT'}[transaction.PortfolioAction] || (transaction.Category==='Expense'?'OUT':transaction.Category==='Income'?'IN':null);
     if(expectedFlow && transaction.AccountFlow!==expectedFlow)fail('AccountFlow');
+    // Do not accept structurally valid but incomplete asset extractions.
+    const sourceSymbol = body.match(/^(?:Cryptocurrency|Symbol):\s*([A-Z0-9][A-Z0-9.-]{0,14})\s*$/m)?.[1];
+    if (transaction.PortfolioAction && sourceSymbol && transaction.PortfolioSymbol !== sourceSymbol) fail('PortfolioSymbol');
+    if (transaction.PortfolioAction === 'TRANSFER' && sourceSymbol) {
+        const finalUnits = body.match(/^Amount after fee:[^\r\n]*\(([\d,]+(?:\.\d+)?)\s+([A-Z0-9][A-Z0-9.-]{0,14})\)\s*$/m);
+        if (finalUnits && finalUnits[2] === sourceSymbol &&
+            (transaction.PortfolioQuantity == null || Math.abs(Number(transaction.PortfolioQuantity) - Number(finalUnits[1].replace(/,/g, ''))) > 1e-10)) fail('PortfolioQuantity');
+    }
     if(['BUY','SELL'].includes(transaction.PortfolioAction) && (!transaction.PortfolioSymbol || !(transaction.PortfolioQuantity>0) || !(transaction.PortfolioPrice>0)))fail('trade details');
     if(transaction.PortfolioAction) {
         const actions={BUY:/\b(buy|bought|purchase)\b/i,SELL:/\b(sell|sold|sale)\b/i,DIVIDEND:/\bdividend\b/i,TRANSFER:/\b(transfer|sent|received|recieved)\b/i};

@@ -98,3 +98,21 @@ test('crypto wallet receipt needs literal action evidence and cannot route on ac
  assert.throws(()=>validateEvidence({...tx,PortfolioAction:'DEPOSIT'},source,supplied),{code:'AI_SOURCE_EVIDENCE'});
  assert.throws(()=>validateEvidence({...tx,Evidence:{...tx.Evidence,Account:'Wealthsimple Crypto'}},source,supplied),{code:'AI_SOURCE_EVIDENCE'});
 });
+
+test('crypto transfer retains explicit ticker and final after-fee units without inventing a trade price',()=>{
+ const source='Cryptocurrency: ETH\nAmount withdrawn: CA$1,000.00 (0.5 ETH)\nAmount after fee: CA$998.00 (0.499 ETH)\nYour transfer is complete';
+ const tx={Amount:'1000.00',Currency:'CAD',Category:'Investment',PortfolioAction:'TRANSFER',AccountFlow:'NONE',
+  PortfolioSymbol:'ETH',PortfolioQuantity:0.499,PortfolioPrice:null,
+  Evidence:{Amount:'CA$1,000.00',Currency:'CA$',PortfolioAction:'transfer',PortfolioSymbol:'Cryptocurrency: ETH',PortfolioQuantity:'Amount after fee: CA$998.00 (0.499 ETH)'}};
+ assert.equal(validateEvidence(tx,source),tx);
+ for(const patch of [{PortfolioSymbol:null},{PortfolioQuantity:null},{PortfolioQuantity:0.5},{PortfolioQuantity:0.499123}])
+  assert.throws(()=>validateEvidence({...tx,...patch},source),{code:'AI_SOURCE_EVIDENCE'});
+});
+
+test('dividend retains an explicit symbol without inferring quantity from holdings',()=>{
+ const source='Amount: $9.00 CAD\nSymbol: VFV\nYou earned a dividend';
+ const tx={Amount:'9.00',Currency:'CAD',Category:'Investment',PortfolioAction:'DIVIDEND',AccountFlow:'IN',PortfolioSymbol:'VFV',PortfolioQuantity:null,
+  Evidence:{Amount:'$9.00 CAD',Currency:'CAD',PortfolioAction:'dividend',PortfolioSymbol:'Symbol: VFV',AccountFlow:'dividend'}};
+ assert.equal(validateEvidence(tx,source),tx);
+ assert.throws(()=>validateEvidence({...tx,PortfolioSymbol:null},source),{code:'AI_SOURCE_EVIDENCE'});
+});
