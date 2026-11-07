@@ -30,6 +30,9 @@ async function run() {
             const transactions = await source.all("SELECT * FROM transactions WHERE userId = ? AND COALESCE(Currency, 'CAD') = 'CAD'", [userId]);
             const months = new Map();
             for (const tx of transactions) {
+                // Backups without this column restore with the schema's 'posted' default.
+                const { PostingStatus = 'posted' } = tx;
+                if (PostingStatus !== 'posted') continue;
                 const month = tx.Timestamp.slice(0, 7);
                 const totals = months.get(month) || { income: 0, expenses: 0, savings: 0, count: 0 };
                 if (isIncome(tx)) totals.income += amountMinorOf(tx);

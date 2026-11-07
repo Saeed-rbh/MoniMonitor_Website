@@ -18,6 +18,8 @@ test.before(async () => {
     await service.createInvestmentAccount('recovery-owner', { name: 'Margin', accountType: 'TFSA', currency: 'CAD', cashMinor: -5000 });
     transactionId = await service.addTransaction({ userId: 'recovery-owner', AmountMinor: 1234, Currency: 'CAD',
         Category: 'Expense', Label: 'Groceries', Timestamp: '2026-08-10T10:00:00Z', SourceEmailKey: 'mail:1:11' });
+    await service.addTransaction({ userId: 'recovery-owner', AmountMinor: 5678, Currency: 'CAD',
+        Category: 'Expense', Label: 'Groceries', Timestamp: '2026-08-11T10:00:00Z', PostingStatus: 'unposted' });
     await service.upsertTransactionSource({ userId: 'recovery-owner', provider: 'email', externalId: 'mail:1:11', transactionId, ownsTransaction: true });
     await service.prepareEmailSync('mail', '1');
     await service.enqueueDiscoveredEmails('mail', '1', [11, 12]);
@@ -40,6 +42,7 @@ test('restore rebuilds reports, invalidates derived caches, and restores cursor 
     const report = await service.getSummaryForUser('recovery-owner');
     assert.equal(report.totalExpenses, 12.34); assert.equal(report.totalIncome, 0);
     assert.deepEqual(report.byMonth.map(row => row.month), ['2026-08']);
+    assert.equal(report.byMonth[0].count, 1);
     assert.equal((await db.get('SELECT COUNT(*) AS count FROM monthly_ai_briefs')).count, 0);
     assert.deepEqual(await db.get('SELECT MAX(version) AS version FROM schema_migrations'), version);
     assert.deepEqual(await db.get('SELECT requests, inputBytes FROM ai_usage_daily'), { requests: 7, inputBytes: 1000 });
@@ -51,7 +54,7 @@ test('restore rebuilds reports, invalidates derived caches, and restores cursor 
     assert.deepEqual(pending.map(row => row.uid), [12]);
     await assert.rejects(service.addTransaction({ userId: 'recovery-owner', AmountMinor: 1234, Category: 'Expense',
         Label: 'Groceries', Timestamp: '2026-08-10T10:00:00Z', SourceEmailKey: 'mail:1:11' }), /UNIQUE/);
-    assert.equal((await db.get('SELECT COUNT(*) AS count FROM transactions')).count, 1);
+    assert.equal((await db.get('SELECT COUNT(*) AS count FROM transactions')).count, 2);
 });
 
 test('registering the deployed routing table preserves existing reviewed mappings', async () => {
@@ -65,7 +68,7 @@ test('registering the deployed routing table preserves existing reviewed mapping
 test('the isolated restore drill exercises recovered accounts and application reports', async () => {
     const result = await runRestoreDrill();
     assert.equal(result.verified, true);
-    assert.equal((await db.get('SELECT COUNT(*) AS count FROM transactions')).count, 1);
+    assert.equal((await db.get('SELECT COUNT(*) AS count FROM transactions')).count, 2);
 });
 
 test('restore clears newly introduced tables missing from an older recovery point', async () => {
