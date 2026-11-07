@@ -32,7 +32,8 @@ const INCOME_LABELS = [
     'Reimbursements',
 ];
 
-const INTERNAL_LABELS = ['Internal Transfer'];
+const CREDIT_CARD_PAYMENT_LABEL = 'Credit Card Payment';
+const INTERNAL_LABELS = ['Internal Transfer', CREDIT_CARD_PAYMENT_LABEL];
 
 const INVESTMENT_LABELS = [
     'Asset Distribution',
@@ -65,6 +66,7 @@ const ALL_LABELS = Object.values(CATEGORY_LABELS).flat();
 module.exports = {
     ALL_LABELS,
     CATEGORY_LABELS,
+    CREDIT_CARD_PAYMENT_LABEL,
     EXPENSE_LABELS,
     INCOME_LABELS,
     INTERNAL_LABELS,

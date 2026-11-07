@@ -205,7 +205,7 @@ const TransactionDetailModal = ({ transaction, onClose, onEdit = null, onTransac
 
     let newReason = currentTx.Reason;
     let newAccount = currentTx.Account;
-    if (targetCategory === "Internal" || selectedLabel === "Internal Transfer") {
+    if (selectedLabel === "Internal Transfer") {
       targetCategory = "Internal";
       const direction = getTxDirection(currentTx);
       const sourceOrDest = currentTx.Account || currentTx.BankName || "Personal Account";

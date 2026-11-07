@@ -10,6 +10,7 @@ process.env.TELEGRAM_DISABLE_NETWORK='false';
 const service=require('../database/dbService');
 const telegram=require('./telegramService');
 const worker=require('./telegramOutboxWorker');
+const { normalizeTransactionSemantics } = require('./transactionSemantics');
 let db;
 test.before(async()=>{db=await service.getDb();await service.createUser('u','delivery-owner','unused');});
 test.after(async()=>{await db.close();fs.rmSync(directory,{recursive:true,force:true});});
@@ -65,4 +66,79 @@ test('failed new sends cannot be completed as an unchanged edit',async t=>{
     await worker.processTelegramOutboxOnce();
     const row=await db.get('SELECT * FROM telegram_outbox WHERE id=?',[id]);
     assert.equal(row.status,'retry');assert.equal(row.processedAt,null);
+});
+
+function paymentEmails(amount) {
+    const base = { userId: 'u', Amount: amount, Currency: 'CAD', BankName: 'RBC',
+        Timestamp: '2026-11-05T12:00:00Z', ReceivedAt: '2026-11-05T12:00:00Z' };
+    return [
+        { ...base, Category: 'Expense', Label: 'Other Expense', Type: 'Checking Account',
+            Account: '1111', Reason: 'Withdrawal from chequing', AccountFlow: 'OUT' },
+        normalizeTransactionSemantics({ ...base, Type: 'Credit Card', Account: '2222',
+            Reason: 'Payment Made', ReceivedAt: '2026-11-05T12:00:08Z' }),
+    ];
+}
+
+const commitWithAlert = transaction => service.commitEmailTransaction({
+    transaction, outbox: { action: 'sendMessage', payload: {} },
+});
+
+test('one card payment sends one Telegram alert with either email arriving first', async t => {
+    const sent = [];
+    t.mock.method(telegram, 'sendTelegramMessage', async text => {
+        sent.push(text);
+        return { ok: true, result: { message_id: 600 + sent.length } };
+    });
+    for (const [index, amount] of [201.11, 202.22].entries()) {
+        const emails = paymentEmails(amount);
+        const firstId = await commitWithAlert(emails[index]);
+        assert.equal(await worker.processTelegramOutboxOnce(), 0);
+        const secondId = await commitWithAlert(emails[1 - index]);
+        const [first, second] = await Promise.all([firstId, secondId].map(id => service.getTransactionById(id, 'u')));
+        assert.deepEqual([first.AccountFlow, second.AccountFlow], index ? ['IN', 'OUT'] : ['OUT', 'IN']);
+        assert.match(first.ReferenceNumber, /^XFER-CARD-/);
+        assert.equal(second.ReferenceNumber, first.ReferenceNumber);
+        for (const leg of [first, second]) {
+            assert.equal(leg.Category, 'Internal');
+            assert.equal(leg.Label, 'Credit Card Payment');
+            assert.equal(leg.DisplayReason, 'Credit Card Payment');
+        }
+        assert.equal(await worker.processTelegramOutboxOnce(), 1);
+        assert.match(sent.at(-1), /\*Credit Card Payment\*/);
+        assert.equal(sent.length, index + 1);
+    }
+});
+
+test('an unmatched alert still sends, and a late counterpart updates it without a second send', async t => {
+    const [funding, card] = paymentEmails(203.33);
+    const fundingId = await commitWithAlert(funding);
+    const held = await db.get('SELECT nextAttemptAt, createdAt FROM telegram_outbox WHERE transactionId=?', [fundingId]);
+    assert.equal(Date.parse(held.nextAttemptAt) - Date.parse(held.createdAt), 10 * 60_000);
+    await db.run("UPDATE telegram_outbox SET nextAttemptAt='2000-01-01' WHERE transactionId=?", [fundingId]);
+    const send = t.mock.method(telegram, 'sendTelegramMessage', async () => ({ ok: true, result: { message_id: 700 } }));
+    const edit = t.mock.method(telegram, 'editTelegramMessage', async () => ({ ok: true, result: { message_id: 700 } }));
+    assert.equal(await worker.processTelegramOutboxOnce(), 1);
+    await commitWithAlert(card);
+    assert.equal(await worker.processTelegramOutboxOnce(), 1);
+    assert.equal(send.mock.callCount(), 1);
+    assert.equal(edit.mock.callCount(), 1);
+    assert.equal(edit.mock.calls[0].arguments[0], 700);
+    assert.match(edit.mock.calls[0].arguments[1], /\*Credit Card Payment\*/);
+});
+
+test('a counterpart arriving during the send updates the same Telegram message', async t => {
+    const [funding, card] = paymentEmails(204.44);
+    const fundingId = await commitWithAlert(funding);
+    await db.run("UPDATE telegram_outbox SET nextAttemptAt='2000-01-01' WHERE transactionId=?", [fundingId]);
+    const send = t.mock.method(telegram, 'sendTelegramMessage', async () => {
+        await commitWithAlert(card);
+        return { ok: true, result: { message_id: 701 } };
+    });
+    const edit = t.mock.method(telegram, 'editTelegramMessage', async () => ({ ok: true }));
+    assert.equal(await worker.processTelegramOutboxOnce(), 1);
+    assert.equal(await worker.processTelegramOutboxOnce(), 1);
+    assert.equal(send.mock.callCount(), 1);
+    assert.equal(edit.mock.callCount(), 1);
+    assert.equal(edit.mock.calls[0].arguments[0], 701);
+    assert.match(edit.mock.calls[0].arguments[1], /\*Credit Card Payment\*/);
 });

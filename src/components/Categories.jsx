@@ -82,6 +82,7 @@ export const Income_categories = [
 
 export const Internal_categories = [
   ["Internal Transfer", outline(ArrowLeftRight)],
+  ["Credit Card Payment", outline(CreditCard)],
 ];
 
 export const Investment_categories = [

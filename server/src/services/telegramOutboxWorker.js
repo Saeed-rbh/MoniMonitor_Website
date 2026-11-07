@@ -25,6 +25,7 @@ async function deliver(job) {
         if (await db.get('SELECT 1 FROM transaction_ingestion_reviews WHERE transactionId=? AND resolvedAt IS NULL', [job.transactionId])) {
             throw new Error('Transaction evidence requires review before notification');
         }
+        if (job.action === 'sendMessage') job.referenceAtSend = tx.ReferenceNumber ?? null;
         payload.text = telegram.formatTransactionMessage(tx, job.action === 'editMessage' ? 'updated' : 'new');
         payload.replyMarkup = telegram.transactionActionKeyboard(tx);
         // Apply the preference at delivery too, covering every producer and older queued jobs.
@@ -61,7 +62,7 @@ async function processTelegramOutboxOnce(limit = 50) {
                 if (Number.isFinite(retryAfter) && retryAfter > 0) error.retryAfterMs = retryAfter * 1000;
                 throw error;
             }
-            await dbService.completeTelegramOutbox(job.id, WORKER_ID, result?.result?.message_id || null);
+            await dbService.completeTelegramOutbox(job.id, WORKER_ID, result?.result?.message_id || null, job.referenceAtSend);
             logger.info('telegram_outbox.delivered', { correlationId: `job:telegram:${job.id}`, jobId: job.id, action: job.action });
             state.lastSuccessAt = new Date().toISOString();
             state.lastError = null;

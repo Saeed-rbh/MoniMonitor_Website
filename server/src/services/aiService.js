@@ -212,7 +212,8 @@ Fields to extract:
   - Interac e-Transfer received from another person → "Personal Transfers Received"
   - Payroll or wages → "Employment Income"
   - Cash, cheque, or ordinary bank deposit → "Cash & Cheque Deposits"
-  - Transfer between the user's accounts or credit-card payment → Category "Internal", Label "Internal Transfer"
+  - Explicit credit-card payment → Category "Internal", Label "Credit Card Payment"
+  - Other transfers between the user's accounts → Category "Internal", Label "Internal Transfer"
   - A Wealthsimple confirmation titled "You made a transfer" is a valid financial notification. If it names both a source and destination account, classify it as Category "Internal", Label "Internal Transfer"; it is not a merchant receipt.
   - Verified new cash funding TFSA, brokerage, or savings → Category "Saving", Label "Savings Contributions"
   - Verified new cash funding a crypto account → Category "Saving", Label "Crypto Funding"

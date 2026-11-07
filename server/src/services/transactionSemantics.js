@@ -1,9 +1,11 @@
+const { CREDIT_CARD_PAYMENT_LABEL } = require('./transactionCategories');
+
 function isCreditCardPayment(transaction = {}) {
     const reason = String(transaction.Reason || '').trim();
     const type = String(transaction.Type || '').trim();
     const isCreditCardAccount = /\bcredit[\s-]?card\b/i.test(type);
     const isPayment = /\b(?:credit[\s-]?card|card)\s+payment\b|\bpayment\s+(?:made|received|posted)\b/i.test(reason);
-    return isCreditCardAccount && isPayment;
+    return isCreditCardAccount && (isPayment || transaction.Label === CREDIT_CARD_PAYMENT_LABEL);
 }
 
 function isOutgoingEmailTransfer(transaction = {}) {
@@ -25,7 +27,7 @@ function normalizeTransactionSemantics(transaction = {}) {
     return {
         ...transaction,
         Category: 'Internal',
-        Label: 'Internal Transfer',
+        Label: CREDIT_CARD_PAYMENT_LABEL,
         AccountFlow: 'IN',
     };
 }

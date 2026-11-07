@@ -71,6 +71,7 @@ function counterpartyFromEmail(body, transaction={}) {
 }
 function displayReason(transaction={}) {
     const reason=cleanText(transaction.Reason),label=cleanText(transaction.Label);
+    if(transaction.Category==='Internal' && label==='Credit Card Payment')return label;
     if(isETransfer(transaction))return normalizeName(transaction.CounterpartyName)||counterpartyFromReason(reason,transaction)||'E-Transfer';
     if(!reason)return 'No reason provided';
     for(const separator of [' - ',' – ',' — ',': ']){

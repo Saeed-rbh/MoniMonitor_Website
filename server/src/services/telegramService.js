@@ -109,7 +109,7 @@ function formatTransactionMessage(tx, action = 'new') {
     const amountStr = `${sign}$${amount.toFixed(2)} ${tx.Currency || 'CAD'}`;
     const headerEmoji = action === 'updated' ? '🔄' : (isTrade ? '📈' : (isInternal ? '🔄' : (isIncome ? '💰' : '💸')));
     const postingLabel = tx.PostingStatus === 'unposted' ? 'Unposted Transaction' : null;
-    const headerLabel = postingLabel || (action === 'updated'
+    const headerLabel = postingLabel || (isInternal && tx.Label === 'Credit Card Payment' ? tx.Label : action === 'updated'
         ? 'Transaction Updated'
         : (isTrade ? `${portfolioAction} Order Filled` : (isInternal ? 'Internal Transfer' : isInvestment ? 'Investment Activity' : tx.Category === 'Saving' ? 'Savings Activity' : (isIncome ? 'Income Received' : 'Expense Detected'))));
     const amountEmoji = isTrade ? '⚪' : (isInternal ? '🔄' : (isIncome ? '✅' : '🔴'));

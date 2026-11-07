@@ -7,6 +7,7 @@ const { isDepositNotice, isInteracDeposit } = require('./src/services/transactio
 const { buildTransactionCsv } = require('../shared/transactionCsv.cjs');
 const { SNAPSHOT_CAPTURED_AT } = require('./src/database/financialSnapshot');
 const { normalizeTransactionSemantics } = require('./src/services/transactionSemantics');
+const { CREDIT_CARD_PAYMENT_LABEL } = require('./src/services/transactionCategories');
 const { sendTelegramMessage, deleteTelegramMessage, formatTransactionMessage, transactionActionKeyboard, editTelegramTransactionMessage, sendEphemeralCategoryPicker, sendTelegramDocument, startTelegramPolling, editTelegramMessage, setTelegramReaction, answerTelegramInlineQuery, answerTelegramCallbackQuery, e, isInvestmentNotification } = require('./src/services/telegramService');
 const { startTelegramOutboxWorker } = require('./src/services/telegramOutboxWorker');
 
@@ -409,7 +410,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                 receivedAt, expenseData, idInfo
             );
             await syncPortfolioFromEmail(duplicate.id, expenseData, idInfo);
-            await dbService.reconcileIngestedTransaction(USER_ID, duplicate.id);
+            await dbService.reconcileIngestedTransaction(USER_ID, duplicate.id, { notify: !suppressNotifications });
             return true;
         }
 
@@ -467,7 +468,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
         // RBC withdrawal alerts that accompany an Interac self e-Transfer).
         if (activeId) {
             try {
-                const reclassified = await dbService.reconcileIngestedTransaction(USER_ID, activeId);
+                const reclassified = await dbService.reconcileIngestedTransaction(USER_ID, activeId, { notify: !suppressNotifications });
                 for (const change of reclassified) {
                     await writeAudit('internal_reclassification', 'success', {
                         transactionId: change.id,
@@ -478,7 +479,7 @@ async function onNewEmail(emailBody, idInfo, receivedAt, options = {}) {
                         newLabel: change.newLabel,
                     });
                     // Update the Telegram message for the reclassified transaction
-                    if (!suppressNotifications) {
+                    if (!suppressNotifications && change.newLabel !== CREDIT_CARD_PAYMENT_LABEL) {
                         try {
                             const db = await dbService.getDb();
                             const reclassifiedTx = await db.get(

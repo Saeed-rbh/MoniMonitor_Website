@@ -1,5 +1,6 @@
 // Deliberately narrow templates; a changed template falls through to evidence-checked AI.
 const {sourceEventTimestamp}=require('./emailEvidence');
+const { CREDIT_CARD_PAYMENT_LABEL } = require('./transactionCategories');
 function parseKnownEmail(body) {
     const raw=String(body||'');
     const from=raw.match(/^From:\s*([^\r\n]+)/im)?.[1]||'';
@@ -24,7 +25,7 @@ function parseKnownEmail(body) {
         base.AccountFlow=['Credit','Deposit','Payment'].includes(kind)?'IN':'OUT';
         base.Evidence.AccountFlow=`Subject: ${subject}`;
         if(['Credit','Deposit'].includes(kind)){base.Category='Income';base.Label=kind==='Credit'?'Refunds & Reversals':'Cash & Cheque Deposits';}
-        if(kind==='Payment'){base.Category='Internal';base.Label='Internal Transfer';}
+        if(kind==='Payment'){base.Category='Internal';base.Label=CREDIT_CARD_PAYMENT_LABEL;}
         if(['Purchase','Credit','Payment'].includes(kind))base.PostingStatus='pending';
         return base;
     }

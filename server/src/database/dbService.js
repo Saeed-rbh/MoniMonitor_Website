@@ -13,7 +13,7 @@ const {
     inferAccountType,
     resolveAccountCandidate,
 } = require('../services/accountDiscovery');
-const { CATEGORY_LABELS } = require('../services/transactionCategories');
+const { CATEGORY_LABELS, CREDIT_CARD_PAYMENT_LABEL } = require('../services/transactionCategories');
 const { findTransactionMatch, findTransactionMatchResult, scoreTransactionMatch,
     isDepositNotice, isInteracDeposit } = require('../services/transactionDeduplication');
 const { pairTransactionOnIngestion, isRefundTransaction } = require('../services/refundPairing');
@@ -269,6 +269,7 @@ async function commitEmailTransaction({ transaction, source, balance = null, out
             if (source) await upsertTransactionSource({ ...source, userId: transaction.userId,
                 transactionId: match.id, provider: 'email', ownsTransaction: false });
             await ensureEmailTransferFunding(db,transaction,source,match.id);
+            await matchCreditCardPaymentEmail(db, match.id, transaction.userId, Boolean(outbox));
             return match.id;
         }
         const transactionId = await addTransaction(transaction);
@@ -302,9 +303,15 @@ async function commitEmailTransaction({ transaction, source, balance = null, out
             const payload = typeof outbox.payload === 'function'
                 ? outbox.payload(transactionId)
                 : outbox.payload;
-            await enqueueTelegramOutbox(outbox.action || 'sendMessage', payload, { transactionId });
+            const action = outbox.action || 'sendMessage';
+            const delayMs = action === 'sendMessage' && isCardPaymentEmailCandidate(transaction)
+                ? CARD_PAYMENT_EMAIL_WINDOW_MS : 0;
+            await enqueueTelegramOutbox(action, payload, { transactionId, delayMs });
         }
-        if(!reviewReason)await ensureEmailTransferFunding(db,transaction,source,transactionId);
+        if (!reviewReason) {
+            await ensureEmailTransferFunding(db,transaction,source,transactionId);
+            await matchCreditCardPaymentEmail(db, transactionId, transaction.userId, Boolean(outbox));
+        }
         return transactionId;
     });
 }
@@ -1783,14 +1790,15 @@ async function failEmailQueueItem(uid, mailboxKey, uidValidity, workerId, error,
 const TELEGRAM_OUTBOX_MAX_ATTEMPTS = Number(process.env.TELEGRAM_OUTBOX_MAX_ATTEMPTS || 8);
 const TELEGRAM_OUTBOX_LEASE_MS = Number(process.env.TELEGRAM_OUTBOX_LEASE_MS || 2 * 60 * 1000);
 
-async function enqueueTelegramOutbox(action, payload, { transactionId = null } = {}) {
+async function enqueueTelegramOutbox(action, payload, { transactionId = null, delayMs = 0 } = {}) {
     const db = await getDb();
-    const now = new Date().toISOString();
+    const now = new Date();
     const result = await db.run(
         `INSERT INTO telegram_outbox
             (action, payloadJson, transactionId, status, attempts, nextAttemptAt, createdAt)
          VALUES (?, ?, ?, 'pending', 0, ?, ?)`,
-        [String(action), JSON.stringify(payload || {}), transactionId, now, now]
+        [String(action), JSON.stringify(payload || {}), transactionId,
+            new Date(now.getTime() + delayMs).toISOString(), now.toISOString()]
     );
     return result.lastID;
 }
@@ -1828,7 +1836,7 @@ async function claimTelegramOutbox(workerId, limit = 50, now = new Date()) {
     });
 }
 
-async function completeTelegramOutbox(id, workerId, telegramMessageId = null) {
+async function completeTelegramOutbox(id, workerId, telegramMessageId = null, referenceAtSend = undefined) {
     const db = await getDb();
     const now = new Date().toISOString();
     return await db.withTransaction(async () => {
@@ -1849,6 +1857,13 @@ async function completeTelegramOutbox(id, workerId, telegramMessageId = null) {
         );
         if (row.transactionId && telegramMessageId) {
             await db.run('UPDATE transactions SET TelegramMessageId = ? WHERE id = ?', [telegramMessageId, row.transactionId]);
+            if (referenceAtSend !== undefined) {
+                const tx = await db.get('SELECT ReferenceNumber FROM transactions WHERE id = ?', [row.transactionId]);
+                // The counterpart can arrive while the Telegram request is in flight.
+                if (isPairedCardPayment(tx) && tx.ReferenceNumber !== referenceAtSend) {
+                    await enqueueTelegramOutbox('editMessage', { messageId: telegramMessageId }, { transactionId: row.transactionId });
+                }
+            }
         }
         return true;
     });
@@ -2050,10 +2065,11 @@ async function detectAndMarkRecurring(userId, transactionId) {
 // Time window (ms) within which transactions of the same amount can form
 // a valid internal self-transfer group.
 const INTERNAL_PAIRING_WINDOW_HOURS = 3 * 24;
+const CARD_PAYMENT_EMAIL_WINDOW_MS = 10 * 60 * 1000;
 
-async function reconcileIngestedTransaction(userId, transactionId) {
+async function reconcileIngestedTransaction(userId, transactionId, options) {
     const db = await getDb();
-    const changes = await detectAndReclassifyInternalCounterparts(userId, transactionId);
+    const changes = await detectAndReclassifyInternalCounterparts(userId, transactionId, options);
     const transaction = await getTransactionById(transactionId, userId);
     if (transaction) await pairTransactionOnIngestion(db, userId, transaction);
     return changes;
@@ -2109,21 +2125,74 @@ function isOutgoingCreditCardFunding(transaction) {
     return /\bwithdrawal\b/i.test(reason) && /\b(?:checking|chequing)\b/i.test(type);
 }
 
+function isPairedCardPayment(transaction) {
+    return /^XFER-CARD-/i.test(String(transaction?.ReferenceNumber || ''));
+}
+
+function isCardPaymentEmailCandidate(transaction) {
+    return transaction.PostingStatus !== 'unposted' &&
+        !/^XFER-/i.test(String(transaction.ReferenceNumber || '')) &&
+        Boolean(normalizeBankKey(transaction.BankName)) && receivedTime(transaction) !== null &&
+        (isCreditCardPayment(transaction) || isOutgoingCreditCardFunding(transaction));
+}
+
+async function matchCreditCardPaymentEmail(db, transactionId, userId, notify = true) {
+    const tx = await db.get('SELECT * FROM transactions WHERE id = ? AND userId = ?', [transactionId, userId]);
+    if (!tx || !isCardPaymentEmailCandidate(tx)) return [];
+    const time = receivedTime(tx);
+    const candidates = await db.all(
+        `SELECT t.* FROM transactions t
+         WHERE t.userId = ? AND t.AmountMinor = ? AND t.Currency = ?
+           AND t.PostingStatus <> 'unposted' AND JULIANDAY(t.ReceivedAt) BETWEEN JULIANDAY(?) AND JULIANDAY(?)
+           AND NOT EXISTS (SELECT 1 FROM transaction_ingestion_reviews r
+               WHERE r.transactionId = t.id AND r.resolvedAt IS NULL)`,
+        [userId, tx.AmountMinor, tx.Currency, new Date(time - CARD_PAYMENT_EMAIL_WINDOW_MS).toISOString(),
+            new Date(time + CARD_PAYMENT_EMAIL_WINDOW_MS).toISOString()]
+    );
+    if (!candidates.some(candidate => candidate.id === transactionId)) return [];
+    return pairCreditCardPaymentEmails(db, userId,
+        candidates.filter(candidate => normalizeBankKey(candidate.BankName) === normalizeBankKey(tx.BankName)),
+        tx.AmountMinor, notify);
+}
+
+async function consolidateCardPaymentNotifications(db, outgoing, cardPayment, notify) {
+    const jobs = await db.all(`SELECT id, status, transactionId FROM telegram_outbox
+        WHERE transactionId IN (?, ?) AND action = 'sendMessage'
+          AND status IN ('pending', 'retry', 'processing') ORDER BY id`, [outgoing.id, cardPayment.id]);
+    const sent = [cardPayment, outgoing].find(leg => leg.TelegramMessageId);
+    const keep = sent ? null : jobs.find(job => job.status === 'processing') ||
+        jobs.find(job => job.transactionId === cardPayment.id) || jobs[0];
+    const now = new Date().toISOString();
+    for (const job of jobs) {
+        if (job.id === keep?.id) {
+            // The pair is confirmed; release its hold without changing retry backoff.
+            await db.run("UPDATE telegram_outbox SET nextAttemptAt = ? WHERE id = ? AND status = 'pending'", [now, job.id]);
+        } else if (job.status !== 'processing') {
+            await db.run(`UPDATE telegram_outbox SET status = 'processed', processedAt = ?,
+                nextAttemptAt = NULL, lastError = NULL WHERE id = ?`, [now, job.id]);
+        }
+    }
+    if (sent && notify) {
+        await enqueueTelegramOutbox('editMessage', { messageId: sent.TelegramMessageId }, { transactionId: sent.id });
+    }
+}
+
 /**
  * Match the two emails emitted for one credit-card payment. This deliberately
  * uses stronger evidence than ordinary amount matching: one explicit outgoing
  * e-Transfer, one explicit credit-card payment, same institution/currency and
  * amount, different accounts, and email receipt times within ten minutes.
  */
-async function pairCreditCardPaymentEmails(db, userId, transactions, amountMinor) {
-    const unlinked = transactions.filter(t => !/^XFER-/i.test(String(t.ReferenceNumber || '')));
+async function pairCreditCardPaymentEmails(db, userId, transactions, amountMinor, notify) {
+    const unlinked = transactions.filter(isCardPaymentEmailCandidate);
     const transferCandidates = unlinked.filter(t => t.ReceivedAt && isOutgoingCreditCardFunding(t));
     const cardCandidates = unlinked.filter(t => t.ReceivedAt && isCreditCardPayment(t));
     if (transferCandidates.length !== 1 || cardCandidates.length !== 1) return [];
 
     const outgoing = transferCandidates[0];
     const cardPayment = cardCandidates[0];
-    if (outgoing.id === cardPayment.id) return [];
+    if (outgoing.id === cardPayment.id || !String(outgoing.Account || '').trim() ||
+        !String(cardPayment.Account || '').trim()) return [];
     if (normalizeAccountKey(outgoing.BankName, outgoing.Account) ===
         normalizeAccountKey(cardPayment.BankName, cardPayment.Account)) return [];
 
@@ -2133,9 +2202,12 @@ async function pairCreditCardPaymentEmails(db, userId, transactions, amountMinor
 
     const outgoingReceived = receivedTime(outgoing);
     const cardReceived = receivedTime(cardPayment);
-    const maxReceiptGapMs = 10 * 60 * 1000;
     if (outgoingReceived === null || cardReceived === null ||
-        Math.abs(outgoingReceived - cardReceived) > maxReceiptGapMs) return [];
+        Math.abs(outgoingReceived - cardReceived) > CARD_PAYMENT_EMAIL_WINDOW_MS) return [];
+    if (await db.get(`SELECT 1 FROM transaction_overrides
+        WHERE transactionId IN (?, ?) AND EXISTS (
+            SELECT 1 FROM json_each(fieldsJson) WHERE key IN ('Category','Label','Reason','ReferenceNumber','AccountFlow')
+        )`, [outgoing.id, cardPayment.id])) return [];
 
     const source = describeDiscoveredAccount(outgoing)?.name || outgoing.Account || outgoing.BankName || 'Bank account';
     const destination = describeDiscoveredAccount(cardPayment)?.name || cardPayment.Account || 'Credit card';
@@ -2145,30 +2217,31 @@ async function pairCreditCardPaymentEmails(db, userId, transactions, amountMinor
 
     await db.run(
         `UPDATE transactions
-         SET Category = 'Internal', Label = 'Internal Transfer', Reason = ?,
+         SET Category = 'Internal', Label = ?, Reason = ?,
              ReferenceNumber = ?, AccountFlow = 'OUT'
          WHERE id = ? AND userId = ?`,
-        [reason, reference, outgoing.id, userId]
+        [CREDIT_CARD_PAYMENT_LABEL, reason, reference, outgoing.id, userId]
     );
     await db.run(
         `UPDATE transactions
-         SET Category = 'Internal', Label = 'Internal Transfer', Reason = ?,
+         SET Category = 'Internal', Label = ?, Reason = ?,
              ReferenceNumber = ?, AccountFlow = 'IN'
          WHERE id = ? AND userId = ?`,
-        [reason, reference, cardPayment.id, userId]
+        [CREDIT_CARD_PAYMENT_LABEL, reason, reference, cardPayment.id, userId]
     );
 
     // The card email may already have posted with the wrong OUT direction.
     // Re-syncing is idempotent and reverses that event before applying IN.
     await syncTransactionAccountBalance(userId, cardPayment.id);
     await refreshTransactionMonths(db, [outgoing, cardPayment]);
+    await consolidateCardPaymentNotifications(db, outgoing, cardPayment, notify);
 
     return [outgoing, cardPayment].map(leg => ({
         id: leg.id,
         oldCategory: leg.Category,
         oldLabel: leg.Label,
         newCategory: 'Internal',
-        newLabel: 'Internal Transfer',
+        newLabel: CREDIT_CARD_PAYMENT_LABEL,
     }));
 }
 
@@ -2177,7 +2250,7 @@ async function pairCreditCardPaymentEmails(db, userId, transactions, amountMinor
  * internal transfer (including Temporary transfers and multi-email transfers)
  * and reclassify / link the relevant counterparts.
  */
-async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
+async function detectAndReclassifyInternalCounterparts(userId, transactionId, { notify = true } = {}) {
     const db = await getDb();
     const tx = await db.get(
         'SELECT * FROM transactions WHERE id = ? AND userId = ?',
@@ -2208,27 +2281,11 @@ async function detectAndReclassifyInternalCounterparts(userId, transactionId) {
 
     let all = [tx, ...siblings];
 
-    // Transaction timestamps can use different provider conventions (posting
-    // date at midnight versus an actual event time). For this strict email
-    // pattern, collect by receipt time so timezone differences cannot hide the
-    // counterpart. The evidence checks below still require a unique pair.
-    let cardPaymentEmailCandidates = all;
-    if (tx.ReceivedAt) {
-        const receivedSiblings = await db.all(
-            `SELECT * FROM transactions
-             WHERE userId = ? AND AmountMinor = ? AND Currency = ?
-               AND id != ? AND ReceivedAt IS NOT NULL
-               AND ABS(JULIANDAY(ReceivedAt) - JULIANDAY(?)) * 24 <= ?`,
-            [userId, tx.AmountMinor, tx.Currency || 'CAD', transactionId, tx.ReceivedAt, 10 / 60]
-        );
-        cardPaymentEmailCandidates = [...new Map(
-            [tx, ...receivedSiblings].map(candidate => [candidate.id, candidate])
-        ).values()];
-    }
-
-    const cardPaymentPair = await pairCreditCardPaymentEmails(
-        db, userId, cardPaymentEmailCandidates, tx.AmountMinor
-    );
+    // Posting dates and email receipt times can differ. Match the card alerts
+    // by receipt time, and commit the pair and its notification together.
+    const cardPaymentPair = isCardPaymentEmailCandidate(tx)
+        ? await db.withTransaction(() => matchCreditCardPaymentEmail(db, transactionId, userId, notify))
+        : [];
     if (cardPaymentPair.length) return cardPaymentPair;
 
     // If neither tx nor siblings are temporary, check if an unpaired temporary transfer exists in a 30-day window

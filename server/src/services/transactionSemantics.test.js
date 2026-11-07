@@ -17,6 +17,7 @@ test('normalizes an explicit credit-card payment as an inflow to the card', () =
     });
     assert.equal(normalized.AccountFlow, 'IN');
     assert.equal(normalized.Category, 'Internal');
+    assert.equal(normalized.Label, 'Credit Card Payment');
 });
 
 test('does not change an ordinary card purchase or non-card payment', () => {

@@ -22,7 +22,7 @@ const expectedCategories = {
     "Government Benefits", "Investment Income", "Other Income", "Personal Transfers Received",
     "Refunds & Reversals", "Reimbursements",
   ],
-  Internal: ["Internal Transfer"],
+  Internal: ["Internal Transfer", "Credit Card Payment"],
   Investment: [
     "Asset Distribution", "Crypto Purchase", "Crypto Sale", "Crypto Staking", "Crypto Swap",
     "Dividends", "ETF & Stock Purchase", "ETF & Stock Sale", "Investment Fees",
@@ -42,8 +42,8 @@ describe("transaction category registry", () => {
     const labels = Object.keys(expectedCategories).flatMap((category) =>
       CATEGORY_GROUPS[category].map(([label]) => label)
     );
-    expect(labels).toHaveLength(44);
-    expect(new Set(labels).size).toBe(44);
+    expect(labels).toHaveLength(45);
+    expect(new Set(labels).size).toBe(labels.length);
   });
 
   it("provides an outline icon and resolves the parent for every label", () => {

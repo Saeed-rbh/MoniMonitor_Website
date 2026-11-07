@@ -1,5 +1,15 @@
 const MIGRATIONS = [
     {
+        version: 25, name: 'label_confirmed_credit_card_payments',
+        async up(db) {
+            await db.exec(`UPDATE transactions SET Label = 'Credit Card Payment'
+                WHERE Category = 'Internal' AND Label = 'Internal Transfer'
+                  AND ReferenceNumber LIKE 'XFER-CARD-%'
+                  AND NOT EXISTS (SELECT 1 FROM transaction_overrides o
+                    WHERE o.transactionId = transactions.id AND json_type(o.fieldsJson, '$.Label') IS NOT NULL)`);
+        },
+    },
+    {
         version: 24, name: 'record_transactions_without_pending_stage',
         async up(db) {
             // Recording is immediate; raw source payloads retain bank authorization facts.
