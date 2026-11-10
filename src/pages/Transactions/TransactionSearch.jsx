@@ -1,4 +1,5 @@
-import { matchesReportingCategory, isInvestTransaction } from "../../services/transactionService";
+import { buildSearchIndex, searchTransactions } from './searchIndex';
+import { isInvestTransaction } from "../../services/transactionService";
 import TransactionRow from "../../components/TransactionRow";
 import React, { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
@@ -41,11 +42,15 @@ const dateGroup = value => {
   if (date.toDateString() === yesterday.toDateString()) return "Yesterday";
   return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 };
-const highlight = (text, query) => {
+const highlightPattern = query => {
   const terms = [...new Set(query.trim().split(/\s+/).filter(Boolean))].sort((a, b) => b.length - a.length);
-  if (!terms.length) return text;
+  if (!terms.length) return null;
   const escaped = terms.map(term => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  return text.split(new RegExp(`(${escaped.join("|")})`, "gi")).map((part, index) =>
+  return new RegExp(`(${escaped.join("|")})`, "gi");
+};
+const highlight = (text, pattern) => {
+  if (!pattern) return text;
+  return text.split(pattern).map((part, index) =>
     index % 2 ? <mark key={index}>{part}</mark> : part);
 };
 const transactionDate = value => {
@@ -96,29 +101,12 @@ export default function TransactionSearch() {
   const transactions = useMemo(() => Object.values(allTransactions || {})
     .flatMap(month => month.transactions || [])
     .sort((a, b) => String(b.Timestamp).localeCompare(String(a.Timestamp))), [allTransactions]);
-  const availableDates = useMemo(() => new Set(transactions.flatMap(transaction => {
-    const date = parseTransactionCalendarDate(transaction.Timestamp);
-    return Number.isNaN(date.getTime()) ? [] : [dateInputValue(date)];
-  })), [transactions]);
-  const results = useMemo(() => {
-    if (invalidRange) return [];
-    const terms = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-    return transactions.filter(transaction => {
-      if (startDate || endDate) {
-        const date = parseTransactionCalendarDate(transaction.Timestamp);
-        if (Number.isNaN(date.getTime())) return false;
-        const day = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-        if ((startDate && day < startDate) || (endDate && day > endDate)) return false;
-      }
-      const matchesCategory = category === "All" || (category === "Invest"
-        ? isInvestTransaction(transaction)
-        : matchesReportingCategory(transaction, category));
-      const text = [getTransactionDisplayReason(transaction.Reason,transaction.Label,transaction), transaction.Reason, transaction.Label, transaction.Amount,
-        transaction.BankName, transaction.Category, transaction.Type, transaction.Timestamp]
-        .filter(value => value != null).join(" ").toLocaleLowerCase();
-      return matchesCategory && terms.every(term => text.includes(term));
-    });
-  }, [transactions, query, category, startDate, endDate, invalidRange]);
+  const searchIndex = useMemo(() => buildSearchIndex(transactions), [transactions]);
+  const availableDates = useMemo(() => new Set(searchIndex.flatMap(({ day }) => day ? [day] : [])), [searchIndex]);
+  const pattern = useMemo(() => highlightPattern(query), [query]);
+  const results = useMemo(() => invalidRange ? [] : searchTransactions(searchIndex, {
+    query, category, startDate, endDate,
+  }), [searchIndex, query, category, startDate, endDate, invalidRange]);
 
   useEffect(() => {
     if (!sentinelRef.current || limit >= results.length || !window.IntersectionObserver) return;
@@ -218,7 +206,7 @@ export default function TransactionSearch() {
             <TransactionRow className="transaction-search-result"
               onClick={() => setViewingTransaction(transaction)} aria-haspopup="dialog"
               icon={getTransactionIcon(transaction.Category, transaction.Label)}
-              reason={highlight(getTransactionDisplayReason(transaction.Reason, transaction.Label, transaction), query)}
+              reason={highlight(getTransactionDisplayReason(transaction.Reason, transaction.Label, transaction), pattern)}
               date={transactionDate(transaction.Timestamp)} counterparty={isETransferTransaction(transaction)} direction={direction} investment={isInvestTransaction(transaction)} amount={money(transaction)}
             />
             </Fragment>
