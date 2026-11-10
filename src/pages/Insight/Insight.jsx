@@ -1,4 +1,4 @@
-import semantics from '../../../shared/financialSemantics.cjs';
+import semantics from '@monimonitor/shared/financialSemantics';
 const amountOf = (transaction) => semantics.amountMinorOf(transaction) / 100;
 import { parseTransactionCalendarDate } from '../../utils/transactionDate';
 import React, { useMemo } from "react";

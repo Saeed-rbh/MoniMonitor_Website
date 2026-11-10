@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getPortfolioCorrectionAPI, submitPortfolioCorrectionAPI } from '../services/apiService';
-import semantics from '../../shared/financialSemantics.cjs';
+import semantics from '@monimonitor/shared/financialSemantics';
 
 export default function PortfolioCorrectionPanel({ transaction, onCorrected }) {
     const [preview, setPreview] = useState(null);

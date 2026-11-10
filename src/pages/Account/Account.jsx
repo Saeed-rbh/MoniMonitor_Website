@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import "../../pages/Auth.css"; // Reuse Auth styles
 import BlurFade from "../../components/ui/blur-fade"; // Use relative path
 import { APP_VERSION } from "../../config/appVersion";
-import transactionCsv from '../../../shared/transactionCsv.cjs';
+import transactionCsv from '@monimonitor/shared/transactionCsv';
 import {
     createBackupAPI,
     createPlaidLinkTokenAPI,

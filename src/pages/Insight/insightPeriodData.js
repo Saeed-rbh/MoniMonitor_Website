@@ -1,4 +1,4 @@
-import currency from '../../../shared/currency.cjs';
+import currency from '@monimonitor/shared/currency';
 const { isReportingCurrency } = currency;
 const MONTH_KEY_PATTERN = /^(\d{4})-(\d{2})$/;
 

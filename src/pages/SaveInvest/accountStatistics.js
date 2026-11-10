@@ -1,4 +1,4 @@
-import semantics from '../../../shared/financialSemantics.cjs';
+import semantics from '@monimonitor/shared/financialSemantics';
 
 const MONTH_KEY = /^\d{4}-\d{2}$/;
 

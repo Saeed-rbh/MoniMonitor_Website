@@ -1,8 +1,8 @@
 import { format, parse, addMonths, isBefore } from "date-fns";
 import { GetDashboardBootstrap, GetDataFromDB } from "./apiService";
 import { parseTransactionCalendarDate } from "../utils/transactionDate";
-import currency from '../../shared/currency.cjs';
-import semantics from '../../shared/financialSemantics.cjs';
+import currency from '@monimonitor/shared/currency';
+import semantics from '@monimonitor/shared/financialSemantics';
 
 const monthsNames = [
   "Jan",

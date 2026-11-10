@@ -87,8 +87,10 @@ const LoginPage = () => {
                     <p className="auth-footer">Verifying your Telegram account…</p>
                 ) : <form onSubmit={handleSubmit} style={{ width: '100%' }}>
                     <div className="form-group">
-                        <label>Username</label>
+                        <label htmlFor="login-username">Username</label>
                         <input
+                            id="login-username"
+                            autoComplete="username"
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
@@ -96,8 +98,10 @@ const LoginPage = () => {
                         />
                     </div>
                     <div className="form-group">
-                        <label>Password</label>
+                        <label htmlFor="login-password">Password</label>
                         <input
+                            id="login-password"
+                            autoComplete="current-password"
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}

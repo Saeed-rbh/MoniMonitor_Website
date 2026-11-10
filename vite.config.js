@@ -5,6 +5,8 @@ import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { resolve } from "path";
 
+const sharedModules = ['calendar', 'currency', 'financialSemantics', 'transactionNames', 'transactionCsv', 'accountBalances'];
+
 const repository = fileURLToPath(new URL(".", import.meta.url));
 const versionBase = JSON.parse(readFileSync(resolve(repository, "app-version.json"), "utf8"));
 
@@ -23,6 +25,11 @@ const appVersion = `${versionBase.major}.${versionBase.minor}.${Number(versionBa
 
 export default defineConfig({
   plugins: [react()],
+  // Shared accounting helpers are CommonJS for the Node API. Prebundle them
+  // for browser ESM imports during development as well as production builds.
+  optimizeDeps: {
+    include: sharedModules.map(name => `@monimonitor/shared/${name}`),
+  },
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
   },
@@ -42,6 +49,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      ...Object.fromEntries(sharedModules.map(name => [`@monimonitor/shared/${name}`, resolve(repository, `shared/${name}.cjs`)])),
       "@": resolve(repository, "./src"),
       "react": resolve(repository, "./node_modules/react"),
       "react-dom": resolve(repository, "./node_modules/react-dom"),

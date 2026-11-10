@@ -20,7 +20,7 @@ export const parseTransactionDate = (value) => {
   return new Date(value);
 };
 
-import calendar from '../../shared/calendar.cjs';
+import calendar from '@monimonitor/shared/calendar';
 
 export const parseTransactionCalendarDate = (value) => {
   const parts = calendar.parseTimestamp(value);

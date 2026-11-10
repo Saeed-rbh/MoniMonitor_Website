@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { cashPositionOf } from '../../../shared/accountBalances.cjs';
+import { cashPositionOf } from '@monimonitor/shared/accountBalances';
 import NativeCurrencyValues from '../../components/NativeCurrencyValues';
 import PendingTransferBalance from '../../components/PendingTransferBalance';
 import PendingTradeEstimate, { PendingTradeReviewItems } from '../../components/PendingTradeEstimate';
